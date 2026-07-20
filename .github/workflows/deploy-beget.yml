@@ -29,7 +29,7 @@ jobs:
           BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s' "$BEGET_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
