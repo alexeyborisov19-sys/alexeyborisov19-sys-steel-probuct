@@ -1,0 +1,67 @@
+name: Publish to Beget
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steelprodukt-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and publish website
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get website source
+        uses: actions/checkout@v4
+
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload current website version
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          ssh -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "mkdir -p '$BEGET_APP_PATH'"
+          rsync -az --delete-delay \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='.next/' \
+            --exclude='.env*' \
+            --exclude='public/video/company-film-flat.mp4' \
+            -e "ssh -p $BEGET_SSH_PORT" \
+            ./ "$BEGET_USER@$BEGET_HOST:$BEGET_APP_PATH/"
+
+      - name: Build and restart application on Beget
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          ssh -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          mkdir -p "$APP_PATH"
+          chown -R nodejs:nodejs "$APP_PATH"
+          sudo -iu nodejs pm2 delete hello-world || true
+          sudo -iu nodejs bash -lc "cd '$APP_PATH' && npm install && npm run build && pm2 startOrReload ecosystem.config.cjs --env production && pm2 save"
+          REMOTE
