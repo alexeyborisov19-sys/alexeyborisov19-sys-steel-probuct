@@ -1,0 +1,15 @@
+node_modules
+.next
+.env*
+npm-debug.log*
+.DS_Store
+output/
+tmp/
+work/
+*.tsbuildinfo
+
+# Source code goes to GitHub. The master company film is distributed separately
+# for hosting because GitHub rejects individual files above 100 MB.
+public/video/company-film-flat.mp4
+
+*.zip
