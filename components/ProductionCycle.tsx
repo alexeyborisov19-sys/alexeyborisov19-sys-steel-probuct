@@ -46,9 +46,14 @@ export function ProductionCycle({ stages }: ProductionCycleProps) {
           className="production-cycle-item relative min-h-36 overflow-hidden bg-[#101112] p-4 transition-colors duration-300 hover:bg-[#171b1e]"
           style={{ "--cycle-delay": `${index * 85}ms` } as React.CSSProperties}
         >
-          <div
-            className="production-cycle-image absolute inset-0 bg-cover bg-center opacity-60"
-            style={{ backgroundImage: `url('/images/production-cycle/${image}')` }}
+          <img
+            src={`/images/web/cycle-${image}`}
+            width={428}
+            height={240}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="production-cycle-image absolute inset-0 h-full w-full object-cover object-center opacity-60"
           />
           <div className="relative">
             <b className="text-xl text-steel-orange">{String(index + 1).padStart(2, "0")}</b>
