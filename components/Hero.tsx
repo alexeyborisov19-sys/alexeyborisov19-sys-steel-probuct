@@ -1,6 +1,7 @@
 export function Hero() {
   return <section className="relative isolate min-h-[610px] overflow-hidden bg-steel-black pt-[72px]">
-    <div className="hero-surface absolute inset-0" style={{ backgroundImage: "linear-gradient(90deg,#101112 0%,rgba(16,17,18,.84) 38%,rgba(16,17,18,.18) 100%), url('/images/industry/hero-building-v1.png')" }} aria-hidden="true" />
+    <img src="/images/web/hero-main.jpg" width={1280} height={720} alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
+    <div className="hero-surface absolute inset-0" aria-hidden="true" />
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_50%,rgba(234,91,12,.23),transparent_31%)]" aria-hidden="true" />
     <div className="container relative z-10 grid min-h-[538px] items-end pb-12 pt-16 lg:grid-cols-[1fr_auto] lg:pb-14">
       <div className="max-w-3xl">
