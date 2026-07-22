@@ -20,10 +20,10 @@ jobs:
           printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-      - name: Read recent mail transport errors
+      - name: Read mail transport errors from all application workers
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs bash -lc 'tail -n 40 ~/.pm2/logs/steelprodukt-error-0.log 2>/dev/null || true'"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs bash -lc 'for file in ~/.pm2/logs/steelprodukt-error-*.log; do echo --- \$file ---; tail -n 40 \$file; done'"
