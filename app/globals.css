@@ -11,6 +11,11 @@ a { color: inherit; text-decoration: none; }
 .container { width: min(1320px, calc(100% - 48px)); margin: 0 auto; }
 .eyebrow { color: var(--orange); font-size: .75rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
 .clip-corner { clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%); }
+.legal-document h2 { margin: 2.5rem 0 1rem; color: #fff; font-size: 1.15rem; font-weight: 700; line-height: 1.3; }
+.legal-document h2:first-of-type { margin-top: 1.75rem; }
+.legal-document p { margin: 0 0 1rem; }
+.legal-document a { color: var(--orange); text-decoration: underline; text-underline-offset: 3px; }
+.legal-document__date { color: rgba(255,255,255,.46); font-size: .75rem; }
 .header-nav { margin-left: auto; margin-right: auto; }
 .header-nav-link { position: relative; display: inline-flex; align-items: center; gap: 5px; padding: 0 13px; border: 0; background: transparent; color: rgba(255,255,255,.78); font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: .015em; line-height: 1; text-transform: uppercase; transition: color .22s ease, background-color .22s ease; }
 .header-nav-link:not(:last-child)::before { content: ""; position: absolute; right: 0; top: 29px; height: 14px; width: 1px; background: rgba(255,255,255,.1); }
@@ -24,14 +29,17 @@ a { color: inherit; text-decoration: none; }
 .inner-hero-surface { background: linear-gradient(90deg, #101112 0%, rgba(16,17,18,.71) 47%, rgba(16,17,18,.15) 100%), radial-gradient(ellipse at 76% 56%, rgba(234,91,12,.18), transparent 25%), linear-gradient(130deg, #1c2830, #080a0c 54%, #303b40); background-position: center; background-repeat: no-repeat; background-size: cover; }
 .solution-media { position: relative; overflow: hidden; background: radial-gradient(circle at 65% 32%, rgba(234,91,12,.25), transparent 25%), linear-gradient(145deg,#303d43,#111417 58%,#1c252a); background-position: center; background-repeat: no-repeat; background-size: cover; filter: brightness(1.07) contrast(1.01) saturate(1.02); }
 .solution-media > span { position: relative; z-index: 1; }
+.solution-card-media { position: relative; aspect-ratio: 16 / 9; height: auto; overflow: hidden; background: linear-gradient(145deg,#303d43,#111417 58%,#1c252a); }
+.solution-card-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; filter: brightness(1.08) contrast(1.02) saturate(1.03); transition: transform .45s ease, filter .25s ease; }
+.group:hover .solution-card-media img { transform: scale(1.035); filter: brightness(1.15) contrast(1.02) saturate(1.05); }
 .production-cycle-track { display: grid; gap: 1px; background: rgba(255,255,255,.1); }
-.production-cycle-item { isolation: isolate; opacity: 0; transform: translateY(14px) scale(.985); }
+.production-cycle-item { isolation: isolate; opacity: 1; transform: translateY(0) scale(1); }
 .production-cycle-item::before { position: absolute; z-index: 1; top: 0; left: 0; width: 0; height: 2px; content: ""; background: var(--orange); box-shadow: 0 0 14px rgba(234,91,12,.75); }
 .production-cycle-image { z-index: -1; transition: transform .55s ease, opacity .4s ease; }
 .production-cycle-track.is-visible .production-cycle-item { animation: production-cycle-reveal .48s cubic-bezier(.2,.75,.25,1) var(--cycle-delay) both; }
 .production-cycle-track.is-visible .production-cycle-item::before { animation: production-cycle-line .48s cubic-bezier(.2,.75,.25,1) calc(var(--cycle-delay) + 100ms) both; }
 .production-cycle-item:hover .production-cycle-image { opacity: .76; transform: scale(1.055); }
-@keyframes production-cycle-reveal { to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes production-cycle-reveal { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes production-cycle-line { to { width: 100%; } }
 @media (min-width: 640px) { .production-cycle-track { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1024px) { .production-cycle-track { grid-template-columns: repeat(7, minmax(0, 1fr)); } }

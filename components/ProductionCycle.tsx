@@ -43,7 +43,7 @@ export function ProductionCycle({ stages }: ProductionCycleProps) {
         <Link
           key={title}
           href="/production"
-          className="production-cycle-item relative min-h-36 overflow-hidden bg-[#101112] p-4 transition-colors duration-300 hover:bg-[#171b1e]"
+          className="production-cycle-item relative aspect-video overflow-hidden bg-[#101112] p-4 transition-colors duration-300 hover:bg-[#171b1e] lg:aspect-auto lg:min-h-36"
           style={{ "--cycle-delay": `${index * 85}ms` } as React.CSSProperties}
         >
           <img
