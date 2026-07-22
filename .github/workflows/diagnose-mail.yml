@@ -26,4 +26,4 @@ jobs:
           BEGET_USER: ${{ secrets.BEGET_USER }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs pm2 logs steelprodukt --lines 20 --nostream"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs bash -lc 'tail -n 40 ~/.pm2/logs/steelprodukt-error-0.log 2>/dev/null || true'"
