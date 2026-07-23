@@ -77,6 +77,7 @@ export async function POST(request: Request) {
 
     const recipient = process.env.QUOTE_RECIPIENT ?? "info@steelprodukt.ru";
     const from = process.env.SMTP_FROM ?? configuration.auth.user;
+    const envelopeFrom = process.env.SMTP_ENVELOPE_FROM ?? from;
     const transporter = nodemailer.createTransport(configuration);
     const attachments = await Promise.all(files.map(async (file) => ({
       filename: file.name.replace(/[\r\n]/g, "_"),
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
     await transporter.sendMail({
       from,
       to: recipient,
+      envelope: { from: envelopeFrom, to: recipient },
       replyTo: email || undefined,
       subject: `Заявка на расчёт${company ? ` — ${company}` : ""}`,
       text: [
