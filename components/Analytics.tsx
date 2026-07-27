@@ -1,6 +1,5 @@
 import Script from "next/script";
 
-const googleMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const yandexCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
 
 /**
@@ -10,15 +9,6 @@ const yandexCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
  */
 export function Analytics() {
   return <>
-    {googleMeasurementId ? <>
-      <Script async src={`https://www.googletagmanager.com/gtag/js?id=${googleMeasurementId}`} strategy="afterInteractive" />
-      <Script id="google-analytics" strategy="afterInteractive">{`
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '${googleMeasurementId}', { anonymize_ip: true });
-      `}</Script>
-    </> : null}
     {yandexCounterId ? <Script id="yandex-metrica" strategy="afterInteractive">{`
       (function(m,e,t,r,i,k,a){
         m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
@@ -34,4 +24,21 @@ export function Analytics() {
       });
     `}</Script> : null}
   </>;
+}
+
+export function syncConsent() {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return false;
+    const raw = window.localStorage.getItem("site_cookie_consent");
+    if (!raw) return false;
+    try {
+      const parsed = JSON.parse(raw);
+      return !!parsed?.analytics;
+    } catch (e) {
+      return false;
+    }
+  } catch (e) {
+    // If reading storage fails (e.g. sandboxed environment), disable analytics
+    return false;
+  }
 }

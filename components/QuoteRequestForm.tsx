@@ -108,7 +108,7 @@ export function QuoteRequestForm() {
     }
   }
 
-  return <form onSubmit={handleSubmit} onFocus={markFormStarted} className="grid gap-6" noValidate>
+  return <form id="quote-request-form" name="quote-request-form" data-ym-form="quote-request" onSubmit={handleSubmit} onFocus={markFormStarted} className="grid gap-6" noValidate>
     <label className="sr-only" aria-hidden="true">Не заполняйте это поле<input name="website" tabIndex={-1} autoComplete="off" /></label>
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="text-sm font-semibold text-white">Имя *

@@ -11,7 +11,14 @@ export function SitePreloader() {
 
   useEffect(() => {
     const startedAt = performance.now();
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let reducedMotion = false;
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      try {
+        reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      } catch (e) {
+        reducedMotion = false;
+      }
+    }
     const minimumDuration = reducedMotion ? 240 : DISPLAY_DURATION;
     let finished = false;
     let exitTimer: number | undefined;
