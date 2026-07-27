@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 544 544" role="img" aria-labelledby="title">
+  <title id="title">Сталь Продукт</title>
+  <rect width="544" height="544" rx="88" fill="#101112"/>
+  <g fill="#de5725" transform="translate(0 131)">
+    <path d="M92 51 151 17 251 74 194 108Z"/>
+    <path d="M48 109 100 79 124 92 106 103V190L151 216 195 190 249 221 151 249 47 190Z"/>
+    <path d="M283 69 335 38H444L499 70V191L444 223V102L390 70 335 102V223L283 191Z"/>
+  </g>
+</svg>
