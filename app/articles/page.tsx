@@ -1,106 +1,88 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { PageLayout } from "@/components/PageLayout";
-import { articles, type ArticleDirection } from "@/data/articles";
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { JsonLd } from "@/components/JsonLd";
+import { articles, type Article, type ArticleDirection } from "@/data/articles";
 import { createPageMetadata } from "@/lib/seo";
+import { absoluteUrl } from "@/lib/site";
+import { webPageSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Инженерный журнал «Сталь Продукт»",
-  description: "Инженерный журнал архитектуры и металлообработки: фасадные идеи, производственные технологии, выставки и практика компании «Сталь Продукт».",
+  title: "Инженерный журнал и новости металлообработки",
+  description: "Новости металлообработки, фасадные инновации, новые станки, автоматизация, роботизация, выставки и инженерная практика компании «Сталь Продукт».",
   path: "/articles",
   image: "/images/web/hero-main.jpg",
   keywords: [
+    "новости металлообработки",
     "инженерный журнал металлообработка",
+    "новости лазерной резки",
+    "автоматизация гибки металла",
+    "роботизация производства",
     "инновации металлических фасадов",
-    "технологии обработки листового металла",
-    "выставки металлообработки",
+    "выставки металлообработки 2026 2027",
     "инженерная практика",
   ],
 });
 
-const directions: Array<{
-  id: string;
-  number: string;
-  title: string;
-  description: string;
-  image: string;
-  href: string;
-}> = [
-  {
-    id: "facades",
-    number: "01",
-    title: "Фасады и архитектурные инновации",
-    description: "Архитектурные идеи, металлокассеты, объёмные и перфорированные панели, покрытия, узлы и концепции фасадов будущего.",
-    image: "/images/industries/business-center.png",
-    href: "#facades",
-  },
-  {
-    id: "metalworking",
-    number: "02",
-    title: "Металлообработка и технологии",
-    description: "Лазерная резка, гибка, сварка, окраска, оборудование, производственная автоматизация и роботизированные комплексы.",
-    image: "/images/web/production.jpg",
-    href: "#metalworking",
-  },
-  {
-    id: "events",
-    number: "03",
-    title: "Выставки и события",
-    description: "Проверенные календари, обзоры новых станков и технологий, рекомендации по профильным выставкам России, Китая и других стран.",
-    image: "/images/web/cycle-laser-cutting.jpg",
-    href: "#events",
-  },
-  {
-    id: "engineering-practice",
-    number: "04",
-    title: "Инженерная практика «Сталь Продукт»",
-    description: "Реальные производственные задачи: проектирование, чертежи, технологичность, материалы, покрытия и контроль результата.",
-    image: "/images/web/cycle-design.jpg",
-    href: "#engineering-practice",
-  },
-];
+const navigation = [
+  { id: "news", marker: "Сейчас", title: "Новости отрасли" },
+  { id: "facades", marker: "01", title: "Фасады и архитектурные инновации" },
+  { id: "metalworking", marker: "02", title: "Металлообработка и технологии" },
+  { id: "events", marker: "03", title: "Выставки и события" },
+  { id: "engineering-practice", marker: "04", title: "Инженерная практика" },
+] as const;
 
-const directionCopy: Record<ArticleDirection, { eyebrow: string; title: string; description: string }> = {
+const sectionCopy: Record<Exclude<ArticleDirection, "news">, { number: string; eyebrow: string; title: string; description: string }> = {
   facades: {
+    number: "01",
     eyebrow: "Архитектурная лаборатория",
     title: "Фасады и архитектурные инновации",
-    description: "Идеи и практические решения на пересечении архитектурного замысла и возможностей современного производства.",
+    description: "Идеи и практические решения на пересечении архитектурного замысла, материалов и возможностей современного производства.",
   },
   metalworking: {
+    number: "02",
     eyebrow: "Производственные технологии",
     title: "Металлообработка и технологии",
     description: "Оборудование, процессы и автоматизация, которые повышают точность, повторяемость и управляемость производства.",
   },
   "engineering-practice": {
+    number: "04",
     eyebrow: "Опыт компании",
     title: "Инженерная практика «Сталь Продукт»",
-    description: "Материалы, которые помогают правильно поставить задачу, подготовить документацию и получить прогнозируемый результат.",
+    description: "Практические материалы о постановке задачи, подготовке документации, выборе технологии и контроле результата.",
   },
 };
 
-function ArticleCard({ article, eager = false }: { article: (typeof articles)[number]; eager?: boolean }) {
+const sectionOrder: Array<Exclude<ArticleDirection, "news">> = ["facades", "metalworking", "engineering-practice"];
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+}
+
+function ArticleCard({ article, compact = false }: { article: Article; compact?: boolean }) {
   return (
-    <article className="group flex h-full flex-col overflow-hidden border border-white/12 bg-[#111519] transition duration-300 hover:-translate-y-1 hover:border-steel-orange/70">
-      <div className="relative aspect-[16/9] overflow-hidden">
+    <article className={`journal-card group grid h-full overflow-hidden border border-white/12 bg-[#101519] transition duration-300 hover:border-steel-orange/75 ${compact ? "sm:grid-cols-[190px_minmax(0,1fr)]" : ""}`}>
+      <div className={`relative overflow-hidden ${compact ? "min-h-48 sm:min-h-full" : "aspect-[16/9]"}`}>
         <img
           src={article.image}
           alt={article.title}
           width={960}
           height={540}
-          loading={eager ? "eager" : "lazy"}
+          loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover brightness-[1.12] contrast-[1.02] transition duration-700 group-hover:scale-[1.035]"
+          className="absolute inset-0 h-full w-full object-cover brightness-[1.14] contrast-[1.02] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.2]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/75 via-transparent to-transparent" />
-        <span className="absolute bottom-4 left-5 border border-steel-orange/60 bg-[#0c1013]/85 px-2 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-steel-orange">
-          {article.category}
-        </span>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/80 via-transparent to-transparent" />
       </div>
-      <div className="flex flex-1 flex-col p-6">
-        <p className="text-[10px] uppercase tracking-[.12em] text-white/45">{article.readingTime}</p>
-        <h3 className="mt-4 text-xl font-semibold leading-tight">{article.title}</h3>
-        <p className="mt-4 text-sm leading-relaxed text-white/60">{article.lead}</p>
-        <Link href={`/articles/${article.slug}`} className="mt-auto pt-7 text-xs font-bold uppercase text-steel-orange">
+      <div className="flex min-w-0 flex-col p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-[.08em]">
+          <span className="text-steel-orange">{article.category}</span>
+          <time dateTime={article.publishedAt} className="text-white/42">{formatDate(article.publishedAt)}</time>
+        </div>
+        <h3 className={`${compact ? "mt-3 text-lg" : "mt-4 text-xl"} font-semibold leading-tight`}>{article.title}</h3>
+        <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/58">{article.lead}</p>
+        <Link href={`/articles/${article.slug}`} className="mt-auto pt-5 text-[11px] font-bold uppercase tracking-[.055em] text-steel-orange">
           Читать материал&nbsp; →
         </Link>
       </div>
@@ -108,214 +90,240 @@ function ArticleCard({ article, eager = false }: { article: (typeof articles)[nu
   );
 }
 
-export default function ArticlesPage() {
+function SectionHeading({
+  number,
+  eyebrow,
+  title,
+  description,
+}: {
+  number: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
   return (
-    <PageLayout
-      path="/articles"
-      eyebrow="Архитектура · Металлообработка · Инженерная практика"
-      title="Инженерный журнал"
-      titleAccent="Сталь Продукт"
-      description="Фасадные идеи, производственные технологии, отраслевые события и собственная инженерная практика — в одном центре знаний «Сталь Продукт»."
-      image="/images/web/hero-main.jpg"
-    >
-      <section className="border-y border-white/10 bg-[#090d10] py-14 sm:py-20">
-        <div className="container">
-          <div className="flex flex-col justify-between gap-5 border-b border-white/12 pb-6 lg:flex-row lg:items-end">
-            <div>
-              <p className="eyebrow">Четыре направления</p>
-              <h2 className="mt-3 max-w-4xl text-3xl font-semibold uppercase leading-tight sm:text-4xl">
-                От архитектурной идеи до технологии изготовления
-              </h2>
-            </div>
-            <p className="max-w-sm text-sm leading-7 text-white/55">
-              Выберите интересующее направление или переходите к новым материалам ниже.
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {directions.map((direction) => (
-              <a
-                key={direction.id}
-                href={direction.href}
-                className="group relative flex min-h-[470px] flex-col overflow-hidden border border-white/14 bg-[#111519] transition duration-300 hover:-translate-y-1 hover:border-steel-orange"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden">
-                  <img
-                    src={direction.image}
-                    alt={direction.title}
-                    width={900}
-                    height={560}
-                    className="h-full w-full object-cover brightness-[1.1] contrast-[1.03] transition duration-700 group-hover:scale-[1.045] group-hover:brightness-[1.18]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#111519] via-transparent to-transparent" />
-                  <span className="absolute left-5 top-5 font-mono text-3xl font-bold text-steel-orange">
-                    {direction.number}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col p-6">
-                  <h3 className="text-xl font-semibold uppercase leading-tight">{direction.title}</h3>
-                  <p className="mt-4 text-sm leading-7 text-white/58">{direction.description}</p>
-                  <span className="mt-auto pt-6 text-xs font-bold uppercase text-steel-orange">
-                    Перейти в раздел&nbsp; ↓
-                  </span>
-                </div>
-                <div className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-steel-orange transition duration-500 group-hover:scale-x-100" />
-              </a>
-            ))}
-          </div>
+    <div className="journal-section-heading grid gap-5 border-b border-white/12 pb-6 md:grid-cols-[72px_minmax(0,1fr)]">
+      <span className="text-4xl font-bold tabular-nums text-steel-orange">{number}</span>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-end">
+        <div>
+          <p className="eyebrow">{eyebrow}</p>
+          <h2 className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">{title}</h2>
         </div>
-      </section>
+        <p className="text-sm leading-7 text-white/55">{description}</p>
+      </div>
+    </div>
+  );
+}
 
-      <section id="events" className="scroll-mt-24 bg-[#0c1013] py-14 sm:py-20">
-        <div className="container">
-          <div className="flex flex-col justify-between gap-5 border-b border-white/12 pb-6 lg:flex-row lg:items-end">
+export default function ArticlesPage() {
+  const news = articles
+    .filter((article) => article.direction === "news")
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  const latestNews = news[0];
+  const secondaryNews = news.slice(1, 3);
+
+  const collectionSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${absoluteUrl("/articles")}#collection`,
+    name: "Инженерный журнал и новости металлообработки",
+    description: "Новости металлообработки, фасадные инновации, отраслевые события и инженерная практика.",
+    url: absoluteUrl("/articles"),
+    inLanguage: "ru",
+    hasPart: news.map((article) => ({
+      "@type": "Article",
+      headline: article.title,
+      url: absoluteUrl(`/articles/${article.slug}`),
+      datePublished: article.publishedAt,
+    })),
+  };
+
+  return (
+    <>
+      <JsonLd
+        data={[
+          webPageSchema({
+            name: "Инженерный журнал и новости металлообработки",
+            description: "Новости металлообработки, фасадные инновации, отраслевые события и инженерная практика.",
+            path: "/articles",
+          }),
+          collectionSchema,
+        ]}
+      />
+      <Header />
+      <main>
+        <section className="journal-hero relative overflow-hidden border-b border-white/12 pt-[76px]">
+          <img
+            src="/images/web/hero-main.jpg"
+            alt=""
+            width={1800}
+            height={920}
+            className="absolute inset-0 h-full w-full object-cover object-center brightness-[.62] contrast-[1.08]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,12,.98)_0%,rgba(7,10,12,.88)_48%,rgba(7,10,12,.34)_100%)]" />
+          <div className="journal-grid-overlay absolute inset-0" />
+          <div className="container relative z-10 grid min-h-[440px] items-end gap-10 py-16 lg:grid-cols-[minmax(0,1fr)_330px] lg:py-20">
             <div>
-              <p className="eyebrow">03 · Выставки и события</p>
-              <h2 className="mt-3 text-3xl font-semibold uppercase leading-tight sm:text-4xl">
-                Где искать новые технологии и оборудование
-              </h2>
-            </div>
-            <Link href="/articles/vystavki-metalloobrabotka-kitay-2026" className="text-xs font-bold uppercase text-steel-orange">
-              Все выставки Китая 2026–2027&nbsp; →
-            </Link>
-          </div>
-
-          <Link
-            href="/articles/vystavki-metalloobrabotka-kitay-2026"
-            className="group mt-8 grid overflow-hidden border border-steel-orange/45 bg-[#111519] transition hover:border-steel-orange lg:grid-cols-[340px_minmax(0,1fr)_220px] lg:items-stretch"
-          >
-            <div className="relative min-h-64 overflow-hidden">
-              <img
-                src="/images/web/cycle-laser-cutting.jpg"
-                alt="Календарь выставок металлообработки в Китае"
-                width={900}
-                height={620}
-                className="absolute inset-0 h-full w-full object-cover brightness-[1.16] contrast-[1.04] transition duration-700 group-hover:scale-[1.04]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#111519]/55" />
-            </div>
-            <div className="flex flex-col justify-center border-t border-white/10 p-6 lg:border-l lg:border-t-0 sm:p-8">
-              <p className="eyebrow">Спецпроект · Китай 2026–2027</p>
-              <h3 className="mt-3 text-2xl font-semibold uppercase leading-tight">
-                Календарь выставок по металлообработке
-              </h3>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/58">
-                Проверенные даты, города, оборудование, официальные сайты и рекомендации —
-                кому действительно стоит планировать поездку.
+              <p className="eyebrow">Новости · Аналитика · Практика</p>
+              <h1 className="mt-5 max-w-4xl text-4xl font-semibold uppercase leading-[1.02] sm:text-5xl lg:text-6xl">
+                Инженерный журнал
+                <span className="mt-2 block text-steel-orange">Сталь Продукт</span>
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-white/68">
+                Следим за новыми технологиями обработки листового металла, фасадными решениями,
+                оборудованием и отраслевыми событиями — и переводим новости на язык практической пользы.
               </p>
             </div>
-            <div className="flex items-center justify-between border-t border-white/10 bg-[#0d1114] p-6 lg:border-l lg:border-t-0 lg:flex-col lg:items-start">
-              <span className="font-mono text-5xl font-bold text-steel-orange">14</span>
-              <span className="text-xs font-bold uppercase leading-5 text-steel-orange">
-                Открыть календарь&nbsp; →
-              </span>
+            <div className="border-l-2 border-steel-orange bg-black/35 p-6 backdrop-blur-sm">
+              <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Редакционный принцип</p>
+              <p className="mt-3 text-sm leading-7 text-white/67">
+                Проверяем первоисточник, отделяем факт от мнения и указываем, что именно изменилось в технологии или отрасли.
+              </p>
             </div>
-          </Link>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {(["facades", "metalworking", "engineering-practice"] as ArticleDirection[]).map((direction, sectionIndex) => {
-        const section = directionCopy[direction];
-        const sectionArticles = articles.filter((article) => article.direction === direction);
-        return (
-          <section
-            id={direction}
-            key={direction}
-            className={`scroll-mt-24 border-t border-white/10 py-14 sm:py-20 ${sectionIndex % 2 === 0 ? "bg-[#15191c]" : "bg-[#0c1013]"}`}
-          >
-            <div className="container">
-              <div className="flex flex-col justify-between gap-5 border-b border-white/12 pb-6 lg:flex-row lg:items-end">
-                <div>
-                  <p className="eyebrow">
-                    {direction === "facades" ? "01" : direction === "metalworking" ? "02" : "04"} · {section.eyebrow}
-                  </p>
-                  <h2 className="mt-3 text-3xl font-semibold uppercase leading-tight sm:text-4xl">{section.title}</h2>
+        <section className="bg-[#090d10] py-10 sm:py-14">
+          <div className="container grid items-start gap-8 lg:grid-cols-[260px_minmax(0,1fr)] xl:gap-12">
+            <aside className="journal-sidebar lg:sticky lg:top-6">
+              <div className="border border-white/12 bg-[#0f1418]">
+                <div className="border-b border-white/10 px-5 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/42">Навигация по журналу</p>
                 </div>
-                <p className="max-w-md text-sm leading-7 text-white/55">{section.description}</p>
+                <nav aria-label="Разделы инженерного журнала">
+                  {navigation.map((item) => (
+                    <a key={item.id} href={`#${item.id}`} className="journal-sidebar-link group grid grid-cols-[52px_minmax(0,1fr)] items-center border-b border-white/8 px-5 py-4 last:border-0">
+                      <span className={`${item.id === "news" ? "text-[9px] uppercase tracking-[.08em]" : "text-lg tabular-nums"} font-bold text-steel-orange`}>
+                        {item.marker}
+                      </span>
+                      <span className="text-xs font-semibold leading-5 text-white/72 transition group-hover:text-white">{item.title}</span>
+                    </a>
+                  ))}
+                </nav>
               </div>
-              {direction === "metalworking" ? (
-                <Link
-                  href="/articles/china-tech"
-                  className="group mt-8 grid overflow-hidden border border-steel-orange/40 bg-[#101519] transition hover:border-steel-orange lg:grid-cols-[minmax(0,1fr)_390px]"
-                >
-                  <div className="relative min-h-72 overflow-hidden">
-                    <img
-                      src="/images/web/cycle-bending.jpg"
-                      alt="Технологии металлообработки Китая"
-                      width={1200}
-                      height={680}
-                      className="absolute inset-0 h-full w-full object-cover brightness-[1.14] contrast-[1.03] transition duration-700 group-hover:scale-[1.035]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#101519]/70" />
-                    <span className="absolute left-5 top-5 border border-steel-orange/70 bg-black/75 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">
-                      Мировые технологии
-                    </span>
-                  </div>
-                  <div className="relative flex flex-col justify-center p-7 sm:p-9">
-                    <p className="eyebrow">Технологии Китая</p>
-                    <h3 className="mt-4 text-2xl font-semibold uppercase leading-tight">
-                      Инженерная разведка для современного производства
-                    </h3>
-                    <p className="mt-5 text-sm leading-7 text-white/62">
-                      Роботизированная гибка, умные линии, лазерная обработка и цифровое управление —
-                      проверяем источники и объясняем технологии на профессиональном русском языке.
-                    </p>
-                    <span className="mt-7 text-xs font-bold uppercase text-steel-orange">
-                      Перейти в рубрику&nbsp; →
-                    </span>
-                  </div>
+              <div className="mt-4 border border-steel-orange/35 bg-[linear-gradient(135deg,rgba(234,91,12,.14),rgba(15,20,24,.98)_54%)] p-5">
+                <p className="text-sm font-semibold">Есть тема или инженерный вопрос?</p>
+                <p className="mt-2 text-xs leading-6 text-white/52">Предложите тему редакции или передайте задачу специалисту.</p>
+                <Link href="/contacts#contact-form" className="mt-4 inline-flex text-[10px] font-bold uppercase tracking-[.06em] text-steel-orange">
+                  Написать нам&nbsp; →
                 </Link>
-              ) : null}
-              {direction === "facades" ? (
-                <Link
-                  href="/articles/vystavki-fasady-arhitektura-2026"
-                  className="group mt-8 grid overflow-hidden border border-steel-orange/40 bg-[#101519] transition hover:border-steel-orange lg:grid-cols-[390px_minmax(0,1fr)_180px]"
-                >
-                  <div className="relative min-h-72 overflow-hidden">
-                    <img
-                      src="/images/industries/business-center.png"
-                      alt="Календарь выставок фасадов и архитектурных инноваций"
-                      width={1200}
-                      height={680}
-                      className="absolute inset-0 h-full w-full object-cover brightness-[1.12] contrast-[1.03] transition duration-700 group-hover:scale-[1.035]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#101519]/75" />
-                    <span className="absolute left-5 top-5 border border-steel-orange/70 bg-black/75 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">
-                      Россия · Китай · Дубай
-                    </span>
+              </div>
+            </aside>
+
+            <div className="min-w-0">
+              <section id="news" className="scroll-mt-24">
+                <div className="flex flex-col justify-between gap-4 border-b border-white/12 pb-6 sm:flex-row sm:items-end">
+                  <div>
+                    <p className="eyebrow">Обновляемая лента</p>
+                    <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Новости отрасли</h2>
                   </div>
-                  <div className="flex flex-col justify-center border-t border-white/10 p-7 lg:border-l lg:border-t-0 sm:p-9">
-                    <p className="eyebrow">Международный календарь 2026–2027</p>
-                    <h3 className="mt-4 text-2xl font-semibold uppercase leading-tight">
-                      Выставки фасадов и архитектурных инноваций
-                    </h3>
-                    <p className="mt-5 max-w-3xl text-sm leading-7 text-white/62">
-                      Проверенные даты, технологии, официальные сайты и рекомендации —
-                      кому действительно стоит посещать каждое событие.
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-white/10 bg-[#0d1114] p-6 lg:border-l lg:border-t-0 lg:flex-col lg:items-start">
-                    <span className="font-mono text-5xl font-bold text-steel-orange">16</span>
-                    <span className="text-xs font-bold uppercase leading-5 text-steel-orange">
-                      Открыть календарь&nbsp; →
-                    </span>
-                  </div>
-                </Link>
-              ) : null}
-              <div className="mt-8 grid gap-4 lg:grid-cols-3">
-                {sectionArticles.map((article, index) => (
-                  <ArticleCard key={article.slug} article={article} eager={sectionIndex === 0 && index === 0} />
-                ))}
-                {sectionArticles.length === 0 ? (
-                  <div className="border border-dashed border-white/15 bg-[#111519] p-7 text-sm leading-7 text-white/48">
-                    Материалы направления готовятся редакцией инженерного журнала «Сталь Продукт».
+                  <p className="max-w-sm text-sm leading-7 text-white/52">
+                    Коротко о новых станках, автоматизации, роботизации, фасадах и материалах.
+                  </p>
+                </div>
+
+                {latestNews ? (
+                  <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
+                    <article className="journal-card-feature group relative min-h-[510px] overflow-hidden border border-steel-orange/45 bg-[#101519]">
+                      <img
+                        src={latestNews.image}
+                        alt={latestNews.title}
+                        width={1200}
+                        height={760}
+                        className="absolute inset-0 h-full w-full object-cover brightness-[.82] contrast-[1.05] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[.9]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#080b0d] via-[#080b0d]/58 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
+                        <div className="flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-[.09em]">
+                          <span className="text-steel-orange">Главная новость</span>
+                          <time dateTime={latestNews.publishedAt} className="text-white/55">{formatDate(latestNews.publishedAt)}</time>
+                        </div>
+                        <h3 className="mt-4 max-w-3xl text-2xl font-semibold leading-tight sm:text-3xl">{latestNews.title}</h3>
+                        <p className="mt-4 max-w-2xl text-sm leading-7 text-white/66">{latestNews.lead}</p>
+                        <Link href={`/articles/${latestNews.slug}`} className="mt-6 inline-flex border border-steel-orange/65 px-4 py-3 text-[10px] font-bold uppercase tracking-[.06em] text-steel-orange transition hover:bg-steel-orange hover:text-white">
+                          Читать новость&nbsp; →
+                        </Link>
+                      </div>
+                    </article>
+                    <div className="grid gap-4">
+                      {secondaryNews.map((article) => <ArticleCard key={article.slug} article={article} compact />)}
+                    </div>
                   </div>
                 ) : null}
-              </div>
+              </section>
+
+              <section id="facades" className="scroll-mt-24 border-t border-white/10 py-14 sm:py-16">
+                <SectionHeading {...sectionCopy.facades} />
+                <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-feature-link group mt-7 grid overflow-hidden border border-steel-orange/35 bg-[#101519] md:grid-cols-[280px_minmax(0,1fr)]">
+                  <div className="relative min-h-56 overflow-hidden">
+                    <img src="/images/industries/business-center.jpg" alt="Фасадные выставки России, Китая и Дубая" width={900} height={600} className="absolute inset-0 h-full w-full object-cover brightness-[1.12] transition duration-700 group-hover:scale-[1.035]" />
+                  </div>
+                  <div className="flex flex-col justify-center p-6 sm:p-8">
+                    <p className="eyebrow">Календарь 2026–2027</p>
+                    <h3 className="mt-3 text-xl font-semibold uppercase">Выставки фасадов России, Китая и Дубая</h3>
+                    <p className="mt-3 text-sm leading-7 text-white/56">Даты, площадки, основные темы и официальные сайты профильных событий.</p>
+                    <span className="mt-5 text-[11px] font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                  </div>
+                </Link>
+                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                  {articles.filter((article) => article.direction === "facades").map((article) => <ArticleCard key={article.slug} article={article} />)}
+                </div>
+              </section>
+
+              <section id="metalworking" className="scroll-mt-24 border-t border-white/10 py-14 sm:py-16">
+                <SectionHeading {...sectionCopy.metalworking} />
+                <Link href="/articles/china-tech" className="journal-feature-link group mt-7 grid overflow-hidden border border-steel-orange/35 bg-[#101519] md:grid-cols-[minmax(0,1fr)_300px]">
+                  <div className="flex flex-col justify-center p-6 sm:p-8">
+                    <p className="eyebrow">Мировые технологии</p>
+                    <h3 className="mt-3 text-xl font-semibold uppercase">Инженерная разведка для современного производства</h3>
+                    <p className="mt-3 text-sm leading-7 text-white/56">Роботизированная гибка, умные линии, лазерная обработка и цифровое управление.</p>
+                    <span className="mt-5 text-[11px] font-bold uppercase text-steel-orange">Перейти в рубрику&nbsp; →</span>
+                  </div>
+                  <div className="relative min-h-56 overflow-hidden">
+                    <img src="/images/web/cycle-bending.jpg" alt="Современная гибка листового металла" width={900} height={600} className="absolute inset-0 h-full w-full object-cover brightness-[1.16] transition duration-700 group-hover:scale-[1.035]" />
+                  </div>
+                </Link>
+                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                  {articles.filter((article) => article.direction === "metalworking").map((article) => <ArticleCard key={article.slug} article={article} />)}
+                </div>
+              </section>
+
+              <section id="events" className="scroll-mt-24 border-t border-white/10 py-14 sm:py-16">
+                <SectionHeading
+                  number="03"
+                  eyebrow="Проверенные календари"
+                  title="Выставки и события"
+                  description="Даты, города, направления оборудования и официальные сайты — в компактном формате для планирования поездок."
+                />
+                <div className="mt-7 grid gap-4 xl:grid-cols-2">
+                  <Link href="/articles/vystavki-metalloobrabotka-kitay-2026" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
+                    <span className="text-4xl font-bold tabular-nums text-steel-orange">14</span>
+                    <p className="mt-5 text-[10px] font-bold uppercase tracking-[.12em] text-white/42">Китай · 2026–2027</p>
+                    <h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Выставки металлообработки</h3>
+                    <p className="mt-4 text-sm leading-7 text-white/56">Резка, гибка, станки, автоматизация и промышленная робототехника.</p>
+                    <span className="mt-6 inline-flex text-[11px] font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                  </Link>
+                  <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
+                    <span className="text-4xl font-bold tabular-nums text-steel-orange">16</span>
+                    <p className="mt-5 text-[10px] font-bold uppercase tracking-[.12em] text-white/42">Россия · Китай · Дубай</p>
+                    <h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Фасады и архитектурные инновации</h3>
+                    <p className="mt-4 text-sm leading-7 text-white/56">Фасадные системы, оболочка здания, стекло, панели, покрытия и проектирование.</p>
+                    <span className="mt-6 inline-flex text-[11px] font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                  </Link>
+                </div>
+              </section>
+
+              <section id="engineering-practice" className="scroll-mt-24 border-t border-white/10 py-14 sm:py-16">
+                <SectionHeading {...sectionCopy["engineering-practice"]} />
+                <div className="mt-7 grid gap-4 xl:grid-cols-2">
+                  {articles.filter((article) => article.direction === "engineering-practice").map((article) => <ArticleCard key={article.slug} article={article} />)}
+                </div>
+              </section>
             </div>
-          </section>
-        );
-      })}
-    </PageLayout>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
   );
 }

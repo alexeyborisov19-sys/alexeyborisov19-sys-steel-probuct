@@ -1,5 +1,6 @@
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
+import { articles } from "@/data/articles";
 import { siteConfig } from "@/lib/site";
 
 export const dynamic = "force-static";
@@ -17,6 +18,13 @@ export function GET() {
     `  URL: ${siteConfig.url}/products/${product.slug}`,
     `  Применение: ${product.applications.join(", ")}.`,
   ].join("\n")).join("\n");
+
+  const recentNews = articles
+    .filter((article) => article.direction === "news")
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+    .slice(0, 8)
+    .map((article) => `- ${article.publishedAt}: ${article.title}\n  ${article.lead}\n  URL: ${siteConfig.url}/articles/${article.slug}`)
+    .join("\n");
 
   const content = `# Сталь Продукт — расширенная справка
 
@@ -45,6 +53,8 @@ ${productList}
 
 ## Редакционные материалы
 
+- Инженерный журнал и ежедневные новости металлообработки: ${siteConfig.url}/articles
+${recentNews}
 - Календарь ключевых выставок по металлообработке в Китае на 2026–2027 годы: ${siteConfig.url}/articles/vystavki-metalloobrabotka-kitay-2026
   Подтверждённая дата 2027 года: ITES China, 24–27 марта, Шэньчжэнь.
 - Проверенный календарь выставок фасадов и архитектурных инноваций России, Китая и Дубая на 2026–2027 годы: ${siteConfig.url}/articles/vystavki-fasady-arhitektura-2026

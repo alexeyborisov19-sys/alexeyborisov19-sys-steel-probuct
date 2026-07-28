@@ -44,6 +44,7 @@ function escapeTelegram(value: string) {
 }
 
 async function notifyTelegram(message: string, files: File[]) {
+  if (process.env.ASSISTANT_TELEGRAM_ENABLED !== "true") return false;
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_LEADS_CHAT_ID;
   if (!token || !chatId) return false;
@@ -93,8 +94,14 @@ export async function POST(request: Request) {
 
     // Honeypot: report success but do not store automated spam.
     if (website) return NextResponse.json({ ok: true });
-    if (!name || !phone) {
-      return NextResponse.json({ message: "Укажите имя и телефон." }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ message: "Укажите имя." }, { status: 400 });
+    }
+    if (!phone && !email) {
+      return NextResponse.json({ message: "Укажите телефон или электронную почту — достаточно одного способа связи." }, { status: 400 });
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      return NextResponse.json({ message: "Проверьте адрес электронной почты." }, { status: 400 });
     }
     if (consent !== "yes") {
       return NextResponse.json(
@@ -182,7 +189,7 @@ export async function POST(request: Request) {
         "Источник: ИИ-помощник сайта",
         "",
         `<b>Имя:</b> ${escapeTelegram(name)}`,
-        `<b>Телефон:</b> ${escapeTelegram(phone)}`,
+        `<b>Телефон:</b> ${escapeTelegram(phone || "не указан")}`,
         `<b>E-mail:</b> ${escapeTelegram(email || "не указан")}`,
         `<b>Компания:</b> ${escapeTelegram(company || "не указана")}`,
         `<b>Файлов:</b> ${files.length}`,

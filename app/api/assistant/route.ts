@@ -56,6 +56,7 @@ function redactPersonalData(text: string) {
 }
 
 async function answerWithYandex(messages: AssistantMessage[]) {
+  if (process.env.YANDEX_AI_ENABLED !== "true") return null;
   const apiKey = process.env.YANDEX_AI_API_KEY;
   const folderId = process.env.YANDEX_AI_FOLDER_ID;
   if (!apiKey || !folderId) return null;

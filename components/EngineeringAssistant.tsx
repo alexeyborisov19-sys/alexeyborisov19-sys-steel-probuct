@@ -228,6 +228,16 @@ export function EngineeringAssistant() {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const phone = String(formData.get("phone") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim();
+    if (!phone && !email) {
+      setLeadFeedback({ type: "error", text: "Укажите телефон или e-mail — достаточно одного способа связи." });
+      return;
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      setLeadFeedback({ type: "error", text: "Проверьте адрес электронной почты." });
+      return;
+    }
     if (formData.get("personalDataConsent") !== "yes") {
       setLeadFeedback({ type: "error", text: "Подтвердите согласие на обработку персональных данных." });
       return;
@@ -385,6 +395,9 @@ export function EngineeringAssistant() {
                       ↑
                     </button>
                   </div>
+                  <p className="mt-2 text-[9px] leading-4 text-white/35">
+                    Не указывайте в диалоге контакты и персональные данные. Чертежи передавайте только через защищённую форму. Подробнее — в <Link href={legalLinks.services} className="text-white/55 hover:text-steel-orange">описании сервисов</Link>.
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
@@ -445,10 +458,9 @@ export function EngineeringAssistant() {
                         />
                       </label>
                       <label className="text-[10px] font-bold uppercase tracking-[.06em] text-white/65">
-                        Телефон *
+                        Телефон
                         <input
                           name="phone"
-                          required
                           type="tel"
                           autoComplete="tel"
                           placeholder="+7 ___ ___ __ __"
@@ -473,6 +485,9 @@ export function EngineeringAssistant() {
                         />
                       </label>
                     </div>
+                    <p className="border-l-2 border-steel-orange pl-3 text-[10px] leading-5 text-white/52">
+                      Телефон или e-mail — заполните хотя бы одно поле.
+                    </p>
 
                     <div className="border border-white/12 bg-[#111519] p-4">
                       <div className="flex items-start justify-between gap-4">
@@ -527,6 +542,10 @@ export function EngineeringAssistant() {
                         {leadFeedback.text}
                       </p>
                     ) : null}
+
+                    <p className="text-[10px] leading-5 text-white/48">
+                      Подтвердим получение заявки в течение одного рабочего часа. Срок предварительной оценки сообщим после изучения документации.
+                    </p>
 
                     <button
                       type="submit"

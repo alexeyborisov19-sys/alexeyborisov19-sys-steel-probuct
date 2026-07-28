@@ -67,7 +67,7 @@ npm run start
 
 Глобальный компонент `components/EngineeringAssistant.tsx` сопровождает клиента по продукции и технологическому процессу, уточняет исходные данные и регистрирует заявку с чертежами. Проверенная база знаний и ограничения ответов находятся в `data/assistant-knowledge.ts`.
 
-Без внешнего API помощник работает в надёжном режиме локальной базы знаний. Для подключения генеративного контура Yandex AI Studio задайте на сервере `YANDEX_AI_API_KEY`, `YANDEX_AI_FOLDER_ID` и при необходимости `YANDEX_AI_MODEL_URI`. Ключ никогда не передаётся в браузер. Контактные данные отделены от диалога и не отправляются модели.
+Без внешнего API помощник работает в надёжном режиме локальной базы знаний. Для подключения генеративного контура Yandex AI Studio задайте на сервере `YANDEX_AI_ENABLED=true`, `YANDEX_AI_API_KEY`, `YANDEX_AI_FOLDER_ID` и при необходимости `YANDEX_AI_MODEL_URI`. Ключ никогда не передаётся в браузер. Контактные данные отделены от диалога и не отправляются модели.
 
 Заявки сохраняются вне публичной директории. В production подготовьте каталог:
 
@@ -75,7 +75,7 @@ npm run start
 sudo install -d -m 700 -o nodejs -g nodejs /var/lib/steelprodukt/assistant-leads
 ```
 
-и задайте `ASSISTANT_LEAD_STORAGE_PATH=/var/lib/steelprodukt/assistant-leads`. Для мгновенного уведомления менеджеров можно дополнительно указать серверные переменные `TELEGRAM_BOT_TOKEN` и `TELEGRAM_LEADS_CHAT_ID`.
+и задайте `ASSISTANT_LEAD_STORAGE_PATH=/var/lib/steelprodukt/assistant-leads`. Для мгновенного уведомления менеджеров после правовой проверки канала можно дополнительно указать `ASSISTANT_TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN` и `TELEGRAM_LEADS_CHAT_ID`.
 
 ## Персональные данные и правовая готовность
 

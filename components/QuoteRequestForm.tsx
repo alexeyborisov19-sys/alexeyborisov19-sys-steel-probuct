@@ -105,6 +105,16 @@ export function QuoteRequestForm() {
     setFeedback(null);
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const phone = String(formData.get("phone") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim();
+    if (!phone && !email) {
+      setFeedback({ type: "error", message: "Укажите телефон или электронную почту — достаточно одного способа связи." });
+      return;
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      setFeedback({ type: "error", message: "Проверьте адрес электронной почты." });
+      return;
+    }
     if (formData.get("personalDataConsent") !== "yes") {
       setFeedback({ type: "error", message: "Для отправки заявки необходимо согласие на обработку персональных данных." });
       return;
@@ -138,7 +148,7 @@ export function QuoteRequestForm() {
       setHasStarted(false);
       setMessage("");
       trackLeadEvent("quote_request_success", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
-      setFeedback({ type: "success", message: "Заявка отправлена. Мы свяжемся с вами в ближайшее время." });
+      setFeedback({ type: "success", message: "Заявка отправлена. Подтвердим получение в течение одного рабочего часа. Срок предварительной оценки сообщим после изучения документации." });
     } catch (error) {
       trackLeadEvent("quote_request_error", { form_location: "contacts" });
       setFeedback({
@@ -156,16 +166,19 @@ export function QuoteRequestForm() {
       <label className="text-sm font-semibold text-white">Имя *
         <input name="name" required className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Как к вам обращаться" autoComplete="name" />
       </label>
-      <label className="text-sm font-semibold text-white">Телефон *
-        <input name="phone" required className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="+7 ___ ___ __ __" type="tel" autoComplete="tel" />
+      <label className="text-sm font-semibold text-white">Телефон
+        <input name="phone" aria-describedby="quote-contact-rule" className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="+7 ___ ___ __ __" type="tel" autoComplete="tel" />
       </label>
       <label className="text-sm font-semibold text-white">Электронная почта
-        <input name="email" className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="name@company.ru" type="email" autoComplete="email" />
+        <input name="email" aria-describedby="quote-contact-rule" className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="name@company.ru" type="email" autoComplete="email" />
       </label>
       <label className="text-sm font-semibold text-white">Компания
         <input name="company" className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Название компании" autoComplete="organization" />
       </label>
     </div>
+    <p id="quote-contact-rule" className="-mt-2 border-l-2 border-steel-orange pl-3 text-xs leading-5 text-white/58">
+      Телефон или электронная почта — заполните хотя бы одно поле.
+    </p>
 
     <label className="text-sm font-semibold text-white">Задача
       <textarea name="message" value={message} onChange={(event) => setMessage(event.target.value)} className="mt-2 min-h-36 w-full resize-y border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Что необходимо изготовить, в каком объёме и в какие сроки?" />
@@ -218,7 +231,10 @@ export function QuoteRequestForm() {
         <span>Я отдельно соглашаюсь получать рекламные и информационные сообщения по e-mail, телефону и в указанных мной мессенджерах. Это необязательно и не влияет на расчёт. <Link href={legalLinks.marketingConsent} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">Условия и отзыв согласия</Link>.</span>
       </label>
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-xl text-[11px] leading-relaxed text-white/40">Поля со звёздочкой обязательны. При отказе от согласия заявку через форму отправить нельзя — напишите нам на info@steelprodukt.ru.</p>
+        <div className="max-w-xl">
+          <p className="text-xs font-semibold leading-relaxed text-white/70">Подтвердим получение заявки в течение одного рабочего часа.</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-white/42">Срок предварительной оценки сообщим после изучения документации. Поля со звёздочкой обязательны.</p>
+        </div>
       <button disabled={isSending} type="submit" className="clip-corner shrink-0 bg-steel-orange px-8 py-4 text-xs font-bold uppercase transition hover:bg-orange-600 disabled:cursor-wait disabled:opacity-65">{isSending ? "Отправляем…" : "Получить расчёт →"}</button>
       </div>
     </div>

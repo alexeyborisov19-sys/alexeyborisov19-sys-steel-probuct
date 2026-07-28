@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
-import { getIndustrySolutions } from "@/lib/industry-solutions";
+import { getIndustrySolutions, industryVisualByTitle } from "@/lib/industry-solutions";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -16,25 +16,6 @@ export const metadata: Metadata = createPageMetadata({
     "инженерные системы",
   ],
 });
-
-const visualByIndustry: Record<string, string> = {
-  "Жилые комплексы": "residential.jpg",
-  "Бизнес-центры": "business-center.jpg",
-  "Торговые центры": "shopping-center.jpg",
-  "Медицинские учреждения": "medical.jpg",
-  "Образовательные учреждения": "educational.jpg",
-  "Гостиницы и апарт отели": "hotel.jpg",
-  "Инженерная инфраструктура": "infrastructure.jpg",
-  "Производственные предприятия": "production.jpg",
-  "Агропромышленный комплекс": "agro.jpg",
-  "Энергетика": "energy.jpg",
-  "Нефтяная отрасль": "oil-gas.jpg",
-  "Транспортная инфраструктура": "transport.jpg",
-  "Пищевая промышленность": "food.jpg",
-  "Фармацевтическая промышленность": "pharmaceutical.jpg",
-  "ЦОД и технологическая инфраструктура": "data-center.jpg",
-  "Машиностроение и приборостроение": "machine-building.jpg",
-};
 
 export default function IndustriesPage() {
   const industries = getIndustrySolutions();
@@ -70,7 +51,7 @@ export default function IndustriesPage() {
           <div className="mt-8 grid gap-4 lg:grid-cols-2">
             {industries.map((industry, index) => {
               const itemsCount = industry.sections.reduce((total, section) => total + section.items.length, 0);
-              const visual = visualByIndustry[industry.title] ?? "hero-main.jpg";
+              const visual = industryVisualByTitle[industry.title] ?? "hero-main.jpg";
 
               return (
                 <article key={industry.title} className="overflow-hidden border border-white/15 bg-[#111519] shadow-[0_18px_45px_rgba(0,0,0,.16)]">
@@ -123,6 +104,7 @@ export default function IndustriesPage() {
                     </details>
 
                     <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3 text-xs font-bold uppercase">
+                      <Link href={`/industries/${industry.slug}`} className="text-white transition hover:text-steel-orange">Открыть страницу отрасли&nbsp; →</Link>
                       <Link href="/contacts#contact-form" className="text-steel-orange transition hover:text-orange-300">Получить состав и расчет&nbsp; →</Link>
                       <Link href="/projects" className="text-white/65 transition hover:text-white">Посмотреть проекты&nbsp; →</Link>
                     </div>

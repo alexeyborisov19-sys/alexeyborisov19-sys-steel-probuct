@@ -23,6 +23,7 @@ Allow: /
 User-agent: ChatGPT-User
 Allow: /
 
+Host: www.steelprodukt.ru
 Sitemap: ${siteConfig.url}/sitemap.xml
 `;
 

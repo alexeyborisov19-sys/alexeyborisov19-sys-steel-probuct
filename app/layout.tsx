@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   creator: siteConfig.name,
   publisher: siteConfig.name,
   category: "Производство изделий из листового металла",
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: "/",
+    types: { "application/rss+xml": [{ url: "/feed.xml", title: "Инженерный журнал «Сталь Продукт»" }] },
+  },
   icons: {
     icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml", sizes: "any" }],
     shortcut: ["/icon.svg?v=2"],
@@ -40,6 +43,7 @@ export const metadata: Metadata = {
   },
   verification: {
     yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION,
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   openGraph: {
     type: "website",

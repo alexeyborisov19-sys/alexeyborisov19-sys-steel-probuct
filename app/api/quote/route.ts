@@ -83,8 +83,11 @@ export async function POST(request: Request) {
     // Invisible bot trap: respond successfully without delivering spam.
     if (website) return NextResponse.json({ ok: true });
 
-    if (!name || !phone) {
-      return NextResponse.json({ message: "Укажите имя и телефон для связи." }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ message: "Укажите имя." }, { status: 400 });
+    }
+    if (!phone && !email) {
+      return NextResponse.json({ message: "Укажите телефон или электронную почту — достаточно одного способа связи." }, { status: 400 });
     }
     if (personalDataConsent !== "yes") {
       return NextResponse.json({ message: "Для отправки заявки требуется согласие на обработку персональных данных." }, { status: 400 });
@@ -167,7 +170,7 @@ export async function POST(request: Request) {
         "Новая заявка с сайта «Сталь Продукт».",
         `ID заявки: ${requestId}`,
         `Имя: ${name}`,
-        `Телефон: ${phone}`,
+        `Телефон: ${phone || "не указан"}`,
         `E-mail: ${email || "не указан"}`,
         `Компания: ${company || "не указана"}`,
         `Задача: ${message || "не описана"}`,

@@ -10,7 +10,15 @@ export const metadata: Metadata = createPageMetadata({
   path: legalLinks.services,
 });
 
-const services = [
+function getServices() {
+  const yandexAiEnabled = process.env.YANDEX_AI_ENABLED === "true"
+    && Boolean(process.env.YANDEX_AI_API_KEY)
+    && Boolean(process.env.YANDEX_AI_FOLDER_ID);
+  const telegramEnabled = process.env.ASSISTANT_TELEGRAM_ENABLED === "true"
+    && Boolean(process.env.TELEGRAM_BOT_TOKEN)
+    && Boolean(process.env.TELEGRAM_LEADS_CHAT_ID);
+
+  return [
   {
     service: "Сайт и сервер",
     status: "Используется",
@@ -36,10 +44,22 @@ const services = [
     condition: "Подключение возможно только после проверки локализации, договора поручения обработки, сроков хранения и прав доступа.",
   },
   {
-    service: "Мессенджеры и онлайн-чаты",
-    status: "Не подключены к форме",
-    data: "Автоматическая передача отсутствует",
-    condition: "Контакт через мессенджер возможен по инициативе пользователя. Рекламные сообщения требуют отдельного согласия.",
+    service: "ИИ-инженер: локальная база знаний",
+    status: "Используется",
+    data: "Текст технического диалога без приложенных файлов",
+    condition: "Базовые ответы формируются на сервере сайта. Контакты и чертежи собираются отдельной формой и не передаются в модуль ответов.",
+  },
+  {
+    service: "Yandex AI для ИИ-инженера",
+    status: yandexAiEnabled ? "Включён администратором" : "Не включён",
+    data: "Текст технического диалога; телефон и e-mail автоматически заменяются служебными обозначениями",
+    condition: "Работает только при явном серверном флаге YANDEX_AI_ENABLED=true. Файлы и поля защищённой формы в запрос к модели не включаются.",
+  },
+  {
+    service: "Telegram: уведомления о заявках ИИ-инженера",
+    status: telegramEnabled ? "Включён администратором" : "Не включён",
+    data: telegramEnabled ? "Имя, контакт, техническая сводка и приложенные файлы" : "Автоматическая передача отсутствует",
+    condition: "Работает только при явном серверном флаге ASSISTANT_TELEGRAM_ENABLED=true и после правовой проверки канала, локализации, состава данных и договорных условий.",
   },
   {
     service: "Иностранные облака и ИИ-сервисы",
@@ -48,8 +68,10 @@ const services = [
     condition: "Любое подключение требует предварительной оценки трансграничной передачи и, когда применимо, отдельного уведомления Роскомнадзора.",
   },
 ] as const;
+}
 
 export default function ServicesPage() {
+  const services = getServices();
   return <LegalDocument title="Сервисы обработки данных" description="Прозрачный перечень категорий систем, связанных с работой сайта и заявок.">
     <p className="legal-document__date">Актуально на {legalOperator.policyVersion}</p>
     <p>Страница отражает состояние интеграций сайта. Перед подключением нового сервиса Оператор обновляет внутренний реестр, проверяет место нахождения баз данных, договорные условия, объём передаваемых сведений и необходимость уведомлений Роскомнадзора.</p>
