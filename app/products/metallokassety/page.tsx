@@ -32,7 +32,7 @@ export default function MetalCassetteCollectionPage() {
     eyebrow="Архитектурные решения"
     title="Металлокассеты"
     description="Четыре серии фасадных металлокассет для разных архитектурных задач: открытый и скрытый крепёж, объёмная геометрия и перфорация."
-    image="/images/industry/hero-building-v1.png"
+    image="/images/web/hero-main.jpg"
   >
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">

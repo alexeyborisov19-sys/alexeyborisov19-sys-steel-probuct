@@ -1,4 +1,5 @@
 import type { Product } from "@/data/products";
+import { legalOperator } from "./legal";
 import { absoluteUrl, siteConfig } from "./site";
 
 export type JsonLd = Record<string, unknown>;
@@ -11,6 +12,21 @@ export type ArticleSchemaInput = {
   image: string;
   datePublished: string;
   dateModified: string;
+  citations?: string[];
+};
+export type EventSchemaItem = {
+  id: string;
+  name: string;
+  shortName: string;
+  startDate: string;
+  endDate: string;
+  city: string;
+  countryCode: string;
+  venue: string;
+  officialUrl: string;
+  description: string;
+  keywords: string[];
+  audience: string[];
 };
 
 export function organizationSchema(): JsonLd {
@@ -19,6 +35,8 @@ export function organizationSchema(): JsonLd {
     "@type": ["Organization", "Manufacturer"],
     "@id": `${siteConfig.url}/#organization`,
     name: siteConfig.name,
+    legalName: legalOperator.name,
+    taxID: legalOperator.inn,
     alternateName: "СП Сталь Продукт",
     url: siteConfig.url,
     logo: absoluteUrl(siteConfig.logo),
@@ -176,7 +194,64 @@ export function faqSchema(items: FaqItem[]): JsonLd {
   };
 }
 
-export function articleSchema({ headline, description, path, image, datePublished, dateModified }: ArticleSchemaInput): JsonLd {
+export function eventListSchema({
+  name,
+  description,
+  path,
+  events,
+}: {
+  name: string;
+  description: string;
+  path: string;
+  events: EventSchemaItem[];
+}): JsonLd {
+  const pageUrl = absoluteUrl(path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "@id": `${pageUrl}#events`,
+    name,
+    description,
+    numberOfItems: events.length,
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    itemListElement: events.map((event, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `${pageUrl}#${event.id}`,
+      item: {
+        "@type": "ExhibitionEvent",
+        "@id": `${pageUrl}#event-${event.id}`,
+        name: event.name,
+        alternateName: event.shortName,
+        description: event.description,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+        url: `${pageUrl}#${event.id}`,
+        sameAs: event.officialUrl,
+        inLanguage: siteConfig.language,
+        keywords: event.keywords.join(", "),
+        audience: {
+          "@type": "Audience",
+          audienceType: event.audience.join("; "),
+        },
+        location: {
+          "@type": "Place",
+          name: event.venue,
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: event.city,
+            addressCountry: event.countryCode,
+          },
+        },
+      },
+    })),
+  };
+}
+
+export function articleSchema({ headline, description, path, image, datePublished, dateModified, citations }: ArticleSchemaInput): JsonLd {
   return {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -186,6 +261,7 @@ export function articleSchema({ headline, description, path, image, datePublishe
     image: [absoluteUrl(image)],
     datePublished,
     dateModified,
+    citation: citations,
     inLanguage: siteConfig.language,
     author: { "@id": `${siteConfig.url}/#organization` },
     publisher: {

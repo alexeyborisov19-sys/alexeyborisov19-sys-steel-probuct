@@ -1,6 +1,11 @@
+"use client";
+
 import Script from "next/script";
+import { useEffect, useState } from "react";
+import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
 const yandexCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
+const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
 
 /**
  * Analytics remains completely inactive until the corresponding public IDs are
@@ -8,6 +13,26 @@ const yandexCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
  * a third party during local development and before consent is configured.
  */
 export function Analytics() {
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+
+  useEffect(() => {
+    function syncConsent() {
+      try {
+        setAnalyticsAllowed(hasAnalyticsConsent());
+      } catch {
+        // Storage can be blocked in private or embedded browser modes.
+        // In that case analytics stays disabled and the site remains usable.
+        setAnalyticsAllowed(false);
+      }
+    }
+
+    syncConsent();
+    window.addEventListener(consentEvent, syncConsent);
+    return () => window.removeEventListener(consentEvent, syncConsent);
+  }, []);
+
+  if (!analyticsAllowed) return null;
+
   return <>
     {yandexCounterId ? <Script id="yandex-metrica" strategy="afterInteractive">{`
       (function(m,e,t,r,i,k,a){
@@ -20,25 +45,8 @@ export function Analytics() {
         clickmap:true,
         trackLinks:true,
         accurateTrackBounce:true,
-        webvisor:true
+        webvisor:${webvisorEnabled ? "true" : "false"}
       });
     `}</Script> : null}
   </>;
-}
-
-export function syncConsent() {
-  try {
-    if (typeof window === "undefined" || !window.localStorage) return false;
-    const raw = window.localStorage.getItem("site_cookie_consent");
-    if (!raw) return false;
-    try {
-      const parsed = JSON.parse(raw);
-      return !!parsed?.analytics;
-    } catch (e) {
-      return false;
-    }
-  } catch (e) {
-    // If reading storage fails (e.g. sandboxed environment), disable analytics
-    return false;
-  }
 }

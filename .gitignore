@@ -6,10 +6,9 @@ npm-debug.log*
 output/
 tmp/
 work/
+.data/
 *.tsbuildinfo
 
 # Source code goes to GitHub. The master company film is distributed separately
 # for hosting because GitHub rejects individual files above 100 MB.
 public/video/company-film-flat.mp4
-
-*.zip

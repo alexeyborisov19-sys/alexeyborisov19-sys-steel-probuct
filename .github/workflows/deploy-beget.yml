@@ -22,6 +22,12 @@ jobs:
       - name: Get website source
         uses: actions/checkout@v4
 
+      - name: Verify deployable source
+        run: |
+          test -f package.json
+          test -f ecosystem.config.cjs
+          test -d app
+
       - name: Configure secure server access
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -44,35 +50,13 @@ jobs:
           rsync -az --delete-delay \
             --exclude='.git/' \
             --exclude='.github/' \
+            --exclude='.data/' \
             --exclude='node_modules/' \
             --exclude='.next/' \
             --exclude='.env*' \
             --exclude='public/video/company-film-flat.mp4' \
             -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
             ./ "$BEGET_USER@$BEGET_HOST:$BEGET_APP_PATH/"
-
-      - name: Upload protected mail settings
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_USER: ${{ secrets.BEGET_USER }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
-          UNISENDER_API_KEY: ${{ secrets.UNISENDER_API_KEY }}
-        run: |
-          test -n "$UNISENDER_API_KEY"
-          umask 077
-          cat > .env.production <<'ENVFILE'
-          SMTP_HOST=smtp.go2.unisender.ru
-          SMTP_PORT=587
-          SMTP_SECURE=false
-          SMTP_USER=8283614
-          SMTP_FROM="Сталь Продукт <info@steelprodukt.ru>"
-          QUOTE_RECIPIENT=info@steelprodukt.ru
-          ENVFILE
-          printf 'SMTP_PASSWORD=%s\n' "$UNISENDER_API_KEY" >> .env.production
-          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" .env.production "$BEGET_USER@$BEGET_HOST:$BEGET_APP_PATH/.env.production"
-          rm -f .env.production
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "chown nodejs:nodejs '$BEGET_APP_PATH/.env.production' && chmod 600 '$BEGET_APP_PATH/.env.production'"
 
       - name: Build and restart application on Beget
         env:
@@ -84,10 +68,11 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
           set -euo pipefail
           test -n "$APP_PATH"
+          mkdir -p "$APP_PATH"
           test -f "$APP_PATH/package.json" || {
             echo "package.json was not uploaded to $APP_PATH"
             exit 1
           }
           chown -R nodejs:nodejs "$APP_PATH"
-          sudo -iu nodejs bash -lc "cd '$APP_PATH' && npm install && npm run build && pm2 startOrReload ecosystem.config.cjs --env production --update-env && pm2 save"
+          sudo -iu nodejs bash -lc "cd '$APP_PATH' && npm install && npm run build && pm2 startOrReload ecosystem.config.cjs --env production && pm2 save"
           REMOTE

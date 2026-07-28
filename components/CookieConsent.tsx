@@ -1,77 +1,88 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { legalLinks } from "@/lib/legal";
 
-type Consent = { analytics?: boolean } | null;
+const consentKey = "steelprodukt-cookie-consent-v2";
+const consentEvent = "steelprodukt-cookie-consent";
+const settingsEvent = "steelprodukt-cookie-settings";
 
-function safeGetLocalStorage(key: string): string | null {
+type CookieChoice = {
+  version: 2;
+  necessary: true;
+  analytics: boolean;
+  updatedAt: string;
+};
+
+function readChoice(): CookieChoice | null {
   try {
-    if (typeof window === "undefined" || !window.localStorage) return null;
-    return window.localStorage.getItem(key);
-  } catch (e) {
+    const stored = window.localStorage.getItem(consentKey);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<CookieChoice>;
+    if (parsed.version !== 2 || parsed.necessary !== true || typeof parsed.analytics !== "boolean") return null;
+    return parsed as CookieChoice;
+  } catch {
+    // Some private-browser and embedded-browser modes disable storage access.
+    // Cookie consent must never prevent the website from opening in that case.
     return null;
   }
 }
 
-function safeSetLocalStorage(key: string, value: string): void {
+function saveChoice(analytics: boolean) {
+  const choice: CookieChoice = {
+    version: 2,
+    necessary: true,
+    analytics,
+    updatedAt: new Date().toISOString(),
+  };
   try {
-    if (typeof window === "undefined" || !window.localStorage) return;
-    window.localStorage.setItem(key, value);
-  } catch (e) {
-    // swallow — storage not available
+    window.localStorage.setItem(consentKey, JSON.stringify(choice));
+  } catch {
+    // Keep the choice for this page visit even if persistent storage is blocked.
   }
+  window.dispatchEvent(new Event(consentEvent));
 }
 
-export function getStoredConsent(): Consent {
-  try {
-    const raw = safeGetLocalStorage("site_cookie_consent");
-    if (!raw) return null;
-    return JSON.parse(raw) as Consent;
-  } catch (e) {
-    return null;
-  }
+function hasAnalyticsConsent() {
+  return readChoice()?.analytics === true;
 }
 
-export function setStoredConsent(value: Consent) {
-  try {
-    if (value === null) {
-      safeSetLocalStorage("site_cookie_consent", "");
-      return;
-    }
-    safeSetLocalStorage("site_cookie_consent", JSON.stringify(value));
-  } catch (e) {
-    // ignore storage errors
-  }
+export function CookieSettingsButton({ className = "" }: { className?: string }) {
+  return <button
+    type="button"
+    className={className}
+    onClick={() => window.dispatchEvent(new Event(settingsEvent))}
+  >
+    Настройки cookies
+  </button>;
 }
 
 export function CookieConsent() {
-  const [consent, setConsent] = useState<Consent>(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setConsent(getStoredConsent());
+    setVisible(readChoice() === null);
+    const openSettings = () => setVisible(true);
+    window.addEventListener(settingsEvent, openSettings);
+    return () => window.removeEventListener(settingsEvent, openSettings);
   }, []);
 
-  const accept = () => {
-    const next = { analytics: true };
-    setConsent(next);
-    setStoredConsent(next);
-  };
+  function choose(analytics: boolean) {
+    saveChoice(analytics);
+    setVisible(false);
+  }
 
-  const decline = () => {
-    const next = { analytics: false };
-    setConsent(next);
-    setStoredConsent(next);
-  };
+  if (!visible) return null;
 
-  if (consent !== null) return null;
-
-  return (
-    <div className="cookie-consent">
-      <p>Мы используем cookies для аналитики. Можно принять или отклонить.</p>
-      <button onClick={accept}>Принять</button>
-      <button onClick={decline}>Отклонить</button>
+  return <aside className="fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5" aria-label="Настройки cookies">
+    <p className="text-sm font-semibold text-white">Настройки cookies</p>
+    <p className="mt-2 text-xs leading-relaxed text-white/60">Сайт использует только необходимые технические данные до вашего выбора. Яндекс Метрика загружается исключительно после отдельного согласия. Выбор можно изменить в подвале сайта. Подробнее — в <Link className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.cookies}>политике cookies</Link> и <Link className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
+    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <button type="button" onClick={() => choose(false)} className="border border-white/25 px-4 py-3 text-[10px] font-bold uppercase tracking-[.08em] text-white/80 transition hover:border-steel-orange hover:text-steel-orange">Продолжить без аналитики</button>
+      <button type="button" onClick={() => choose(true)} className="clip-corner bg-steel-orange px-4 py-3 text-[10px] font-bold uppercase tracking-[.08em] text-white transition hover:bg-orange-600">Разрешить аналитику</button>
     </div>
-  );
+  </aside>;
 }
 
-export default CookieConsent;
+export { consentEvent, consentKey, hasAnalyticsConsent };

@@ -43,15 +43,15 @@ const benefits = [
     "Контроль качества",
     "Многоступенчатая проверка на всех этапах производства",
   ],
-  ["Соблюдение сроков", "Точное планирование и выполнение обязательств"],
+  ["Управление сроками", "Фиксируем согласованный график и контролируем этапы заказа"],
   ["Под ключ", "От проектирования до поставки готовой продукции"],
 ];
 const projects = [
-  "ЖК «Серебряный бор»",
-  "БЦ «NEO GEO»",
-  "ТЦ «Города»",
-  "ЖК «Level Причальный»",
-  "БЦ «DM Tower»",
+  "Жилые комплексы",
+  "Бизнес-центры",
+  "Торговые объекты",
+  "Промышленные предприятия",
+  "Инженерная инфраструктура",
 ];
 const solutionCardImages: Record<string, { src: string; position?: string }> = {
   "Архитектурные решения": { src: "/images/industry/cards/architecture.jpg" },
@@ -166,13 +166,13 @@ export default function Home() {
           <div className="container">
             <div className="flex items-center justify-between gap-6">
               <h2 className="text-2xl font-semibold uppercase">
-                Реализованные проекты
+                Решения для типовых объектов
               </h2>
               <Link
                 href="/projects"
                 className="text-xs font-bold uppercase text-steel-orange"
               >
-                Смотреть все проекты&nbsp; →
+                Смотреть проектные сценарии&nbsp; →
               </Link>
             </div>
             <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -200,7 +200,7 @@ export default function Home() {
                   </div>
                   <div className="p-4">
                     <h3 className="text-xs font-bold">{project}</h3>
-                    <p className="mt-1 text-[10px] text-white/50">Москва</p>
+                    <p className="mt-1 text-[10px] text-white/50">Демонстрационный состав решения</p>
                     <span className="mt-4 block text-xs text-steel-orange">
                       →
                     </span>
@@ -234,7 +234,7 @@ export default function Home() {
               ["70+", "опытных специалистов"],
               ["3", "лазерных комплекса"],
               ["4", "листогибочных комплекса"],
-              ["100%", "контроль качества"],
+              ["Система", "контроля качества"],
             ].map(([value, label]) => (
               <div key={label} className="border-l border-white/10 pl-5">
                 <b className="text-3xl text-steel-orange">{value}</b>

@@ -1,6 +1,6 @@
 export const siteConfig = {
   name: "Сталь Продукт",
-  legalName: "Сталь Продукт",
+  legalName: "ООО «ЭНЕРГОАЛЬЯНС»",
   description: "Инженерные решения из листового металла: проектирование, производство и поставка изделий для строительства, промышленности и инженерной инфраструктуры.",
   url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.steelprodukt.ru").replace(/\/$/, ""),
   locale: "ru_RU",

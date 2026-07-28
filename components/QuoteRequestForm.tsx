@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import { trackLeadEvent } from "@/lib/analytics";
+import { legalDocumentVersions, legalLinks } from "@/lib/legal";
 
 const MAX_FILES = 10;
-const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_BYTES = 7 * 1024 * 1024;
 const acceptedExtensions = [
   "pdf", "dxf", "dwg", "dwt", "dws", "step", "stp", "iges", "igs",
   "sldprt", "sldasm", "ipt", "iam", "idw", "png", "jpg", "jpeg", "webp",
@@ -49,7 +52,11 @@ export function QuoteRequestForm() {
       return;
     }
     if (combined.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_BYTES) {
-      setFeedback({ type: "error", message: "Общий размер вложений не должен превышать 25 МБ." });
+      setFeedback({ type: "error", message: "Общий размер вложений не должен превышать 10 МБ." });
+      return;
+    }
+    if (combined.some((file) => file.size > MAX_FILE_BYTES)) {
+      setFeedback({ type: "error", message: "Размер каждого вложения не должен превышать 7 МБ." });
       return;
     }
 
@@ -74,6 +81,16 @@ export function QuoteRequestForm() {
     setFeedback(null);
     const form = event.currentTarget;
     const formData = new FormData(form);
+    if (formData.get("personalDataConsent") !== "yes") {
+      setFeedback({ type: "error", message: "Для отправки заявки необходимо согласие на обработку персональных данных." });
+      return;
+    }
+    formData.append("consentTimestamp", new Date().toISOString());
+    formData.append("personalDataConsentVersion", legalDocumentVersions.personalDataConsent);
+    formData.append("privacyVersion", legalDocumentVersions.privacy);
+    if (formData.get("marketingConsent") === "yes") {
+      formData.append("marketingConsentVersion", legalDocumentVersions.marketingConsent);
+    }
     files.forEach((file) => formData.append("files", file));
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -133,7 +150,7 @@ export function QuoteRequestForm() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-white">Чертежи и техническая документация</p>
-          <p className="mt-1 text-xs leading-relaxed text-white/50">До 10 файлов, суммарно до 25 МБ. Можно приложить чертежи, спецификации, визуализации и фотографии.</p>
+          <p className="mt-1 text-xs leading-relaxed text-white/50">До 10 файлов, суммарно до 10 МБ; каждый — до 7 МБ. Можно приложить чертежи, спецификации, визуализации и фотографии.</p>
         </div>
         <a href="mailto:info@steelprodukt.ru" className="shrink-0 text-xs font-bold text-steel-orange transition hover:text-orange-400">info@steelprodukt.ru&nbsp; ↗</a>
       </div>
@@ -157,15 +174,28 @@ export function QuoteRequestForm() {
             <button type="button" onClick={() => removeFile(index)} className="shrink-0 text-lg leading-none text-white/45 transition hover:text-steel-orange" aria-label={`Удалить ${file.name}`}>×</button>
           </li>)}
         </ul>
-        <p className="mt-3 text-[11px] text-white/40">Общий размер: {formatSize(totalSize)} из 25 МБ</p>
+        <p className="mt-3 text-[11px] text-white/40">Общий размер: {formatSize(totalSize)} из 10 МБ</p>
       </div> : null}
     </div>
 
     {feedback ? <p role="status" className={`border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"}`}>{feedback.message}</p> : null}
 
-    <div className="flex flex-col gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
-      <p className="max-w-xl text-[11px] leading-relaxed text-white/45">Нажимая «Получить расчёт», вы соглашаетесь на обработку контактных данных для подготовки коммерческого предложения.</p>
+    <div className="border-t border-white/10 pt-6">
+      <p className="mb-4 text-[11px] leading-relaxed text-white/48">
+        До отправки ознакомьтесь с <Link href={legalLinks.privacy} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">политикой обработки персональных данных</Link>. Согласие на обработку данных и необязательное согласие на рекламу оформляются отдельно.
+      </p>
+      <label className="flex cursor-pointer items-start gap-3 text-[11px] leading-relaxed text-white/62">
+        <input name="personalDataConsent" value="yes" type="checkbox" required aria-required="true" className="mt-0.5 h-4 w-4 shrink-0 accent-[#EA5B0C]" />
+        <span>Я даю отдельное <Link href={legalLinks.personalDataConsent} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">согласие на обработку персональных данных</Link> для рассмотрения заявки, связи со мной и подготовки расчёта. <b className="text-steel-orange">*</b></span>
+      </label>
+      <label className="mt-4 flex cursor-pointer items-start gap-3 text-[11px] leading-relaxed text-white/48">
+        <input name="marketingConsent" value="yes" type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[#EA5B0C]" />
+        <span>Я отдельно соглашаюсь получать рекламные и информационные сообщения по e-mail, телефону и в указанных мной мессенджерах. Это необязательно и не влияет на расчёт. <Link href={legalLinks.marketingConsent} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">Условия и отзыв согласия</Link>.</span>
+      </label>
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-xl text-[11px] leading-relaxed text-white/40">Поля со звёздочкой обязательны. При отказе от согласия заявку через форму отправить нельзя — напишите нам на info@steelprodukt.ru.</p>
       <button disabled={isSending} type="submit" className="clip-corner shrink-0 bg-steel-orange px-8 py-4 text-xs font-bold uppercase transition hover:bg-orange-600 disabled:cursor-wait disabled:opacity-65">{isSending ? "Отправляем…" : "Получить расчёт →"}</button>
+      </div>
     </div>
   </form>;
 }

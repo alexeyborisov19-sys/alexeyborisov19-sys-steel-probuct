@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { Viewport } from "next";
 import { Analytics } from "@/components/Analytics";
+import { CookieConsent } from "@/components/CookieConsent";
 import { JsonLd } from "@/components/JsonLd";
 import { SitePreloader } from "@/components/SitePreloader";
 import { organizationSchema, websiteSchema } from "@/lib/schema";
@@ -20,6 +21,11 @@ export const metadata: Metadata = {
   publisher: siteConfig.name,
   category: "Производство изделий из листового металла",
   alternates: { canonical: "/" },
+  icons: {
+    icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml", sizes: "any" }],
+    shortcut: ["/icon.svg?v=2"],
+    apple: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+  },
   robots: {
     index: true,
     follow: true,
@@ -49,5 +55,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#101112", colorScheme: "dark", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ru"><body><JsonLd data={[organizationSchema(), websiteSchema()]} /><Analytics /><SitePreloader />{children}</body></html>;
+  return <html lang="ru"><body><JsonLd data={[organizationSchema(), websiteSchema()]} /><Analytics /><SitePreloader />{children}<CookieConsent /></body></html>;
 }

@@ -28,5 +28,5 @@
 - [О компании](https://www.steelprodukt.ru/company)
 - [Производство](https://www.steelprodukt.ru/production)
 - [Решения для отраслей и объектов](https://www.steelprodukt.ru/industries)
-- [Проекты](https://www.steelprodukt.ru/projects)
+- [Типовые проектные сценарии](https://www.steelprodukt.ru/projects)
 - [Передать чертёж на расчёт](https://www.steelprodukt.ru/contacts#contact-form)

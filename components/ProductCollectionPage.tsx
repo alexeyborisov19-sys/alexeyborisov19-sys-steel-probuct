@@ -14,7 +14,7 @@ type ProductCollectionPageProps = {
 };
 
 export function ProductCollectionPage({ path, eyebrow, title, description, heading, intro, slugs }: ProductCollectionPageProps) {
-  return <PageLayout path={path} eyebrow={eyebrow} title={title} description={description} image="/images/industry/hero-building-v1.png">
+  return <PageLayout path={path} eyebrow={eyebrow} title={title} description={description} image="/images/web/hero-main.jpg">
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="max-w-3xl border-l-2 border-steel-orange pl-5"><p className="text-lg font-semibold leading-relaxed">{intro}</p></div>
