@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Viewport } from "next";
 import { Analytics } from "@/components/Analytics";
 import { CookieConsent } from "@/components/CookieConsent";
+import { EngineeringAssistant } from "@/components/EngineeringAssistant";
 import { JsonLd } from "@/components/JsonLd";
 import { SitePreloader } from "@/components/SitePreloader";
 import { organizationSchema, websiteSchema } from "@/lib/schema";
@@ -55,5 +56,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#101112", colorScheme: "dark", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ru"><body><JsonLd data={[organizationSchema(), websiteSchema()]} /><Analytics /><SitePreloader />{children}<CookieConsent /></body></html>;
+  return <html lang="ru"><body><JsonLd data={[organizationSchema(), websiteSchema()]} /><Analytics /><SitePreloader />{children}<EngineeringAssistant /><CookieConsent /></body></html>;
 }

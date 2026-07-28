@@ -11,7 +11,7 @@ const navigation = [
   { label: "Решения для объектов", href: "/industries" },
   { label: "Производство", href: "/production" },
   { label: "Проекты", href: "/projects" },
-  { label: "Журнал", href: "/articles" },
+  { label: "Инженерный журнал", href: "/articles" },
   { label: "Контакты", href: "/contacts" },
 ];
 

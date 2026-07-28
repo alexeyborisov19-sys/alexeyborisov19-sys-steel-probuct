@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { trackLeadEvent } from "@/lib/analytics";
 import { legalDocumentVersions, legalLinks } from "@/lib/legal";
 
@@ -32,9 +32,33 @@ export function QuoteRequestForm() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSending, setIsSending] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [message, setMessage] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("source") !== "calculator-metallokassety") return;
+
+    const area = params.get("area");
+    const thickness = params.get("thickness");
+    const quantity = Number(params.get("quantity") ?? "");
+    const estimate = Number(params.get("estimate") ?? "");
+    const formatNumber = (value: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
+
+    const summary = [
+      "Прошу выполнить точный расчёт металлокассет по приложенным исходным данным.",
+      area ? `Площадь фасада: ${area.replace(".", ",")} м².` : "",
+      "Размер кассеты: 1170×545 мм. Руст: 20×20 мм.",
+      thickness ? `Выбранная толщина металла: ${thickness} мм.` : "",
+      Number.isFinite(quantity) && quantity > 0 ? `Ориентировочное количество по калькулятору: ≈ ${formatNumber(quantity)} шт.` : "",
+      Number.isFinite(estimate) && estimate > 0 ? `Ориентировочная стоимость по калькулятору: ≈ ${formatNumber(estimate)} ₽.` : "",
+      "Необходима проверка специалистом и итоговое коммерческое предложение.",
+    ].filter(Boolean).join("\n");
+
+    setMessage((current) => current || summary);
+  }, []);
 
   function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(event.target.files ?? []);
@@ -112,6 +136,7 @@ export function QuoteRequestForm() {
       form.reset();
       setFiles([]);
       setHasStarted(false);
+      setMessage("");
       trackLeadEvent("quote_request_success", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
       setFeedback({ type: "success", message: "Заявка отправлена. Мы свяжемся с вами в ближайшее время." });
     } catch (error) {
@@ -143,7 +168,7 @@ export function QuoteRequestForm() {
     </div>
 
     <label className="text-sm font-semibold text-white">Задача
-      <textarea name="message" className="mt-2 min-h-36 w-full resize-y border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Что необходимо изготовить, в каком объёме и в какие сроки?" />
+      <textarea name="message" value={message} onChange={(event) => setMessage(event.target.value)} className="mt-2 min-h-36 w-full resize-y border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Что необходимо изготовить, в каком объёме и в какие сроки?" />
     </label>
 
     <div className="border border-white/15 bg-black/20 p-4 sm:p-5">

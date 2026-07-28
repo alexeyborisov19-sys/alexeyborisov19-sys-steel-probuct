@@ -5,7 +5,7 @@ import { articles, type ArticleDirection } from "@/data/articles";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Журнал «Сталь Продукт»",
+  title: "Инженерный журнал «Сталь Продукт»",
   description: "Инженерный журнал архитектуры и металлообработки: фасадные идеи, производственные технологии, выставки и практика компании «Сталь Продукт».",
   path: "/articles",
   image: "/images/web/hero-main.jpg",
@@ -113,7 +113,7 @@ export default function ArticlesPage() {
     <PageLayout
       path="/articles"
       eyebrow="Архитектура · Металлообработка · Инженерная практика"
-      title="Журнал"
+      title="Инженерный журнал"
       titleAccent="Сталь Продукт"
       description="Фасадные идеи, производственные технологии, отраслевые события и собственная инженерная практика — в одном центре знаний «Сталь Продукт»."
       image="/images/web/hero-main.jpg"
@@ -308,7 +308,7 @@ export default function ArticlesPage() {
                 ))}
                 {sectionArticles.length === 0 ? (
                   <div className="border border-dashed border-white/15 bg-[#111519] p-7 text-sm leading-7 text-white/48">
-                    Материалы направления готовятся редакцией журнала «Сталь Продукт».
+                    Материалы направления готовятся редакцией инженерного журнала «Сталь Продукт».
                   </div>
                 ) : null}
               </div>

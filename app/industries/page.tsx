@@ -18,22 +18,22 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 const visualByIndustry: Record<string, string> = {
-  "Жилые комплексы": "residential.png",
-  "Бизнес-центры": "business-center.png",
-  "Торговые центры": "manufacturing.png",
-  "Медицинские учреждения": "medical.png",
-  "Образовательные учреждения": "educational.png",
-  "Гостиницы и апарт отели": "hotel.png",
-  "Инженерная инфраструктура": "infrastructure.png",
-  "Производственные предприятия": "production.png",
-  "Агропромышленный комплекс": "agro.png",
-  "Энергетика": "energy.png",
-  "Нефтяная отрасль": "oil-gas.png",
-  "Транспортная инфраструктура": "transport.png",
-  "Пищевая промышленность": "food.png",
-  "Фармацевтическая промышленность": "pharmaceutical.png",
-  "ЦОД и технологическая инфраструктура": "data-center.png",
-  "Машиностроение и приборостроение": "machine-building.png",
+  "Жилые комплексы": "residential.jpg",
+  "Бизнес-центры": "business-center.jpg",
+  "Торговые центры": "shopping-center.jpg",
+  "Медицинские учреждения": "medical.jpg",
+  "Образовательные учреждения": "educational.jpg",
+  "Гостиницы и апарт отели": "hotel.jpg",
+  "Инженерная инфраструктура": "infrastructure.jpg",
+  "Производственные предприятия": "production.jpg",
+  "Агропромышленный комплекс": "agro.jpg",
+  "Энергетика": "energy.jpg",
+  "Нефтяная отрасль": "oil-gas.jpg",
+  "Транспортная инфраструктура": "transport.jpg",
+  "Пищевая промышленность": "food.jpg",
+  "Фармацевтическая промышленность": "pharmaceutical.jpg",
+  "ЦОД и технологическая инфраструктура": "data-center.jpg",
+  "Машиностроение и приборостроение": "machine-building.jpg",
 };
 
 export default function IndustriesPage() {
@@ -74,7 +74,17 @@ export default function IndustriesPage() {
 
               return (
                 <article key={industry.title} className="overflow-hidden border border-white/15 bg-[#111519] shadow-[0_18px_45px_rgba(0,0,0,.16)]">
-                  <div className="solution-media relative aspect-[16/6] border-b border-white/10" style={{ backgroundImage: `url('/images/industries/${visual}')` }}>
+                  <div className="solution-media relative aspect-[16/6] overflow-hidden border-b border-white/10">
+                    <img
+                      src={`/images/industries/${visual}`}
+                      alt={`${industry.title} — решения из листового металла`}
+                      width={1600}
+                      height={600}
+                      loading={index < 2 ? "eager" : "lazy"}
+                      fetchPriority={index < 2 ? "high" : "auto"}
+                      decoding="async"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-r from-[#0c1013]/80 via-transparent to-transparent" />
                     <span className="absolute left-5 top-5 border border-steel-orange/70 px-2 py-1 text-[10px] font-bold tracking-[.14em] text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
                   </div>

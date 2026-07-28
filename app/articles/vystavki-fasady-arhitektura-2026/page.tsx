@@ -254,7 +254,7 @@ export default function FacadeExhibitions2026Page() {
         data={[
           breadcrumbSchema([
             { name: "Главная", path: "/" },
-            { name: "Журнал «Сталь Продукт»", path: "/articles" },
+            { name: "Инженерный журнал «Сталь Продукт»", path: "/articles" },
             { name: pageTitle, path: pagePath },
           ]),
           articleSchema({

@@ -18,6 +18,12 @@ const yandexGoalByEvent: Record<string, string[]> = {
   email_click: ["ym-show-contacts", "email_click"],
   exhibition_official_click: ["exhibition_official_click"],
   exhibition_quote_click: ["exhibition_quote_click"],
+  assistant_opened: ["assistant_opened"],
+  assistant_question: ["assistant_question"],
+  assistant_lead_form_opened: ["assistant_lead_form_opened"],
+  assistant_lead_submit: ["assistant_lead_submit"],
+  assistant_lead_success: ["ym-submit-leadform", "assistant_lead_success"],
+  assistant_lead_error: ["assistant_lead_error"],
 };
 
 export function trackLeadEvent(eventName: string, params: EventParams = {}) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
+import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";
 import { ProductCard } from "@/components/ProductCard";
 import { metalCassetteSpecs, productBySlug } from "@/data/products";
 import { createPageMetadata } from "@/lib/seo";
@@ -44,12 +45,15 @@ export default function MetalCassetteCollectionPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="clip-corner bg-steel-orange px-5 py-3 text-xs font-bold uppercase">Скачать каталог PDF&nbsp; ↗</a>
               <Link href="/contacts#contact-form" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Получить расчёт&nbsp; →</Link>
+              <Link href="/calculator-metallokassety" className="border border-steel-orange/50 px-5 py-3 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">Калькулятор стоимости&nbsp; →</Link>
             </div>
           </div>
           <dl className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             {metalCassetteSpecs.slice(0, 4).map((spec) => <div key={spec.label} className="bg-[#0d1012] p-4"><dt className="text-[10px] font-bold uppercase tracking-[.12em] text-steel-orange">{spec.label}</dt><dd className="mt-2 text-xs leading-relaxed text-white/70">{spec.value}</dd></div>)}
           </dl>
         </div>
+
+        <MetalCassetteCalculator />
 
         <div className="mt-16 border-b border-white/12 pb-5">
           <p className="eyebrow">Выберите исполнение</p>

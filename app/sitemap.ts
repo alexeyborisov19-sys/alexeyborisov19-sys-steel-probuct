@@ -11,7 +11,7 @@ const exhibitionCalendarsModifiedAt = new Date("2026-07-28T00:00:00.000Z");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
-    "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026",
+    "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/calculator-metallokassety",
     "/products/metallokassety", "/products/dobornye-elementy",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];
@@ -25,14 +25,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [...new Set(paths)].map((path) => {
     const isJournal = path === "/articles" || path.startsWith("/articles/");
     const isExhibitionCalendar = path === facadeCalendarPath || path === metalworkingCalendarPath;
+    const isCalculator = path === "/calculator-metallokassety";
 
     return {
       url: absoluteUrl(path),
       lastModified: isExhibitionCalendar
         ? exhibitionCalendarsModifiedAt
         : articles.find((article) => `/articles/${article.slug}` === path)?.modifiedAt ?? releaseDate,
-      changeFrequency: isExhibitionCalendar ? "monthly" : isJournal ? "weekly" : "monthly",
-      priority: path === "/" ? 1 : isExhibitionCalendar ? 0.9 : path === "/articles" ? 0.8 : 0.7,
+      changeFrequency: isExhibitionCalendar ? "monthly" : isJournal ? "weekly" : isCalculator ? "weekly" : "monthly",
+      priority: path === "/" ? 1 : isExhibitionCalendar || isCalculator ? 0.9 : path === "/articles" ? 0.8 : 0.7,
     };
   });
 }
