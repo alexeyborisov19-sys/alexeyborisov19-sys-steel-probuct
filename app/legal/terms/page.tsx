@@ -6,12 +6,12 @@ import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Пользовательское соглашение",
-  description: "Условия использования сайта Сталь Продукт.",
+  description: "Условия использования сайта «Сталь Продукт», его материалов, технической информации, форм заявок, изображений и проектных примеров.",
   path: legalLinks.terms,
 });
 
 export default function TermsPage() {
-  return <LegalDocument title="Пользовательское соглашение" description="Условия использования материалов и сервисов сайта.">
+  return <LegalDocument path={legalLinks.terms} title="Пользовательское соглашение" description="Условия использования материалов и сервисов сайта.">
     <p className="legal-document__date">Редакция от {legalOperator.policyVersion}</p>
     <h2>1. Владелец и назначение сайта</h2>
     <p>Владелец сайта steelprodukt.ru и обладатель прав на брендовые материалы — {legalOperator.name}, ОГРН {legalOperator.ogrn}, ИНН {legalOperator.inn}. Сайт предоставляет информацию о продукции, инженерных решениях и производственных возможностях бренда «{legalOperator.brand}».</p>

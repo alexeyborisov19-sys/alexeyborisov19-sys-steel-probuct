@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
 import { getIndustrySolutions, industryVisualByTitle } from "@/lib/industry-solutions";
+import { itemListSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -21,6 +23,16 @@ export default function IndustriesPage() {
   const industries = getIndustrySolutions();
 
   return (
+    <>
+    <JsonLd data={itemListSchema({
+      name: "Решения из листового металла по отраслям и типам объектов",
+      description: "Отраслевые комплекты металлоизделий для строительства, промышленности и инженерной инфраструктуры.",
+      path: "/industries",
+      items: industries.map((industry) => ({
+        name: industry.title,
+        path: `/industries/${industry.slug}`,
+      })),
+    })} />
     <PageLayout
       path="/industries"
       eyebrow="Решения для объектов"
@@ -121,5 +133,6 @@ export default function IndustriesPage() {
         </div>
       </section>
     </PageLayout>
+    </>
   );
 }

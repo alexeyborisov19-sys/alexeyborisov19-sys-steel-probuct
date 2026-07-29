@@ -6,7 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { articles, type Article, type ArticleDirection } from "@/data/articles";
 import { createPageMetadata } from "@/lib/seo";
 import { absoluteUrl } from "@/lib/site";
-import { webPageSchema } from "@/lib/schema";
+import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Инженерный журнал и новости металлообработки",
@@ -130,11 +130,13 @@ export default function ArticlesPage() {
     description: "Новости металлообработки, фасадные инновации, отраслевые события и инженерная практика.",
     url: absoluteUrl("/articles"),
     inLanguage: "ru",
-    hasPart: news.map((article) => ({
+    hasPart: articles.map((article) => ({
       "@type": "Article",
       headline: article.title,
       url: absoluteUrl(`/articles/${article.slug}`),
       datePublished: article.publishedAt,
+      dateModified: article.modifiedAt,
+      articleSection: article.category,
     })),
   };
 
@@ -147,6 +149,10 @@ export default function ArticlesPage() {
             description: "Новости металлообработки, фасадные инновации, отраслевые события и инженерная практика.",
             path: "/articles",
           }),
+          breadcrumbSchema([
+            { name: "Главная", path: "/" },
+            { name: "Инженерный журнал", path: "/articles" },
+          ]),
           collectionSchema,
         ]}
       />

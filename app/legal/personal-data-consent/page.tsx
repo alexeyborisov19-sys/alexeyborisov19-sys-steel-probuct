@@ -11,7 +11,7 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 export default function PersonalDataConsentPage() {
-  return <LegalDocument title="Согласие на обработку персональных данных" description="Согласие, предоставляемое при направлении заявки через сайт.">
+  return <LegalDocument path={legalLinks.personalDataConsent} title="Согласие на обработку персональных данных" description="Согласие, предоставляемое при направлении заявки через сайт.">
     <p className="legal-document__date">Редакция от {legalOperator.policyVersion}</p>
     <p>Устанавливая отдельную отметку в форме и нажимая кнопку отправки, я свободно, своей волей и в своём интересе даю {legalOperator.name}, ОГРН {legalOperator.ogrn}, ИНН {legalOperator.inn}, адрес: {legalOperator.legalAddress}, согласие на обработку моих персональных данных на следующих условиях.</p>
     <h2>1. Данные</h2>

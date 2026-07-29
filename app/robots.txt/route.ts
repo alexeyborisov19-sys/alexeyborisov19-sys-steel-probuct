@@ -25,6 +25,7 @@ Allow: /
 
 Host: www.steelprodukt.ru
 Sitemap: ${siteConfig.url}/sitemap.xml
+Sitemap: ${siteConfig.url}/sitemap-images.xml
 `;
 
   return new Response(robots, {

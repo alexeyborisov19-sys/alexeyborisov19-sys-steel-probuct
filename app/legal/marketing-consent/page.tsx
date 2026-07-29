@@ -6,12 +6,12 @@ import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Согласие на получение рекламных материалов",
-  description: "Добровольное согласие на информационные и рекламные сообщения Сталь Продукт.",
+  description: "Условия отдельного добровольного согласия на получение информационных и рекламных сообщений от компании «Сталь Продукт».",
   path: legalLinks.marketingConsent,
 });
 
 export default function MarketingConsentPage() {
-  return <LegalDocument title="Согласие на получение рекламных и информационных материалов" description="Отдельное добровольное согласие на сообщения о решениях и предложениях компании.">
+  return <LegalDocument path={legalLinks.marketingConsent} title="Согласие на получение рекламных и информационных материалов" description="Отдельное добровольное согласие на сообщения о решениях и предложениях компании.">
     <p className="legal-document__date">Редакция от {legalOperator.policyVersion}</p>
     <p>Устанавливая отдельную необязательную отметку в форме, я предварительно, свободно и однозначно соглашаюсь получать от {legalOperator.name}, ОГРН {legalOperator.ogrn}, ИНН {legalOperator.inn}, рекламные и информационные сообщения.</p>
     <h2>Что может направляться</h2>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ArticleCommercialLinks } from "@/components/ArticleCommercialLinks";
 import { PageLayout } from "@/components/PageLayout";
 import { articles } from "@/data/articles";
 import { chinaTechSources } from "@/data/china-tech";
@@ -147,6 +148,12 @@ export default function ChinaTechPage() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="bg-[#0c1013] py-14 sm:py-20">
+        <div className="container">
+          <ArticleCommercialLinks direction="metalworking" />
         </div>
       </section>
     </PageLayout>

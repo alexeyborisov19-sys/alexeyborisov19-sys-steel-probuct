@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ArticleCommercialLinks } from "@/components/ArticleCommercialLinks";
 import {
   ConfirmedExhibitionsTable,
   type ConfirmedExhibition,
@@ -376,6 +377,12 @@ export default function ChinaExhibitions2026Page() {
           <Link href="/contacts#contact-form" className="clip-corner bg-steel-orange px-7 py-4 text-center text-xs font-bold uppercase">
             Обсудить производственную задачу&nbsp; →
           </Link>
+        </div>
+      </section>
+
+      <section className="bg-[#0c1013] py-14 sm:py-20">
+        <div className="container">
+          <ArticleCommercialLinks direction="metalworking" />
         </div>
       </section>
     </PageLayout>

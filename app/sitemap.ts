@@ -2,13 +2,37 @@ import type { MetadataRoute } from "next";
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
 import { articles } from "@/data/articles";
+import { productionServices } from "@/data/production-services";
 import { getIndustrySolutions } from "@/lib/industry-solutions";
 import { absoluteUrl } from "@/lib/site";
 
-const releaseDate = new Date("2026-07-20T00:00:00.000Z");
+const siteUpdatedAt = new Date("2026-07-29T00:00:00.000Z");
+const legalUpdatedAt = new Date("2026-07-27T00:00:00.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
-const exhibitionCalendarsModifiedAt = new Date("2026-07-28T00:00:00.000Z");
+const exhibitionCalendarsModifiedAt = new Date("2026-07-29T00:00:00.000Z");
+
+const commercialHubs = new Set([
+  "/production",
+  "/solutions",
+  "/industries",
+  "/products",
+  "/products/metallokassety",
+  "/products/dobornye-elementy",
+]);
+
+function sitemapPriority(path: string, isNews: boolean, isExhibitionCalendar: boolean) {
+  if (path === "/") return 1;
+  if (commercialHubs.has(path)) return 0.9;
+  if (path === "/calculator-metallokassety" || path === "/contacts") return 0.9;
+  if (path.startsWith("/production/") || path.startsWith("/solutions/") || path.startsWith("/industries/") || path.startsWith("/products/")) return 0.85;
+  if (path === "/articles") return 0.85;
+  if (isExhibitionCalendar || path === "/articles/china-tech") return 0.8;
+  if (isNews) return 0.75;
+  if (path.startsWith("/articles/")) return 0.8;
+  if (path.startsWith("/legal/")) return 0.2;
+  return 0.75;
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
@@ -18,6 +42,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
   const paths = [
     ...staticPaths,
+    ...productionServices.map((service) => `/production/${service.slug}`),
     ...solutionDetails.map((solution) => `/solutions/${solution.slug}`),
     ...getIndustrySolutions().map((industry) => `/industries/${industry.slug}`),
     ...products.map((product) => `/products/${product.slug}`),
@@ -30,14 +55,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     const isCalculator = path === "/calculator-metallokassety";
     const currentArticle = articles.find((article) => `/articles/${article.slug}` === path);
     const isNews = currentArticle?.direction === "news";
+    const isLegal = path.startsWith("/legal/");
 
     return {
       url: absoluteUrl(path),
       lastModified: isExhibitionCalendar
         ? exhibitionCalendarsModifiedAt
-        : currentArticle?.modifiedAt ?? releaseDate,
-      changeFrequency: path === "/articles" || isNews ? "daily" : isExhibitionCalendar ? "monthly" : isJournal ? "weekly" : isCalculator ? "weekly" : "monthly",
-      priority: path === "/" ? 1 : path === "/articles" ? 0.9 : isExhibitionCalendar || isCalculator ? 0.9 : isNews ? 0.85 : 0.7,
+        : currentArticle?.modifiedAt ?? (isLegal ? legalUpdatedAt : siteUpdatedAt),
+      changeFrequency: path === "/articles"
+        ? "daily"
+        : isNews
+          ? "weekly"
+          : isExhibitionCalendar || isJournal || isCalculator
+            ? "weekly"
+            : isLegal
+              ? "yearly"
+              : "monthly",
+      priority: sitemapPriority(path, Boolean(isNews), isExhibitionCalendar),
     };
   });
 }

@@ -23,6 +23,15 @@
 - Сварочные посты, слесарный участок, 3 камеры порошковой окраски.
 - Полный цикл: инженерная проработка, раскрой, гибка, сварка и сборка, окраска, контроль качества, упаковка и отгрузка.
 
+## Производственные операции
+
+- [Проектирование металлоизделий и подготовка КД](https://www.steelprodukt.ru/production/proektirovanie-metalloizdeliy)
+- [Лазерная резка листового металла](https://www.steelprodukt.ru/production/lazernaya-rezka-metalla)
+- [Гибка листового металла на ЧПУ](https://www.steelprodukt.ru/production/gibka-listovogo-metalla)
+- [Сварка и сборка металлоизделий](https://www.steelprodukt.ru/production/svarka-i-sborka-metalloizdeliy)
+- [Порошковая окраска металлоизделий](https://www.steelprodukt.ru/production/poroshkovaya-okraska-metalla)
+- [Контроль качества, комплектация и упаковка](https://www.steelprodukt.ru/production/kontrol-kachestva-i-upakovka)
+
 ## Полезные страницы
 
 - [О компании](https://www.steelprodukt.ru/company)

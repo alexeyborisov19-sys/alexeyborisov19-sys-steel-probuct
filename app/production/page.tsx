@@ -2,8 +2,11 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
 import { ProductionShowreel } from "@/components/ProductionVideo";
+import { JsonLd } from "@/components/JsonLd";
+import { productionServices } from "@/data/production-services";
 import { semanticKeywords } from "@/data/semantic";
 import { createPageMetadata } from "@/lib/seo";
+import { itemListSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Производство изделий из листового металла",
@@ -15,12 +18,12 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 const stages = [
-  ["Проектирование", "/images/real-production/engineering-department.jpg", "Проверяем технологичность, развёртки, соединения и допустимые отклонения."],
-  ["Раскрой", "/images/real-production/laser-cutting-action.jpg", "Оптимизируем раскладку, контролируем геометрию и маркируем детали."],
-  ["Гибка", "/images/real-production/press-brake-durma.jpg", "Подбираем инструмент и контролируем углы и размеры первой детали."],
-  ["Сварка", "/images/real-production/welding-station.jpg", "Используем сборочные приспособления и проверяем геометрию."],
-  ["Окраска", "/images/web/cycle-powder-coating.jpg", "Контролируем подготовку поверхности, цвет и качество покрытия."],
-  ["Отгрузка", "/images/web/cycle-quality-control.jpg", "Проверяем комплектность, маркировку и защиту при перевозке."],
+  ["Проектирование", "/images/real-production/engineering-department.jpg", "Проверяем технологичность, сопряжения и развёртки.", "/production/proektirovanie-metalloizdeliy"],
+  ["Раскрой", "/images/real-production/laser-cutting-action.jpg", "Оптимизируем размещение деталей и контролируем геометрию.", "/production/lazernaya-rezka-metalla"],
+  ["Гибка", "/images/real-production/press-brake-durma.jpg", "Контролируем углы, размеры и повторяемость партии.", "/production/gibka-listovogo-metalla"],
+  ["Сварка", "/images/real-production/welding-station.jpg", "Проверяем сборку, швы и геометрию изделия.", "/production/svarka-i-sborka-metalloizdeliy"],
+  ["Покраска", "/images/web/cycle-powder-coating.jpg", "Контролируем подготовку поверхности и качество покрытия.", "/production/poroshkovaya-okraska-metalla"],
+  ["Отгрузка", "/images/web/cycle-quality-control.jpg", "Проверяем комплектность, маркировку и упаковку.", "/production/kontrol-kachestva-i-upakovka"],
 ] as const;
 
 const realProductionPhotos = [
@@ -79,6 +82,18 @@ const capabilities = [
 
 export default function ProductionPage() {
   return (
+    <>
+    <JsonLd
+      data={itemListSchema({
+        name: "Производственные операции «Сталь Продукт»",
+        description: "Основные этапы производства изделий из листового металла.",
+        path: "/production",
+        items: productionServices.map((service) => ({
+          name: service.title,
+          path: `/production/${service.slug}`,
+        })),
+      })}
+    />
     <PageLayout
       path="/production"
       eyebrow="Производство"
@@ -109,10 +124,11 @@ export default function ProductionPage() {
         <div className="container">
           <h2 className="text-3xl font-semibold">Производственный цикл</h2>
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            {stages.map(([title, image, description], index) => (
-              <article
+            {stages.map(([title, image, description, href], index) => (
+              <Link
                 key={title}
-                className="overflow-hidden border border-white/10 bg-[#111519]"
+                href={href}
+                className="group overflow-hidden border border-white/10 bg-[#111519] transition hover:border-steel-orange"
               >
                 <div className="relative aspect-video overflow-hidden bg-[#192026]">
                   <img
@@ -122,7 +138,7 @@ export default function ProductionPage() {
                     alt={`${title} на производстве «Сталь Продукт»`}
                     loading="lazy"
                     decoding="async"
-                    className="h-full w-full object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02]"
+                    className="h-full w-full object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02] transition duration-500 group-hover:scale-[1.035]"
                   />
                 </div>
                 <div className="p-4">
@@ -133,8 +149,11 @@ export default function ProductionPage() {
                   <p className="mt-3 text-[11px] leading-relaxed text-white/50">
                     {description}
                   </p>
+                  <span className="mt-4 block text-[10px] font-bold uppercase text-steel-orange">
+                    Подробнее&nbsp; →
+                  </span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         </div>
@@ -249,5 +268,6 @@ export default function ProductionPage() {
         </div>
       </section>
     </PageLayout>
+    </>
   );
 }

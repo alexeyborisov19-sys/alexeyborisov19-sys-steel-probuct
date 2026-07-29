@@ -4,8 +4,8 @@ import { legalLinks, legalOperator } from "@/lib/legal";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Реквизиты",
-  description: "Реквизиты ООО ЭНЕРГОАЛЬЯНС — оператора сайта Сталь Продукт.",
+  title: "Реквизиты ООО «ЭНЕРГОАЛЬЯНС» и контакты",
+  description: "Юридические, банковские и контактные реквизиты ООО «ЭНЕРГОАЛЬЯНС» — владельца и оператора сайта бренда «Сталь Продукт».",
   path: legalLinks.requisites,
 });
 
@@ -27,7 +27,7 @@ const rows = [
 ];
 
 export default function RequisitesPage() {
-  return <LegalDocument title="Реквизиты" description="Реквизиты юридического лица — оператора сайта Сталь Продукт.">
+  return <LegalDocument path={legalLinks.requisites} title="Реквизиты" description="Реквизиты юридического лица — оператора сайта Сталь Продукт.">
     <p className="legal-document__date">Актуально на {legalOperator.policyVersion}</p>
     <p>{legalOperator.shortName} является владельцем сайта, рекламодателем размещаемых на нём собственных предложений и оператором персональных данных посетителей сайта.</p>
     <dl className="mt-7 divide-y divide-white/10 border-y border-white/10">

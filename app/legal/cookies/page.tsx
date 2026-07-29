@@ -6,12 +6,12 @@ import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Политика cookies",
-  description: "Правила использования cookies и аналитики на сайте Сталь Продукт.",
+  description: "Правила использования технических cookies, локального хранилища и аналитики на сайте «Сталь Продукт», включая управление согласием.",
   path: legalLinks.cookies,
 });
 
 export default function CookiesPage() {
-  return <LegalDocument title="Политика использования cookies" description="Как сайт использует технические cookies и аналитику.">
+  return <LegalDocument path={legalLinks.cookies} title="Политика использования cookies" description="Как сайт использует технические cookies и аналитику.">
     <p className="legal-document__date">Редакция от {legalOperator.policyVersion}</p>
     <h2>1. Что такое cookies и локальное хранилище</h2>
     <p>Cookies — небольшие технические файлы, которые браузер сохраняет на устройстве пользователя. Они помогают сайту работать корректно, сохранять выбор пользователя и, при согласии, измерять посещаемость.</p>

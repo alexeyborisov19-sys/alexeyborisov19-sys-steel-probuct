@@ -6,7 +6,7 @@ import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Сервисы обработки данных",
-  description: "Информационные системы, аналитика, CRM и мессенджеры сайта Сталь Продукт.",
+  description: "Перечень информационных систем, аналитики, почтовых сервисов и других инструментов, связанных с обработкой заявок на сайте «Сталь Продукт».",
   path: legalLinks.services,
 });
 
@@ -14,9 +14,6 @@ function getServices() {
   const yandexAiEnabled = process.env.YANDEX_AI_ENABLED === "true"
     && Boolean(process.env.YANDEX_AI_API_KEY)
     && Boolean(process.env.YANDEX_AI_FOLDER_ID);
-  const telegramEnabled = process.env.ASSISTANT_TELEGRAM_ENABLED === "true"
-    && Boolean(process.env.TELEGRAM_BOT_TOKEN)
-    && Boolean(process.env.TELEGRAM_LEADS_CHAT_ID);
 
   return [
   {
@@ -57,9 +54,9 @@ function getServices() {
   },
   {
     service: "Telegram: уведомления о заявках ИИ-инженера",
-    status: telegramEnabled ? "Включён администратором" : "Не включён",
-    data: telegramEnabled ? "Имя, контакт, техническая сводка и приложенные файлы" : "Автоматическая передача отсутствует",
-    condition: "Работает только при явном серверном флаге ASSISTANT_TELEGRAM_ENABLED=true и после правовой проверки канала, локализации, состава данных и договорных условий.",
+    status: "Отключён",
+    data: "Автоматическая передача отсутствует",
+    condition: "Интеграция заблокирована в коде. Серверные переменные не могут включить передачу без отдельной правовой проверки, изменения кода и новой публикации.",
   },
   {
     service: "Иностранные облака и ИИ-сервисы",
@@ -72,7 +69,7 @@ function getServices() {
 
 export default function ServicesPage() {
   const services = getServices();
-  return <LegalDocument title="Сервисы обработки данных" description="Прозрачный перечень категорий систем, связанных с работой сайта и заявок.">
+  return <LegalDocument path={legalLinks.services} title="Сервисы обработки данных" description="Прозрачный перечень категорий систем, связанных с работой сайта и заявок.">
     <p className="legal-document__date">Актуально на {legalOperator.policyVersion}</p>
     <p>Страница отражает состояние интеграций сайта. Перед подключением нового сервиса Оператор обновляет внутренний реестр, проверяет место нахождения баз данных, договорные условия, объём передаваемых сведений и необходимость уведомлений Роскомнадзора.</p>
 

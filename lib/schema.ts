@@ -142,6 +142,34 @@ export function breadcrumbSchema(items: Breadcrumb[]): JsonLd {
   };
 }
 
+export function itemListSchema({
+  name,
+  description,
+  path,
+  items,
+}: {
+  name: string;
+  description: string;
+  path: string;
+  items: Array<{ name: string; path: string }>;
+}): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "@id": `${absoluteUrl(path)}#item-list`,
+    name,
+    description,
+    numberOfItems: items.length,
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      url: absoluteUrl(item.path),
+    })),
+  };
+}
+
 export function serviceSchema({ name, description, path, serviceType }: { name: string; description: string; path: string; serviceType?: string }): JsonLd {
   return {
     "@context": "https://schema.org",

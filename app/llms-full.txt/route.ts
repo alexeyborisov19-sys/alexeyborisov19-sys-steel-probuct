@@ -1,6 +1,7 @@
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
 import { articles } from "@/data/articles";
+import { productionServices } from "@/data/production-services";
 import { siteConfig } from "@/lib/site";
 
 export const dynamic = "force-static";
@@ -17,6 +18,12 @@ export function GET() {
     `- ${product.title}: ${product.lead}`,
     `  URL: ${siteConfig.url}/products/${product.slug}`,
     `  Применение: ${product.applications.join(", ")}.`,
+  ].join("\n")).join("\n");
+
+  const productionServiceList = productionServices.map((service) => [
+    `- ${service.title}: ${service.description}`,
+    `  URL: ${siteConfig.url}/production/${service.slug}`,
+    `  Контроль: ${service.controls.join("; ")}.`,
   ].join("\n")).join("\n");
 
   const recentNews = articles
@@ -42,6 +49,10 @@ ${siteConfig.description}
 - 3 лазерных комплекса с ЧПУ, 4 листогибочных комплекса, панельгиб.
 - Сварочные посты, слесарный участок, 3 камеры порошковой окраски.
 - Цикл: инженерная проработка, раскрой, гибка, сварка и сборка, окраска, контроль качества, упаковка и отгрузка.
+
+## Производственные операции
+
+${productionServiceList}
 
 ## Направления решений
 

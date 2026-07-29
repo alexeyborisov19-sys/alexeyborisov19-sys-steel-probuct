@@ -6,12 +6,12 @@ import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Политика обработки персональных данных",
-  description: "Политика обработки персональных данных сайта Сталь Продукт.",
+  description: "Политика обработки и защиты персональных данных посетителей сайта «Сталь Продукт»: цели, состав, сроки хранения и права пользователей.",
   path: legalLinks.privacy,
 });
 
 export default function PrivacyPage() {
-  return <LegalDocument title="Политика обработки персональных данных" description="Цели, состав, сроки, информационные системы и порядок защиты данных посетителей сайта.">
+  return <LegalDocument path={legalLinks.privacy} title="Политика обработки персональных данных" description="Цели, состав, сроки, информационные системы и порядок защиты данных посетителей сайта.">
     <p className="legal-document__date">Редакция от {legalOperator.policyVersion}</p>
     <h2>1. Общие положения</h2>
     <p>Настоящая политика определяет порядок обработки и защиты персональных данных, которые {legalOperator.name} (далее — Оператор) получает от посетителей сайта «{legalOperator.brand}», расположенного по адресам steelprodukt.ru и www.steelprodukt.ru.</p>

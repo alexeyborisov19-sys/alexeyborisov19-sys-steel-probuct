@@ -7,10 +7,38 @@ type PageMetadataInput = {
   path: string;
   image?: string;
   keywords?: readonly string[];
+  openGraphType?: "website" | "article";
+  publishedTime?: string;
+  modifiedTime?: string;
 };
 
-export function createPageMetadata({ title, description, path, image = siteConfig.defaultOgImage, keywords = [] }: PageMetadataInput): Metadata {
+export function createPageMetadata({
+  title,
+  description,
+  path,
+  image = siteConfig.defaultOgImage,
+  keywords = [],
+  openGraphType = "website",
+  publishedTime,
+  modifiedTime,
+}: PageMetadataInput): Metadata {
   const canonical = canonicalPath(path);
+  const openGraph: NonNullable<Metadata["openGraph"]> = {
+    type: openGraphType,
+    locale: siteConfig.locale,
+    url: absoluteUrl(canonical),
+    siteName: siteConfig.name,
+    title,
+    description,
+    images: [{ url: absoluteUrl(image), width: 1200, height: 630, alt: title }],
+    ...(openGraphType === "article"
+      ? {
+          publishedTime,
+          modifiedTime,
+          authors: [siteConfig.name],
+        }
+      : {}),
+  };
 
   return {
     title,
@@ -28,15 +56,7 @@ export function createPageMetadata({ title, description, path, image = siteConfi
         "max-video-preview": -1,
       },
     },
-    openGraph: {
-      type: "website",
-      locale: siteConfig.locale,
-      url: absoluteUrl(canonical),
-      siteName: siteConfig.name,
-      title,
-      description,
-      images: [{ url: absoluteUrl(image), width: 1200, height: 630, alt: title }],
-    },
+    openGraph,
     twitter: {
       card: "summary_large_image",
       title,

@@ -22,7 +22,6 @@ export const metadata: Metadata = {
   publisher: siteConfig.name,
   category: "Производство изделий из листового металла",
   alternates: {
-    canonical: "/",
     types: { "application/rss+xml": [{ url: "/feed.xml", title: "Инженерный журнал «Сталь Продукт»" }] },
   },
   icons: {

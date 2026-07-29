@@ -5,9 +5,20 @@ const requestedPaths = process.argv.slice(2);
 const paths = requestedPaths.length
   ? requestedPaths
   : [
+      "/",
+      "/production",
+      "/production/proektirovanie-metalloizdeliy",
+      "/production/lazernaya-rezka-metalla",
+      "/production/gibka-listovogo-metalla",
+      "/production/svarka-i-sborka-metalloizdeliy",
+      "/production/poroshkovaya-okraska-metalla",
+      "/solutions",
+      "/industries",
+      "/products",
       "/articles",
       "/articles/vystavki-fasady-arhitektura-2026",
       "/sitemap.xml",
+      "/sitemap-images.xml",
     ];
 const urlList = paths.map((path) => new URL(path, `${siteUrl}/`).toString());
 

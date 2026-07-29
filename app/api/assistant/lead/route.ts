@@ -9,6 +9,10 @@ export const runtime = "nodejs";
 const MAX_FILES = 8;
 const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
 const MAX_FILE_BYTES = 7 * 1024 * 1024;
+// Telegram delivery is intentionally disabled by product and legal decision.
+// Re-enabling it requires a separate code change, legal review and deployment;
+// server environment variables alone cannot activate the integration.
+const TELEGRAM_DELIVERY_ALLOWED = false;
 const allowedExtensions = new Set([
   "pdf", "dxf", "dwg", "dwt", "dws", "step", "stp", "iges", "igs",
   "sldprt", "sldasm", "ipt", "iam", "idw", "png", "jpg", "jpeg", "webp",
@@ -44,6 +48,7 @@ function escapeTelegram(value: string) {
 }
 
 async function notifyTelegram(message: string, files: File[]) {
+  if (!TELEGRAM_DELIVERY_ALLOWED) return false;
   if (process.env.ASSISTANT_TELEGRAM_ENABLED !== "true") return false;
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_LEADS_CHAT_ID;

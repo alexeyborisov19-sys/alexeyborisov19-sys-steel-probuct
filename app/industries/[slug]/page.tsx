@@ -1,14 +1,17 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
+import { industrySeoBySlug } from "@/data/industry-seo";
 import {
   getIndustrySolutionBySlug,
   getIndustrySolutions,
   industryVisualByTitle,
 } from "@/lib/industry-solutions";
-import { breadcrumbSchema, serviceSchema } from "@/lib/schema";
+import { productRouteForIndustryItem } from "@/lib/product-linking";
+import { faqSchema, itemListSchema, serviceSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 type IndustryPageProps = { params: Promise<{ slug: string }> };
@@ -20,13 +23,15 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: IndustryPageProps): Promise<Metadata> {
   const industry = getIndustrySolutionBySlug((await params).slug);
   if (!industry) return {};
-  const description = `Изделия и инженерные решения из листового металла для направления «${industry.title}»: фасады, корпуса, инженерные системы и элементы по чертежам.`;
+  const seo = industrySeoBySlug[industry.slug];
+  const description = seo?.metaDescription
+    ?? `Изделия и инженерные решения из листового металла для направления «${industry.title}»: фасады, корпуса, инженерные системы и элементы по чертежам.`;
   return createPageMetadata({
-    title: `Металлоизделия для отрасли «${industry.title}»`,
+    title: seo?.seoTitle ?? `Металлоизделия: ${industry.title}`,
     description,
     path: `/industries/${industry.slug}`,
     image: `/images/industries/${industryVisualByTitle[industry.title] ?? "hero-main.jpg"}`,
-    keywords: [
+    keywords: seo?.keywords ?? [
       `металлоизделия для ${industry.title.toLowerCase()}`,
       `изделия из листового металла для ${industry.title.toLowerCase()}`,
       `${industry.title.toLowerCase()} фасадные и инженерные решения`,
@@ -41,24 +46,34 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
 
   const path = `/industries/${industry.slug}`;
   const image = `/images/industries/${industryVisualByTitle[industry.title] ?? "hero-main.jpg"}`;
-  const description = `Производим изделия из листового металла для направления «${industry.title}»: от фасадных и защитных элементов до корпусов, инженерных систем и индивидуальных узлов.`;
+  const seo = industrySeoBySlug[industry.slug];
+  const description = seo?.metaDescription
+    ?? `Производим изделия из листового металла для направления «${industry.title}»: от фасадных и защитных элементов до корпусов, инженерных систем и индивидуальных узлов.`;
   const itemCount = industry.sections.reduce((total, section) => total + section.items.length, 0);
+  const productItems = industry.sections.flatMap((section, sectionIndex) =>
+    section.items.map((item, itemIndex) => ({
+      name: `${item} — ${industry.title}`,
+      path: `${path}#item-${sectionIndex + 1}-${itemIndex + 1}`,
+    })),
+  );
 
   return (
     <>
       <JsonLd
         data={[
-          breadcrumbSchema([
-            { name: "Главная", path: "/" },
-            { name: "Решения для объектов", path: "/industries" },
-            { name: industry.title, path },
-          ]),
           serviceSchema({
             name: `Изделия из листового металла для отрасли «${industry.title}»`,
             description,
             path,
             serviceType: `Производство металлоизделий для ${industry.title.toLowerCase()}`,
           }),
+          itemListSchema({
+            name: `Продукция для направления «${industry.title}»`,
+            description: `Полный перечень изделий из листового металла для направления «${industry.title}», сгруппированный по функциональным зонам объекта.`,
+            path,
+            items: productItems,
+          }),
+          ...(seo ? [faqSchema(seo.faq)] : []),
         ]}
       />
       <PageLayout
@@ -71,6 +86,27 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
       >
         <section className="bg-[#0c1013] py-14 sm:py-20">
           <div className="container">
+            {seo && (
+              <div className="grid gap-6 border border-white/12 bg-[#101519] p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_1.08fr]">
+                <div>
+                  <p className="eyebrow">Отраслевое решение</p>
+                  <h2 className="mt-3 max-w-xl text-2xl font-semibold leading-tight sm:text-3xl">
+                    Комплектация с учётом задач объекта
+                  </h2>
+                  <p className="mt-5 max-w-2xl text-sm leading-7 text-white/68">{seo.introduction}</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {seo.challenges.map((challenge, index) => (
+                    <article key={challenge.title} className="border border-white/10 bg-black/20 p-5">
+                      <span className="font-mono text-xs font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
+                      <h3 className="mt-4 text-sm font-semibold leading-snug">{challenge.title}</h3>
+                      <p className="mt-3 text-xs leading-5 text-white/58">{challenge.text}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-6 border-y border-white/12 py-7 md:grid-cols-[minmax(0,1fr)_220px_220px] md:items-end">
               <div>
                 <p className="eyebrow">Состав решения</p>
@@ -89,22 +125,31 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
             </div>
 
             <div className="mt-8 overflow-hidden border border-white/12 bg-[#101519]">
-              {industry.sections.map((section, index) => (
+              {industry.sections.map((section, sectionIndex) => (
                 <section
                   key={section.title}
                   className="grid border-b border-white/10 last:border-b-0 lg:grid-cols-[300px_minmax(0,1fr)]"
                 >
                   <div className="flex items-start gap-4 bg-white/[.025] px-5 py-6 lg:border-r lg:border-white/10">
-                    <span className="font-mono text-sm font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="font-mono text-sm font-bold text-steel-orange">{String(sectionIndex + 1).padStart(2, "0")}</span>
                     <h2 className="text-lg font-semibold leading-snug">{section.title}</h2>
                   </div>
                   <ul className="grid gap-x-7 gap-y-3 border-t border-white/10 px-5 py-6 sm:grid-cols-2 lg:border-t-0">
-                    {section.items.map((item) => (
-                      <li key={item} className="flex gap-3 text-sm leading-6 text-white/72">
-                        <span className="mt-[10px] h-1 w-1 shrink-0 bg-steel-orange" />
-                        {item}
-                      </li>
-                    ))}
+                    {section.items.map((item, itemIndex) => {
+                      const productRoute = productRouteForIndustryItem(item);
+                      return (
+                        <li
+                          id={`item-${sectionIndex + 1}-${itemIndex + 1}`}
+                          key={item}
+                          className="flex scroll-mt-24 gap-3 text-sm leading-6 text-white/72"
+                        >
+                          <span className="mt-[10px] h-1 w-1 shrink-0 bg-steel-orange" />
+                          {productRoute
+                            ? <Link href={productRoute} className="underline decoration-white/20 underline-offset-4 transition hover:text-steel-orange hover:decoration-steel-orange">{item}</Link>
+                            : item}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </section>
               ))}
@@ -121,6 +166,7 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
             </div>
           </div>
         </section>
+        {seo && <FaqSection items={seo.faq} title={`Вопросы: ${industry.title.toLowerCase()}`} />}
       </PageLayout>
     </>
   );

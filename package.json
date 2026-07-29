@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "seo:audit": "node scripts/audit-seo.mjs",
     "indexnow:submit": "node scripts/submit-indexnow.mjs"
   },
   "dependencies": {
