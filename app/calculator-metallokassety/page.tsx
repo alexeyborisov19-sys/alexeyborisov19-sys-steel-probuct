@@ -100,7 +100,7 @@ export default function MetalCassetteCalculatorPage() {
         eyebrow="Онлайн-расчёт фасада"
         title="Калькулятор металлокассет"
         description="Рассчитайте ориентировочное количество и стоимость фасадных металлокассет 1170×545 мм с рустом 20×20 мм по площади вашего объекта."
-        image="/images/web/hero-main.jpg"
+        image="/images/web/hero-main.webp"
       >
         <section className="bg-[#0c1013] pb-16 pt-1 sm:pb-20">
           <div className="container">

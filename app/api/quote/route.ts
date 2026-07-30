@@ -1,28 +1,33 @@
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { relative, resolve, sep } from "node:path";
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { createHash, randomUUID } from "node:crypto";
-import { appendFile, mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { recordConsentAudit } from "@/lib/legal/consent-audit";
 import { legalDocumentVersions } from "@/lib/legal";
+import { clientKey } from "@/lib/security/client-ip";
+import {
+  consumeRules,
+  isDuplicateSubmission,
+  quoteRateRules,
+} from "@/lib/security/rate-limit";
+import { PayloadTooLargeError, readMultipartForm } from "@/lib/security/request-body";
+import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
+import { safeSecurityLog } from "@/lib/security/safe-log";
+import {
+  inspectUploads,
+  quarantineUploads,
+  uploadLimits,
+  UploadValidationError,
+} from "@/lib/security/uploads";
 
 export const runtime = "nodejs";
 
-const MAX_FILES = 10;
-// Conservative limits keep requests reliable across the future approved mail provider.
-const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
-const MAX_FILE_BYTES = 7 * 1024 * 1024;
-const allowedExtensions = new Set([
-  "pdf", "dxf", "dwg", "dwt", "dws", "step", "stp", "iges", "igs",
-  "sldprt", "sldasm", "ipt", "iam", "idw", "png", "jpg", "jpeg", "webp",
-  "tif", "tiff", "doc", "docx", "xls", "xlsx", "zip", "rar", "7z",
-]);
-
-function value(formData: FormData, key: string) {
-  return String(formData.get(key) ?? "").trim().replace(/[\r\n]+/g, " ");
-}
-
-function extensionOf(name: string) {
-  return name.split(".").pop()?.toLowerCase() ?? "";
+function value(formData: FormData, key: string, maximumLength = 2000) {
+  return String(formData.get(key) ?? "")
+    .trim()
+    .replace(/[\r\n]+/g, " ")
+    .slice(0, maximumLength);
 }
 
 function smtpConfiguration() {
@@ -30,7 +35,6 @@ function smtpConfiguration() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASSWORD;
   if (!host || !user || !pass) return null;
-
   const port = Number(process.env.SMTP_PORT ?? "465");
   return {
     host,
@@ -44,161 +48,236 @@ function sha256(valueToHash: string) {
   return createHash("sha256").update(valueToHash).digest("hex");
 }
 
-async function appendConsentAudit(record: Record<string, unknown>) {
-  const configuredPath = process.env.CONSENT_LOG_PATH;
-  const auditPath = resolve(configuredPath || ".data/consent-audit.jsonl");
-  if (auditPath.includes("/public/")) {
-    throw new Error("Consent audit path must not be inside the public directory.");
+function assertPrivateStorage(path: string) {
+  const publicRoot = resolve(process.cwd(), "public");
+  const fromPublic = relative(publicRoot, path);
+  if (fromPublic === "" || (!fromPublic.startsWith(`..${sep}`) && fromPublic !== "..")) {
+    throw new Error("Quote storage must be outside public");
   }
-  await mkdir(dirname(auditPath), { recursive: true, mode: 0o700 });
-  await appendFile(auditPath, `${JSON.stringify(record)}\n`, { encoding: "utf8", mode: 0o600 });
+}
+
+function safePageUrl(raw: string) {
+  try {
+    const url = new URL(raw);
+    return `${url.origin}${url.pathname}`.slice(0, 500);
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
-  const configuration = smtpConfiguration();
-  if (!configuration) {
-    return NextResponse.json({ message: "Почтовый сервер ещё не подключён. Пожалуйста, отправьте файлы на info@steelprodukt.ru." }, { status: 503 });
+  const ownerKey = clientKey(request);
+  try {
+    assertSameOriginRequest(request);
+  } catch (error) {
+    if (error instanceof CrossSiteRequestError) {
+      safeSecurityLog("quote", "cross_site_rejected", ownerKey);
+      return NextResponse.json({ message: "Запрос отклонён." }, { status: 403 });
+    }
+    throw error;
+  }
+
+  const limited = consumeRules(ownerKey, quoteRateRules);
+  if (limited) {
+    safeSecurityLog("quote", "rate_limited", ownerKey);
+    return NextResponse.json(
+      { message: "Слишком много заявок. Повторите позже." },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfterSeconds) } },
+    );
   }
 
   try {
-    const formData = await request.formData();
-    const name = value(formData, "name");
-    const phone = value(formData, "phone");
-    const email = value(formData, "email");
-    const company = value(formData, "company");
-    const message = value(formData, "message");
-    const pageUrl = value(formData, "pageUrl");
-    const referrer = value(formData, "referrer");
-    const personalDataConsent = value(formData, "personalDataConsent");
-    const marketingConsent = value(formData, "marketingConsent");
-    const consentTimestamp = value(formData, "consentTimestamp");
-    const personalDataConsentVersion = value(formData, "personalDataConsentVersion");
-    const privacyVersion = value(formData, "privacyVersion");
-    const marketingConsentVersion = value(formData, "marketingConsentVersion");
-    const website = value(formData, "website");
+    const formData = await readMultipartForm(request, uploadLimits.maximumMultipartBytes);
+    const name = value(formData, "name", 120);
+    const phone = value(formData, "phone", 80);
+    const email = value(formData, "email", 160).toLowerCase();
+    const company = value(formData, "company", 160);
+    const message = value(formData, "message", 8000);
+    const pageUrl = value(formData, "pageUrl", 1000);
+    const referrer = value(formData, "referrer", 1000);
+    const personalDataConsent = value(formData, "personalDataConsent", 20);
+    const marketingConsent = value(formData, "marketingConsent", 20);
+    const consentTimestamp = value(formData, "consentTimestamp", 80);
+    const website = value(formData, "website", 200);
     const attribution = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "yclid", "gclid"]
-      .map((key) => [key, value(formData, key)] as const)
+      .map((key) => [key, value(formData, key, 200)] as const)
       .filter(([, attributionValue]) => attributionValue);
 
-    // Invisible bot trap: respond successfully without delivering spam.
-    if (website) return NextResponse.json({ ok: true });
-
+    if (website) {
+      safeSecurityLog("quote", "accepted", ownerKey);
+      return NextResponse.json({ ok: true });
+    }
     if (!name) {
+      safeSecurityLog("quote", "bad_request", ownerKey);
       return NextResponse.json({ message: "Укажите имя." }, { status: 400 });
     }
     if (!phone && !email) {
+      safeSecurityLog("quote", "bad_request", ownerKey);
       return NextResponse.json({ message: "Укажите телефон или электронную почту — достаточно одного способа связи." }, { status: 400 });
     }
     if (personalDataConsent !== "yes") {
+      safeSecurityLog("quote", "bad_request", ownerKey);
       return NextResponse.json({ message: "Для отправки заявки требуется согласие на обработку персональных данных." }, { status: 400 });
     }
     if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      safeSecurityLog("quote", "bad_request", ownerKey);
       return NextResponse.json({ message: "Проверьте адрес электронной почты." }, { status: 400 });
     }
 
-    const files = formData.getAll("files").filter((item): item is File => item instanceof File && item.size > 0);
-    if (files.length > MAX_FILES) {
-      return NextResponse.json({ message: `Можно прикрепить не более ${MAX_FILES} файлов.` }, { status: 400 });
-    }
-    if (files.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_BYTES) {
-      return NextResponse.json({ message: "Общий размер вложений не должен превышать 10 МБ." }, { status: 400 });
-    }
-    if (files.some((file) => file.size > MAX_FILE_BYTES)) {
-      return NextResponse.json({ message: "Размер каждого вложения не должен превышать 7 МБ." }, { status: 400 });
-    }
-    if (files.some((file) => !allowedExtensions.has(extensionOf(file.name)))) {
-      return NextResponse.json({ message: "Один или несколько файлов имеют неподдерживаемый формат." }, { status: 400 });
+    const files = formData.getAll("files").filter((item): item is File =>
+      item instanceof File && item.size > 0,
+    );
+    const inspected = await inspectUploads(files);
+    const fingerprint = sha256([
+      ownerKey,
+      name.toLowerCase(),
+      phone.replace(/\D/g, ""),
+      email,
+      company.toLowerCase(),
+      sha256(message),
+      ...inspected.map((file) => `${file.safeName}:${file.size}`),
+    ].join("|"));
+    if (isDuplicateSubmission(fingerprint, "quote")) {
+      safeSecurityLog("quote", "duplicate", ownerKey);
+      return NextResponse.json(
+        { message: "Такая заявка уже принята. Повторная отправка не требуется." },
+        { status: 429, headers: { "Retry-After": "600" } },
+      );
     }
 
-    const requestId = randomUUID();
-    const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
-    const contactHash = sha256(`${phone.replace(/\D/g, "")}|${email.toLowerCase()}`);
-    const consentAudit = {
+    const requestId = `SP-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
+    const quarantinedFiles = await quarantineUploads(requestId, inspected);
+    const antivirusBlocked = quarantinedFiles.some((file) => file.antivirus === "blocked");
+    const recordedAt = new Date().toISOString();
+    const consent = {
       event: "quote_request_consent",
-      requestId,
-      recordedAt: new Date().toISOString(),
+      recordedAt,
       clientTimestamp: consentTimestamp || null,
-      pageUrl: pageUrl || null,
-      referrer: referrer || null,
-      personalDataConsent: true,
-      personalDataConsentVersion: personalDataConsentVersion || legalDocumentVersions.personalDataConsent,
-      privacyVersion: privacyVersion || legalDocumentVersions.privacy,
-      marketingConsent: marketingConsent === "yes",
+      personalData: true,
+      personalDataConsentVersion: legalDocumentVersions.personalDataConsent,
+      privacyVersion: legalDocumentVersions.privacy,
+      marketing: marketingConsent === "yes",
       marketingConsentVersion: marketingConsent === "yes"
-        ? marketingConsentVersion || legalDocumentVersions.marketingConsent
+        ? legalDocumentVersions.marketingConsent
         : null,
-      contactHash,
-      ipHash: forwardedFor ? sha256(forwardedFor) : null,
-      userAgent: request.headers.get("user-agent") ?? null,
+      ipHash: ownerKey,
     };
 
-    try {
-      await appendConsentAudit(consentAudit);
-    } catch (auditError) {
-      console.error("Consent audit write failed", auditError);
-      if (process.env.NODE_ENV === "production" || process.env.CONSENT_LOG_REQUIRED === "true") {
-        return NextResponse.json({
-          message: "Не удалось зафиксировать согласие. Пожалуйста, повторите отправку или напишите на info@steelprodukt.ru.",
-        }, { status: 503 });
-      }
-    }
-
-    const recipient = process.env.QUOTE_RECIPIENT ?? "info@steelprodukt.ru";
-    // Never fall back to a technical SMTP login as the visible sender: it breaks
-    // SPF/DKIM alignment and is frequently rejected by Mail.ru. The verified
-    // company mailbox is used until an explicit replacement is configured.
-    const from = process.env.SMTP_FROM ?? "info@steelprodukt.ru";
-    // Mail.ru requires the visible sender, SMTP envelope sender and DKIM domain
-    // to align. Keep the envelope configurable while defaulting to the sender.
-    const envelopeFrom = process.env.SMTP_ENVELOPE_FROM ?? from;
-    const transporter = nodemailer.createTransport(configuration);
-    const attachments = await Promise.all(files.map(async (file) => ({
-      filename: file.name.replace(/[\r\n]/g, "_"),
-      content: Buffer.from(await file.arrayBuffer()),
-    })));
-
-    await transporter.sendMail({
-      from: `Сталь Продукт <${from}>`,
-      to: recipient,
-      envelope: {
-        from: envelopeFrom,
-        to: recipient,
-      },
-      replyTo: email || undefined,
-      subject: `Заявка на расчёт${company ? ` — ${company}` : ""}`,
-      text: [
-        "Новая заявка с сайта «Сталь Продукт».",
-        `ID заявки: ${requestId}`,
-        `Имя: ${name}`,
-        `Телефон: ${phone || "не указан"}`,
-        `E-mail: ${email || "не указан"}`,
-        `Компания: ${company || "не указана"}`,
-        `Задача: ${message || "не описана"}`,
-        `Вложений: ${files.length}`,
-        `Страница заявки: ${pageUrl || "не определена"}`,
-        `Источник перехода: ${referrer || "прямой переход"}`,
-        `Согласие на обработку персональных данных: получено (${consentTimestamp || "время не передано"}; редакция ${personalDataConsentVersion || legalDocumentVersions.personalDataConsent})`,
-        `Политика обработки данных: редакция ${privacyVersion || legalDocumentVersions.privacy}`,
-        `Согласие на рекламные сообщения: ${marketingConsent === "yes" ? `получено; редакция ${marketingConsentVersion || legalDocumentVersions.marketingConsent}` : "не получено"}`,
-        `User-Agent: ${request.headers.get("user-agent") ?? "не определён"}`,
-        ...(attribution.length ? ["Метки кампании:", ...attribution.map(([key, attributionValue]) => `${key}: ${attributionValue}`)] : []),
-      ].join("\n"),
-      attachments,
+    const storageRoot = resolve(process.env.QUOTE_STORAGE_PATH || ".data/quote-leads");
+    assertPrivateStorage(storageRoot);
+    await mkdir(storageRoot, { recursive: true, mode: 0o700 });
+    const recordPath = resolve(storageRoot, `${requestId}.json`);
+    const record = {
+      requestId,
+      createdAt: recordedAt,
+      source: "quote-form",
+      name,
+      phone: phone || null,
+      email: email || null,
+      company: company || null,
+      message: message || null,
+      pageUrl: safePageUrl(pageUrl),
+      referrer: safePageUrl(referrer),
+      attribution: Object.fromEntries(attribution),
+      files: quarantinedFiles,
+      consent,
+      delivery: "stored" as "email" | "stored",
+      retentionDays: Number(process.env.LEAD_RETENTION_DAYS || "90"),
+    };
+    await writeFile(
+      recordPath,
+      `${JSON.stringify(record, null, 2)}\n`,
+      { encoding: "utf8", mode: 0o600, flag: "wx" },
+    );
+    await recordConsentAudit({
+      event: "quote_request_consent",
+      requestId,
+      recordedAt,
+      clientTimestamp: consentTimestamp || null,
+      personalDataConsentVersion: consent.personalDataConsentVersion,
+      privacyVersion: consent.privacyVersion,
+      marketing: consent.marketing,
+      marketingConsentVersion: consent.marketingConsentVersion,
+      ownerKey,
+      phone,
+      email,
     });
 
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    const diagnostic = error instanceof Error
-      ? {
-          name: error.name,
-          message: error.message,
-          code: "code" in error ? String(error.code ?? "") : undefined,
-        }
-      : { name: "UnknownError", message: String(error) };
+    const configuration = smtpConfiguration();
+    if (configuration && !antivirusBlocked) {
+      try {
+        const recipient = process.env.QUOTE_RECIPIENT ?? "info@steelprodukt.ru";
+        const from = process.env.SMTP_FROM ?? "info@steelprodukt.ru";
+        const envelopeFrom = process.env.SMTP_ENVELOPE_FROM ?? from;
+        const transporter = nodemailer.createTransport(configuration);
+        const attachments = inspected.map((file, index) => {
+          const quarantine = quarantinedFiles[index];
+          const unverified = quarantine.antivirus !== "clean" || quarantine.safety !== "verified";
+          return {
+            filename: `${unverified ? "НЕПРОВЕРЕНО-" : ""}${file.safeName}`,
+            content: file.buffer,
+          };
+        });
 
-    console.error("Quote request sending failed", diagnostic);
-    // A short, non-sensitive marker makes delivery faults traceable in PM2 logs.
-    console.log("QUOTE_MAIL_DIAGNOSTIC", diagnostic);
-    return NextResponse.json({ message: "Не удалось отправить заявку. Попробуйте ещё раз или напишите на info@steelprodukt.ru." }, { status: 500 });
+        await transporter.sendMail({
+          from: `Сталь Продукт <${from}>`,
+          to: recipient,
+          envelope: { from: envelopeFrom, to: recipient },
+          replyTo: email || undefined,
+          subject: `Заявка на расчёт ${requestId}${company ? ` — ${company}` : ""}`,
+          text: [
+            "Новая заявка с сайта «Сталь Продукт».",
+            `ID заявки: ${requestId}`,
+            `Имя: ${name}`,
+            `Телефон: ${phone || "не указан"}`,
+            `E-mail: ${email || "не указан"}`,
+            `Компания: ${company || "не указана"}`,
+            `Задача: ${message || "не описана"}`,
+            `Вложений: ${files.length}`,
+            "Вложения первично сохранены в закрытом карантине. Файлы с пометкой НЕПРОВЕРЕНО требуют проверки перед открытием.",
+          ].join("\n"),
+          attachments,
+        });
+        record.delivery = "email";
+      } catch {
+        record.delivery = "stored";
+      }
+    }
+    await writeFile(
+      recordPath,
+      `${JSON.stringify(record, null, 2)}\n`,
+      { encoding: "utf8", mode: 0o600 },
+    );
+
+    if (antivirusBlocked) {
+      safeSecurityLog("quote", "antivirus_blocked", ownerKey);
+      return NextResponse.json(
+        { message: "Заявка сохранена, но один из файлов не прошёл обязательную проверку. Специалист свяжется с вами безопасным способом." },
+        { status: 500 },
+      );
+    }
+
+    safeSecurityLog("quote", "stored", ownerKey);
+    return NextResponse.json({
+      ok: true,
+      requestId,
+      message: record.delivery === "email"
+        ? "Заявка принята."
+        : "Заявка сохранена. Специалист обработает её после проверки материалов.",
+    });
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      safeSecurityLog("quote", "payload_too_large", ownerKey);
+      return NextResponse.json({ message: "Общий размер запроса превышает 10 МБ." }, { status: 413 });
+    }
+    if (error instanceof UploadValidationError) {
+      safeSecurityLog("quote", error.status === 413 ? "payload_too_large" : "bad_request", ownerKey);
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+    safeSecurityLog("quote", "internal_error", ownerKey);
+    return NextResponse.json(
+      { message: "Не удалось принять заявку. Попробуйте ещё раз или позвоните +7 910 780 37 23." },
+      { status: 500 },
+    );
   }
 }

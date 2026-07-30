@@ -37,7 +37,7 @@ export function GET() {
     {
       pagePath: "/",
       images: [{
-        path: "/images/web/hero-main.jpg",
+        path: "/images/web/hero-main.webp",
         title: "Инженерные решения из листового металла",
         caption: "Архитектурные и промышленные решения компании «Сталь Продукт».",
       }],

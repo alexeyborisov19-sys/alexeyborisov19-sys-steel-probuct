@@ -13,8 +13,9 @@ function escapeXml(value: string) {
 }
 
 export function GET() {
-  const items = [...articles]
-    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+  const sortedArticles = [...articles]
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  const items = sortedArticles
     .map((article) => {
       const url = absoluteUrl(`/articles/${article.slug}`);
       return `<item>
@@ -33,9 +34,9 @@ export function GET() {
 <channel>
   <title>${escapeXml("Инженерный журнал «Сталь Продукт»")}</title>
   <link>${absoluteUrl("/articles")}</link>
-  <description>${escapeXml("Новости металлообработки, фасадные инновации, выставки и инженерная практика.")}</description>
+  <description>${escapeXml("Инженерная практика, технологии металлообработки, фасадные инновации и отраслевые выставки.")}</description>
   <language>ru</language>
-  <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+  <lastBuildDate>${new Date(`${sortedArticles.reduce((latest, article) => article.modifiedAt > latest ? article.modifiedAt : latest, "2026-01-01")}T09:00:00+03:00`).toUTCString()}</lastBuildDate>
   <managingEditor>${siteConfig.email} (${escapeXml(siteConfig.name)})</managingEditor>
 ${items}
 </channel>

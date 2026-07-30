@@ -38,7 +38,7 @@ export default function IndustriesPage() {
       eyebrow="Решения для объектов"
       title="Решения для отраслей и объектов"
       description="Комплексные решения из листового металла для строительства, промышленности и инженерной инфраструктуры. Выберите направление и ознакомьтесь с составом поставки для конкретного объекта."
-      image="/images/web/hero-main.jpg"
+      image="/images/web/hero-main.webp"
     >
       <section className="bg-[#0c1013] py-14 sm:py-20">
         <div className="container">

@@ -8,23 +8,6 @@ type CommercialLink = {
 };
 
 const linksByDirection: Record<ArticleDirection, CommercialLink[]> = {
-  news: [
-    {
-      title: "Лазерная резка металла",
-      description: "Подготовка файлов, раскладка, контроль геометрии и передача деталей на следующие операции.",
-      href: "/production/lazernaya-rezka-metalla",
-    },
-    {
-      title: "Решения для промышленности",
-      description: "Корпуса, шкафы, кожухи, рамы и изделия для промышленного оборудования.",
-      href: "/solutions/industry",
-    },
-    {
-      title: "Изготовление по чертежам",
-      description: "Передайте модель, чертёж или техническое задание для инженерной оценки.",
-      href: "/solutions/custom",
-    },
-  ],
   facades: [
     {
       title: "Металлокассеты",

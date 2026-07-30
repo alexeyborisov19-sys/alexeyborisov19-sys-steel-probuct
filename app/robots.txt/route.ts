@@ -6,22 +6,7 @@ export function GET() {
   const robots = `User-agent: *
 Allow: /
 Disallow: /api/
-
-User-agent: Yandex
-Allow: /
 Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&_ym_status-check
-
-User-agent: Googlebot
-Allow: /
-
-User-agent: bingbot
-Allow: /
-
-User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
 
 Host: www.steelprodukt.ru
 Sitemap: ${siteConfig.url}/sitemap.xml

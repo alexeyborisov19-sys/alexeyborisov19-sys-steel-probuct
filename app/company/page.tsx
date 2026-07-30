@@ -127,7 +127,7 @@ export default function CompanyPage() {
       </div>
     </section>
 
-    <section className="bg-[#0c1013] py-16 sm:py-20">
+    <section id="advantages" className="scroll-mt-24 bg-[#0c1013] py-16 sm:py-20">
       <div className="container">
         <p className="eyebrow">Почему Сталь Продукт</p>
         <h2 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl">Производственная мощность важна. Но для заказчика важнее уверенность в результате.</h2>

@@ -32,7 +32,7 @@ export type EventSchemaItem = {
 export function organizationSchema(): JsonLd {
   return {
     "@context": "https://schema.org",
-    "@type": ["Organization", "Manufacturer"],
+    "@type": ["Organization", "LocalBusiness", "Manufacturer"],
     "@id": `${siteConfig.url}/#organization`,
     name: siteConfig.name,
     legalName: legalOperator.name,
@@ -206,6 +206,45 @@ export function productSchema(product: Product): JsonLd {
       "@type": "PropertyValue",
       name: spec.label,
       value: spec.value,
+    })),
+  };
+}
+
+export function productGroupSchema({
+  name,
+  description,
+  path,
+  groupId,
+  products,
+}: {
+  name: string;
+  description: string;
+  path: string;
+  groupId: string;
+  products: Product[];
+}): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProductGroup",
+    "@id": `${absoluteUrl(path)}#product-group`,
+    productGroupID: groupId,
+    name,
+    description,
+    category: "Фасадные металлокассеты",
+    brand: { "@type": "Brand", name: siteConfig.name },
+    manufacturer: { "@id": `${siteConfig.url}/#organization` },
+    variesBy: ["https://schema.org/pattern"],
+    hasVariant: products.map((product) => ({
+      "@type": "Product",
+      "@id": `${absoluteUrl(`/products/${product.slug}`)}#product`,
+      name: product.title,
+      description: product.lead,
+      url: absoluteUrl(`/products/${product.slug}`),
+      image: absoluteUrl(product.technicalImage),
+      category: product.category,
+      brand: { "@type": "Brand", name: siteConfig.name },
+      manufacturer: { "@id": `${siteConfig.url}/#organization` },
+      inProductGroupWithID: groupId,
     })),
   };
 }

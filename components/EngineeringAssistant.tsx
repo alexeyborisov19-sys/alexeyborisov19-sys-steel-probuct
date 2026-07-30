@@ -7,7 +7,6 @@ import {
   FormEvent,
   KeyboardEvent,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -24,6 +23,7 @@ type AssistantResponse = {
   answer?: string;
   message?: string;
   mode?: "ai" | "knowledge";
+  sessionId?: string;
   suggestions?: string[];
 };
 
@@ -72,6 +72,10 @@ function EngineerBrandMark({ compact = false }: { compact?: boolean }) {
         <img
           src="/logo/steel-product.png"
           alt=""
+          width={1851}
+          height={402}
+          loading="lazy"
+          decoding="async"
           className={compact
             ? "absolute left-0 top-0 h-[27px] w-auto max-w-none drop-shadow-[0_0_7px_rgba(234,91,12,.22)]"
             : "absolute left-0 top-0 h-[31px] w-auto max-w-none drop-shadow-[0_0_8px_rgba(234,91,12,.25)]"
@@ -88,9 +92,10 @@ function EngineerBrandMark({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function EngineeringAssistant() {
-  const [open, setOpen] = useState(false);
+export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
   const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([...assistantQuickQuestions]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -101,11 +106,6 @@ export function EngineeringAssistant() {
   const [completedRequestId, setCompletedRequestId] = useState<string | null>(null);
   const messageEnd = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  const conversationSummary = useMemo(() => messages
-    .filter((message) => message.id !== "welcome")
-    .map((message) => `${message.role === "user" ? "Клиент" : "ИИ-инженер"}: ${message.content}`)
-    .join("\n\n"), [messages]);
 
   useEffect(() => {
     if (!open) return;
@@ -135,6 +135,7 @@ export function EngineeringAssistant() {
     setFiles([]);
     setLeadFeedback(null);
     setCompletedRequestId(null);
+    setSessionId(null);
     window.setTimeout(() => inputRef.current?.focus(), 120);
   }
 
@@ -142,8 +143,7 @@ export function EngineeringAssistant() {
     const content = question.trim();
     if (!content || loading) return;
     const userMessage: ChatMessage = { id: makeId(), role: "user", content };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
+    setMessages((current) => [...current, userMessage]);
     setInput("");
     setLoading(true);
     setSuggestions([]);
@@ -154,14 +154,13 @@ export function EngineeringAssistant() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages.map(({ role, content: messageContent }) => ({
-            role,
-            content: messageContent,
-          })),
+          message: content,
+          sessionId,
         }),
       });
       const payload = await response.json() as AssistantResponse;
       if (!response.ok) throw new Error(payload.message || "Не удалось получить ответ.");
+      if (payload.sessionId) setSessionId(payload.sessionId);
       setMessages((current) => [...current, {
         id: makeId(),
         role: "assistant",
@@ -242,7 +241,7 @@ export function EngineeringAssistant() {
       setLeadFeedback({ type: "error", text: "Подтвердите согласие на обработку персональных данных." });
       return;
     }
-    formData.set("summary", conversationSummary || "Клиент запросил связь с инженером.");
+    if (sessionId) formData.set("sessionId", sessionId);
     formData.set("consentTimestamp", new Date().toISOString());
     if (typeof window !== "undefined") formData.set("pageUrl", window.location.href);
     files.forEach((file) => formData.append("files", file));

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
+import { JsonLd } from "@/components/JsonLd";
 import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";
 import { ProductCard } from "@/components/ProductCard";
 import { metalCassetteSpecs, productBySlug } from "@/data/products";
+import { productGroupSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -28,12 +30,22 @@ const cassetteSlugs = [
 ];
 
 export default function MetalCassetteCollectionPage() {
-  return <PageLayout
+  const cassetteProducts = cassetteSlugs.map((slug) => productBySlug[slug]);
+
+  return <>
+    <JsonLd data={productGroupSchema({
+      name: "Фасадные металлокассеты «Сталь Продукт»",
+      description: "Серии фасадных металлокассет Стандарт, Премиум, Рельеф и Ажур с открытым и скрытым креплением, объёмной геометрией и перфорацией.",
+      path: "/products/metallokassety",
+      groupId: "steelprodukt-metallokassety",
+      products: cassetteProducts,
+    })} />
+    <PageLayout
     path="/products/metallokassety"
     eyebrow="Архитектурные решения"
     title="Металлокассеты"
     description="Четыре серии фасадных металлокассет для разных архитектурных задач: открытый и скрытый крепёж, объёмная геометрия и перфорация."
-    image="/images/web/hero-main.jpg"
+    image="/images/web/hero-main.webp"
   >
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
@@ -67,7 +79,7 @@ export default function MetalCassetteCollectionPage() {
           <div><p className="eyebrow">Серии в деталях</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Каталог металлокассет</h2></div>
           <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="text-xs font-bold uppercase text-steel-orange">Открыть полный PDF-каталог&nbsp; ↗</a>
         </div>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cassetteSlugs.map((slug) => <ProductCard key={slug} product={productBySlug[slug]} />)}</div>
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cassetteProducts.map((product) => <ProductCard key={product.slug} product={product} />)}</div>
       </div>
     </section>
     <section className="border-t border-white/10 bg-[#17191a] py-10">
@@ -76,5 +88,6 @@ export default function MetalCassetteCollectionPage() {
         <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-8 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
       </div>
     </section>
-  </PageLayout>;
+    </PageLayout>
+  </>;
 }

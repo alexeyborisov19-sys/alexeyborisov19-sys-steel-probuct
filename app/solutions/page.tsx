@@ -23,7 +23,7 @@ export default function SolutionsPage() {
       eyebrow="Решения"
       title="Инженерные решения из листового металла"
       description="Готовые решения и производство изделий по техническому заданию для строительства, промышленности и инженерной инфраструктуры."
-      image="/images/web/hero-main.jpg"
+      image="/images/web/hero-main.webp"
     >
       <section className="bg-[#0c1013] py-14">
         <div className="container grid gap-4 md:grid-cols-2 xl:grid-cols-3">

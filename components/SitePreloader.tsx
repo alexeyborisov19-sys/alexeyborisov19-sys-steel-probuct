@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-const DISPLAY_DURATION = 1750;
-const EXIT_DURATION = 420;
+const FIRST_VISIT_DURATION = 420;
+const EXIT_DURATION = 220;
+const SESSION_KEY = "steelprodukt-preloader-shown";
 
 export function SitePreloader() {
   const [visible, setVisible] = useState(true);
@@ -13,7 +14,17 @@ export function SitePreloader() {
     const startedAt = performance.now();
     const reducedMotion = typeof window.matchMedia === "function"
       && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const minimumDuration = reducedMotion ? 240 : DISPLAY_DURATION;
+    let alreadyShown = false;
+    try {
+      alreadyShown = window.sessionStorage.getItem(SESSION_KEY) === "1";
+    } catch {
+      alreadyShown = false;
+    }
+    if (alreadyShown) {
+      setVisible(false);
+      return;
+    }
+    const minimumDuration = reducedMotion ? 80 : FIRST_VISIT_DURATION;
     let finished = false;
     let exitTimer: number | undefined;
     let removeTimer: number | undefined;
@@ -24,6 +35,11 @@ export function SitePreloader() {
       const remaining = Math.max(0, minimumDuration - (performance.now() - startedAt));
 
       exitTimer = window.setTimeout(() => {
+        try {
+          window.sessionStorage.setItem(SESSION_KEY, "1");
+        } catch {
+          // A blocked sessionStorage must not hold the page behind the overlay.
+        }
         setLeaving(true);
         removeTimer = window.setTimeout(() => setVisible(false), EXIT_DURATION);
       }, remaining);
@@ -35,7 +51,7 @@ export function SitePreloader() {
       window.addEventListener("load", finish, { once: true });
     }
 
-    const fallbackTimer = window.setTimeout(finish, 3200);
+    const fallbackTimer = window.setTimeout(finish, 1200);
 
     return () => {
       window.removeEventListener("load", finish);
@@ -55,7 +71,7 @@ export function SitePreloader() {
       <div className="site-preloader__sheet site-preloader__sheet--left" />
       <div className="site-preloader__sheet site-preloader__sheet--right" />
       <div className="site-preloader__content">
-        <img className="site-preloader__logo" src="/logo/steel-product.png" alt="" />
+        <img className="site-preloader__logo" src="/logo/steel-product.png" alt="" width={1851} height={402} loading="eager" decoding="async" />
         <p>Инженерные решения из листового металла</p>
       </div>
     </div>

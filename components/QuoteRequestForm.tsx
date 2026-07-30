@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { trackLeadEvent } from "@/lib/analytics";
-import { legalDocumentVersions, legalLinks } from "@/lib/legal";
+import { legalLinks } from "@/lib/legal";
 
 const MAX_FILES = 10;
 const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
@@ -120,11 +120,6 @@ export function QuoteRequestForm() {
       return;
     }
     formData.append("consentTimestamp", new Date().toISOString());
-    formData.append("personalDataConsentVersion", legalDocumentVersions.personalDataConsent);
-    formData.append("privacyVersion", legalDocumentVersions.privacy);
-    if (formData.get("marketingConsent") === "yes") {
-      formData.append("marketingConsentVersion", legalDocumentVersions.marketingConsent);
-    }
     files.forEach((file) => formData.append("files", file));
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);

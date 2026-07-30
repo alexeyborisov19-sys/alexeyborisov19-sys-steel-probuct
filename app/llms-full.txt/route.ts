@@ -26,8 +26,8 @@ export function GET() {
     `  Контроль: ${service.controls.join("; ")}.`,
   ].join("\n")).join("\n");
 
-  const recentNews = articles
-    .filter((article) => article.direction === "news")
+  const engineeringPractice = articles
+    .filter((article) => article.direction === "engineering-practice")
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
     .slice(0, 8)
     .map((article) => `- ${article.publishedAt}: ${article.title}\n  ${article.lead}\n  URL: ${siteConfig.url}/articles/${article.slug}`)
@@ -64,8 +64,9 @@ ${productList}
 
 ## Редакционные материалы
 
-- Инженерный журнал и ежедневные новости металлообработки: ${siteConfig.url}/articles
-${recentNews}
+- Инженерный журнал по металлообработке: ${siteConfig.url}/articles
+- Главная рубрика — инженерная практика:
+${engineeringPractice}
 - Календарь ключевых выставок по металлообработке в Китае на 2026–2027 годы: ${siteConfig.url}/articles/vystavki-metalloobrabotka-kitay-2026
   Подтверждённая дата 2027 года: ITES China, 24–27 марта, Шэньчжэнь.
 - Проверенный календарь выставок фасадов и архитектурных инноваций России, Китая и Дубая на 2026–2027 годы: ${siteConfig.url}/articles/vystavki-fasady-arhitektura-2026

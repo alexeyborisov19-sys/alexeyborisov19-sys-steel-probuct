@@ -21,7 +21,7 @@ export type ArticleSource = {
   language?: string;
 };
 
-export type ArticleDirection = "news" | "facades" | "metalworking" | "engineering-practice";
+export type ArticleDirection = "facades" | "metalworking" | "engineering-practice";
 
 export type Article = {
   slug: string;
@@ -45,94 +45,9 @@ export type Article = {
 
 const baseArticles: Article[] = [
   {
-    slug: "ezhednevnaya-svodka-metalloobrabotka-proizvodstvo-28-07-2026",
-    category: "Ежедневная сводка",
-    direction: "news",
-    series: "28 июля 2026 · Металлообработка и производство",
-    title: "Ежедневная сводка: металлообработка и производство",
-    lead: "Новые технологии, оборудование и производственные практики, которые могут влиять на обработку листового металла, автоматизацию и эффективность предприятия.",
-    image: "/images/web/production.jpg",
-    readingTime: "5 минут",
-    publishedAt: "2026-07-28",
-    modifiedAt: "2026-07-28",
-    keywords: [
-      "новости металлообработки сегодня",
-      "ежедневная промышленная сводка",
-      "новости производства листового металла",
-      "автоматизация гибки",
-      "ИИ в лазерной резке",
-      "станки для металлообработки новости",
-    ],
-    sections: [
-      {
-        title: "Металлообработка и производство",
-        newsItems: [
-          {
-            title: "Рынок оборудования показывает признаки восстановления",
-            summary: "По предварительным итогам финансового года TRUMPF сообщил о росте объёма заказов на 7% — до 4,5 млрд евро. Выручка осталась примерно на уровне предыдущего года.",
-            importance: "Динамика одного из крупнейших производителей станков и лазерных систем служит заметным индикатором инвестиционной активности предприятий, работающих с листовым металлом.",
-            consequences: "При сохранении спроса производители оборудования и компонентов могут активнее выводить новые решения, а сроки поставки наиболее востребованных комплексов и оснастки — увеличиться.",
-          },
-          {
-            title: "TRUMPF расширяет направление инструмента вместе с Mate",
-            summary: "TRUMPF объявил о соглашении по приобретению Mate Precision Technologies. Mate продолжит работать под собственным брендом, а портфель TRUMPF пополнится инструментом для пробивки, гибки и других операций.",
-            importance: "Заказчики всё чаще оценивают не отдельный станок, а доступность всей технологической экосистемы — инструмента, расходных элементов, сервиса и инженерной поддержки.",
-            consequences: "Предложение инструмента станет шире, а конкуренция будет смещаться в сторону комплексных решений, сокращающих время подбора оснастки и переналадки.",
-          },
-          {
-            title: "Автоматизация гибки становится гибче",
-            summary: "Новый производственный кейс CLAAS показывает развитие автоматизированной гибки для широкой номенклатуры деталей и меняющегося размера партий.",
-            importance: "Для контрактного производства ограничением часто становится не скорость одного гиба, а переналадка, подготовка программы, смена инструмента и передача партии между операциями.",
-            consequences: "Предприятия будут активнее внедрять автоматизацию там, где она умеет работать с разными заданиями, а требования к цифровой конструкторской и технологической подготовке вырастут.",
-          },
-          {
-            title: "ИИ берёт на себя сортировку после лазерной резки",
-            summary: "SortMaster Station и SortMaster Vision используют камеру и алгоритмы распознавания, чтобы автоматически отделять, идентифицировать и укладывать детали после лазерной резки без ручного программирования сортировки.",
-            importance: "Сортировка сложных деталей остаётся трудоёмким участком и может снижать фактическую производительность даже быстрого лазерного комплекса.",
-            consequences: "Прикладные системы машинного зрения будут всё чаще становиться частью стандартной автоматизации раскроя, а производственные данные — связываться с реальным положением каждой детали.",
-          },
-        ],
-      },
-    ],
-    checklist: [
-      "Проверять первоисточник и дату отраслевой новости",
-      "Оценивать влияние технологии на полный производственный цикл",
-      "Считать не только скорость операции, но и время переналадки",
-      "Сопоставлять автоматизацию с реальной номенклатурой изделий",
-    ],
-    related: { label: "Посмотреть производство", href: "/production" },
-    editorNote: "Ежедневная сводка подготовлена редакцией «Сталь Продукт» по официальным публикациям производителей оборудования. Возможные последствия являются редакционной оценкой, а не установленным фактом или рекламой оборудования.",
-    sources: [
-      {
-        name: "TRUMPF",
-        title: "TRUMPF leaves crisis behind: order intake rises by 7 percent",
-        url: "https://www.trumpf.com/en_US/newsroom/global-press-releases/press-release-detail-page/release/trumpf-leaves-crisis-behind-sales-just-above-previous-year-order-intake-rises-by-7-percent-leibinger-kammueller-slight-economic-turnaround-us-overtakes-germany-as-largest-single-market-10217/",
-        language: "англ.",
-      },
-      {
-        name: "TRUMPF",
-        title: "TRUMPF Enters Strategic Partnership with Mate Precision Technologies",
-        url: "https://www.trumpf.com/en_US/newsroom/global-press-releases/press-release-detail-page/release/trumpf-enters-strategic-partnership-with-mate-precision-technologies-expanding-tooling-portfolio-for-sheet-metal-fabricators-worldwide-10193/",
-        language: "англ.",
-      },
-      {
-        name: "TRUMPF",
-        title: "Flexible Bending: How CLAAS Is Embracing Automation in Agricultural Machinery",
-        url: "https://www.trumpf.com/en_US/newsroom/",
-        language: "англ.",
-      },
-      {
-        name: "TRUMPF",
-        title: "TRUMPF achieves breakthrough in automated sorting",
-        url: "https://www.trumpf.com/en_US/newsroom/local-press-releases/press-release-detail-page/release/trumpf-achieves-breakthrough-in-automated-sorting-10182/",
-        language: "англ.",
-      },
-    ],
-  },
-  {
     slug: "trumpf-mate-instrument-dlya-listovogo-metalla-2026",
-    category: "Новости отрасли",
-    direction: "news",
+    category: "Технологии металлообработки",
+    direction: "metalworking",
     series: "15 июля 2026 · Инструмент и гибка",
     title: "TRUMPF и Mate расширяют направление инструмента для обработки листового металла",
     seoTitle: "TRUMPF и Mate: инструмент для листового металла",
@@ -189,8 +104,8 @@ const baseArticles: Article[] = [
   },
   {
     slug: "avtomatizaciya-gibki-claas-2026",
-    category: "Новости отрасли",
-    direction: "news",
+    category: "Технологии металлообработки",
+    direction: "metalworking",
     series: "9 июля 2026 · Автоматизация гибки",
     title: "CLAAS развивает гибкое производство и автоматизацию гибки",
     lead: "Новый отраслевой кейс показывает, как автоматизация помогает сочетать повторяемость, работу с разными деталями и управляемую загрузку гибочного участка.",
@@ -246,8 +161,8 @@ const baseArticles: Article[] = [
   },
   {
     slug: "ii-sortirovka-posle-lazernoj-rezki-2026",
-    category: "Новости отрасли",
-    direction: "news",
+    category: "Технологии металлообработки",
+    direction: "metalworking",
     series: "28 апреля 2026 · ИИ и лазерная резка",
     title: "ИИ-сортировка деталей после лазерной резки без ручного программирования",
     seoTitle: "ИИ-сортировка после лазерной резки",
@@ -389,7 +304,7 @@ const baseArticles: Article[] = [
     title: "Как выбрать металлокассеты для фасада: основные параметры и исполнение",
     seoTitle: "Как выбрать металлокассеты для фасада",
     lead: "Разбираем, какие исходные данные нужны для выбора металлокассет, от чего зависит исполнение и как подготовить запрос на расчёт без лишних уточнений.",
-    image: "/images/web/hero-main.jpg",
+    image: "/images/web/hero-main.webp",
     readingTime: "6 минут",
     publishedAt: "2026-07-27",
     modifiedAt: "2026-07-27",
@@ -592,7 +507,7 @@ const baseArticles: Article[] = [
     direction: "engineering-practice",
     title: "Ошибки при проектировании корзин для кондиционеров",
     lead: "Корзина должна сочетать архитектурный вид, вентиляцию, обслуживание и надёжное крепление. Собрали ошибки, которые чаще всего приводят к переделкам.",
-    image: "/images/industry/cards/climate.jpg",
+    image: "/images/industry/cards/climate.webp",
     readingTime: "7 минут",
     publishedAt: "2026-07-28",
     modifiedAt: "2026-07-28",

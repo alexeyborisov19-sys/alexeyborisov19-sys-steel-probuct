@@ -13,7 +13,7 @@ const columns = [
 const footerLinks: Record<string, string> = {
   "О компании": "/company",
   "Преимущества": "/company#advantages",
-  "Сертификаты": "/company#certificates",
+  "Сертификаты": "/company",
   "Архитектурные": "/products",
   "Для кондиционирования": "/solutions/climate",
   "Для промышленности": "/solutions/industry",
@@ -55,7 +55,7 @@ export function Footer() {
           <p className="text-xs font-bold uppercase text-white">Контакты</p>
           <a className="mt-4 block text-xs text-white" href="tel:+79107803723">+7 910 780 37 23</a>
           <a className="mt-2 block text-xs text-white/55" href="mailto:info@steelprodukt.ru">info@steelprodukt.ru</a>
-          <a className="mt-2 block text-xs text-white/55 transition hover:text-steel-orange" href="https://steelprodukt.ru" target="_blank" rel="noreferrer">steelprodukt.ru ↗</a>
+          <a className="mt-2 block text-xs text-white/55 transition hover:text-steel-orange" href="https://www.steelprodukt.ru" target="_blank" rel="noreferrer">steelprodukt.ru ↗</a>
           <p className="mt-3 text-xs leading-relaxed text-white/55"><span className="text-white/38">Производство:</span><br />г. Смоленск,<br />Рославльское шоссе,<br />7-й км, стр. 3</p>
         </div>
       </div>

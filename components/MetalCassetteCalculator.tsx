@@ -62,8 +62,8 @@ export function MetalCassetteCalculator() {
 
   return (
     <section id="calculator-metallokasset" className="mt-16 scroll-mt-24 overflow-hidden border border-steel-orange/35 bg-[#101417]">
-      <div className="grid lg:grid-cols-[1.02fr_.98fr]">
-        <div className="relative border-b border-white/10 p-6 sm:p-8 lg:border-b-0 lg:border-r">
+      <div className="grid min-w-0 lg:grid-cols-[1.02fr_.98fr]">
+        <div className="relative min-w-0 border-b border-white/10 p-6 sm:p-8 lg:border-b-0 lg:border-r">
           <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 bg-[linear-gradient(135deg,transparent_49%,rgba(224,86,36,.26)_50%,transparent_51%)]" />
           <p className="eyebrow">Предварительный расчёт</p>
           <h2 className="mt-3 max-w-xl text-2xl font-semibold uppercase leading-tight sm:text-3xl">
@@ -97,7 +97,7 @@ export function MetalCassetteCalculator() {
             </p>
           </div>
 
-          <fieldset className="mt-6">
+          <fieldset className="mt-6 min-w-0">
             <legend className="text-[11px] font-bold uppercase tracking-[.12em] text-white/60">
               Толщина металла
             </legend>
@@ -111,7 +111,7 @@ export function MetalCassetteCalculator() {
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => setSelectedThickness(item.thickness)}
-                    className={`border px-3 py-3 text-left transition ${
+                    className={`min-w-0 border px-3 py-3 text-left transition ${
                       isSelected
                         ? "border-steel-orange bg-steel-orange text-white"
                         : "border-white/15 bg-[#0c1013] text-white hover:border-steel-orange/70"
@@ -143,7 +143,7 @@ export function MetalCassetteCalculator() {
           </div>
         </div>
 
-        <div className="flex flex-col bg-[radial-gradient(circle_at_100%_0%,rgba(224,86,36,.13),transparent_42%)] p-6 sm:p-8">
+        <div className="flex min-w-0 flex-col bg-[radial-gradient(circle_at_100%_0%,rgba(224,86,36,.13),transparent_42%)] p-6 sm:p-8">
           <div className="flex items-center justify-between border-b border-white/12 pb-5">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[.14em] text-steel-orange">Результат</p>
@@ -193,7 +193,7 @@ export function MetalCassetteCalculator() {
 
           <Link
             href={specialistHref}
-            className="clip-corner mt-7 inline-flex justify-center bg-steel-orange px-7 py-4 text-sm font-bold uppercase transition hover:bg-orange-600"
+            className="clip-corner mt-7 inline-flex max-w-full justify-center break-words bg-steel-orange px-7 py-4 text-center text-sm font-bold uppercase leading-snug transition hover:bg-orange-600"
           >
             Передать специалисту для точного расчёта&nbsp; →
           </Link>

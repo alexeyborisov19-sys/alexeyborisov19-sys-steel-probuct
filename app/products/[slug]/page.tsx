@@ -56,7 +56,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     productSchema(product),
     faqSchema(faqItems),
   ]} /><Header /><main>
-    <InnerHero eyebrow={product.category} title={product.title} description={product.lead} image="/images/web/hero-main.jpg" />
+    <InnerHero eyebrow={product.category} title={product.title} description={product.lead} image="/images/web/hero-main.webp" />
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="mb-8 text-xs text-white/45"><Link className="transition hover:text-steel-orange" href="/products">Продукция</Link><span className="mx-2 text-steel-orange">/</span>{product.title}</div>
@@ -71,7 +71,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <Link href="/contacts#contact-form" className="clip-corner mt-9 inline-block bg-steel-orange px-7 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
           </div>
           <figure className="overflow-hidden border border-white/12 bg-[#f4f4f1] p-4 sm:p-6">
-            <img src={product.technicalImage} alt={`Технический чертёж изделия «${product.title}»`} className="h-auto w-full" />
+            <img src={product.technicalImage} alt={`Технический чертёж изделия «${product.title}»`} width={800} height={550} loading="eager" fetchPriority="high" decoding="async" className="h-auto w-full" />
             <figcaption className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 text-sm text-black/70 sm:flex-row sm:items-center sm:justify-between"><span>Технический чертёж из каталога «Сталь Продукт»</span><a href={product.sourceSheet} target="_blank" rel="noreferrer" className="font-bold text-[#d74d0b]">Открыть полный лист&nbsp; ↗</a></figcaption>
           </figure>
         </div>

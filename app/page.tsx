@@ -54,14 +54,14 @@ const projects = [
   "Инженерная инфраструктура",
 ];
 const solutionCardImages: Record<string, { src: string; position?: string }> = {
-  "Архитектурные решения": { src: "/images/industry/cards/architecture.jpg" },
+  "Архитектурные решения": { src: "/images/industry/cards/architecture.webp" },
   "Решения для кондиционирования": {
-    src: "/images/industry/cards/climate.jpg",
+    src: "/images/industry/cards/climate.webp",
     position: "center 48%",
   },
-  "Решения для промышленности": { src: "/images/industry/cards/industry.jpg" },
-  "Инженерные системы": { src: "/images/industry/cards/engineering.jpg" },
-  "Индивидуальные решения": { src: "/images/industry/cards/custom.jpg" },
+  "Решения для промышленности": { src: "/images/industry/cards/industry.webp" },
+  "Инженерные системы": { src: "/images/industry/cards/engineering.webp" },
+  "Индивидуальные решения": { src: "/images/industry/cards/custom.webp" },
 };
 
 export default function Home() {
@@ -186,7 +186,7 @@ export default function Home() {
                     <img
                       src={
                         index % 2
-                          ? "/images/web/hero-main.jpg"
+                          ? "/images/web/hero-main.webp"
                           : "/images/web/project-residential.jpg"
                       }
                       width={1080}
