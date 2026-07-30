@@ -65,23 +65,18 @@ function EngineerBrandMark({ compact = false }: { compact?: boolean }) {
       aria-hidden="true"
     >
       <span className="absolute inset-0 bg-[radial-gradient(circle_at_45%_50%,rgba(234,91,12,.13),transparent_68%)] blur-[5px]" />
-      <span className={compact
-        ? "absolute left-0 top-1/2 h-[27px] w-[52px] -translate-y-1/2 overflow-hidden"
-        : "absolute left-0 top-1/2 h-[31px] w-[60px] -translate-y-1/2 overflow-hidden"
-      }>
-        <img
-          src="/logo/steel-product.png"
-          alt=""
-          width={1851}
-          height={402}
-          loading="lazy"
-          decoding="async"
-          className={compact
-            ? "absolute left-0 top-0 h-[27px] w-auto max-w-none drop-shadow-[0_0_7px_rgba(234,91,12,.22)]"
-            : "absolute left-0 top-0 h-[31px] w-auto max-w-none drop-shadow-[0_0_8px_rgba(234,91,12,.25)]"
-          }
-        />
-      </span>
+      <img
+        src="/logo/steel-product-mark.png"
+        alt=""
+        width={740}
+        height={402}
+        loading="lazy"
+        decoding="async"
+        className={compact
+          ? "absolute left-0 top-1/2 h-[30px] w-[55px] -translate-y-1/2 object-contain drop-shadow-[0_0_7px_rgba(234,91,12,.22)]"
+          : "absolute left-0 top-1/2 h-[34px] w-[63px] -translate-y-1/2 object-contain drop-shadow-[0_0_8px_rgba(234,91,12,.25)]"
+        }
+      />
       <motion.span
         className="absolute bottom-0 left-0 h-px bg-[linear-gradient(90deg,#ea5b0c,rgba(234,91,12,.08))] shadow-[0_0_6px_rgba(234,91,12,.45)]"
         initial={{ width: "22%" }}
@@ -289,10 +284,10 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
           >
             <header className="relative flex items-center gap-3 border-b border-white/10 bg-[linear-gradient(105deg,rgba(234,91,12,.17),rgba(15,18,20,.96)_52%)] px-4 py-4">
               <EngineerBrandMark />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">ИИ-инженер</p>
-                <h2 className="truncate text-sm font-semibold text-white">Помощник «Сталь Продукт»</h2>
-                <p className="mt-0.5 text-[10px] text-white/45">Технологии · изделия · подготовка заявки</p>
+              <div className="min-w-0 flex-1">
+                <p className="whitespace-nowrap text-[10px] font-bold leading-none uppercase tracking-[.16em] text-steel-orange">ИИ-инженер</p>
+                <h2 className="mt-1 truncate text-sm font-semibold leading-none text-white">Помощник «Сталь Продукт»</h2>
+                <p className="mt-1 truncate text-[10px] leading-none text-white/45">Технологии · изделия · подготовка заявки</p>
               </div>
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
                 <button
@@ -571,9 +566,9 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
         aria-label={open ? "Закрыть инженерного помощника" : "Открыть инженерного помощника"}
       >
         <EngineerBrandMark compact />
-        <span className="text-left">
-          <b className="block text-[10px] uppercase tracking-[.1em] text-white">ИИ-инженер</b>
-          <span className="mt-0.5 block text-[9px] text-white/45">Задать технический вопрос</span>
+        <span className="min-w-[142px] whitespace-nowrap text-left">
+          <b className="block text-[10px] leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
+          <span className="mt-1 block text-[9px] leading-none text-white/45">Задать технический вопрос</span>
         </span>
       </motion.button>
     </div>
