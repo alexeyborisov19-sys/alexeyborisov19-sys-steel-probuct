@@ -16,6 +16,16 @@ test("accepts a browser request from the same origin", () => {
   })));
 });
 
+test("accepts the canonical HTTPS origin behind the local reverse proxy", () => {
+  assert.doesNotThrow(() => assertSameOriginRequest(new Request("http://127.0.0.1:3000/api/assistant", {
+    method: "POST",
+    headers: {
+      origin: "https://www.steelprodukt.ru",
+      "sec-fetch-site": "same-origin",
+    },
+  })));
+});
+
 test("accepts a server request without browser origin metadata", () => {
   assert.doesNotThrow(() => assertSameOriginRequest(new Request("https://www.steelprodukt.ru/api/assistant", {
     method: "POST",

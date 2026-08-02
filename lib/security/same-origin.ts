@@ -1,3 +1,5 @@
+import { siteConfig } from "@/lib/site";
+
 export class CrossSiteRequestError extends Error {
   constructor() {
     super("Cross-site request rejected");
@@ -29,7 +31,8 @@ export function assertSameOriginRequest(request: Request) {
     throw new CrossSiteRequestError();
   }
 
-  if (origin !== requestOrigin) {
+  const canonicalOrigin = new URL(siteConfig.url).origin;
+  if (origin !== requestOrigin && origin !== canonicalOrigin) {
     throw new CrossSiteRequestError();
   }
 }
