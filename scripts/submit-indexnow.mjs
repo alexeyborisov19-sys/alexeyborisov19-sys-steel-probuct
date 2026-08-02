@@ -1,7 +1,7 @@
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.steelprodukt.ru").replace(/\/$/, "");
 const indexNowKey = "9f6d7c0b8a2e4f1c5d3b7a9e6c4f2d1b";
 const keyLocation = `${siteUrl}/indexnow-key.txt`;
-const requestedPaths = process.argv.slice(2);
+const requestedPaths = process.argv.slice(2).filter((path) => path !== "--");
 const paths = requestedPaths.length
   ? requestedPaths
   : [
