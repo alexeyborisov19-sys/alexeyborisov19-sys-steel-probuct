@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-const FIRST_VISIT_DURATION = 420;
-const EXIT_DURATION = 220;
-const SESSION_KEY = "steelprodukt-preloader-shown";
+const INTRO_DURATION = 1700;
+const EXIT_DURATION = 420;
 
 export function SitePreloader() {
   const [visible, setVisible] = useState(true);
@@ -14,17 +13,7 @@ export function SitePreloader() {
     const startedAt = performance.now();
     const reducedMotion = typeof window.matchMedia === "function"
       && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let alreadyShown = false;
-    try {
-      alreadyShown = window.sessionStorage.getItem(SESSION_KEY) === "1";
-    } catch {
-      alreadyShown = false;
-    }
-    if (alreadyShown) {
-      setVisible(false);
-      return;
-    }
-    const minimumDuration = reducedMotion ? 80 : FIRST_VISIT_DURATION;
+    const minimumDuration = reducedMotion ? 80 : INTRO_DURATION;
     let finished = false;
     let exitTimer: number | undefined;
     let removeTimer: number | undefined;
@@ -35,11 +24,6 @@ export function SitePreloader() {
       const remaining = Math.max(0, minimumDuration - (performance.now() - startedAt));
 
       exitTimer = window.setTimeout(() => {
-        try {
-          window.sessionStorage.setItem(SESSION_KEY, "1");
-        } catch {
-          // A blocked sessionStorage must not hold the page behind the overlay.
-        }
         setLeaving(true);
         removeTimer = window.setTimeout(() => setVisible(false), EXIT_DURATION);
       }, remaining);

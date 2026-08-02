@@ -141,7 +141,13 @@ async function getText(path) {
 
 const errors = [];
 const warnings = [];
-const retiredPaths = new Set(["/vnutri"]);
+const retiredRedirects = new Map([
+  ["/vnutri", "/production/lazernaya-rezka-metalla"],
+  ["/dimli", "/solutions/engineering"],
+  ["/rehotka", "/solutions/engineering"],
+  ["/korzina", "/solutions/climate"],
+]);
+const retiredPaths = new Set(retiredRedirects.keys());
 
 const robots = await getText("/robots.txt");
 if (robots.response.status !== 200) errors.push(`robots.txt вернул ${robots.response.status}`);
@@ -342,14 +348,16 @@ for (const imagePath of imagePaths) {
 
 const legacyRedirect = await getText("/address");
 if (legacyRedirect.response.status !== 301) errors.push(`/address: ожидается 301, получен ${legacyRedirect.response.status}`);
-const vnutriRedirect = await getText("/vnutri");
-if (vnutriRedirect.response.status !== 301) {
-  errors.push(`/vnutri: ожидается 301, получен ${vnutriRedirect.response.status}`);
-} else {
-  const location = new URL(vnutriRedirect.response.headers.get("location") ?? "", canonicalOrigin).href;
-  const expectedLocation = `${canonicalOrigin}/production/lazernaya-rezka-metalla`;
-  if (location !== expectedLocation) {
-    errors.push(`/vnutri: редирект ведёт на ${location} вместо ${expectedLocation}`);
+for (const [source, destination] of retiredRedirects) {
+  const retiredRedirect = await getText(source);
+  if (retiredRedirect.response.status !== 301) {
+    errors.push(`${source}: ожидается 301, получен ${retiredRedirect.response.status}`);
+  } else {
+    const location = new URL(retiredRedirect.response.headers.get("location") ?? "", canonicalOrigin).href;
+    const expectedLocation = `${canonicalOrigin}${destination}`;
+    if (location !== expectedLocation) {
+      errors.push(`${source}: редирект ведёт на ${location} вместо ${expectedLocation}`);
+    }
   }
 }
 const removedLegacy = await getText("/chugunnoe-lityo");

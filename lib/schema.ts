@@ -78,6 +78,7 @@ export function organizationSchema(): JsonLd {
         url: absoluteUrl("/company#company-video"),
         contentUrl: absoluteUrl("/video/company-film-flat.mp4"),
         thumbnailUrl: absoluteUrl("/images/company-video-poster.png"),
+        uploadDate: "2026-07-21T08:17:40Z",
         duration: "PT1M59S",
       },
       {
@@ -87,6 +88,7 @@ export function organizationSchema(): JsonLd {
         url: absoluteUrl("/production#production-video"),
         contentUrl: absoluteUrl("/video/production-showreel-web.mp4"),
         thumbnailUrl: absoluteUrl("/images/production-showreel-poster.png"),
+        uploadDate: "2026-07-21T08:17:40Z",
         duration: "PT11S",
       },
     ],

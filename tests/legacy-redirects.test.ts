@@ -4,18 +4,29 @@ import { NextRequest } from "next/server";
 import sitemap from "@/app/sitemap";
 import { middleware } from "@/middleware";
 
-test("/vnutri redirects directly to the laser cutting page", () => {
-  const response = middleware(new NextRequest("https://www.steelprodukt.ru/vnutri"));
+const retiredRedirects = new Map([
+  ["/vnutri", "/production/lazernaya-rezka-metalla"],
+  ["/dimli", "/solutions/engineering"],
+  ["/rehotka", "/solutions/engineering"],
+  ["/korzina", "/solutions/climate"],
+]);
 
-  assert.equal(response.status, 301);
-  assert.equal(
-    response.headers.get("location"),
-    "https://www.steelprodukt.ru/production/lazernaya-rezka-metalla",
-  );
-});
+for (const [source, destination] of retiredRedirects) {
+  test(`${source} redirects directly to ${destination}`, () => {
+    const response = middleware(new NextRequest(`https://www.steelprodukt.ru${source}`));
 
-test("/vnutri is excluded from sitemap", () => {
+    assert.equal(response.status, 301);
+    assert.equal(
+      response.headers.get("location"),
+      `https://www.steelprodukt.ru${destination}`,
+    );
+  });
+}
+
+test("retired URLs are excluded from sitemap", () => {
   const urls = sitemap().map((entry) => entry.url);
 
-  assert.equal(urls.some((url) => new URL(url).pathname === "/vnutri"), false);
+  for (const retiredPath of retiredRedirects.keys()) {
+    assert.equal(urls.some((url) => new URL(url).pathname === retiredPath), false);
+  }
 });

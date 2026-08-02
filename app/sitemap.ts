@@ -9,7 +9,7 @@ import { absoluteUrl } from "@/lib/site";
 const legalUpdatedAt = new Date("2026-07-30T00:00:00.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
-const retiredPaths = new Set(["/vnutri"]);
+const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-07-29T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
   "/": new Date("2026-08-02T00:00:00.000Z"),

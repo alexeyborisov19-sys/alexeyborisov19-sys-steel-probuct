@@ -105,14 +105,14 @@ a { color: inherit; text-decoration: none; }
 .site-preloader__sheet::after { position:absolute; inset:0; content:""; background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent); }
 .site-preloader__sheet--left { left: calc(50% - clamp(180px, 23vw, 270px)); animation: site-preloader-sheet-left .95s cubic-bezier(.25,.7,.2,1) .16s both; }
 .site-preloader__sheet--right { right: calc(50% - clamp(180px, 23vw, 270px)); animation: site-preloader-sheet-right .95s cubic-bezier(.25,.7,.2,1) .16s both; }
-.site-preloader__content { position: relative; z-index: 3; width: min(570px, 72vw); text-align: center; opacity: 0; transform: translateY(12px) scale(.94); animation: site-preloader-logo .72s ease-out .88s both; }
+.site-preloader__content { position: relative; z-index: 3; width: min(570px, 72vw); text-align: center; opacity: 1; transform: translateY(12px) scale(.94); animation: site-preloader-logo .72s ease-out .32s both; }
 .site-preloader__logo { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 13px rgba(234,91,12,.7)) drop-shadow(0 18px 42px rgba(0,0,0,.72)); }
 .site-preloader__content p { margin: 24px 0 0; color: rgba(255,255,255,.82); font-size: clamp(9px, 1vw, 12px); font-weight: 700; letter-spacing: .19em; line-height: 1.5; text-transform: uppercase; }
 .site-preloader__status { position: absolute; z-index: 3; bottom: 26px; left: 50%; color: rgba(255,255,255,.42); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-align: center; text-transform: uppercase; transform: translateX(-50%); opacity: 0; animation: site-preloader-status .5s ease-out .3s both; }
 @keyframes site-preloader-fold-line { from { width: 0; } to { width: 100%; } }
 @keyframes site-preloader-sheet-left { from { opacity: 0; transform: translate(-120px, -45px) rotateX(76deg) rotateZ(-12deg); } 70%, to { opacity: 1; transform: translateY(-15px) rotateX(0) rotateZ(-12deg); } }
 @keyframes site-preloader-sheet-right { from { opacity: 0; transform: translate(120px, 45px) rotateX(-76deg) rotateZ(12deg); } 70%, to { opacity: 1; transform: translateY(15px) rotateX(0) rotateZ(12deg); } }
-@keyframes site-preloader-logo { to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes site-preloader-logo { from { opacity: 1; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes site-preloader-glow { from { opacity: 0; transform: translate(-50%, -50%) scale(.72); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @keyframes site-preloader-status { to { opacity: 1; } }
 @media (max-width: 640px) { .site-preloader__content { width: 80vw; } .site-preloader__content p { margin-top: 17px; font-size: 8px; } .site-preloader__status { bottom: 18px; width: 80%; font-size: 8px; } }
