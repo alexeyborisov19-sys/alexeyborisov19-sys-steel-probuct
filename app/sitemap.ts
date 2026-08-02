@@ -9,6 +9,7 @@ import { absoluteUrl } from "@/lib/site";
 const legalUpdatedAt = new Date("2026-07-30T00:00:00.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
+const retiredPaths = new Set(["/vnutri"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-07-29T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
   "/": new Date("2026-07-29T00:00:00.000Z"),
@@ -71,7 +72,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...articles.map((article) => `/articles/${article.slug}`),
   ];
 
-  return [...new Set(paths)].map((path) => {
+  return [...new Set(paths)].filter((path) => !retiredPaths.has(path)).map((path) => {
     const isJournal = path === "/articles" || path.startsWith("/articles/");
     const isExhibitionCalendar = path === facadeCalendarPath || path === metalworkingCalendarPath;
     const isCalculator = path === "/calculator-metallokassety";

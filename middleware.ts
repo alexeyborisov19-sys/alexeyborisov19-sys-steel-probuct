@@ -10,6 +10,7 @@ const legacyRedirects = new Map([
   ["/opisanieprodukcii", "/products"],
   ["/vozmozhnosti", "/production"],
   ["/zapros-specialistu", "/contacts#contact-form"],
+  ["/vnutri", "/production/lazernaya-rezka-metalla"],
 ]);
 
 export function middleware(request: NextRequest) {
@@ -43,6 +44,7 @@ export const config = {
     "/opisanieprodukcii",
     "/vozmozhnosti",
     "/zapros-specialistu",
+    "/vnutri",
     "/cast-iron/:path*",
     "/chugunnoe-lityo",
     "/chugunnoe-lityo-foto",

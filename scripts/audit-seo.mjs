@@ -141,6 +141,7 @@ async function getText(path) {
 
 const errors = [];
 const warnings = [];
+const retiredPaths = new Set(["/vnutri"]);
 
 const robots = await getText("/robots.txt");
 if (robots.response.status !== 200) errors.push(`robots.txt вернул ${robots.response.status}`);
@@ -174,6 +175,11 @@ if (priorities.length !== urls.length || priorities.some((value) => value < 0 ||
 }
 if (lastModified.some((value) => Date.parse(value) > Date.now() + 24 * 60 * 60 * 1000)) {
   errors.push("В sitemap.xml есть lastmod из будущего");
+}
+for (const retiredPath of retiredPaths) {
+  if (urls.some((url) => pagePath(url) === retiredPath)) {
+    errors.push(`В sitemap.xml найден устаревший URL ${retiredPath}`);
+  }
 }
 
 const imageSitemap = await getText("/sitemap-images.xml");
@@ -287,6 +293,9 @@ for (const publicUrl of urls) {
 
   for (const url of internalLinks) {
     internalLinkRecords.push({ from: path, url });
+    if (retiredPaths.has(url.pathname)) {
+      errors.push(`${path}: внутренняя ссылка ведёт на устаревший URL ${url.pathname}`);
+    }
     if (url.hostname !== "www.steelprodukt.ru") {
       warnings.push(`${path}: внутренняя ссылка ведёт через неканонический домен ${url.href}`);
     }
@@ -333,6 +342,16 @@ for (const imagePath of imagePaths) {
 
 const legacyRedirect = await getText("/address");
 if (legacyRedirect.response.status !== 301) errors.push(`/address: ожидается 301, получен ${legacyRedirect.response.status}`);
+const vnutriRedirect = await getText("/vnutri");
+if (vnutriRedirect.response.status !== 301) {
+  errors.push(`/vnutri: ожидается 301, получен ${vnutriRedirect.response.status}`);
+} else {
+  const location = new URL(vnutriRedirect.response.headers.get("location") ?? "", canonicalOrigin).href;
+  const expectedLocation = `${canonicalOrigin}/production/lazernaya-rezka-metalla`;
+  if (location !== expectedLocation) {
+    errors.push(`/vnutri: редирект ведёт на ${location} вместо ${expectedLocation}`);
+  }
+}
 const removedLegacy = await getText("/chugunnoe-lityo");
 if (removedLegacy.response.status !== 410) errors.push(`/chugunnoe-lityo: ожидается 410, получен ${removedLegacy.response.status}`);
 if (!(removedLegacy.response.headers.get("x-robots-tag") ?? "").toLowerCase().includes("noindex")) {
