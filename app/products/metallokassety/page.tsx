@@ -2,18 +2,26 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
 import { JsonLd } from "@/components/JsonLd";
+import { FaqSection } from "@/components/FaqSection";
 import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";
 import { ProductCard } from "@/components/ProductCard";
 import { metalCassetteSpecs, productBySlug } from "@/data/products";
-import { productGroupSchema } from "@/lib/schema";
+import { faqSchema, productGroupSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Металлокассеты для фасадов",
   description: "Фасадные металлокассеты Стандарт, Премиум, Рельеф и Ажур: открытый и скрытый крепёж, 3D-геометрия, перфорация, подбор по RAL и чертежам объекта.",
   path: "/products/metallokassety",
-  keywords: ["металлокассеты", "фасадные кассеты", "металлокассеты с скрытым крепежом", "перфорированные металлокассеты"],
+  keywords: ["фасадные металлокассеты", "кассетный фасад", "металлокассеты открытого крепления", "металлокассеты скрытого крепления", "перфорированные металлокассеты", "3D кассеты", "производитель металлокассет"],
 });
+
+const faqItems = [
+  { question: "Чем отличаются металлокассеты открытого и скрытого крепления?", answer: "У открытого исполнения точки фиксации доступны на боковых полках, у скрытого они располагаются внутри замкового узла. Выбор зависит от архитектуры, подсистемы, требований к замене и бюджета проекта." },
+  { question: "Можно изготовить кассеты нестандартного размера и цвета?", answer: "Да. Размер, глубина, полки, перфорация, толщина металла и цвет по RAL согласуются по фасадной раскладке и узлам объекта." },
+  { question: "Что нужно, чтобы рассчитать стоимость фасадных кассет?", answer: "Передайте площадь или раскладку, тип кассеты, материал, толщину, цвет, количество проёмов и доборных элементов. Калькулятор даёт ориентир, точное предложение готовится после проверки документации." },
+  { question: "Поставляете металлокассеты в Москву и по России?", answer: "Да. Производство находится в Смоленске; упаковку и логистику согласуем для Москвы, Московской области, ЦФО и других регионов России." },
+];
 
 const series = [
   ["Стандарт", "Открытый крепёж", "Крепёж проходит через боковые полки и формирует техническую сетку. Подходит, когда важны понятный монтаж, сервис и быстрая локальная замена кассеты."],
@@ -33,13 +41,13 @@ export default function MetalCassetteCollectionPage() {
   const cassetteProducts = cassetteSlugs.map((slug) => productBySlug[slug]);
 
   return <>
-    <JsonLd data={productGroupSchema({
+    <JsonLd data={[productGroupSchema({
       name: "Фасадные металлокассеты «Сталь Продукт»",
       description: "Серии фасадных металлокассет Стандарт, Премиум, Рельеф и Ажур с открытым и скрытым креплением, объёмной геометрией и перфорацией.",
       path: "/products/metallokassety",
       groupId: "steelprodukt-metallokassety",
       products: cassetteProducts,
-    })} />
+    }), faqSchema(faqItems)]} />
     <PageLayout
     path="/products/metallokassety"
     eyebrow="Архитектурные решения"
@@ -82,6 +90,7 @@ export default function MetalCassetteCollectionPage() {
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cassetteProducts.map((product) => <ProductCard key={product.slug} product={product} />)}</div>
       </div>
     </section>
+    <FaqSection items={faqItems} title="Вопросы о фасадных металлокассетах" />
     <section className="border-t border-white/10 bg-[#17191a] py-10">
       <div className="container flex flex-col justify-between gap-6 md:flex-row md:items-center">
         <div><p className="eyebrow">Расчёт под объект</p><h2 className="mt-2 text-2xl font-semibold uppercase">Нужна помощь с подбором?</h2><p className="mt-3 text-sm text-white/58">Пришлите чертежи или спецификацию. Подберём серию, размеры, покрытие и цвет по RAL.</p></div>

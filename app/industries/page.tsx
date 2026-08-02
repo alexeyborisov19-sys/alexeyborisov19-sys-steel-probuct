@@ -1,30 +1,39 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
+import { FaqSection } from "@/components/FaqSection";
 import { PageLayout } from "@/components/PageLayout";
 import { getIndustrySolutions, industryVisualByTitle } from "@/lib/industry-solutions";
-import { itemListSchema } from "@/lib/schema";
+import { faqSchema, itemListSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Решения для отраслей и объектов",
   description:
-    "Изделия из листового металла для жилых комплексов, бизнес-центров, промышленности, энергетики, ЦОД и инженерной инфраструктуры.",
+    "Изделия из листового металла для строительства, машиностроения, энергетики, фармацевтики, ЦОД и производственных предприятий по всей России.",
   path: "/industries",
   keywords: [
     "металлоизделия для строительства",
     "фасадные решения",
     "корпуса оборудования",
     "инженерные системы",
+    "металлоизделия для машиностроения",
+    "корпуса для энергетики и автоматизации",
   ],
 });
+
+const faqItems = [
+  { question: "Для каких отраслей производите металлоизделия?", answer: "Страницы охватывают строительство, производственные предприятия, машиностроение, энергетику, фармацевтику, пищевую промышленность, ЦОД, транспорт и инженерную инфраструктуру. Состав изделия всегда уточняется по проекту." },
+  { question: "Можно получить перечень изделий под конкретный объект?", answer: "Да. Передайте спецификацию, чертежи или описание функциональных зон — подготовим состав поставки и отметим данные, необходимые для расчёта." },
+  { question: "Поставляете продукцию в Москву и другие регионы?", answer: "Производство находится в Смоленске. Упаковку и логистику согласуем для Москвы, Московской области, ЦФО и других регионов России с учётом габаритов и комплектации заказа." },
+];
 
 export default function IndustriesPage() {
   const industries = getIndustrySolutions();
 
   return (
     <>
-    <JsonLd data={itemListSchema({
+    <JsonLd data={[itemListSchema({
       name: "Решения из листового металла по отраслям и типам объектов",
       description: "Отраслевые комплекты металлоизделий для строительства, промышленности и инженерной инфраструктуры.",
       path: "/industries",
@@ -32,7 +41,7 @@ export default function IndustriesPage() {
         name: industry.title,
         path: `/industries/${industry.slug}`,
       })),
-    })} />
+    }), faqSchema(faqItems)]} />
     <PageLayout
       path="/industries"
       eyebrow="Решения для объектов"
@@ -132,6 +141,7 @@ export default function IndustriesPage() {
           </div>
         </div>
       </section>
+      <FaqSection items={faqItems} title="Вопросы по отраслевым решениям" />
     </PageLayout>
     </>
   );

@@ -3,17 +3,18 @@ import type { Metadata } from "next";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
+import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { ProductionCycle } from "@/components/ProductionCycle";
 import { semanticKeywords } from "@/data/semantic";
 import { solutions } from "@/data/solutions";
-import { webPageSchema } from "@/lib/schema";
+import { faqSchema, webPageSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Инженерные решения из листового металла",
   description:
-    "Проектируем, производим и поставляем инженерные решения из листового металла для строительства, промышленности и коммерческих объектов по всей России.",
+    "Проектируем и производим изделия из листового металла по чертежам: от опытного образца до серии для строительства и промышленности с поставкой по России.",
   path: "/",
   keywords: [
     ...semanticKeywords.core,
@@ -64,16 +65,23 @@ const solutionCardImages: Record<string, { src: string; position?: string }> = {
   "Индивидуальные решения": { src: "/images/industry/cards/custom.webp" },
 };
 
+const homeFaq = [
+  { question: "Что производит компания «Сталь Продукт»?", answer: "Проектируем и изготавливаем фасадные элементы, металлокассеты, корпуса, шкафы, кожухи, рамы, кронштейны и нестандартные изделия из листового металла для строительства и промышленности." },
+  { question: "Можно заказать металлоизделие по своему чертежу?", answer: "Да. Принимаем КД, PDF, DXF, DWG, STEP, 3D-модели, эскизы и технические задания. Перед запуском проверяем технологичность конструкции и состав исходных данных." },
+  { question: "Выполняете полный цикл производства?", answer: "Да. В единый маршрут могут входить инженерная подготовка, лазерный раскрой, гибка на ЧПУ, сварка и сборка, порошковая окраска, контроль, упаковка и отгрузка." },
+  { question: "Как заказать расчёт стоимости?", answer: "Приложите чертежи, укажите материал, количество и требования к покрытию. Подтвердим получение материалов и после инженерной проверки сообщим срок подготовки предложения." },
+];
+
 export default function Home() {
   return (
     <>
       <JsonLd
-        data={webPageSchema({
+        data={[webPageSchema({
           name: "Сталь Продукт — инженерные решения из листового металла",
           description:
             "Проектирование, производство и поставка изделий из листового металла для строительства, промышленности и инженерной инфраструктуры.",
           path: "/",
-        })}
+        }), faqSchema(homeFaq)]}
       />
       <Header />
       <main>
@@ -245,6 +253,7 @@ export default function Home() {
             ))}
           </div>
         </section>
+        <FaqSection items={homeFaq} title="Вопросы о производстве на заказ" />
       </main>
       <Footer />
     </>

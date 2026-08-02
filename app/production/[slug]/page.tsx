@@ -26,7 +26,7 @@ export async function generateMetadata({
   if (!service) return {};
 
   return createPageMetadata({
-    title: service.title,
+    title: service.seoTitle ?? service.title,
     description: service.description,
     path: `/production/${service.slug}`,
     image: service.image,

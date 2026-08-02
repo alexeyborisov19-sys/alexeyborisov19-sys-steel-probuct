@@ -1,23 +1,36 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
+import { FaqSection } from "@/components/FaqSection";
+import { JsonLd } from "@/components/JsonLd";
 import { solutions } from "@/data/solutions";
 import { createPageMetadata } from "@/lib/seo";
+import { faqSchema, itemListSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Инженерные решения из листового металла",
   description:
-    "Архитектурные, климатические, промышленные и инженерные решения из листового металла. Проектирование, производство, контроль качества и поставка.",
+    "Архитектурные, климатические, промышленные и инженерные решения из листового металла: проектирование, производство по чертежам и поставка по России.",
   path: "/solutions",
   keywords: [
     "инженерные решения из листового металла",
     "металлоизделия на заказ",
     "производство по чертежам",
+    "металлоизделия для промышленности",
+    "контрактное производство изделий",
   ],
 });
 
+const faqItems = [
+  { question: "Как выбрать подходящий раздел решений?", answer: "Для фасадов и архитектурных элементов откройте каталог продукции, для корпусов и оборудования — промышленное направление, для кронштейнов и опор — инженерные системы. Нестандартные изделия ведём как индивидуальный проект." },
+  { question: "Можно заказать только изготовление по готовым чертежам?", answer: "Да. Работаем по КД заказчика, DXF, DWG, STEP и спецификациям. При необходимости инженер проверит технологичность до запуска." },
+  { question: "Можно объединить несколько изделий в одну поставку?", answer: "Да. Состав решения можно комплектовать по узлам, зонам объекта или сборочным единицам с согласованной маркировкой и упаковкой." },
+];
+
 export default function SolutionsPage() {
   return (
+    <>
+    <JsonLd data={[itemListSchema({ name: "Инженерные решения из листового металла", description: "Решения для архитектуры, климатического оборудования, промышленности и инженерной инфраструктуры.", path: "/solutions", items: solutions.map((solution) => ({ name: solution.title, path: solution.href })) }), faqSchema(faqItems)]} />
     <PageLayout
       path="/solutions"
       eyebrow="Решения"
@@ -78,6 +91,8 @@ export default function SolutionsPage() {
           ))}
         </div>
       </section>
+      <FaqSection items={faqItems} title="Вопросы об инженерных решениях" />
     </PageLayout>
+    </>
   );
 }

@@ -190,7 +190,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 ))}
               </div>
 
-              <ArticleCommercialLinks direction={article.direction} />
+              <ArticleCommercialLinks article={article} />
 
               {article.sources?.length ? (
                 <section className="mt-12 border border-white/12 bg-[#111519] p-6 sm:p-8">

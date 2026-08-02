@@ -1,8 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { CompanyVideo } from "@/components/CompanyVideo";
+import { FaqSection } from "@/components/FaqSection";
+import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
 import { createPageMetadata } from "@/lib/seo";
+import { faqSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "О компании — производство полного цикла",
@@ -43,8 +46,14 @@ const productionCapabilities = [
   ["Камера дробеструйной очистки", "Подготавливаем поверхность металла перед нанесением покрытия: удаляем загрязнения и создаём равномерную шероховатость для надёжной адгезии."],
 ];
 
+const companyFaq = [
+  { question: "Где находится производство?", answer: "Производственная площадка «Сталь Продукт» находится в Смоленске. Заказы комплектуем для поставки в Москву, Московскую область, ЦФО и другие регионы России." },
+  { question: "Какие операции выполняются на собственной площадке?", answer: "Производственный маршрут включает инженерную подготовку, лазерную резку, гибку на ЧПУ, сварочные и слесарные операции, порошковую окраску, контроль качества и упаковку." },
+  { question: "Работаете как контрактный производитель?", answer: "Да. Можем выпускать изделия по документации заказчика, сопровождать опытный образец и организовать повторяемое серийное производство, включая OEM-проекты." },
+];
+
 export default function CompanyPage() {
-  return <PageLayout
+  return <><JsonLd data={faqSchema(companyFaq)} /><PageLayout
     path="/company"
     eyebrow="Компания"
     title="Сталь Продукт — инженерные решения из листового металла"
@@ -151,5 +160,6 @@ export default function CompanyPage() {
         <Link href="/contacts#contact-form" className="clip-corner shrink-0 bg-steel-orange px-7 py-4 text-center text-xs font-bold uppercase transition hover:bg-orange-600">Получить расчёт&nbsp; →</Link>
       </div>
     </section>
-  </PageLayout>;
+    <FaqSection items={companyFaq} title="Вопросы о компании и производстве" />
+  </PageLayout></>;
 }

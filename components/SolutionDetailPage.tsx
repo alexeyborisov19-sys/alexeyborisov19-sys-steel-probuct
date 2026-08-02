@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { SolutionDetail } from "@/data/solution-details";
+import { solutionSeoBySlug } from "@/data/solution-seo";
 import { FaqSection } from "./FaqSection";
 import { JsonLd } from "./JsonLd";
 import { PageLayout } from "./PageLayout";
@@ -9,11 +10,8 @@ import { faqSchema, serviceSchema } from "@/lib/schema";
 
 export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
   const brightenIndustry = solution.slug === "industry";
-  const faqItems = [
-    { question: `Можно ли заказать «${solution.title}» по чертежам?`, answer: "Да. Принимаем рабочие чертежи, спецификации, DXF, DWG, STEP, 3D-модели и технические задания. При необходимости поможем уточнить исходные данные." },
-    { question: "Можно ли изготовить единичный образец до серии?", answer: "Да, если задача требует проверки геометрии, посадки, сборки или внешнего вида, согласуем изготовление опытного образца перед серийным выпуском." },
-    { question: "Как получить расчёт и срок?", answer: "Передайте описание задачи и исходные данные через форму на сайте или на info@steelprodukt.ru. Подготовим предложение по составу решения, сроку изготовления и стоимости." },
-  ];
+  const seo = solutionSeoBySlug[solution.slug];
+  const faqItems = seo.faq;
   return <><JsonLd data={[serviceSchema({ name: solution.title, description: solution.description, path: `/solutions/${solution.slug}`, serviceType: solution.eyebrow }), faqSchema(faqItems)]} /><PageLayout path={`/solutions/${solution.slug}`} eyebrow={solution.eyebrow} title={solution.title} description={solution.description} image={solution.image} imageBrightness={brightenIndustry}>
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
@@ -44,6 +42,15 @@ export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
       <div className="container grid gap-10 xl:grid-cols-[1fr_.9fr]">
         <div><p className="eyebrow">Для точного расчёта</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Что нужно передать в работу</h2><p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/60">Можно начать с неполного комплекта. Если каких-то данных нет, поможем сформировать перечень вопросов и подобрать подходящее решение.</p><ul className="mt-7 grid gap-3 sm:grid-cols-2">{solution.requirements.map((requirement) => <li key={requirement} className="border-b border-white/10 pb-3 text-sm leading-relaxed text-white/78"><span className="mr-2 text-steel-orange">•</span>{requirement}</li>)}</ul></div>
         <aside className="border border-white/12 bg-[#141719] p-6 sm:p-8"><p className="eyebrow">Файлы и форматы</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Принимаем чертежи и описание задачи</h3><p className="mt-4 text-sm leading-relaxed text-white/60">PDF, DXF, DWG, STEP, IGES, изображения, спецификации и архивы. Можно приложить рабочий чертёж, эскиз или просто фотографии существующего решения.</p><Link href="/contacts#contact-form" className="clip-corner mt-7 inline-block bg-steel-orange px-6 py-4 text-xs font-bold uppercase">Передать исходные данные&nbsp; →</Link></aside>
+      </div>
+    </section>
+
+    <section className="border-y border-white/10 bg-[#0c1013] py-10">
+      <div className="container">
+        <p className="eyebrow">Связанные возможности</p>
+        <div className="mt-5 grid gap-px border border-white/12 bg-white/10 md:grid-cols-3">
+          {seo.related.map((item) => <Link key={item.href} href={item.href} className="bg-[#111519] p-5 text-sm font-semibold transition hover:text-steel-orange">{item.label}&nbsp; →</Link>)}
+        </div>
       </div>
     </section>
 

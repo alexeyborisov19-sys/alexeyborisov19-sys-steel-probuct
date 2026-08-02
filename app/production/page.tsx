@@ -1,17 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
+import { FaqSection } from "@/components/FaqSection";
 import { ProductionShowreel } from "@/components/ProductionVideo";
 import { JsonLd } from "@/components/JsonLd";
 import { productionServices } from "@/data/production-services";
 import { semanticKeywords } from "@/data/semantic";
 import { createPageMetadata } from "@/lib/seo";
-import { itemListSchema } from "@/lib/schema";
+import { faqSchema, itemListSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Производство изделий из листового металла",
   description:
-    "Современное производство полного цикла: инженерный отдел, лазерная резка, гибка, сварка, порошковая окраска, контроль качества и отгрузка.",
+    "Контрактное производство изделий из листового металла: КД, лазерная резка, гибка, сварка, окраска, опытные образцы и серийные партии с доставкой по России.",
   path: "/production",
   image: "/images/real-production/workshop-team.jpg",
   keywords: semanticKeywords.production,
@@ -80,11 +81,34 @@ const capabilities = [
   ["Контроль, упаковка и логистика", "Проверяем комплектацию, защищаем изделия при перевозке и организуем отгрузку."],
 ] as const;
 
+const productionFaq = [
+  {
+    question: "Какие изделия можно заказать на производстве?",
+    answer:
+      "Изготавливаем детали, корпуса, шкафы, кожухи, рамы, фасадные элементы и нестандартные сборочные единицы из листового металла. Состав операций определяется по чертежам, модели или техническому заданию.",
+  },
+  {
+    question: "Можно работать по КД, DXF, DWG или STEP?",
+    answer:
+      "Да. Принимаем конструкторскую документацию, PDF, DXF, DWG, STEP, IGES и другие распространённые форматы. Перед запуском инженер проверяет технологичность и достаточность исходных данных.",
+  },
+  {
+    question: "Возможен выпуск от прототипа до серии?",
+    answer:
+      "Да. Новый проект можно начать с опытного образца, затем зафиксировать изменения и перейти к мелкосерийному, среднесерийному или регулярному контрактному выпуску.",
+  },
+  {
+    question: "Как заказать изготовление и узнать стоимость?",
+    answer:
+      "Передайте чертежи, материал, количество и требования к покрытию. После проверки документации сообщим состав производственного маршрута, срок подготовки расчёта и необходимые уточнения.",
+  },
+];
+
 export default function ProductionPage() {
   return (
     <>
     <JsonLd
-      data={itemListSchema({
+      data={[itemListSchema({
         name: "Производственные операции «Сталь Продукт»",
         description: "Основные этапы производства изделий из листового металла.",
         path: "/production",
@@ -92,7 +116,7 @@ export default function ProductionPage() {
           name: service.title,
           path: `/production/${service.slug}`,
         })),
-      })}
+      }), faqSchema(productionFaq)]}
     />
     <PageLayout
       path="/production"
@@ -117,6 +141,16 @@ export default function ProductionPage() {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+      <section className="border-b border-white/10 bg-[#0c1013] py-12 sm:py-16">
+        <div className="container grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["Контрактный выпуск", "Производим по КД заказчика, сопровождаем OEM-проекты и при необходимости адаптируем конструкцию под доступную технологию."],
+            ["От образца до серии", "Запускаем прототип для проверки геометрии и сборки, затем фиксируем исполнение для повторяемых партий."],
+            ["Материалы", "Работаем с листовой, оцинкованной и нержавеющей сталью, алюминием — применимость уточняем по марке, толщине и операции."],
+            ["Поставка по России", "Производство находится в Смоленске. Комплектуем и упаковываем заказы для Москвы, Московской области, ЦФО и других регионов."],
+          ].map(([title, text], index) => <article key={title} className="border border-white/12 bg-[#111519] p-5"><span className="font-mono text-sm font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span><h2 className="mt-5 text-base font-semibold uppercase">{title}</h2><p className="mt-3 text-sm leading-6 text-white/58">{text}</p></article>)}
         </div>
       </section>
       <ProductionShowreel />
@@ -267,6 +301,7 @@ export default function ProductionPage() {
           </div>
         </div>
       </section>
+      <FaqSection items={productionFaq} title="Вопросы о производстве металлоизделий" />
     </PageLayout>
     </>
   );

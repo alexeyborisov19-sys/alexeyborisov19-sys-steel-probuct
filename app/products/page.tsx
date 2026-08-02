@@ -1,21 +1,28 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
+import { FaqSection } from "@/components/FaqSection";
 import { PageLayout } from "@/components/PageLayout";
 import { ProductCard } from "@/components/ProductCard";
 import { productBySlug, productGroups, products } from "@/data/products";
-import { itemListSchema } from "@/lib/schema";
+import { faqSchema, itemListSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Фасадные решения и металлоизделия",
-  description: "Металлокассеты, откосы, отливы, парапетные крышки, аквилоны и пожарные отсечки. Технические данные и чертежи для подбора решения под объект.",
+  title: "Фасадные металлокассеты и доборные элементы",
+  description: "Фасадные металлокассеты, откосы, отливы, парапетные крышки, аквилоны и пожарные отсечки: изготовление по размерам, чертежи и расчёт.",
   path: "/products",
-  keywords: ["металлокассеты", "фасадные элементы", "доборные элементы", "отливы", "парапетные крышки"],
+  keywords: ["фасадные металлокассеты", "кассетный вентилируемый фасад", "доборные элементы", "отливы", "парапетные крышки", "купить металлокассеты", "фасадные изделия по RAL"],
 });
 
+const faqItems = [
+  { question: "Какие фасадные изделия представлены в каталоге?", answer: "В каталоге собраны металлокассеты открытого и скрытого крепления, перфорированные и объёмные кассеты, откосы, отливы, аквилоны, парапетные крышки и пожарные отсечки." },
+  { question: "Можно изготовить элементы по размерам объекта?", answer: "Да. Размеры, полки, материал, толщина, крепление и цвет по RAL согласуются по раскладке, узлам или рабочим чертежам." },
+  { question: "Как получить цену и срок изготовления?", answer: "Передайте спецификацию, площадь или фасадную раскладку, выбранное исполнение, материал, цвет и количество. После проверки документации подготовим расчёт." },
+];
+
 export default function ProductsPage() {
-  return <><JsonLd data={itemListSchema({
+  return <><JsonLd data={[itemListSchema({
     name: "Фасадные решения и продукция из листового металла",
     description: "Каталог металлокассет, доборных и фасонных элементов с техническими характеристиками и чертежами.",
     path: "/products",
@@ -23,7 +30,7 @@ export default function ProductsPage() {
       name: product.title,
       path: `/products/${product.slug}`,
     })),
-  })} /><PageLayout path="/products" eyebrow="Архитектурные решения" title="Фасадные решения из листового металла" description="Металлокассеты, доборные и фасонные элементы, изготовленные под параметры конкретного объекта." image="/images/web/hero-main.webp">
+  }), faqSchema(faqItems)]} /><PageLayout path="/products" eyebrow="Архитектурные решения" title="Фасадные решения из листового металла" description="Металлокассеты, доборные и фасонные элементы, изготовленные под параметры конкретного объекта." image="/images/web/hero-main.webp">
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="max-w-3xl border-l-2 border-steel-orange pl-5">
@@ -39,5 +46,6 @@ export default function ProductsPage() {
         </section>)}
       </div>
     </section>
+    <FaqSection items={faqItems} title="Вопросы о фасадной продукции" />
   </PageLayout></>;
 }

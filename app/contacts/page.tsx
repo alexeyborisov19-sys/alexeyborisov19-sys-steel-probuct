@@ -1,18 +1,27 @@
 import { QuoteRequestForm } from "@/components/QuoteRequestForm";
 import { ConversionActions } from "@/components/ConversionActions";
 import { PageLayout } from "@/components/PageLayout";
+import { FaqSection } from "@/components/FaqSection";
+import { JsonLd } from "@/components/JsonLd";
 import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/seo";
+import { faqSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Получить расчёт металлоизделий",
-  description: "Отправьте чертёж, DXF, DWG, PDF или техническое задание. Сталь Продукт подготовит расчёт и инженерное решение для вашего проекта.",
+  description: "Заказать расчёт металлоизделий: отправьте PDF, DXF, DWG, STEP, спецификацию или ТЗ. Проверим документацию и сообщим срок подготовки предложения.",
   path: "/contacts",
-  keywords: ["расчёт металлоизделий", "заказать металлоизделия по чертежам", "DXF DWG производство"],
+  keywords: ["расчёт металлоизделий", "заказать металлоизделия по чертежам", "стоимость изготовления деталей", "DXF DWG STEP производство", "подрядчик по металлообработке"],
 });
 
+const contactFaq = [
+  { question: "Какие файлы приложить к заявке?", answer: "Подойдут PDF, DXF, DWG, STEP, IGES, SLDPRT, IPT, изображения, спецификации и архивы. Для первичной оценки можно отправить эскиз или описание задачи." },
+  { question: "Телефон обязателен?", answer: "Нет. Для отправки заявки достаточно указать хотя бы один способ связи — телефон или электронную почту." },
+  { question: "Когда подтвердят получение материалов?", answer: "Подтвердим получение заявки в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации и состава заказа." },
+];
+
 export default function ContactsPage() {
-  return <PageLayout path="/contacts" eyebrow="Получить расчёт" title="Обсудим ваш проект" description="Прикрепите чертёж, спецификацию или опишите задачу — подготовим коммерческое предложение и предложим оптимальное решение.">
+  return <><JsonLd data={faqSchema(contactFaq)} /><PageLayout path="/contacts" eyebrow="Получить расчёт" title="Обсудим ваш проект" description="Прикрепите чертёж, спецификацию или опишите задачу — подготовим коммерческое предложение и предложим оптимальное решение.">
     <ConversionActions />
     <section id="contact-form" className="bg-[#101112] py-14 sm:py-20">
       <div className="container grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
@@ -36,5 +45,6 @@ export default function ContactsPage() {
         </aside>
       </div>
     </section>
-  </PageLayout>;
+    <FaqSection items={contactFaq} title="Вопросы о заявке на расчёт" />
+  </PageLayout></>;
 }
