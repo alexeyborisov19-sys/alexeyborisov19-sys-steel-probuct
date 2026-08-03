@@ -1,6 +1,9 @@
-# Ручная публикация сайта на Beget
+# Публикация сайта на Beget
 
-Для сайта не настраивается автодеплой, GitHub Actions и доступ по API. Сайт публикуется вручную один раз. Будущие изменения можно выкладывать отдельными версиями только по вашему решению.
+Фактический production-механизм — GitHub Actions workflow
+`.github/workflows/deploy-beget.yml`, который запускается при push в `main` или
+вручную через `workflow_dispatch`. Ветки и draft Pull Request production не
+публикуют. До merge обязательны проверки и ручное подтверждение владельца.
 
 ## Что потребуется
 
@@ -13,31 +16,40 @@
 
 1. Создайте VPS с приложением Node.js. В этой сборке уже есть Node.js, Nginx и PM2.
 2. Укажите для домена A-записи `@` и `www` на IP VPS.
-3. Загрузите папку проекта на сервер в `/var/www/steel-probuct` через файловый менеджер Beget или SFTP. Не загружайте `node_modules` и `.next`.
-4. Создайте на сервере файл `/var/www/steel-probuct/.env.production` по образцу `.env.example` и внесите настройки почты для формы заявок.
+3. Рабочий каталог действующего приложения — `/var/www/html`.
+4. Создайте на сервере файл `/var/www/html/.env.production` по образцу
+   `.env.example`. Значения секретов остаются только на сервере.
 5. Откройте SSH-терминал Beget и выполните:
 
    ```bash
-   cd /var/www/steel-probuct
-   npm install
+   cd /var/www/html
+   sudo bash deploy/prepare-storage.sh nodejs
+   npm ci
+   npm run env:check
    npm run build
-   pm2 startOrReload ecosystem.config.cjs --env production
+   pm2 startOrReload ecosystem.config.cjs --env production --update-env
    pm2 save
    ```
 
-6. Настройте Nginx как reverse proxy на `127.0.0.1:3000` и задайте `client_max_body_size 30m;` для чертежей.
+6. Настройте Nginx как reverse proxy на `127.0.0.1:3000` по файлу
+   `deploy/nginx/steelprodukt.conf`; лимит запроса согласован с приложением и
+   равен 11 МБ.
 7. После проверки домена включите HTTPS через Certbot.
 
 ## Как обновлять сайт позже
 
-Когда потребуется новая версия, я подготовлю полный архив с изменёнными исходниками. Его нужно будет вручную заменить в папке `/var/www/steel-probuct`, не затрагивая `.env.production`, а затем выполнить четыре команды:
+Штатное обновление выполняется после проверенного Pull Request и merge в
+`main`. Workflow не синхронизирует `.env.production`, `.data`, `node_modules`
+и `.next`. Для аварийного ручного обновления используются те же проверки:
 
 ```bash
-cd /var/www/steel-probuct
-npm install
+cd /var/www/html
+npm ci
+npm run env:check
 npm run build
-pm2 startOrReload ecosystem.config.cjs --env production
+pm2 startOrReload ecosystem.config.cjs --env production --update-env
 pm2 save
 ```
 
-Никаких автоматических обновлений, ключей GitHub или фоновых публикаций не будет.
+Полный порядок, проверка формы и rollback описаны в
+`docs/quote-production-runbook.md`.

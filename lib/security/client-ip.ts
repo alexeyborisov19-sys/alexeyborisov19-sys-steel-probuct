@@ -17,7 +17,11 @@ export function getTrustedClientIp(request: Request) {
 }
 
 export function hashClientIp(ip: string) {
-  const salt = process.env.IP_HASH_SALT || "steelprodukt-local-rate-limit";
+  const configuredSalt = process.env.IP_HASH_SALT;
+  if (process.env.NODE_ENV === "production" && !configuredSalt) {
+    throw new Error("IP_HASH_SALT is required in production");
+  }
+  const salt = configuredSalt || "steelprodukt-local-rate-limit";
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex");
 }
 

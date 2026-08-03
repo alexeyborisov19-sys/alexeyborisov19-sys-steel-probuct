@@ -74,5 +74,6 @@ jobs:
             exit 1
           }
           chown -R nodejs:nodejs "$APP_PATH"
-          sudo -iu nodejs bash -lc "cd '$APP_PATH' && npm install && npm run build && pm2 startOrReload ecosystem.config.cjs --env production && pm2 save"
+          bash "$APP_PATH/deploy/prepare-production.sh" "$APP_PATH" nodejs
+          sudo -iu nodejs bash "$APP_PATH/deploy/build-and-restart.sh" "$APP_PATH"
           REMOTE

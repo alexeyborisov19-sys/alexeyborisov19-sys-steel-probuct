@@ -245,6 +245,7 @@ async function scanWithClamAv(path: string) {
 }
 
 export async function quarantineUploads(requestId: string, uploads: UploadInspection[]) {
+  if (!uploads.length) return [];
   const root = resolve(process.env.UPLOAD_QUARANTINE_PATH || ".data/quarantine");
   assertOutsidePublic(root);
   const requestDirectory = resolve(root, requestId);
