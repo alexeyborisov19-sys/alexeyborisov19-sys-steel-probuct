@@ -87,15 +87,30 @@ chown nodejs:nodejs /var/www/html/.env.production
 chmod 0600 /var/www/html/.env.production
 ```
 
-Создать защищённые каталоги без удаления существующих заявок:
+Создать защищённые каталоги без удаления существующих заявок. Production
+workflow выполняет это через `deploy/prepare-production.sh`: скрипт также
+создаёт закрытую резервную копию environment и Nginx, добавляет только
+отсутствующие production-настройки, генерирует salts непосредственно на
+сервере и копирует прежние записи из `.data` без их удаления.
+
+Для ручного запуска:
 
 ```bash
 cd /var/www/html
-sudo bash deploy/prepare-storage.sh nodejs
+sudo bash deploy/prepare-production.sh /var/www/html nodejs
 find /var/lib/steelprodukt -maxdepth 1 -type d -exec stat -c '%a %U:%G %n' {} \;
 df -h /var/lib/steelprodukt
 df -i /var/lib/steelprodukt
 ```
+
+Полный набор проверок, временный локальный запуск для `seo:audit` и безопасный
+перезапуск PM2 выполняются отдельным скриптом:
+
+```bash
+sudo -iu nodejs bash /var/www/html/deploy/build-and-restart.sh /var/www/html
+```
+
+PM2 перезапускается только после успешного завершения всех предыдущих команд.
 
 Ожидается `0700 nodejs:nodejs` для каталогов. Создаваемые приложением файлы
 должны иметь `0600` и не должны находиться внутри `public`.
