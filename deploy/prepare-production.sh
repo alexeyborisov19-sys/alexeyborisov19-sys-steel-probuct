@@ -124,7 +124,7 @@ migrate_existing_records() {
   if [ ! -d "$source" ]; then
     return
   fi
-  find "$source" -maxdepth 1 -type f -exec cp -n --preserve=timestamps {} "$destination/" \;
+  find "$source" -maxdepth 1 -type f -exec cp --update=none --preserve=timestamps {} "$destination/" \;
 }
 
 migrate_existing_records "$APP_PATH/.data/quote-leads" "/var/lib/steelprodukt/quote-leads"
@@ -133,6 +133,20 @@ migrate_existing_records "$APP_PATH/.data/assistant-leads" "/var/lib/steelproduk
 
 find /var/lib/steelprodukt -type d -exec chown "$APP_USER:$APP_GROUP" {} + -exec chmod 0700 {} +
 find /var/lib/steelprodukt -type f -exec chown "$APP_USER:$APP_GROUP" {} + -exec chmod 0600 {} +
+
+# A failed VNC maintenance attempt created this truncated, non-production vhost.
+# Quarantine only that exact known artifact and retain it in the dated backup.
+for accidental_nginx_artifact in \
+  /etc/nginx/sites-enabled/sToeey \
+  /etc/nginx/sites-available/sToeey
+do
+  if [ -e "$accidental_nginx_artifact" ] || [ -L "$accidental_nginx_artifact" ]; then
+    artifact_parent="$(basename "$(dirname "$accidental_nginx_artifact")")"
+    artifact_backup="$BACKUP_DIR/nginx-quarantined-${artifact_parent}-sToeey"
+    mv -- "$accidental_nginx_artifact" "$artifact_backup"
+    chmod 0600 "$artifact_backup" 2>/dev/null || true
+  fi
+done
 
 nginx_enabled="$(grep -l 'server_name .*steelprodukt\.ru' /etc/nginx/sites-enabled/* 2>/dev/null | head -n 1 || true)"
 test -n "$nginx_enabled" || {
