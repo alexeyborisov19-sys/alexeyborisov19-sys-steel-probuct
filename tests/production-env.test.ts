@@ -40,6 +40,18 @@ test("accepts the complete production environment without exposing values", () =
   assert.doesNotThrow(() => assertProductionEnvironment(environment, { force: true }));
 });
 
+test("accepts a display name for SMTP_FROM but keeps the envelope address strict", () => {
+  const environment = validProductionEnvironment();
+  environment.SMTP_FROM = "Steel Product <site@example.ru>";
+  assert.deepEqual(validateProductionEnvironment(environment, { force: true }), []);
+
+  environment.SMTP_ENVELOPE_FROM = "Steel Product <site@example.ru>";
+  assert.deepEqual(
+    validateProductionEnvironment(environment, { force: true }).map((issue) => issue.key),
+    ["SMTP_ENVELOPE_FROM"],
+  );
+});
+
 test("reports missing variables by key before a quote is accepted", () => {
   const environment = validProductionEnvironment();
   delete environment.IP_HASH_SALT;

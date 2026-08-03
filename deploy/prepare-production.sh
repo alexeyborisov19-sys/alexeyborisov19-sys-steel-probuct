@@ -54,6 +54,26 @@ unquote_value() {
   printf '%s' "$value"
 }
 
+extract_email_address() {
+  local value
+  local candidate
+  value="$(unquote_value "$1")"
+  case "$value" in
+    *"<"*">")
+      candidate="${value##*<}"
+      candidate="${candidate%%>*}"
+      ;;
+    *)
+      candidate="$value"
+      ;;
+  esac
+  candidate="${candidate#"${candidate%%[![:space:]]*}"}"
+  candidate="${candidate%"${candidate##*[![:space:]]}"}"
+  if [[ "$candidate" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
+    printf '%s' "$candidate"
+  fi
+}
+
 set_environment_value() {
   local key="$1"
   local value="$2"
@@ -83,8 +103,16 @@ do
   fi
 done
 
-if [ -z "$(environment_value SMTP_ENVELOPE_FROM)" ]; then
-  set_environment_value SMTP_ENVELOPE_FROM "$(environment_value SMTP_FROM)"
+smtp_from_email="$(extract_email_address "$(environment_value SMTP_FROM)")"
+test -n "$smtp_from_email" || {
+  echo "SMTP_FROM does not contain a valid sender address."
+  exit 1
+}
+
+smtp_envelope_raw="$(unquote_value "$(environment_value SMTP_ENVELOPE_FROM)")"
+smtp_envelope_email="$(extract_email_address "$smtp_envelope_raw")"
+if [ -z "$smtp_envelope_email" ] || [ "$smtp_envelope_raw" != "$smtp_envelope_email" ]; then
+  set_environment_value SMTP_ENVELOPE_FROM "$smtp_from_email"
 fi
 
 set_environment_value NEXT_PUBLIC_SITE_URL "https://www.steelprodukt.ru"
