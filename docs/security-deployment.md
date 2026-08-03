@@ -43,6 +43,9 @@ server {
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
+        proxy_request_buffering on;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
@@ -91,10 +94,14 @@ Rate limiter и сессии ИИ-инженера сейчас хранятся
 Перед коммитом установите `gitleaks` и выполните:
 
 ```bash
-pnpm run secrets:scan
+npm run secrets:scan
 trufflehog git file://. --only-verified
 ```
 
-Проверка GitHub Actions намеренно не добавлена: проект публикуется вручную.
-Если инструмент обнаружит секрет в истории, сначала его отзывают или меняют.
-Очистка истории и force push выполняются только по отдельному решению владельца.
+Действующий GitHub Actions workflow публикует только `main`; ветка и draft PR
+не запускают production-релиз. Если инструмент обнаружит секрет в истории,
+сначала его отзывают или меняют. Очистка истории и force push выполняются
+только по отдельному решению владельца.
+
+Проверка environment, подготовка каталогов, post-deploy тесты и rollback
+описаны в `docs/quote-production-runbook.md`.

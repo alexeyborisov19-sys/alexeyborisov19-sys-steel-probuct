@@ -13,6 +13,7 @@ const yandexGoalByEvent: Record<string, string[]> = {
   quote_file_attached: ["quote_file_attached"],
   quote_request_submit: ["quote_request_submit"],
   quote_request_success: ["ym-submit-leadform", "quote_request_success"],
+  quote_request_error: ["quote_request_error"],
   catalog_download: ["catalog_download"],
   quote_files_cta_click: ["quote_files_cta_click"],
   email_click: ["ym-show-contacts", "email_click"],
@@ -26,15 +27,40 @@ const yandexGoalByEvent: Record<string, string[]> = {
   assistant_lead_error: ["assistant_lead_error"],
 };
 
+const sensitiveParameterKey = /(?:^|_)(?:name|email|phone|message|content|filename|file_name|company|contact)(?:_|$)/i;
+
+export function sanitizeAnalyticsParams(params: EventParams) {
+  return Object.fromEntries(
+    Object.entries(params)
+      .filter(([key, value]) => !sensitiveParameterKey.test(key) && value !== undefined)
+      .map(([key, value]) => [key, typeof value === "string" ? value.slice(0, 120) : value]),
+  ) as EventParams;
+}
+
+export function createResettableOnce(callback: () => void) {
+  let fired = false;
+  return {
+    fire() {
+      if (fired) return;
+      fired = true;
+      callback();
+    },
+    reset() {
+      fired = false;
+    },
+  };
+}
+
 export function trackLeadEvent(eventName: string, params: EventParams = {}) {
   if (typeof window === "undefined") return;
   const analyticsWindow = window as AnalyticsWindow;
 
   const yandexCounterId = Number(process.env.NEXT_PUBLIC_YM_COUNTER_ID);
   const yandexGoals = yandexGoalByEvent[eventName];
+  const safeParams = sanitizeAnalyticsParams(params);
   if (Number.isFinite(yandexCounterId) && yandexCounterId > 0 && yandexGoals) {
     for (const goal of yandexGoals) {
-      analyticsWindow.ym?.(yandexCounterId, "reachGoal", goal, params);
+      analyticsWindow.ym?.(yandexCounterId, "reachGoal", goal, safeParams);
     }
   }
 }

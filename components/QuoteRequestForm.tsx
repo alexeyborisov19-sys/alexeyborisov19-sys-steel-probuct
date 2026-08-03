@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { trackLeadEvent } from "@/lib/analytics";
+import { createResettableOnce, trackLeadEvent } from "@/lib/analytics";
 import { legalLinks } from "@/lib/legal";
 
 const MAX_FILES = 10;
@@ -17,6 +17,7 @@ const acceptedExtensions = [
 const acceptedFiles = acceptedExtensions.map((extension) => `.${extension}`).join(",");
 
 type Feedback = { type: "error" | "success"; message: string } | null;
+type QuoteRequestFailure = Error & { code?: string };
 
 function extensionOf(name: string) {
   return name.split(".").pop()?.toLowerCase() ?? "";
@@ -31,9 +32,14 @@ export function QuoteRequestForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSending, setIsSending] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
   const [message, setMessage] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const formStartTracker = useRef<ReturnType<typeof createResettableOnce> | null>(null);
+  if (!formStartTracker.current) {
+    formStartTracker.current = createResettableOnce(() => {
+      trackLeadEvent("quote_form_started", { form_location: "contacts" });
+    });
+  }
 
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
@@ -90,9 +96,7 @@ export function QuoteRequestForm() {
   }
 
   function markFormStarted() {
-    if (hasStarted) return;
-    setHasStarted(true);
-    trackLeadEvent("quote_form_started", { form_location: "contacts" });
+    formStartTracker.current?.fire();
   }
 
   function removeFile(index: number) {
@@ -135,17 +139,29 @@ export function QuoteRequestForm() {
     trackLeadEvent("quote_request_submit", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
     try {
       const response = await fetch("/api/quote", { method: "POST", body: formData });
-      const payload = await response.json() as { message?: string };
-      if (!response.ok) throw new Error(payload.message ?? "Не удалось отправить заявку.");
+      const payload = await response.json() as { message?: string; requestId?: string; code?: string };
+      if (!response.ok) {
+        const failure = new Error(payload.message ?? "Не удалось отправить заявку.") as QuoteRequestFailure;
+        failure.code = payload.code;
+        throw failure;
+      }
 
       form.reset();
       setFiles([]);
-      setHasStarted(false);
+      formStartTracker.current?.reset();
       setMessage("");
       trackLeadEvent("quote_request_success", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
-      setFeedback({ type: "success", message: "Заявка отправлена. Подтвердим получение материалов в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации." });
+      setFeedback({
+        type: "success",
+        message: `${payload.message || "Заявка принята."}${payload.requestId ? ` Номер заявки: ${payload.requestId}.` : ""} Подтвердим получение материалов в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации.`,
+      });
     } catch (error) {
-      trackLeadEvent("quote_request_error", { form_location: "contacts" });
+      trackLeadEvent("quote_request_error", {
+        form_location: "contacts",
+        error_code: error instanceof Error && "code" in error
+          ? String((error as QuoteRequestFailure).code || "UNKNOWN_ERROR")
+          : "NETWORK_ERROR",
+      });
       setFeedback({
         type: "error",
         message: error instanceof Error ? error.message : "Не удалось отправить заявку. Попробуйте ещё раз.",
