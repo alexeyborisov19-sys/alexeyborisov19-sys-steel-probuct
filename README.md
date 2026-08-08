@@ -4,7 +4,8 @@
 
 ## Запуск локально
 
-Требуется Node.js 20.9 или новее.
+Требуется Node.js 22.13 или новее: архитектурный фундамент закрытой служебной
+системы использует встроенный `node:sqlite`. Сама система по умолчанию выключена.
 
 ```bash
 npm install
@@ -41,7 +42,7 @@ npm run start
 
 ## Деплой на Beget
 
-На VPS установите Node.js 20+, затем:
+На VPS установите Node.js 22.13+, затем:
 
 ```bash
 git clone https://github.com/alexeyborisov19-sys/alexeyborisov19-sys-steel-probuct.git
@@ -61,7 +62,9 @@ npm run start
 
 Для фактической отправки заявок на `info@steelprodukt.ru` скопируйте `.env.example` в `.env.local` и внесите SMTP-параметры почтового ящика. На Beget эти же переменные добавляются в окружение процесса `pm2`; пароль почты не должен попадать в Git.
 
-Для Nginx на VPS дополнительно задайте `client_max_body_size 30m;`, иначе сервер может отклонить чертежи до передачи в приложение.
+Для Nginx на VPS задайте `client_max_body_size 11m;`: это соответствует
+маршрутному лимиту формы и не позволяет reverse proxy принять существенно
+больший запрос, чем приложение.
 
 ## Инженерный ИИ-помощник
 
@@ -75,7 +78,9 @@ npm run start
 sudo install -d -m 700 -o nodejs -g nodejs /var/lib/steelprodukt/assistant-leads
 ```
 
-и задайте `ASSISTANT_LEAD_STORAGE_PATH=/var/lib/steelprodukt/assistant-leads`. Для мгновенного уведомления менеджеров после правовой проверки канала можно дополнительно указать `ASSISTANT_TELEGRAM_ENABLED=true`, `TELEGRAM_BOT_TOKEN` и `TELEGRAM_LEADS_CHAT_ID`.
+и задайте `ASSISTANT_LEAD_STORAGE_PATH=/var/lib/steelprodukt/assistant-leads`.
+Передача в Telegram в текущем коде отсутствует и не может быть включена
+переменными environment.
 
 ## Персональные данные и правовая готовность
 
@@ -84,11 +89,20 @@ sudo install -d -m 700 -o nodejs -g nodejs /var/lib/steelprodukt/assistant-leads
 Форма сохраняет непубличное доказательство согласия: идентификатор заявки, время, версии документов и хешированные контактные/сетевые данные. В production обязательно задайте:
 
 ```bash
-CONSENT_LOG_PATH=/var/lib/steelprodukt/consent-audit.jsonl
-CONSENT_LOG_REQUIRED=true
+CONSENT_AUDIT_STORAGE_PATH=/var/lib/steelprodukt/consent-audit
+CONSENT_AUDIT_RETENTION_DAYS=1095
+CONSENT_AUDIT_SALT=<отдельная случайная строка не менее 32 байт>
 ```
 
-Каталог должен существовать на российском сервере, принадлежать пользователю процесса Node.js, не раздаваться Nginx и регулярно резервироваться. Папка `.data/` исключена из Git и деплоя.
+Каталог должен существовать на российском сервере, принадлежать пользователю
+процесса Node.js и не раздаваться Nginx. Резервное копирование нельзя считать
+действующим до настройки шифрования и успешной проверки восстановления. Папка
+`.data/` исключена из Git и деплоя.
+
+Архитектурный фундамент закрытой системы описан в
+`docs/personal-data-stage-2-architecture.md`. Он выключен через
+`PD_ADMIN_ENABLED=false`, не участвует в приёме заявок и не должен включаться
+до завершения Этапа 3 и ручной проверки VPS.
 
 Организационные действия, которые нельзя выполнить программным кодом, перечислены в [LEGAL_COMPLIANCE_RU.md](LEGAL_COMPLIANCE_RU.md). Реестр оснований использования фотографий, видео, логотипов, визуализаций и чертежей — в [LEGAL_MEDIA_RIGHTS_REGISTER.md](LEGAL_MEDIA_RIGHTS_REGISTER.md). Перед публикацией эти документы должен проверить ответственный за персональные данные и российский юрист.
 

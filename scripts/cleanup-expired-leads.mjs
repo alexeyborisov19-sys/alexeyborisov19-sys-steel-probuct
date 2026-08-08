@@ -2,6 +2,9 @@ import { readdir, readFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const apply = process.argv.includes("--apply");
+if (apply) {
+  console.warn("LEGACY_RISKY_APPLY: this mode does not evaluate legal holds, subject requests, incidents, exports or contractual retention. Do not use it after Stage 2.");
+}
 const roots = [
   resolve(process.env.ASSISTANT_LEAD_STORAGE_PATH || ".data/assistant-leads"),
   resolve(process.env.QUOTE_STORAGE_PATH || ".data/quote-leads"),

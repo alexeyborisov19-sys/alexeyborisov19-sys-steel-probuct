@@ -105,3 +105,8 @@ trufflehog git file://. --only-verified
 
 Проверка environment, подготовка каталогов, post-deploy тесты и rollback
 описаны в `docs/quote-production-runbook.md`.
+
+Пошаговая проверка фактического firewall, привязки `127.0.0.1:3000` и внешнего
+отказа на IP:3000 приведена в `docs/personal-data-stage-2-architecture.md`.
+Наличие правильной строки в PM2-конфигурации не является подтверждением
+production-состояния: требуются `ss`, локальный и внешний `curl`.

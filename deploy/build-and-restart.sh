@@ -23,7 +23,7 @@ npm run typecheck
 npm run test
 npm run build
 
-npm run start -- --port "$AUDIT_PORT" >"$AUDIT_LOG" 2>&1 &
+npm run start -- --hostname 127.0.0.1 --port "$AUDIT_PORT" >"$AUDIT_LOG" 2>&1 &
 AUDIT_PID="$!"
 
 audit_ready=false

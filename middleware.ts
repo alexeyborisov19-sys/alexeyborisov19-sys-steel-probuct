@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { absoluteUrl } from "@/lib/site";
 
 const legacyRedirects = new Map([
   ["/address", "/contacts"],
@@ -17,10 +18,32 @@ const legacyRedirects = new Map([
 ]);
 
 export function middleware(request: NextRequest) {
+  if (
+    request.nextUrl.pathname === "/internal/personal-data"
+    || request.nextUrl.pathname.startsWith("/internal/personal-data/")
+    || request.nextUrl.pathname === "/api/internal/personal-data"
+    || request.nextUrl.pathname.startsWith("/api/internal/personal-data/")
+  ) {
+    if (process.env.PD_ADMIN_ENABLED !== "true") {
+      return new NextResponse("Not Found", {
+        status: 404,
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+        },
+      });
+    }
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    return response;
+  }
+
   const destination = legacyRedirects.get(request.nextUrl.pathname);
 
   if (destination) {
-    return NextResponse.redirect(new URL(destination, request.url), 301);
+    return NextResponse.redirect(absoluteUrl(destination), 301);
   }
 
   return new NextResponse(
@@ -61,5 +84,7 @@ export const config = {
     "/postavka-krestovin",
     "/news/news_post/:path*",
     "/my/s3/feedback/report.php",
+    "/internal/personal-data/:path*",
+    "/api/internal/personal-data/:path*",
   ],
 };

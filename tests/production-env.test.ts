@@ -31,6 +31,9 @@ function validProductionEnvironment(): NodeJS.ProcessEnv {
     TRUST_NGINX_PROXY: "true",
     CLAMAV_ENABLED: "false",
     CLAMAV_COMMAND: "clamscan",
+    PD_ADMIN_ENABLED: "false",
+    PD_ADMIN_DB_PATH: "/var/lib/steelprodukt/admin/personal-data.sqlite",
+    PD_EXPORT_PATH: "/var/lib/steelprodukt/exports",
   };
 }
 

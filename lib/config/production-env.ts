@@ -1,4 +1,5 @@
 import { isAbsolute } from "node:path";
+import { validatePdAdminEnvironment } from "@/lib/pd-admin/config";
 
 export type ProductionEnvironmentIssue = {
   key: string;
@@ -131,6 +132,10 @@ export function validateProductionEnvironment(
   }
   if (environment.CLAMAV_ENABLED && !isBoolean(environment.CLAMAV_ENABLED)) {
     add("CLAMAV_ENABLED", "must be true or false");
+  }
+
+  for (const issue of validatePdAdminEnvironment(environment, { production: true })) {
+    add(issue.key, issue.message);
   }
 
   return issues;
