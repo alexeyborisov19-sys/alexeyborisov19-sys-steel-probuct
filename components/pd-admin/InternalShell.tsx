@@ -18,17 +18,17 @@ const mainNavigation = [
   ["Согласия", "/internal/personal-data/consents", "VIEW_CONSENT"],
   ["Журнал доступа", "/internal/personal-data/access-log", "VIEW_ACCESS_LOG"],
   ["Целостность", "/internal/personal-data/integrity", "VIEW_INTEGRITY"],
+  ["Обращения субъектов", "/internal/personal-data/subject-requests", "VIEW_SUBJECT_REQUESTS"],
+  ["Запросы госорганов", "/internal/personal-data/authority-requests", "VIEW_AUTHORITY_REQUESTS"],
+  ["Legal hold", "/internal/personal-data/legal-holds", "VIEW_LEGAL_HOLD"],
+  ["Официальные выгрузки", "/internal/personal-data/exports", "VIEW_EXPORTS"],
+  ["Сроки хранения", "/internal/personal-data/retention", "VIEW_RETENTION"],
+  ["Контролируемое удаление", "/internal/personal-data/deletions", "VIEW_RETENTION"],
+  ["Инциденты", "/internal/personal-data/incidents", "VIEW_INCIDENTS"],
+  ["Реестр систем", "/internal/personal-data/systems", "VIEW_SYSTEMS_REGISTRY"],
+  ["Юридические документы", "/internal/personal-data/legal-documents", "VIEW_LEGAL_DOCUMENT_VERSIONS"],
+  ["Резервные копии", "/internal/personal-data/backups", "VIEW_BACKUPS"],
   ["Пользователи", "/internal/personal-data/users", "MANAGE_USERS"],
-] as const;
-
-const disabledNavigation = [
-  ["Обращения субъектов", "subject-requests"],
-  ["Официальные выгрузки", "exports"],
-  ["Удаление", "deletions"],
-  ["Инциденты", "incidents"],
-  ["Резервные копии", "backups"],
-  ["Реестр систем", "systems"],
-  ["Юридические документы", "legal-documents"],
 ] as const;
 
 export function InternalShell({
@@ -71,14 +71,6 @@ export function InternalShell({
             ) : null)}
             <Link href="/internal/personal-data/profile" prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition hover:bg-white/5 hover:text-[#ea5b0c]">Профиль</Link>
           </nav>
-          <div className="border-t border-white/10 p-3">
-            <p className="px-3 pb-2 text-[9px] font-bold uppercase tracking-[.18em] text-white/35">Следующий этап</p>
-            {disabledNavigation.map(([label, slug]) => (
-              <Link key={slug} href={`/internal/personal-data/${slug}`} prefetch={false} aria-disabled="true" className="block px-3 py-2 text-[11px] text-white/35">
-                {label} <span className="text-[#ea5b0c]/70">· Следующий этап</span>
-              </Link>
-            ))}
-          </div>
         </aside> : null}
         <main className="min-w-0">{children}</main>
       </div>

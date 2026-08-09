@@ -20,6 +20,13 @@ export default async function DashboardPage() {
   return <InternalShell {...shell}>
     <InternalPageHeader eyebrow="Обзор" title="Состояние обработки персональных данных" description="Показатели не содержат открытых контактов или текстов обращений." />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{metrics.map(([label, value]) => <MetricCard key={label} label={label} value={value} tone={label.includes("Повреж") || label === "Просрочены" ? "critical" : label.includes("consent") || label.includes("deferred") || label.includes("Истекают") ? "warning" : "default"} />)}</div>
+    <Panel title="Юридические процессы" className="mt-6"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[
+      ["Обращения сегодня", data.legalOperations.subjectToday], ["Обращения в работе", data.legalOperations.subjectInProgress],
+      ["Срок истекает", data.legalOperations.subjectDueSoon], ["Просроченные обращения", data.legalOperations.subjectOverdue],
+      ["Ожидают идентификации", data.legalOperations.subjectIdentity], ["Ожидают утверждения", data.legalOperations.subjectApproval],
+      ["Запросы органов", data.legalOperations.authorityOpen], ["Активные legal hold", data.legalOperations.activeHolds],
+      ["Готовые выгрузки", data.legalOperations.exportsReady], ["Открытые инциденты", data.legalOperations.incidentsOpen],
+    ].map(([label, value]) => <MetricCard key={String(label)} label={String(label)} value={value} tone={String(label).includes("Просроч") ? "critical" : Number(value) > 0 && String(label).includes("истекает") ? "warning" : "default"} />)}</div></Panel>
     <div className="mt-6 grid gap-6 xl:grid-cols-2">
       <Panel title="Источники и пользователи"><dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div><dt className="text-white/40">Основная форма</dt><dd className="mt-1 text-xl">{data.leads.quoteForm}</dd></div>

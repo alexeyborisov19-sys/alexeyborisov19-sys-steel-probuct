@@ -16,6 +16,13 @@ const metadataKeys = new Set([
   "exportId",
   "permission",
   "source",
+  "version",
+  "selfApproval",
+  "items",
+  "files",
+  "method",
+  "scope",
+  "expiresAt",
 ]);
 
 export type AccessEventInput = {

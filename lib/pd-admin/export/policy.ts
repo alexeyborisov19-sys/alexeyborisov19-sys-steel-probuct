@@ -1,5 +1,5 @@
 import { requestIdPattern } from "@/lib/pd-admin/storage/safe-files";
-import type { EmbeddedExportMetadata, ExportFilter, ExportPreview } from "@/lib/pd-admin/export/types";
+import type { ExportFilter, ExportPreview } from "@/lib/pd-admin/export/types";
 
 export class PdExportPolicyError extends Error {
   readonly code = "PD_EXPORT_POLICY_REJECTED";
@@ -16,6 +16,7 @@ export function assertSelectiveExportFilter(filter: ExportFilter) {
   const hasExactSelector = Boolean(
     requestIds.length
       || filter.subjectRequestId?.trim()
+      || filter.authorityRequestId?.trim()
       || filter.phoneHmac?.trim()
       || filter.emailHmac?.trim(),
   );
@@ -36,7 +37,7 @@ export function neutralizeSpreadsheetFormula(value: string) {
   return /^[\t\r\n ]*[=+\-@]/.test(value) ? `'${value}` : value;
 }
 
-export function assertMetadataExcludesFinalArchiveHash(metadata: EmbeddedExportMetadata & Record<string, unknown>) {
+export function assertMetadataExcludesFinalArchiveHash(metadata: Record<string, unknown>) {
   for (const forbidden of ["archiveSha256", "archive_sha256", "zipSha256", "zip_sha256"]) {
     if (forbidden in metadata) throw new PdExportPolicyError();
   }

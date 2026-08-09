@@ -16,6 +16,7 @@ const safeErrorCodes = new Set([
   "VALIDATION_ERROR",
   "NOT_FOUND",
   "CONFLICT",
+  "BLOCKED",
   "RATE_LIMITED",
   "INTERNAL_ERROR",
 ]);

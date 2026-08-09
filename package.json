@@ -23,6 +23,8 @@
     "pd:integrity-check": "node --import tsx scripts/pd-integrity-check.ts",
     "pd:sync-index": "node --import tsx scripts/pd-sync-index.ts",
     "pd:audit-verify": "node --import tsx scripts/pd-audit-verify.ts",
+    "pd:exports:expire": "node --import tsx scripts/pd-expire-exports.ts",
+    "pd:stage4:demo": "node --import tsx scripts/pd-stage4-demo.ts",
     "pd:create-admin": "node --import tsx scripts/pd-create-admin.ts"
   },
   "dependencies": {

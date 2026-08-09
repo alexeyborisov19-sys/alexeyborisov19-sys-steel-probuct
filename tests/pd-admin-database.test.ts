@@ -33,11 +33,13 @@ async function databaseFixture() {
 test("SQLite migrations apply once with WAL, foreign keys and private modes", async () => {
   const fixture = await databaseFixture();
   try {
-    assert.equal(migrationStatus(fixture.database).filter((item) => item.state === "applied").length, 1);
+    const appliedBeforeReopen = migrationStatus(fixture.database);
+    assert.ok(appliedBeforeReopen.length >= 2);
+    assert.equal(appliedBeforeReopen.every((item) => item.state === "applied"), true);
     openPdDatabase({ databasePath: fixture.path, environment: environment(fixture.path) }).close();
     assert.equal(
       Number((fixture.database.prepare("SELECT count(*) count FROM schema_migrations").get() as { count: number }).count),
-      1,
+      appliedBeforeReopen.length,
     );
     assert.equal((fixture.database.prepare("PRAGMA foreign_keys").get() as { foreign_keys: number }).foreign_keys, 1);
     assert.equal((fixture.database.prepare("PRAGMA journal_mode").get() as { journal_mode: string }).journal_mode, "wal");

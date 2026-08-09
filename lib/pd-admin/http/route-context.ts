@@ -21,6 +21,8 @@ import { administrativeRequestHashes } from "@/lib/pd-admin/http/request";
 import { PdRequestRejectedError } from "@/lib/pd-admin/http/request";
 import { pdSafeError } from "@/lib/pd-admin/http/safe-response";
 import { PdSafeFileError } from "@/lib/pd-admin/storage/safe-files";
+import { PdStage4Error } from "@/lib/pd-admin/stage4/common";
+import { PdBodyError } from "@/lib/pd-admin/http/body";
 
 export function requirePdApiContext(
   request: NextRequest,
@@ -70,6 +72,15 @@ export function pdRouteError(error: unknown) {
   if (error instanceof PdPermissionError || error instanceof PdAuthorizationError) return pdSafeError("PERMISSION_DENIED", 403);
   if (error instanceof PdCsrfError || error instanceof PdRequestRejectedError) return pdSafeError("CSRF_REJECTED", 403);
   if (error instanceof PdSafeFileError) return pdSafeError("NOT_FOUND", 404);
+  if (error instanceof PdBodyError) return pdSafeError("VALIDATION_ERROR", 400);
+  if (error instanceof PdStage4Error) {
+    const status = error.code === "NOT_FOUND" ? 404
+      : error.code === "CONFLICT" ? 409
+        : error.code === "STEP_UP_REQUIRED" ? 403
+          : error.code === "BLOCKED" ? 423
+            : 400;
+    return pdSafeError(error.code, status);
+  }
   return pdSafeError("INTERNAL_ERROR", 500);
 }
 
