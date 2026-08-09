@@ -21,7 +21,7 @@ export default async function BackupsPage() {
     <InternalPageHeader
       eyebrow="Устойчивость"
       title="Контроль резервных копий"
-      description="Локальная зашифрованная копия и локальный restore test подтверждены. Независимая копия вне VPS отсутствует, поэтому общий статус — частичная готовность."
+      description="Локальная и off-server зашифрованные копии подтверждаются зарегистрированными backup runs и restore tests. Хранение у одного провайдера и в одном аккаунте остаётся отдельным риском."
     />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard label="Локальная encrypted backup" value={data.status.localEncrypted} />

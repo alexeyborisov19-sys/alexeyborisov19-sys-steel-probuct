@@ -45,7 +45,7 @@ export default async function DashboardPage() {
       </dl></Panel>
     </div>
     <Panel title="Инфраструктура" className="mt-6"><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.infrastructure.map((item) => <div key={item.key} className="flex items-start justify-between gap-3 border border-white/10 p-3"><div><div className="text-sm font-semibold">{item.label}</div><div className="mt-1 text-xs text-white/40">{item.detail}</div></div><StatusPill status={item.status} /></div>)}</div>
-      <p className="mt-4 border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-100"><b>Резервное копирование: частичная готовность.</b> Локальная зашифрованная резервная копия создана и проверена восстановлением. Независимая внешняя резервная копия отсутствует.</p>
+      <p className="mt-4 border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-100"><b>Резервное копирование: готово с предупреждением.</b> Локальная и off-server зашифрованные копии проверены. Основной VPS и Object Storage находятся у одного провайдера и в одном аккаунте, поэтому сохраняется коррелированный риск.</p>
     </Panel>
   </InternalShell>;
 }

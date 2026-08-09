@@ -1,0 +1,23 @@
+[Unit]
+Description=Steelprodukt encrypted off-site personal data backup
+Documentation=file:///var/www/html/docs/personal-data-backup.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=PD_OFFSITE_RETENTION_DAYS=30
+ExecStart=/usr/local/sbin/steelprodukt-pd-offsite-backup
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/var/lib/steelprodukt /var/www/html /etc/steelprodukt
+ReadWritePaths=/var/backups/steelprodukt

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Steelprodukt encrypted off-site backup
+
+[Timer]
+OnCalendar=*-*-* 23:30:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=steelprodukt-pd-offsite-backup.service
+
+[Install]
+WantedBy=timers.target
