@@ -16,10 +16,11 @@ import { closePdDatabase, openPdDatabase } from "@/lib/pd-admin/db/database";
 import { dashboardSnapshot } from "@/lib/pd-admin/dashboard/service";
 import { readPdAdminConfig } from "@/lib/pd-admin/config";
 import { addLeadComment, editOwnLeadComment, updateRetentionOverride, updateWorkflow } from "@/lib/pd-admin/leads/repository";
+import { pdTestKey } from "./helpers/pd-test-key";
 
-const searchKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const sessionKey = "1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const auditKey = "2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const searchKey = pdTestKey("stage3-search");
+const sessionKey = pdTestKey("stage3-session");
+const auditKey = pdTestKey("stage3-audit");
 
 function environment(databasePath: string): NodeJS.ProcessEnv {
   return {

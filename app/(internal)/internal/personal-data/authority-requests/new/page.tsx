@@ -10,7 +10,8 @@ export default async function NewAuthorityRequestPage() {
     { name: "registrationNumber", label: "Внутренний регистрационный номер", required: true }, { name: "receivedAt", label: "Получено", kind: "datetime-local", required: true },
     { name: "authorityName", label: "Наименование органа", required: true }, { name: "department", label: "Подразделение" }, { name: "officialName", label: "Подписант" }, { name: "officialPosition", label: "Должность" },
     { name: "requestNumber", label: "Номер документа", required: true }, { name: "requestDate", label: "Дата документа", kind: "date", required: true },
-    { name: "deliveryChannel", label: "Канал получения", required: true }, { name: "dueAt", label: "Срок ответа", kind: "datetime-local", help: "Для запроса Роскомнадзора может быть рассчитана техническая контрольная дата. Для иных органов срок обязателен и определяется документом или законом." },
+    { name: "deliveryChannel", label: "Канал получения", required: true }, { name: "confirmedDueAt", label: "Подтверждённый срок ответа", kind: "datetime-local", required: true, help: "Расчёт не учитывает официальные праздничные и перенесённые выходные дни. Для иных органов срок определяется документом или применимой нормой." },
+    { name: "dueConfirmationBasis", label: "Основание подтверждения срока", kind: "textarea", required: true, help: "Укажите реквизиты запроса, норму или результат ручной проверки. Техническая дата сохраняется отдельно." },
     { name: "legalBasis", label: "Заявленное правовое основание", kind: "textarea", required: true }, { name: "requestedScope", label: "Точный запрошенный объём", kind: "textarea", required: true },
     { name: "requestIds", label: "Связанные Request ID", kind: "lines" },
   ]} /></Panel></InternalShell>;

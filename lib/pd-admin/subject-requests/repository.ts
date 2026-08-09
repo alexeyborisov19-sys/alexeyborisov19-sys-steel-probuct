@@ -66,7 +66,8 @@ export function listSubjectRequests(context: PdAuthContext, page = 1) {
 
 export function getSubjectRequest(context: PdAuthContext, idValue: string) {
   assertPdPermission(context.user.role, "VIEW_SUBJECT_REQUESTS"); const id = stage4Id(idValue);
-  const row = context.database.prepare("SELECT * FROM subject_requests WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  const row = context.database.prepare(`SELECT sr.*, u.display_name AS due_confirmed_by_name
+    FROM subject_requests sr LEFT JOIN users u ON u.id = sr.due_confirmed_by WHERE sr.id = ?`).get(id) as Record<string, unknown> | undefined;
   if (!row) throw new PdStage4Error("NOT_FOUND");
   const links = context.database.prepare("SELECT request_id FROM subject_request_leads WHERE registration_number = ? ORDER BY request_id")
     .all(String(row.registration_number)).map((item) => String((item as { request_id: string }).request_id));
@@ -80,7 +81,13 @@ export function getSubjectRequest(context: PdAuthContext, idValue: string) {
     subjectName: disclose ? String(row.subject_name) : mask(String(row.subject_name)),
     subjectContact: disclose ? String(row.subject_contact) : "Скрыто", identityMethod: row.identity_method ? String(row.identity_method) : null,
     identityStatus: String(row.stage4_identity_status), requestType: String(row.request_type), requestSummary: String(row.request_summary),
-    legalBasis: String(row.legal_basis), dueAt: String(row.due_at), initialDueAt: String(row.initial_due_at || row.due_at),
+    legalBasis: String(row.legal_basis), dueAt: String(row.confirmed_due_at || row.due_at), initialDueAt: String(row.initial_due_at || row.due_at),
+    calculatedDueAt: row.calculated_due_at ? String(row.calculated_due_at) : null,
+    confirmedDueAt: row.confirmed_due_at ? String(row.confirmed_due_at) : String(row.due_at),
+    dueConfirmedAt: row.due_confirmed_at ? String(row.due_confirmed_at) : null,
+    dueConfirmedBy: row.due_confirmed_by ? String(row.due_confirmed_by) : null,
+    dueConfirmedByName: row.due_confirmed_by_name ? String(row.due_confirmed_by_name) : null,
+    dueConfirmationBasis: row.due_confirmation_basis ? String(row.due_confirmation_basis) : null,
     extendedDueAt: row.extended_due_at ? String(row.extended_due_at) : null, extensionReason: row.extension_reason ? String(row.extension_reason) : null,
     responsibleUserId: row.responsible_user_id ? String(row.responsible_user_id) : null, status: String(row.stage4_status),
     answeredAt: row.answered_at ? String(row.answered_at) : null, responseMethod: row.response_method ? String(row.response_method) : null,
@@ -94,8 +101,9 @@ export function createSubjectRequest(context: PdAuthContext, input: Record<strin
   const id = newStage4Id(); const createdAt = nowIso();
   const registrationNumber = requiredText(input.registrationNumber, 3, 80);
   const requestType = enumValue(input.requestType, subjectRequestTypes);
-  const receivedAt = isoDate(input.receivedAt); const dueAt = input.dueAt ? isoDate(input.dueAt) : defaultSubjectDueAt(receivedAt, requestType);
-  if (!dueAt || Date.parse(dueAt) < Date.parse(receivedAt)) throw new PdStage4Error("VALIDATION_ERROR");
+  const receivedAt = isoDate(input.receivedAt); const calculatedDueAt = defaultSubjectDueAt(receivedAt, requestType);
+  const confirmedDueAt = isoDate(input.confirmedDueAt); const dueConfirmationBasis = requiredText(input.dueConfirmationBasis, 8, 1_000);
+  if (Date.parse(confirmedDueAt) < Date.parse(receivedAt)) throw new PdStage4Error("VALIDATION_ERROR");
   const requestIds = stringArray(input.requestIds ?? [], 50);
   if (requestIds.some((value) => !requestIdPattern.test(value))) throw new PdStage4Error("VALIDATION_ERROR");
   return auditedTransaction(context, {
@@ -106,11 +114,13 @@ export function createSubjectRequest(context: PdAuthContext, input: Record<strin
     database.prepare(`INSERT INTO subject_requests(
       registration_number, id, received_at, channel, subject_name, subject_contact, identity_status,
       stage4_identity_status, request_type, request_summary, legal_basis, due_at, initial_due_at,
+      calculated_due_at, confirmed_due_at, due_confirmed_at, due_confirmed_by, due_confirmation_basis,
       responsible_user_id, status, stage4_status, created_at, updated_at, version
-    ) VALUES (?, ?, ?, ?, ?, ?, 'NOT_STARTED', 'NOT_STARTED', ?, ?, ?, ?, ?, ?, 'RECEIVED', 'RECEIVED', ?, ?, 1)`)
+    ) VALUES (?, ?, ?, ?, ?, ?, 'NOT_STARTED', 'NOT_STARTED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', 'RECEIVED', ?, ?, 1)`)
       .run(registrationNumber, id, receivedAt, requiredText(input.channel, 2, 80), requiredText(input.subjectName, 2, 300),
         requiredText(input.subjectContact, 3, 500), requestType, requiredText(input.requestSummary, 3, 4_000),
-        requiredText(input.legalBasis, 3, 1_000), dueAt, dueAt, optionalStage4Id(input.responsibleUserId), createdAt, createdAt);
+        requiredText(input.legalBasis, 3, 1_000), confirmedDueAt, confirmedDueAt, calculatedDueAt, confirmedDueAt,
+        createdAt, context.user.id, dueConfirmationBasis, optionalStage4Id(input.responsibleUserId), createdAt, createdAt);
     const link = database.prepare("INSERT INTO subject_request_leads(registration_number, request_id) VALUES (?, ?)");
     for (const requestId of requestIds) link.run(registrationNumber, requestId);
     return { id, registrationNumber, version: 1 };
@@ -164,8 +174,10 @@ export function extendSubjectDeadline(context: PdAuthContext, idValue: string, i
     if (["ACCESS", "PROCESSING_INFORMATION"].includes(current.request_type)) assertFiveWeekdayExtension(current.extended_due_at || current.due_at, newDueAt);
     database.prepare(`INSERT INTO subject_request_deadline_events(id, subject_request_id, previous_due_at, new_due_at, reason, changed_at, changed_by) VALUES (?, ?, ?, ?, ?, ?, ?)`)
       .run(newStage4Id(), id, current.extended_due_at || current.due_at, newDueAt, reason, changedAt, context.user.id);
-    const update = database.prepare(`UPDATE subject_requests SET extended_due_at = ?, extension_reason = ?, status = 'EXTENDED', stage4_status = 'EXTENDED', updated_at = ?, version = version + 1 WHERE id = ? AND version = ?`)
-      .run(newDueAt, reason, changedAt, id, version); assertChanged(update.changes);
+    const update = database.prepare(`UPDATE subject_requests SET extended_due_at = ?, extension_reason = ?, confirmed_due_at = ?,
+      due_confirmed_at = ?, due_confirmed_by = ?, due_confirmation_basis = ?, status = 'EXTENDED', stage4_status = 'EXTENDED',
+      updated_at = ?, version = version + 1 WHERE id = ? AND version = ?`)
+      .run(newDueAt, reason, newDueAt, changedAt, context.user.id, reason, changedAt, id, version); assertChanged(update.changes);
     return { id, extendedDueAt: newDueAt, version: version + 1 };
   });
 }

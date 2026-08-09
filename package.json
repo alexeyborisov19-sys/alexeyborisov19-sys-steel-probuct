@@ -16,7 +16,7 @@
     "seo:audit": "node scripts/audit-seo.mjs",
     "env:check": "node --import tsx scripts/validate-production-env.ts",
     "retention:cleanup": "node scripts/cleanup-expired-leads.mjs",
-    "secrets:scan": "gitleaks detect --source . --log-opts=--all --config .gitleaks.toml --redact",
+    "secrets:scan": "node scripts/run-gitleaks.mjs",
     "indexnow:submit": "node scripts/submit-indexnow.mjs",
     "pd:migrate": "node --import tsx scripts/pd-migrate.ts",
     "pd:migrate:status": "node --import tsx scripts/pd-migrate.ts --status",

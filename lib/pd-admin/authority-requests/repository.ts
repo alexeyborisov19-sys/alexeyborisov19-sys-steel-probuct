@@ -28,7 +28,8 @@ export function listAuthorityRequests(context: PdAuthContext, page = 1) {
 
 export function getAuthorityRequest(context: PdAuthContext, idValue: string): Record<string, unknown> & { requestIds: string[]; deadlineHistory: unknown[] } {
   assertPdPermission(context.user.role, "VIEW_AUTHORITY_REQUESTS"); const id = stage4Id(idValue);
-  const row = context.database.prepare("SELECT * FROM authority_requests WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  const row = context.database.prepare(`SELECT ar.*, u.display_name AS due_confirmed_by_name
+    FROM authority_requests ar LEFT JOIN users u ON u.id = ar.due_confirmed_by WHERE ar.id = ?`).get(id) as Record<string, unknown> | undefined;
   if (!row) throw new PdStage4Error("NOT_FOUND");
   const requestIds = context.database.prepare("SELECT request_id FROM authority_request_leads WHERE authority_request_id = ? ORDER BY request_id")
     .all(id).map((item) => String((item as { request_id: string }).request_id));
@@ -39,9 +40,9 @@ export function getAuthorityRequest(context: PdAuthContext, idValue: string): Re
 export function createAuthorityRequest(context: PdAuthContext, input: Record<string, unknown>) {
   assertPdPermission(context.user.role, "CREATE_AUTHORITY_REQUEST"); const id = newStage4Id(); const createdAt = nowIso();
   const receivedAt = isoDate(input.receivedAt); const authorityName = requiredText(input.authorityName, 2, 300);
-  const dueAt = input.dueAt ? isoDate(input.dueAt) : defaultAuthorityDueAt(receivedAt, authorityName); const legalBasis = requiredText(input.legalBasis, 3, 1_000);
-  if (!dueAt) throw new PdStage4Error("VALIDATION_ERROR");
-  if (Date.parse(dueAt) < Date.parse(receivedAt)) throw new PdStage4Error("VALIDATION_ERROR");
+  const calculatedDueAt = defaultAuthorityDueAt(receivedAt, authorityName); const legalBasis = requiredText(input.legalBasis, 3, 1_000);
+  const confirmedDueAt = isoDate(input.confirmedDueAt); const dueConfirmationBasis = requiredText(input.dueConfirmationBasis, 8, 1_000);
+  if (Date.parse(confirmedDueAt) < Date.parse(receivedAt)) throw new PdStage4Error("VALIDATION_ERROR");
   const requestIds = stringArray(input.requestIds ?? [], 100); if (requestIds.some((value) => !requestIdPattern.test(value))) throw new PdStage4Error("VALIDATION_ERROR");
   return auditedTransaction(context, {
     userId: context.user.id, sessionId: context.session.id, action: "AUTHORITY_REQUEST_CREATED", targetType: "AUTHORITY_REQUEST", targetId: id,
@@ -49,11 +50,13 @@ export function createAuthorityRequest(context: PdAuthContext, input: Record<str
   }, (database) => {
     database.prepare(`INSERT INTO authority_requests(id, registration_number, received_at, authority_name, department, official_name,
       official_position, request_number, request_date, delivery_channel, legal_basis, requested_scope, due_at, initial_due_at,
+      calculated_due_at, confirmed_due_at, due_confirmed_at, due_confirmed_by, due_confirmation_basis,
       responsible_user_id, status, verification_status, created_at, updated_at, version)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', 'NOT_STARTED', ?, ?, 1)`)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', 'NOT_STARTED', ?, ?, 1)`)
       .run(id, requiredText(input.registrationNumber, 3, 80), receivedAt, authorityName, optionalText(input.department, 300),
         optionalText(input.officialName, 300), optionalText(input.officialPosition, 300), requiredText(input.requestNumber, 2, 120), isoDate(input.requestDate),
-        requiredText(input.deliveryChannel, 2, 120), legalBasis, requiredText(input.requestedScope, 3, 4_000), dueAt, dueAt,
+        requiredText(input.deliveryChannel, 2, 120), legalBasis, requiredText(input.requestedScope, 3, 4_000), confirmedDueAt, confirmedDueAt,
+        calculatedDueAt, confirmedDueAt, createdAt, context.user.id, dueConfirmationBasis,
         optionalStage4Id(input.responsibleUserId), createdAt, createdAt);
     const link = database.prepare("INSERT INTO authority_request_leads(authority_request_id, request_id) VALUES (?, ?)");
     for (const requestId of requestIds) link.run(id, requestId);
@@ -103,8 +106,9 @@ export function extendAuthorityDeadline(context: PdAuthContext, idValue: string,
     if (defaultAuthorityDueAt(current.due_at, current.authority_name)) assertFiveWeekdayExtension(current.extended_due_at || current.due_at, newDueAt);
     database.prepare(`INSERT INTO authority_request_deadline_events(id, authority_request_id, previous_due_at, new_due_at, reason, changed_at, changed_by) VALUES (?, ?, ?, ?, ?, ?, ?)`)
       .run(newStage4Id(), id, current.extended_due_at || current.due_at, newDueAt, reason, changedAt, context.user.id);
-    const update = database.prepare(`UPDATE authority_requests SET extended_due_at = ?, extension_reason = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?`)
-      .run(newDueAt, reason, changedAt, id, version); assertChanged(update.changes); return { id, extendedDueAt: newDueAt, version: version + 1 };
+    const update = database.prepare(`UPDATE authority_requests SET extended_due_at = ?, extension_reason = ?, confirmed_due_at = ?,
+      due_confirmed_at = ?, due_confirmed_by = ?, due_confirmation_basis = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?`)
+      .run(newDueAt, reason, newDueAt, changedAt, context.user.id, reason, changedAt, id, version); assertChanged(update.changes); return { id, extendedDueAt: newDueAt, version: version + 1 };
   });
 }
 

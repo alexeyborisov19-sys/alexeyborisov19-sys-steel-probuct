@@ -17,9 +17,10 @@ import { pdSafeError } from "@/lib/pd-admin/http/safe-response";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pdTestKey } from "./helpers/pd-test-key";
 
-const hmacKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const sessionKey = "1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const hmacKey = pdTestKey("foundation-search");
+const sessionKey = pdTestKey("foundation-session");
 
 test("production refuses unsafe administrative database and export paths", () => {
   const issues = validatePdAdminEnvironment({
@@ -132,7 +133,7 @@ test("login failures are hashed and temporarily lock both account and source", (
       PD_ADMIN_ENABLED: "true",
       PD_SEARCH_HMAC_KEY: hmacKey,
       PD_SESSION_HASH_KEY: sessionKey,
-      PD_AUDIT_CHAIN_KEY: "2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      PD_AUDIT_CHAIN_KEY: pdTestKey("foundation-audit"),
     },
   });
   const now = new Date("2026-08-08T00:00:00.000Z");

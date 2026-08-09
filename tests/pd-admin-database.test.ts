@@ -6,10 +6,11 @@ import test from "node:test";
 import { recordAccessEvent, verifyAccessEventChain } from "@/lib/pd-admin/audit/chain";
 import { persistSession } from "@/lib/pd-admin/auth/session-store";
 import { closePdDatabase, migrationStatus, openPdDatabase } from "@/lib/pd-admin/db/database";
+import { pdTestKey } from "./helpers/pd-test-key";
 
-const searchKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const sessionKey = "1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const auditKey = "2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const searchKey = pdTestKey("database-search");
+const sessionKey = pdTestKey("database-session");
+const auditKey = pdTestKey("database-audit");
 
 function environment(databasePath: string): NodeJS.ProcessEnv {
   return {

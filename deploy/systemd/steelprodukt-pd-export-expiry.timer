@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Steelprodukt expired export cleanup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 Europe/Moscow
+RandomizedDelaySec=10m
+Persistent=true
+Unit=steelprodukt-pd-export-expiry.service
+
+[Install]
+WantedBy=timers.target

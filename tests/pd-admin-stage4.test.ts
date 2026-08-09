@@ -41,10 +41,11 @@ import {
   getSubjectRequest,
   verifySubjectIdentity,
 } from "@/lib/pd-admin/subject-requests/repository";
+import { pdTestKey } from "./helpers/pd-test-key";
 
-const searchKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const sessionKey = "1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const auditKey = "2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const searchKey = pdTestKey("stage4-search");
+const sessionKey = pdTestKey("stage4-session");
+const auditKey = pdTestKey("stage4-audit");
 
 type Fixture = Awaited<ReturnType<typeof stage4Fixture>>;
 
@@ -174,6 +175,12 @@ test("Stage 4 migrations and RBAC enforce separation of dangerous operations", a
   try {
     const tables = fixture.database.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => String((row as { name: string }).name));
     for (const table of ["authority_requests", "subject_identity_checks", "legal_hold_leads", "export_transfers", "deletion_candidates", "deletion_acts", "backup_restore_tests"]) assert.equal(tables.includes(table), true);
+    const subjectColumns = fixture.database.prepare("PRAGMA table_info(subject_requests)").all().map((row) => String((row as { name: string }).name));
+    const authorityColumns = fixture.database.prepare("PRAGMA table_info(authority_requests)").all().map((row) => String((row as { name: string }).name));
+    for (const column of ["calculated_due_at", "confirmed_due_at", "due_confirmed_at", "due_confirmed_by", "due_confirmation_basis"]) {
+      assert.equal(subjectColumns.includes(column), true);
+      assert.equal(authorityColumns.includes(column), true);
+    }
     assert.equal(hasPdPermission("ADMIN", "EXECUTE_DELETION"), true);
     assert.equal(hasPdPermission("PERSONAL_DATA_OFFICER", "APPROVE_EXPORT"), true);
     assert.equal(hasPdPermission("MANAGER", "APPROVE_EXPORT"), false);
@@ -187,6 +194,16 @@ test("subject and authority requests preserve identity, deadline history and opt
   const fixture = await stage4Fixture();
   try {
     const lead = await addLead(fixture, "SP-20260101-AAA00001", { expired: false });
+    assert.throws(() => createSubjectRequest(fixture.admin, {
+      registrationNumber: "PD-SUBJECT-NO-CONFIRMATION",
+      receivedAt: "2026-08-03T09:00:00.000Z",
+      channel: "EMAIL",
+      requestType: "ACCESS",
+      subjectName: "Фиктивный субъект",
+      subjectContact: "fixture@example.invalid",
+      legalBasis: "Фиктивное основание",
+      requestSummary: "Срок ответственным не подтверждён",
+    }), (error: unknown) => error instanceof PdStage4Error && error.code === "VALIDATION_ERROR");
     const subject = createSubjectRequest(fixture.admin, {
       registrationNumber: "PD-SUBJECT-FIXTURE-1",
       receivedAt: "2026-08-03T09:00:00.000Z",
@@ -194,6 +211,8 @@ test("subject and authority requests preserve identity, deadline history and opt
       requestType: "ACCESS",
       subjectName: "Фиктивный субъект",
       subjectContact: "fixture@example.invalid",
+      confirmedDueAt: addWeekdays("2026-08-03T09:00:00.000Z", 10),
+      dueConfirmationBasis: "Ручная проверка срока по фиктивному сценарию и календарю",
       legalBasis: "Запрос субъекта по статье 20 Федерального закона № 152-ФЗ",
       requestSummary: "Предоставить сведения об обработке тестовой записи",
       responsibleUserId: fixture.officerId,
@@ -201,6 +220,9 @@ test("subject and authority requests preserve identity, deadline history and opt
     });
     const created = getSubjectRequest(fixture.admin, subject.id);
     assert.equal(created.dueAt, addWeekdays("2026-08-03T09:00:00.000Z", 10));
+    assert.equal(created.calculatedDueAt, addWeekdays("2026-08-03T09:00:00.000Z", 10));
+    assert.equal(created.confirmedDueAt, addWeekdays("2026-08-03T09:00:00.000Z", 10));
+    assert.equal(created.dueConfirmedBy, fixture.adminId);
     const identity = verifySubjectIdentity(fixture.officer, subject.id, { version: 1, result: "VERIFIED", method: "EMAIL_CONFIRMATION", basis: "Подтверждение через ранее указанный тестовый адрес" });
     const extended = extendSubjectDeadline(fixture.officer, subject.id, { version: identity.version, newDueAt: addWeekdays(String(created.dueAt), 5), reason: "Мотивированное продление на пять рабочих дней" });
     assert.equal(extended.version, 3);
@@ -219,12 +241,18 @@ test("subject and authority requests preserve identity, deadline history and opt
       requestNumber: "TEST-1",
       requestDate: "2026-08-03T00:00:00.000Z",
       deliveryChannel: "OFFICIAL_PORTAL",
+      confirmedDueAt: addWeekdays("2026-08-03T09:00:00.000Z", 10),
+      dueConfirmationBasis: "Ручная проверка срока по реквизитам фиктивного запроса",
       legalBasis: "Тестовое правовое основание без реальной передачи",
       requestedScope: "Только одна фиктивная запись",
       responsibleUserId: fixture.officerId,
       requestIds: [lead.requestId],
     });
-    assert.equal((fixture.database.prepare("SELECT due_at FROM authority_requests WHERE id = ?").get(authority.id) as { due_at: string }).due_at, addWeekdays("2026-08-03T09:00:00.000Z", 10));
+    const authorityDeadline = fixture.database.prepare("SELECT due_at, calculated_due_at, confirmed_due_at, due_confirmed_by FROM authority_requests WHERE id = ?").get(authority.id) as { due_at: string; calculated_due_at: string; confirmed_due_at: string; due_confirmed_by: string };
+    assert.equal(authorityDeadline.due_at, addWeekdays("2026-08-03T09:00:00.000Z", 10));
+    assert.equal(authorityDeadline.calculated_due_at, addWeekdays("2026-08-03T09:00:00.000Z", 10));
+    assert.equal(authorityDeadline.confirmed_due_at, authorityDeadline.due_at);
+    assert.equal(authorityDeadline.due_confirmed_by, fixture.officerId);
     const verified = verifyAuthorityRequest(fixture.officer, authority.id, { version: 1, verificationStatus: "VERIFIED", verificationBasis: "Реквизиты и полномочия проверены на фиктивном сценарии" });
     assert.equal(verified.status, "VERIFIED");
     assert.throws(() => extendAuthorityDeadline(fixture.officer, authority.id, { version: 2, newDueAt: "2026-09-30T09:00:00.000Z", reason: "Недопустимое превышение срока продления" }), (error: unknown) => error instanceof PdStage4Error && error.code === "VALIDATION_ERROR");
@@ -238,6 +266,7 @@ test("official export freezes preview scope, builds protected package and expire
     const subject = createSubjectRequest(fixture.officer, {
       registrationNumber: "PD-SUBJECT-EXPORT-1", receivedAt: "2026-08-03T09:00:00.000Z", channel: "EMAIL", requestType: "ACCESS",
       subjectName: "Фиктивный субъект", subjectContact: "fixture@example.invalid", legalBasis: "Тестовый запрос субъекта",
+      confirmedDueAt: addWeekdays("2026-08-03T09:00:00.000Z", 10), dueConfirmationBasis: "Ручная проверка фиктивного срока",
       requestSummary: "Выборочная выгрузка одной фиктивной записи", responsibleUserId: fixture.officerId, requestIds: [first.requestId],
     });
     verifySubjectIdentity(fixture.officer, subject.id, { version: 1, result: "VERIFIED", method: "REQUEST_ID", basis: "Фиктивный requestId подтверждён" });
@@ -277,12 +306,59 @@ test("official export freezes preview scope, builds protected package and expire
     const transferVersion = Number((fixture.database.prepare("SELECT version FROM exports WHERE id = ?").get(draft.id) as { version: number }).version);
     registerExportTransfer(fixture.officer, draft.id, { version: transferVersion, transferredAt: new Date().toISOString(), channel: "OFFICIAL_PORTAL", recipientReference: "Фиктивный адресат", registrationNumber: "TRANSFER-1", transferReference: "PORTAL-TEST", confirmedBy: fixture.officerId, result: "Передача только в тестовом контуре", legalBasis: "Тестовая регистрация передачи" });
     fixture.database.prepare("UPDATE exports SET expires_at = ? WHERE id = ?").run("2000-01-01T00:00:00.000Z", draft.id);
-    const expired = expireExportArchivesAsSystem(fixture.database, fixture.paths.exports, auditKey, new Date("2026-08-09T12:00:00.000Z"));
+    const previewExpiry = expireExportArchivesAsSystem(fixture.database, fixture.paths.exports, auditKey, { mode: "dry-run", now: new Date("2026-08-09T12:00:00.000Z") });
+    assert.equal(previewExpiry.deleted, 0);
+    assert.equal(previewExpiry.eligible, 1);
+    assert.equal(existsSync(archivePath), true);
+    assert.equal((fixture.database.prepare("SELECT stage4_status FROM exports WHERE id = ?").get(draft.id) as { stage4_status: string }).stage4_status, "TRANSFERRED");
+    const expired = expireExportArchivesAsSystem(fixture.database, fixture.paths.exports, auditKey, { mode: "apply", now: new Date("2026-08-09T12:00:00.000Z") });
     assert.equal(expired.deleted, 1);
     assert.equal(existsSync(archivePath), false);
     assert.equal(Number((fixture.database.prepare("SELECT COUNT(*) AS count FROM export_downloads WHERE export_id = ?").get(draft.id) as { count: number }).count), 1);
     assert.equal(Number((fixture.database.prepare("SELECT COUNT(*) AS count FROM export_transfers WHERE export_id = ?").get(draft.id) as { count: number }).count), 1);
     assert.equal((fixture.database.prepare("SELECT archive_sha256, stage4_status FROM exports WHERE id = ?").get(draft.id) as { archive_sha256: string; stage4_status: string }).stage4_status, "DELETED");
+    const repeated = expireExportArchivesAsSystem(fixture.database, fixture.paths.exports, auditKey, { mode: "apply", now: new Date("2026-08-09T12:01:00.000Z") });
+    assert.deepEqual(repeated, { mode: "apply", examined: 0, eligible: 0, deleted: 0, failed: 0 });
+  } finally { fixture.close(); }
+});
+
+test("export expiry dry-run is non-destructive and apply isolates unsafe or partial failures", async () => {
+  const fixture = await stage4Fixture();
+  try {
+    const expiredAt = "2000-01-01T00:00:00.000Z";
+    const validId = randomUUID();
+    const symlinkId = randomUUID();
+    const wrongPathId = randomUUID();
+    const insert = fixture.database.prepare(`INSERT INTO exports(
+      id, export_type, legal_basis, filter_json, status, requested_by, archive_path,
+      created_at, expires_at, stage4_status, categories_json, updated_at
+    ) VALUES (?, 'OTHER', 'Фиктивное основание истечения', '{}', 'READY', ?, ?, ?, ?, 'READY', '[]', ?)`);
+    const validPath = join(fixture.paths.exports, `${validId}.zip`);
+    const symlinkPath = join(fixture.paths.exports, `${symlinkId}.zip`);
+    const outsidePath = join(fixture.root, "outside-expiry-fixture.zip");
+    await writeFile(validPath, "fixture archive", { mode: 0o600 });
+    await writeFile(outsidePath, "outside fixture", { mode: 0o600 });
+    await symlink(outsidePath, symlinkPath);
+    insert.run(validId, fixture.adminId, validPath, expiredAt, expiredAt, expiredAt);
+    insert.run(symlinkId, fixture.adminId, symlinkPath, expiredAt, expiredAt, expiredAt);
+    insert.run(wrongPathId, fixture.adminId, join(fixture.paths.exports, "wrong-name.zip"), expiredAt, expiredAt, expiredAt);
+
+    const preview = expireExportArchivesAsSystem(fixture.database, fixture.paths.exports, auditKey, { mode: "dry-run", now: new Date("2026-08-09T12:00:00.000Z") });
+    assert.deepEqual(preview, { mode: "dry-run", examined: 3, eligible: 1, deleted: 0, failed: 2 });
+    assert.equal(existsSync(validPath), true);
+    assert.equal((fixture.database.prepare("SELECT stage4_status FROM exports WHERE id = ?").get(validId) as { stage4_status: string }).stage4_status, "READY");
+
+    const applied = expireExportArchivesAsSystem(fixture.database, fixture.paths.exports, auditKey, { mode: "apply", now: new Date("2026-08-09T12:01:00.000Z") });
+    assert.deepEqual(applied, { mode: "apply", examined: 3, eligible: 1, deleted: 1, failed: 2 });
+    assert.equal(existsSync(validPath), false);
+    assert.equal(existsSync(outsidePath), true);
+    assert.equal((await lstat(symlinkPath)).isSymbolicLink(), true);
+    const unsafe = fixture.database.prepare("SELECT stage4_status, archive_path FROM exports WHERE id = ?").get(symlinkId) as { stage4_status: string; archive_path: string | null };
+    assert.equal(unsafe.stage4_status, "EXPIRED");
+    assert.equal(unsafe.archive_path, symlinkPath);
+
+    const repeated = expireExportArchivesAsSystem(fixture.database, fixture.paths.exports, auditKey, { mode: "apply", now: new Date("2026-08-09T12:02:00.000Z") });
+    assert.deepEqual(repeated, { mode: "apply", examined: 2, eligible: 0, deleted: 0, failed: 2 });
   } finally { fixture.close(); }
 });
 

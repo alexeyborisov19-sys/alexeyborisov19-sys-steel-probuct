@@ -404,8 +404,9 @@ export function registerExportTransfer(context: PdAuthContext, idValue: string, 
 
 export function expireExportArchives(context: PdAuthContext, now = new Date()) {
   assertPdPermission(context.user.role, "DELETE_EXPORT"); const rows = context.database.prepare(`SELECT id, archive_path, legal_basis FROM exports
-    WHERE expires_at IS NOT NULL AND expires_at <= ? AND stage4_status IN ('READY','DOWNLOADED','TRANSFERRED')`).all(now.toISOString()) as Array<{ id: string; archive_path: string | null; legal_basis: string }>;
-  let deleted = 0;
+    WHERE expires_at IS NOT NULL AND expires_at <= ?
+      AND (stage4_status IN ('READY','DOWNLOADED','TRANSFERRED') OR (stage4_status = 'EXPIRED' AND archive_path IS NOT NULL))`).all(now.toISOString()) as Array<{ id: string; archive_path: string | null; legal_basis: string }>;
+  let deleted = 0; let failed = 0;
   for (const row of rows) {
     let result = "SUCCESS";
     try {
@@ -414,35 +415,53 @@ export function expireExportArchives(context: PdAuthContext, now = new Date()) {
     auditedTransaction(context, {
       userId: context.user.id, sessionId: context.session.id, action: result === "SUCCESS" ? "EXPORT_FILE_DELETED" : "EXPORT_EXPIRED", targetType: "EXPORT", targetId: row.id,
       legalBasis: row.legal_basis, result, ipHash: context.ipHash, metadata: { status: result === "SUCCESS" ? "DELETED" : "EXPIRED" },
-    }, (database) => { database.prepare(`UPDATE exports SET stage4_status = ?, status = ?, archive_path = NULL, deleted_at = ?, updated_at = ?, version = version + 1 WHERE id = ?`)
-      .run(result === "SUCCESS" ? "DELETED" : "EXPIRED", result === "SUCCESS" ? "DELETED" : "EXPIRED", now.toISOString(), now.toISOString(), row.id); });
-    if (result === "SUCCESS") deleted += 1;
+    }, (database) => { database.prepare(`UPDATE exports SET stage4_status = ?, status = ?,
+      archive_path = CASE WHEN ? = 'SUCCESS' THEN NULL ELSE archive_path END,
+      deleted_at = CASE WHEN ? = 'SUCCESS' THEN ? ELSE deleted_at END,
+      updated_at = ?, version = version + 1 WHERE id = ?`)
+      .run(result === "SUCCESS" ? "DELETED" : "EXPIRED", result === "SUCCESS" ? "DELETED" : "EXPIRED", result, result, now.toISOString(), now.toISOString(), row.id); });
+    if (result === "SUCCESS") deleted += 1; else failed += 1;
   }
-  return { examined: rows.length, deleted };
+  return { examined: rows.length, deleted, failed };
 }
 
-export function expireExportArchivesAsSystem(database: DatabaseSync, exportPath: string, auditChainKey: string, now = new Date()) {
+export type ExportExpiryMode = "dry-run" | "apply";
+
+export function expireExportArchivesAsSystem(
+  database: DatabaseSync,
+  exportPath: string,
+  auditChainKey: string,
+  options: { mode: ExportExpiryMode; now?: Date },
+) {
+  const now = options.now ?? new Date();
   prepareExportRoot(exportPath);
   const rows = database.prepare(`SELECT id, archive_path, legal_basis FROM exports
-    WHERE expires_at IS NOT NULL AND expires_at <= ? AND stage4_status IN ('READY','DOWNLOADED','TRANSFERRED')`).all(now.toISOString()) as Array<{ id: string; archive_path: string | null; legal_basis: string }>;
+    WHERE expires_at IS NOT NULL AND expires_at <= ?
+      AND (stage4_status IN ('READY','DOWNLOADED','TRANSFERRED') OR (stage4_status = 'EXPIRED' AND archive_path IS NOT NULL))`).all(now.toISOString()) as Array<{ id: string; archive_path: string | null; legal_basis: string }>;
   const systemHash = sha256Buffer(`${auditChainKey}:PD_EXPORT_EXPIRY_JOB`); let deleted = 0; let failed = 0;
   for (const row of rows) {
     let result = "SUCCESS";
     try {
       if (row.archive_path) {
         const expected = `${row.id}.zip`; if (basename(row.archive_path) !== expected) throw new PdStage4Error("BLOCKED");
-        const safePath = resolve(exportPath, expected); const node = lstatSync(safePath); if (!node.isFile() || node.isSymbolicLink()) throw new PdStage4Error("BLOCKED"); unlinkSync(safePath);
+        const safePath = resolve(exportPath, expected); const node = lstatSync(safePath); if (!node.isFile() || node.isSymbolicLink()) throw new PdStage4Error("BLOCKED");
+        if (options.mode === "apply") unlinkSync(safePath);
       }
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") result = "FAILED"; }
+    if (options.mode === "dry-run") {
+      if (result === "FAILED") failed += 1;
+      continue;
+    }
     database.exec("BEGIN IMMEDIATE");
     try {
       recordAccessEventInTransaction(database, { action: "EXPORT_EXPIRED", targetType: "EXPORT", targetId: row.id, legalBasis: row.legal_basis, result, ipHash: systemHash, metadata: { status: "EXPIRED" } }, auditChainKey);
       if (result === "SUCCESS") recordAccessEventInTransaction(database, { action: "EXPORT_FILE_DELETED", targetType: "EXPORT", targetId: row.id, legalBasis: row.legal_basis, result, ipHash: systemHash, metadata: { status: "DELETED" } }, auditChainKey);
-      database.prepare(`UPDATE exports SET stage4_status = ?, status = ?, archive_path = NULL, deleted_at = ?, updated_at = ?, version = version + 1 WHERE id = ?`)
-        .run(result === "SUCCESS" ? "DELETED" : "EXPIRED", result === "SUCCESS" ? "DELETED" : "EXPIRED", now.toISOString(), now.toISOString(), row.id);
+      database.prepare(`UPDATE exports SET stage4_status = ?, status = ?, archive_path = CASE WHEN ? = 'SUCCESS' THEN NULL ELSE archive_path END,
+        deleted_at = CASE WHEN ? = 'SUCCESS' THEN ? ELSE deleted_at END, updated_at = ?, version = version + 1 WHERE id = ?`)
+        .run(result === "SUCCESS" ? "DELETED" : "EXPIRED", result === "SUCCESS" ? "DELETED" : "EXPIRED", result, result, now.toISOString(), now.toISOString(), row.id);
       database.exec("COMMIT");
     } catch (error) { database.exec("ROLLBACK"); throw error; }
     if (result === "SUCCESS") deleted += 1; else failed += 1;
   }
-  return { examined: rows.length, deleted, failed };
+  return { mode: options.mode, examined: rows.length, eligible: rows.length - failed, deleted, failed };
 }

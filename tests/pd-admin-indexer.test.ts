@@ -6,10 +6,11 @@ import test from "node:test";
 import { contactHmac } from "@/lib/pd-admin/contacts";
 import { closePdDatabase, openPdDatabase } from "@/lib/pd-admin/db/database";
 import { syncLeadIndex } from "@/lib/pd-admin/indexing/lead-index";
+import { pdTestKey } from "./helpers/pd-test-key";
 
-const searchKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const sessionKey = "1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const auditKey = "2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const searchKey = pdTestKey("indexer-search");
+const sessionKey = pdTestKey("indexer-session");
+const auditKey = pdTestKey("indexer-audit");
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "steelprodukt-pd-index-"));

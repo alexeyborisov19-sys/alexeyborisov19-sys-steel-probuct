@@ -26,7 +26,7 @@ export default async function BackupsPage() {
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard label="Локальная encrypted backup" value={data.status.localEncrypted} />
       <MetricCard label="Локальный restore test" value={data.status.localRestore} />
-      <MetricCard label="Независимая off-server" value={data.status.independentOffServer} tone="warning" />
+      <MetricCard label="Off-server encrypted" value={data.status.independentOffServer} tone="warning" />
       <MetricCard label="Общий статус" value={data.status.overall} tone="warning" />
     </div>
 
