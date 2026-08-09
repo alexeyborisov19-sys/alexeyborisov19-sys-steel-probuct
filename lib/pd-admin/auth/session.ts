@@ -1,6 +1,8 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 export const PD_SESSION_COOKIE = "__Host-steelprodukt-pd-session";
+export const PD_CSRF_COOKIE = "__Host-steelprodukt-pd-csrf";
+export const PD_PREAUTH_COOKIE = "__Host-steelprodukt-pd-preauth";
 
 function keyedHash(value: string, key: string, purpose: string) {
   if (Buffer.byteLength(key, "utf8") < 32 && !/^[a-f\d]{64,}$/i.test(key)) {
@@ -60,6 +62,28 @@ export function verifyCsrfToken(token: string, expectedHash: string, hashKey: st
 export function sessionCookieOptions(maxAgeSeconds: number, production = process.env.NODE_ENV === "production") {
   return {
     name: PD_SESSION_COOKIE,
+    httpOnly: true,
+    secure: production,
+    sameSite: "strict" as const,
+    path: "/",
+    maxAge: maxAgeSeconds,
+  };
+}
+
+export function csrfCookieOptions(maxAgeSeconds: number, production = process.env.NODE_ENV === "production") {
+  return {
+    name: PD_CSRF_COOKIE,
+    httpOnly: false,
+    secure: production,
+    sameSite: "strict" as const,
+    path: "/",
+    maxAge: maxAgeSeconds,
+  };
+}
+
+export function preAuthCookieOptions(maxAgeSeconds = 600, production = process.env.NODE_ENV === "production") {
+  return {
+    name: PD_PREAUTH_COOKIE,
     httpOnly: true,
     secure: production,
     sameSite: "strict" as const,

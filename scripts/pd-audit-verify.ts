@@ -1,6 +1,6 @@
 import { verifyAccessEventChain } from "@/lib/pd-admin/audit/chain";
 import { readPdAdminConfig } from "@/lib/pd-admin/config";
-import { closePdDatabase, openPdDatabase } from "@/lib/pd-admin/db/database";
+import { closePdDatabase, migrationStatus, openPdDatabase } from "@/lib/pd-admin/db/database";
 
 const config = readPdAdminConfig();
 if (!config.enabled) {
@@ -11,7 +11,10 @@ if (!config.enabled) {
 } else {
   let database;
   try {
-    database = openPdDatabase();
+    database = openPdDatabase({ applyMigrations: false });
+    if (migrationStatus(database).some((migration) => migration.state === "pending")) {
+      throw new Error("PD schema migration is pending");
+    }
     const result = verifyAccessEventChain(database, config.auditChainKey);
     console.info(JSON.stringify({ valid: result.valid, events: result.events, invalidEvents: result.invalidIds.length }));
     if (!result.valid) process.exitCode = 1;

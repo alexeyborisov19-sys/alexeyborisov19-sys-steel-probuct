@@ -53,48 +53,57 @@ function eventHash(payload: Record<string, JsonValue>, previousHash: string | nu
     .digest("hex");
 }
 
-export function recordAccessEvent(database: DatabaseSync, input: AccessEventInput, auditChainKey: string) {
-  database.exec("BEGIN IMMEDIATE");
-  try {
-    const previous = database.prepare("SELECT event_hash FROM access_events ORDER BY id DESC LIMIT 1").get() as {
-      event_hash: string;
-    } | undefined;
-    const previousHash = previous?.event_hash ?? null;
-    const metadataJson = safeMetadata(input.metadata);
-    const payload: Record<string, JsonValue> = {
-      occurredAt: input.occurredAt ?? new Date().toISOString(),
-      userId: input.userId ?? null,
-      sessionId: input.sessionId ?? null,
-      action: input.action,
-      targetType: input.targetType,
-      targetId: input.targetId ?? null,
-      legalBasis: input.legalBasis ?? null,
-      result: input.result,
-      ipHash: input.ipHash,
-      metadataJson,
-    };
-    const hash = eventHash(payload, previousHash, auditChainKey);
-    const result = database.prepare(`
+export function recordAccessEventInTransaction(
+  database: DatabaseSync,
+  input: AccessEventInput,
+  auditChainKey: string,
+) {
+  const previous = database.prepare("SELECT event_hash FROM access_events ORDER BY id DESC LIMIT 1").get() as {
+    event_hash: string;
+  } | undefined;
+  const previousHash = previous?.event_hash ?? null;
+  const metadataJson = safeMetadata(input.metadata);
+  const payload: Record<string, JsonValue> = {
+    occurredAt: input.occurredAt ?? new Date().toISOString(),
+    userId: input.userId ?? null,
+    sessionId: input.sessionId ?? null,
+    action: input.action,
+    targetType: input.targetType,
+    targetId: input.targetId ?? null,
+    legalBasis: input.legalBasis ?? null,
+    result: input.result,
+    ipHash: input.ipHash,
+    metadataJson,
+  };
+  const hash = eventHash(payload, previousHash, auditChainKey);
+  const result = database.prepare(`
       INSERT INTO access_events(
         occurred_at, user_id, session_id, action, target_type, target_id,
         legal_basis, result, ip_hash, metadata_json, previous_hash, event_hash
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      String(payload.occurredAt),
-      input.userId ?? null,
-      input.sessionId ?? null,
-      input.action,
-      input.targetType,
-      input.targetId ?? null,
-      input.legalBasis ?? null,
-      input.result,
-      input.ipHash,
-      metadataJson,
-      previousHash,
-      hash,
-    );
+    String(payload.occurredAt),
+    input.userId ?? null,
+    input.sessionId ?? null,
+    input.action,
+    input.targetType,
+    input.targetId ?? null,
+    input.legalBasis ?? null,
+    input.result,
+    input.ipHash,
+    metadataJson,
+    previousHash,
+    hash,
+  );
+  return { id: Number(result.lastInsertRowid), eventHash: hash };
+}
+
+export function recordAccessEvent(database: DatabaseSync, input: AccessEventInput, auditChainKey: string) {
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    const result = recordAccessEventInTransaction(database, input, auditChainKey);
     database.exec("COMMIT");
-    return { id: Number(result.lastInsertRowid), eventHash: hash };
+    return result;
   } catch (error) {
     database.exec("ROLLBACK");
     throw error;

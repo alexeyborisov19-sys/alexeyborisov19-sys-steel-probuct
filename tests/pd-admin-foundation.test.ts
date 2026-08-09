@@ -177,6 +177,7 @@ test("login failures are hashed and temporarily lock both account and source", (
 test("safe internal errors do not expose arbitrary messages or paths", async () => {
   const response = pdSafeError("/var/lib/steelprodukt/private", 500);
   assert.equal(response.headers.get("cache-control"), "private, no-store, max-age=0");
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
   assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow, noarchive");
   assert.deepEqual(await response.json(), { ok: false, code: "INTERNAL_ERROR" });
 });

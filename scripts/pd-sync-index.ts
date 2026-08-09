@@ -1,5 +1,5 @@
 import { readPdAdminConfig } from "@/lib/pd-admin/config";
-import { closePdDatabase, openPdDatabase } from "@/lib/pd-admin/db/database";
+import { closePdDatabase, migrationStatus, openPdDatabase } from "@/lib/pd-admin/db/database";
 import { syncLeadIndex, type LeadIndexMode } from "@/lib/pd-admin/indexing/lead-index";
 
 function argumentValue(name: string) {
@@ -25,7 +25,10 @@ async function main() {
   }
   let database;
   try {
-    database = openPdDatabase();
+    database = openPdDatabase({ applyMigrations: false });
+    if (migrationStatus(database).some((migration) => migration.state === "pending")) {
+      throw new Error("PD schema migration is pending");
+    }
     const result = await syncLeadIndex({
       database,
       mode,

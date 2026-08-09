@@ -16,7 +16,7 @@
 
 | Категория | Путь | Содержание | Статус |
 |---|---|---|---|
-| Служебная SQLite | `/var/lib/steelprodukt/admin/personal-data.sqlite` | метаданные, HMAC-индексы, роли, аудит, workflow | выключено |
+| Служебная SQLite | `/var/lib/steelprodukt/admin/personal-data.sqlite` | метаданные, HMAC-индексы, роли, аудит, workflow | код Этапа 3 готов локально, production выключен |
 | Временные выгрузки | `/var/lib/steelprodukt/exports` | официальные архивы с TTL | pipeline не реализован |
 | Backup | `PD_BACKUP_PATH` | зашифрованные резервные копии | только проект |
 

@@ -27,12 +27,12 @@ export const legalDocumentVersions = {
   marketingConsent: "2026-07-30",
   cookies: "2026-07-30",
   terms: "2026-07-30",
-  services: "2026-08-08",
+  services: "2026-08-09",
 } as const;
 
 export const legalDocumentDisplayDates = {
   privacy: "8 августа 2026 года",
-  services: "8 августа 2026 года",
+  services: "9 августа 2026 года",
 } as const;
 
 export const legalLinks = {

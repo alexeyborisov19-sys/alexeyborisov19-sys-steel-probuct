@@ -69,6 +69,19 @@ const nextConfig: NextConfig = {
         source: "/internal/personal-data/:path*",
         headers: [
           { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "Pragma", value: "no-cache" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
+        source: "/api/internal/personal-data/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "Pragma", value: "no-cache" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
         ],
       },

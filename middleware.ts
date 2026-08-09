@@ -34,8 +34,49 @@ export function middleware(request: NextRequest) {
         },
       });
     }
-    const response = NextResponse.next();
+    if (
+      process.env.NODE_ENV === "production"
+      && (
+        request.headers.get("x-forwarded-proto")?.toLowerCase() !== "https"
+        || (request.headers.get("x-forwarded-host") || request.headers.get("host"))?.toLowerCase() !== "www.steelprodukt.ru"
+      )
+    ) {
+      return new NextResponse("Not Found", {
+        status: 404,
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+        },
+      });
+    }
+    const nonceBytes = new Uint8Array(18);
+    crypto.getRandomValues(nonceBytes);
+    const nonce = btoa(String.fromCharCode(...nonceBytes));
+    const internalCsp = [
+      "default-src 'self'",
+      "base-uri 'none'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+      "style-src 'self'",
+      "img-src 'self' data:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "frame-src 'none'",
+      "media-src 'none'",
+    ].join("; ");
+    const forwardedHeaders = new Headers(request.headers);
+    forwardedHeaders.set("x-nonce", nonce);
+    forwardedHeaders.set("Content-Security-Policy", internalCsp);
+    const response = NextResponse.next({ request: { headers: forwardedHeaders } });
     response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("Content-Security-Policy", internalCsp);
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("X-Frame-Options", "DENY");
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
     return response;
   }

@@ -17,7 +17,11 @@ export function assertPdMutationRequest(
 ) {
   const origin = request.headers.get("origin");
   const expectedOrigin = new URL(siteConfig.url).origin;
-  if (!origin || origin !== expectedOrigin) throw new PdCsrfError();
+  const requestOrigin = new URL(request.url).origin;
+  const allowed = process.env.NODE_ENV === "production"
+    ? origin === expectedOrigin
+    : origin === expectedOrigin || origin === requestOrigin;
+  if (!origin || !allowed) throw new PdCsrfError();
   const fetchSite = request.headers.get("sec-fetch-site")?.toLowerCase();
   if (fetchSite && fetchSite !== "same-origin") throw new PdCsrfError();
   const csrfToken = request.headers.get("x-steelprodukt-csrf")?.trim();

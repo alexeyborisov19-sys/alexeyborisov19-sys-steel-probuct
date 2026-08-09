@@ -1,7 +1,9 @@
 const privateResponseHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
   Pragma: "no-cache",
+  "Referrer-Policy": "no-referrer",
   "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
   "X-Robots-Tag": "noindex, nofollow, noarchive",
 } as const;
 

@@ -2,7 +2,7 @@ import { existsSync, lstatSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { verifyAccessEventChain } from "@/lib/pd-admin/audit/chain";
 import { readPdAdminConfig } from "@/lib/pd-admin/config";
-import { closePdDatabase, openPdDatabase } from "@/lib/pd-admin/db/database";
+import { closePdDatabase, migrationStatus, openPdDatabase } from "@/lib/pd-admin/db/database";
 import { syncLeadIndex } from "@/lib/pd-admin/indexing/lead-index";
 
 type Finding = { code: string; severity: "warning" | "error" };
@@ -58,7 +58,10 @@ async function main() {
 
   let database;
   try {
-    database = openPdDatabase();
+    database = openPdDatabase({ applyMigrations: false });
+    if (migrationStatus(database).some((migration) => migration.state === "pending")) {
+      throw new Error("PD schema migration is pending");
+    }
     const sqliteResult = database.prepare("PRAGMA integrity_check").get() as { integrity_check?: string } | undefined;
     if (sqliteResult?.integrity_check !== "ok") findings.push({ code: "SQLITE_INTEGRITY", severity: "error" });
     const foreignKeys = database.prepare("PRAGMA foreign_keys").get() as { foreign_keys?: number } | undefined;
