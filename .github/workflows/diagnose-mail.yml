@@ -70,6 +70,22 @@ jobs:
             'external_tcp_3000=closed' \
             'external_tcp_3011=closed'
           REMOTE
+      - name: Terminate the exposed VNC console session
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" 'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+          pkill -KILL -t tty1 2>/dev/null || true
+          sleep 1
+          if who | awk '$2 == "tty1" { found = 1 } END { exit !found }'; then
+            printf '%s\n' 'vnc_tty1_session=still_active'
+            exit 1
+          fi
+          printf '%s\n' 'vnc_tty1_session=terminated'
+          REMOTE
       - name: Diagnose index dry-run findings without exposing records
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
