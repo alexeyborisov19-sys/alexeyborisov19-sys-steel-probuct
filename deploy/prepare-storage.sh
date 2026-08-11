@@ -9,6 +9,8 @@ DIRECTORIES=(
   "$STORAGE_ROOT/quarantine"
   "$STORAGE_ROOT/consent-audit"
   "$STORAGE_ROOT/assistant-leads"
+  "$STORAGE_ROOT/admin"
+  "$STORAGE_ROOT/exports"
 )
 
 install -d -m 0700 -o "$APP_USER" -g "$APP_GROUP" "$STORAGE_ROOT"

@@ -7,6 +7,7 @@ output/
 tmp/
 work/
 .data/
+.tools/
 *.tsbuildinfo
 
 # Source code goes to GitHub. The master company film is distributed separately

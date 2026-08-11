@@ -1,0 +1,18 @@
+# Exact historical false-positive fingerprints. These values were deterministic
+# test-only keys, were never used in production, and have been replaced with
+# runtime-generated fixtures. Do not add path-wide or rule-wide exclusions.
+df910cabd76f73d4f65760af80f613987b75fac3:tests/pd-admin-stage4.test.ts:generic-api-key:45
+df910cabd76f73d4f65760af80f613987b75fac3:tests/pd-admin-stage4.test.ts:generic-api-key:46
+df910cabd76f73d4f65760af80f613987b75fac3:tests/pd-admin-stage4.test.ts:generic-api-key:47
+dc46a121fb02c448e2ce4133dc1f7fa74623bac4:tests/pd-admin-stage3.test.ts:generic-api-key:20
+dc46a121fb02c448e2ce4133dc1f7fa74623bac4:tests/pd-admin-stage3.test.ts:generic-api-key:21
+dc46a121fb02c448e2ce4133dc1f7fa74623bac4:tests/pd-admin-stage3.test.ts:generic-api-key:22
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-database.test.ts:generic-api-key:10
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-database.test.ts:generic-api-key:11
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-database.test.ts:generic-api-key:12
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-indexer.test.ts:generic-api-key:10
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-indexer.test.ts:generic-api-key:11
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-indexer.test.ts:generic-api-key:12
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-foundation.test.ts:generic-api-key:21
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-foundation.test.ts:generic-api-key:22
+92c1d6f41b7a77ce24dec081459f78a8bb02fa26:tests/pd-admin-foundation.test.ts:generic-api-key:135

@@ -6,6 +6,7 @@ export function GET() {
   const robots = `User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /internal/
 Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&_ym_status-check
 
 Host: www.steelprodukt.ru

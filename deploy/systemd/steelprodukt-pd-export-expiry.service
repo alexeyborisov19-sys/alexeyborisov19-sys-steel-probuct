@@ -1,0 +1,23 @@
+[Unit]
+Description=Steelprodukt expired personal-data export cleanup
+Documentation=file:///var/www/html/docs/personal-data-export.md
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=nodejs
+Group=nodejs
+UMask=0077
+WorkingDirectory=/var/www/html
+EnvironmentFile=/var/www/html/.env.production
+ExecStart=/usr/bin/npm run pd:exports:expire -- --apply
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/var/www/html
+ReadWritePaths=/var/lib/steelprodukt/admin /var/lib/steelprodukt/exports

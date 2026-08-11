@@ -7,7 +7,7 @@
 
 ## Что потребуется
 
-- VPS Beget с готовым приложением **Node.js**;
+- VPS Beget с **Node.js 22.13 или новее**;
 - домен `steelprodukt.ru`, направленный на IP VPS;
 - исходники проекта в одной папке;
 - доступ в SSH-терминал VPS.
@@ -31,6 +31,9 @@
    pm2 save
    ```
 
+   До этих команд обязательно проверьте `node --version`. Не обновляйте
+   production Node.js в рамках обычного деплоя без отдельного окна и rollback.
+
 6. Настройте Nginx как reverse proxy на `127.0.0.1:3000` по файлу
    `deploy/nginx/steelprodukt.conf`; лимит запроса согласован с приложением и
    равен 11 МБ.
@@ -53,3 +56,6 @@ pm2 save
 
 Полный порядок, проверка формы и rollback описаны в
 `docs/quote-production-runbook.md`.
+Runbook привязки Next.js к loopback и проверки firewall находится в
+`docs/personal-data-stage-2-architecture.md`. Этап 2 нельзя использовать как
+разрешение включить `PD_ADMIN_ENABLED`.
