@@ -17,6 +17,9 @@ trap cleanup_audit_server EXIT
 
 cd "$APP_PATH"
 npm ci
+# Generated route types from the previous release must not participate in
+# typecheck after App Router paths have changed.
+rm -rf .next
 npm run env:check
 npm run lint
 npm run typecheck
