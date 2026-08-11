@@ -38,6 +38,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/:path*",
+        has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
+        destination: "https://www.steelprodukt.ru/:path*",
+        permanent: true,
+      },
+      {
         source: "/articles/ezhednevnaya-svodka-rossiya-politika-promyshlennost-28-07-2026",
         destination: "/articles",
         permanent: true,
