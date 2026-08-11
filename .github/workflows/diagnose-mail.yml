@@ -10,6 +10,20 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
+      - name: Verify public site and disabled internal routes
+        run: |
+          set -euo pipefail
+          test "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 20 https://www.steelprodukt.ru/)" = 200
+          test "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 20 https://www.steelprodukt.ru/production)" = 200
+          test "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 20 https://www.steelprodukt.ru/products)" = 200
+          test "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 20 https://www.steelprodukt.ru/articles)" = 200
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 https://www.steelprodukt.ru/internal/personal-data)" = 404
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 https://www.steelprodukt.ru/api/internal/personal-data/profile)" = 404
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            -X POST -H 'Origin: https://www.steelprodukt.ru' \
+            -F 'name=Production smoke check' -F 'consent=false' \
+            https://www.steelprodukt.ru/api/quote)" = 400
+          printf '%s\n' 'public_smoke=ok' 'internal_disabled=true' 'quote_validation=ok'
       - name: Configure secure server access
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -20,10 +34,54 @@ jobs:
           printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-      - name: Read application error log
+      - name: Migrate production SQLite and run index dry-run
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs pm2 logs steelprodukt --err --lines 50 --nostream"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" 'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+
+          printf 'migration_started_at=%s\n' "$(date --iso-8601=seconds)"
+          test -f /var/www/html/.env.production
+          test "$(stat -c '%a' /var/www/html/.env.production)" = 600
+          grep -qx 'PD_ADMIN_ENABLED=false' /var/www/html/.env.production
+          printf 'pd_admin_enabled=false\n'
+          test "$(stat -c '%a %U:%G' /var/lib/steelprodukt/admin)" = '700 nodejs:nodejs'
+          test "$(stat -c '%a %U:%G' /var/lib/steelprodukt/exports)" = '700 nodejs:nodejs'
+          df -h /var/lib/steelprodukt | tail -n 1
+          df -i /var/lib/steelprodukt | tail -n 1
+
+          sudo -iu nodejs bash -se <<'NODEJS'
+          set -Eeuo pipefail
+          set -a
+          . /var/www/html/.env.production
+          set +a
+          export PD_ADMIN_ENABLED=true
+          cd /var/www/html
+
+          npm run env:check
+          npm run pd:migrate:status
+          npm run pd:migrate
+          npm run pd:migrate:status
+
+          node --input-type=module <<'SQLITE'
+          import { DatabaseSync } from "node:sqlite";
+          const database = new DatabaseSync(process.env.PD_ADMIN_DB_PATH, { readOnly: true });
+          const result = {
+            integrity: database.prepare("PRAGMA integrity_check").get().integrity_check,
+            foreignKeyViolations: database.prepare("PRAGMA foreign_key_check").all().length,
+            journalMode: database.prepare("PRAGMA journal_mode").get().journal_mode,
+          };
+          database.close();
+          console.log(JSON.stringify(result));
+          SQLITE
+
+          stat -c 'database_mode=%a owner=%U:%G' "$PD_ADMIN_DB_PATH"
+          npm run pd:sync-index -- --dry-run
+          NODEJS
+
+          grep -qx 'PD_ADMIN_ENABLED=false' /var/www/html/.env.production
+          printf 'saved_pd_admin_enabled=false\n'
+          REMOTE
