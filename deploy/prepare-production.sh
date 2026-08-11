@@ -165,9 +165,40 @@ migrate_existing_records() {
   find "$source" -maxdepth 1 -type f -exec cp --update=none --preserve=timestamps {} "$destination/" \;
 }
 
+migrate_existing_quarantine() {
+  local source="$1"
+  local destination="$2"
+  local copied=0
+  if [ ! -d "$source" ] || [ -L "$source" ]; then
+    return
+  fi
+
+  while IFS= read -r -d '' source_file; do
+    local relative_path="${source_file#"$source"/}"
+    local request_id="${relative_path%%/*}"
+    local storage_id="${relative_path#*/}"
+    if [[ ! "$request_id" =~ ^SP-(AI-)?[0-9]{8}-[A-F0-9]{8}$ ]] ||
+       [[ ! "$storage_id" =~ ^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89aAbB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}\.[a-zA-Z0-9]{1,12}$ ]]; then
+      continue
+    fi
+
+    local request_directory="$destination/$request_id"
+    local target="$request_directory/$storage_id"
+    if [ -L "$request_directory" ] || [ -e "$target" ] || [ -L "$target" ]; then
+      continue
+    fi
+    install -d -m 0700 -o "$APP_USER" -g "$APP_GROUP" "$request_directory"
+    cp -n -p -P "$source_file" "$target"
+    copied=$((copied + 1))
+  done < <(find "$source" -mindepth 2 -maxdepth 2 -type f -print0)
+
+  printf 'Migrated %d legacy quarantine file(s).\n' "$copied"
+}
+
 migrate_existing_records "$APP_PATH/.data/quote-leads" "/var/lib/steelprodukt/quote-leads"
 migrate_existing_records "$APP_PATH/.data/consent-audit" "/var/lib/steelprodukt/consent-audit"
 migrate_existing_records "$APP_PATH/.data/assistant-leads" "/var/lib/steelprodukt/assistant-leads"
+migrate_existing_quarantine "$APP_PATH/.data/quarantine" "/var/lib/steelprodukt/quarantine"
 
 find /var/lib/steelprodukt -type d -exec chown "$APP_USER:$APP_GROUP" {} + -exec chmod 0700 {} +
 find /var/lib/steelprodukt -type f -exec chown "$APP_USER:$APP_GROUP" {} + -exec chmod 0600 {} +
