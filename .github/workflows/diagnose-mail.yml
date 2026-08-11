@@ -70,6 +70,31 @@ jobs:
             'external_tcp_3000=closed' \
             'external_tcp_3011=closed'
           REMOTE
+      - name: Install one-time first-admin launcher
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" 'bash -se' <<'REMOTE'
+          set -Eeuo pipefail
+          grep -qx 'PD_ADMIN_ENABLED=false' /var/www/html/.env.production
+          cat > /usr/local/sbin/steelprodukt-create-first-admin <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          exec sudo -iu nodejs bash -lc '
+            set -a
+            . /var/www/html/.env.production
+            set +a
+            export PD_ADMIN_ENABLED=true
+            cd /var/www/html
+            exec node --import tsx scripts/pd-create-admin.ts
+          '
+          SCRIPT
+          chown root:root /usr/local/sbin/steelprodukt-create-first-admin
+          chmod 0700 /usr/local/sbin/steelprodukt-create-first-admin
+          printf '%s\n' 'first_admin_launcher=installed'
+          REMOTE
       - name: Diagnose index dry-run findings without exposing records
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
