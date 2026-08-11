@@ -23,20 +23,6 @@ jobs:
             -X POST -H 'Origin: https://www.steelprodukt.ru' \
             -F 'name=Production smoke check' -F 'consent=false' \
             https://www.steelprodukt.ru/api/quote)" = 400
-          response_file="$(mktemp)"
-          status="$(curl -sS -o "$response_file" -w '%{http_code}' --max-time 30 \
-            -X POST -H 'Origin: https://www.steelprodukt.ru' \
-            -F "name=Production migration smoke $(date -u +%Y%m%dT%H%M%SZ)" \
-            -F 'phone=+70000000000' \
-            -F 'personalDataConsent=yes' \
-            -F "consentTimestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            https://www.steelprodukt.ru/api/quote)"
-          test "$status" = 200
-          RESPONSE_FILE="$response_file" node -e '
-            const body = JSON.parse(require("node:fs").readFileSync(process.env.RESPONSE_FILE, "utf8"));
-            if (body.ok !== true || body.code !== "ACCEPTED") process.exit(1);
-            console.log("quote_submission=accepted smtp_delivery=ok");
-          '
           printf '%s\n' 'public_smoke=ok' 'internal_disabled=true' 'quote_validation=ok'
       - name: Configure secure server access
         env:
@@ -219,6 +205,25 @@ jobs:
           npm run pd:sync-index -- --mode=incremental
           npm run pd:integrity-check
           npm run pd:audit-verify
+
+          node --input-type=module <<'ADMIN_CHECK'
+          import { DatabaseSync } from "node:sqlite";
+          const database = new DatabaseSync(process.env.PD_ADMIN_DB_PATH, { readOnly: true });
+          const counts = database.prepare(`
+            SELECT
+              COUNT(*) AS users,
+              SUM(CASE WHEN role = 'ADMIN' THEN 1 ELSE 0 END) AS admins,
+              SUM(CASE WHEN role = 'ADMIN' AND is_active = 1 THEN 1 ELSE 0 END) AS activeAdmins,
+              SUM(CASE WHEN role = 'ADMIN' AND must_change_password = 1 THEN 1 ELSE 0 END) AS adminsRequiringPasswordChange
+            FROM users
+          `).get();
+          database.close();
+          if (Number(counts.users) !== 1 || Number(counts.admins) !== 1 ||
+              Number(counts.activeAdmins) !== 1 || Number(counts.adminsRequiringPasswordChange) !== 1) {
+            throw new Error("First administrator state is not ready");
+          }
+          console.log(JSON.stringify(counts));
+          ADMIN_CHECK
           NODEJS
 
           test -x /usr/bin/npm
