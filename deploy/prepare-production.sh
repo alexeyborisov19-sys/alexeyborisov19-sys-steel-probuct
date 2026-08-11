@@ -226,6 +226,11 @@ nginx_target="$(readlink -f "$nginx_enabled")"
 test -f "$nginx_target"
 install -m 0600 -o root -g root "$nginx_target" "$BACKUP_DIR/nginx.before.conf"
 
+# proxy_cache_path creates only the last segment of its path, so the parent has
+# to exist before nginx validates the configuration. Nginx creates the leaf
+# directory itself with the worker ownership it needs.
+install -d -m 0755 -o root -g root /var/cache/nginx
+
 install -m 0644 -o root -g root "$APP_PATH/deploy/nginx/steelprodukt.conf" "$nginx_target"
 if ! nginx -t; then
   install -m 0644 -o root -g root "$BACKUP_DIR/nginx.before.conf" "$nginx_target"
