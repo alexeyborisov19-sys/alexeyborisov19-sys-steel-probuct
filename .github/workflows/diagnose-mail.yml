@@ -34,7 +34,7 @@ jobs:
           printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-      - name: Migrate production SQLite and run index dry-run
+      - name: Diagnose index dry-run findings without exposing records
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -43,15 +43,10 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" 'bash -se' <<'REMOTE'
           set -Eeuo pipefail
 
-          printf 'migration_started_at=%s\n' "$(date --iso-8601=seconds)"
           test -f /var/www/html/.env.production
           test "$(stat -c '%a' /var/www/html/.env.production)" = 600
           grep -qx 'PD_ADMIN_ENABLED=false' /var/www/html/.env.production
           printf 'pd_admin_enabled=false\n'
-          test "$(stat -c '%a %U:%G' /var/lib/steelprodukt/admin)" = '700 nodejs:nodejs'
-          test "$(stat -c '%a %U:%G' /var/lib/steelprodukt/exports)" = '700 nodejs:nodejs'
-          df -h /var/lib/steelprodukt | tail -n 1
-          df -i /var/lib/steelprodukt | tail -n 1
 
           sudo -iu nodejs bash -se <<'NODEJS'
           set -Eeuo pipefail
@@ -61,25 +56,131 @@ jobs:
           export PD_ADMIN_ENABLED=true
           cd /var/www/html
 
-          npm run env:check
-          npm run pd:migrate:status
-          npm run pd:migrate
-          npm run pd:migrate:status
-
-          node --input-type=module <<'SQLITE'
-          import { DatabaseSync } from "node:sqlite";
-          const database = new DatabaseSync(process.env.PD_ADMIN_DB_PATH, { readOnly: true });
-          const result = {
-            integrity: database.prepare("PRAGMA integrity_check").get().integrity_check,
-            foreignKeyViolations: database.prepare("PRAGMA foreign_key_check").all().length,
-            journalMode: database.prepare("PRAGMA journal_mode").get().journal_mode,
-          };
-          database.close();
-          console.log(JSON.stringify(result));
-          SQLITE
-
-          stat -c 'database_mode=%a owner=%U:%G' "$PD_ADMIN_DB_PATH"
           npm run pd:sync-index -- --dry-run
+
+          node --input-type=module <<'DIAGNOSTIC'
+          import { lstat, readdir, readFile } from "node:fs/promises";
+          import { resolve } from "node:path";
+
+          const requestIdPattern = /^SP-(?:AI-)?\d{8}-[A-F0-9]{8}$/;
+          const storageIdPattern = /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}\.[a-z\d]{1,12}$/i;
+
+          const roots = [
+            { source: "quote-form", path: process.env.QUOTE_STORAGE_PATH },
+            { source: "engineering-assistant", path: process.env.ASSISTANT_LEAD_STORAGE_PATH },
+          ];
+          const consentRoot = process.env.CONSENT_AUDIT_STORAGE_PATH;
+          const quarantineRoot = process.env.UPLOAD_QUARANTINE_PATH;
+          if (roots.some((root) => !root.path) || !consentRoot || !quarantineRoot) {
+            throw new Error("Required storage path is unavailable");
+          }
+
+          const readJsonFiles = async (root) => {
+            const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
+            const records = [];
+            let corrupt = 0;
+            for (const entry of entries) {
+              if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+              try {
+                records.push(JSON.parse(await readFile(resolve(root, entry.name), "utf8")));
+              } catch {
+                corrupt += 1;
+              }
+            }
+            return { records, corrupt };
+          };
+
+          const consentFiles = await readJsonFiles(consentRoot);
+          const consentIds = new Set(consentFiles.records
+            .map((record) => typeof record.requestId === "string" ? record.requestId : "")
+            .filter(Boolean));
+
+          const report = {
+            leads: 0,
+            leadsBySource: {},
+            leadJsonCorrupt: 0,
+            consentRecords: consentFiles.records.length,
+            consentJsonCorrupt: consentFiles.corrupt,
+            linkedConsent: 0,
+            missingConsent: 0,
+            missingConsentBySource: {},
+            consentStateOnMissing: {},
+            referencedAttachments: 0,
+            presentAttachments: 0,
+            missingAttachments: 0,
+            missingAttachmentBySource: {},
+            missingAttachmentDirectory: 0,
+            missingAttachmentFile: 0,
+            symlinkEncountered: 0,
+            extraRegularFilesInAffectedDirectories: 0,
+          };
+
+          for (const root of roots) {
+            const leadFiles = await readJsonFiles(root.path);
+            report.leadJsonCorrupt += leadFiles.corrupt;
+            report.leadsBySource[root.source] = leadFiles.records.length;
+            report.missingConsentBySource[root.source] = 0;
+            report.missingAttachmentBySource[root.source] = 0;
+            for (const record of leadFiles.records) {
+              report.leads += 1;
+              const requestId = typeof record.requestId === "string" ? record.requestId : "";
+              if (!requestIdPattern.test(requestId)) continue;
+              if (consentIds.has(requestId)) {
+                report.linkedConsent += 1;
+              } else {
+                report.missingConsent += 1;
+                report.missingConsentBySource[root.source] += 1;
+                const state = typeof record.consentAudit === "string" ? record.consentAudit : "field-absent";
+                report.consentStateOnMissing[state] = (report.consentStateOnMissing[state] || 0) + 1;
+              }
+
+              const files = Array.isArray(record.files) ? record.files : [];
+              for (const file of files) {
+                const storageId = file && typeof file.storageId === "string" ? file.storageId : "";
+                if (!storageIdPattern.test(storageId)) continue;
+                report.referencedAttachments += 1;
+                const directory = resolve(quarantineRoot, requestId);
+                let directoryNode;
+                try {
+                  directoryNode = await lstat(directory);
+                } catch {
+                  report.missingAttachments += 1;
+                  report.missingAttachmentBySource[root.source] += 1;
+                  report.missingAttachmentDirectory += 1;
+                  continue;
+                }
+                if (directoryNode.isSymbolicLink()) {
+                  report.missingAttachments += 1;
+                  report.missingAttachmentBySource[root.source] += 1;
+                  report.symlinkEncountered += 1;
+                  continue;
+                }
+                try {
+                  const node = await lstat(resolve(directory, storageId));
+                  if (node.isSymbolicLink()) {
+                    report.missingAttachments += 1;
+                    report.missingAttachmentBySource[root.source] += 1;
+                    report.symlinkEncountered += 1;
+                  } else if (node.isFile()) {
+                    report.presentAttachments += 1;
+                  } else {
+                    report.missingAttachments += 1;
+                    report.missingAttachmentBySource[root.source] += 1;
+                    report.missingAttachmentFile += 1;
+                  }
+                } catch {
+                  report.missingAttachments += 1;
+                  report.missingAttachmentBySource[root.source] += 1;
+                  report.missingAttachmentFile += 1;
+                  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+                  report.extraRegularFilesInAffectedDirectories += entries.filter((entry) => entry.isFile()).length;
+                }
+              }
+            }
+          }
+
+          console.log(JSON.stringify(report));
+          DIAGNOSTIC
           NODEJS
 
           grep -qx 'PD_ADMIN_ENABLED=false' /var/www/html/.env.production
