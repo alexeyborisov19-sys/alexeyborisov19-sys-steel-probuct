@@ -218,11 +218,11 @@ jobs:
             FROM users
           `).get();
           database.close();
+          console.log(JSON.stringify(counts));
           if (Number(counts.users) !== 1 || Number(counts.admins) !== 1 ||
               Number(counts.activeAdmins) !== 1 || Number(counts.adminsRequiringPasswordChange) !== 1) {
             throw new Error("First administrator state is not ready");
           }
-          console.log(JSON.stringify(counts));
           ADMIN_CHECK
           NODEJS
 
