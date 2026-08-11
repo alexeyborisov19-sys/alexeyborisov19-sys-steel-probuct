@@ -71,6 +71,8 @@ jobs:
           ];
           const consentRoot = process.env.CONSENT_AUDIT_STORAGE_PATH;
           const quarantineRoot = process.env.UPLOAD_QUARANTINE_PATH;
+          const legacyConsentRoot = "/var/www/html/.data/consent-audit";
+          const legacyQuarantineRoot = "/var/www/html/.data/quarantine";
           if (roots.some((root) => !root.path) || !consentRoot || !quarantineRoot) {
             throw new Error("Required storage path is unavailable");
           }
@@ -94,6 +96,10 @@ jobs:
           const consentIds = new Set(consentFiles.records
             .map((record) => typeof record.requestId === "string" ? record.requestId : "")
             .filter(Boolean));
+          const legacyConsentFiles = await readJsonFiles(legacyConsentRoot);
+          const legacyConsentIds = new Set(legacyConsentFiles.records
+            .map((record) => typeof record.requestId === "string" ? record.requestId : "")
+            .filter(Boolean));
 
           const report = {
             leads: 0,
@@ -101,8 +107,11 @@ jobs:
             leadJsonCorrupt: 0,
             consentRecords: consentFiles.records.length,
             consentJsonCorrupt: consentFiles.corrupt,
+            legacyConsentRecords: legacyConsentFiles.records.length,
+            legacyConsentJsonCorrupt: legacyConsentFiles.corrupt,
             linkedConsent: 0,
             missingConsent: 0,
+            missingConsentRecoverableFromLegacy: 0,
             missingConsentBySource: {},
             consentStateOnMissing: {},
             referencedAttachments: 0,
@@ -111,6 +120,7 @@ jobs:
             missingAttachmentBySource: {},
             missingAttachmentDirectory: 0,
             missingAttachmentFile: 0,
+            missingAttachmentRecoverableFromLegacy: 0,
             symlinkEncountered: 0,
             extraRegularFilesInAffectedDirectories: 0,
           };
@@ -130,6 +140,7 @@ jobs:
               } else {
                 report.missingConsent += 1;
                 report.missingConsentBySource[root.source] += 1;
+                if (legacyConsentIds.has(requestId)) report.missingConsentRecoverableFromLegacy += 1;
                 const state = typeof record.consentAudit === "string" ? record.consentAudit : "field-absent";
                 report.consentStateOnMissing[state] = (report.consentStateOnMissing[state] || 0) + 1;
               }
@@ -147,6 +158,14 @@ jobs:
                   report.missingAttachments += 1;
                   report.missingAttachmentBySource[root.source] += 1;
                   report.missingAttachmentDirectory += 1;
+                  try {
+                    const legacyNode = await lstat(resolve(legacyQuarantineRoot, requestId, storageId));
+                    if (legacyNode.isFile() && !legacyNode.isSymbolicLink()) {
+                      report.missingAttachmentRecoverableFromLegacy += 1;
+                    }
+                  } catch {
+                    // Aggregate-only diagnostic; absence is counted by the existing category.
+                  }
                   continue;
                 }
                 if (directoryNode.isSymbolicLink()) {
