@@ -53,4 +53,12 @@ AUDIT_PID=""
 trap - EXIT
 
 pm2 startOrReload ecosystem.config.cjs --env production --update-env
+
+# startOrReload restarts the processes that are already running but keeps their
+# current count, so a changed cluster size is applied explicitly. The number is
+# read back from the ecosystem file to keep a single source of truth.
+APP_NAME="$(node -p "require('./ecosystem.config.cjs').apps[0].name")"
+APP_INSTANCES="$(node -p "require('./ecosystem.config.cjs').apps[0].instances")"
+pm2 scale "$APP_NAME" "$APP_INSTANCES"
+
 pm2 save
