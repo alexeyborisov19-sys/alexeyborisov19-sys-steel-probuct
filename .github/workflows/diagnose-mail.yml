@@ -200,6 +200,10 @@ jobs:
 
           console.log(JSON.stringify(report));
           DIAGNOSTIC
+
+          npm run pd:sync-index -- --mode=incremental
+          npm run pd:integrity-check
+          npm run pd:audit-verify
           NODEJS
 
           grep -qx 'PD_ADMIN_ENABLED=false' /var/www/html/.env.production
