@@ -201,10 +201,19 @@ jobs:
           console.log(JSON.stringify(report));
           DIAGNOSTIC
 
-          npm run pd:sync-index -- --mode=incremental
-          npm run pd:integrity-check
-          npm run pd:audit-verify
+          npm run pd:exports:expire -- --dry-run
           NODEJS
+
+          test -x /usr/bin/npm
+          install -m 0644 /var/www/html/deploy/systemd/steelprodukt-pd-export-expiry.service /etc/systemd/system/steelprodukt-pd-export-expiry.service
+          install -m 0644 /var/www/html/deploy/systemd/steelprodukt-pd-export-expiry.timer /etc/systemd/system/steelprodukt-pd-export-expiry.timer
+          systemctl daemon-reload
+          systemctl enable --now steelprodukt-pd-export-expiry.timer
+          systemctl start steelprodukt-pd-export-expiry.service
+          test "$(systemctl is-enabled steelprodukt-pd-export-expiry.timer)" = enabled
+          test "$(systemctl is-active steelprodukt-pd-export-expiry.timer)" = active
+          printf 'export_expiry_timer=enabled-active\n'
+          systemctl show steelprodukt-pd-export-expiry.timer -p NextElapseUSecRealtime --value
 
           grep -qx 'PD_ADMIN_ENABLED=false' /var/www/html/.env.production
           printf 'saved_pd_admin_enabled=false\n'
