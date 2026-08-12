@@ -11,6 +11,7 @@ export const siteConfig = {
   address: {
     streetAddress: "Рославльское шоссе, 7-й км, стр. 3",
     addressLocality: "Смоленск",
+    addressRegion: "Смоленская область",
     addressCountry: "RU",
   },
   logo: "/logo/steel-product.png",

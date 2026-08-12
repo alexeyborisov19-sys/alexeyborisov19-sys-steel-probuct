@@ -29,6 +29,37 @@ export type EventSchemaItem = {
   audience: string[];
 };
 
+// The seventeen oblasts of the Central Federal District; Moscow is its
+// eighteenth subject and is listed separately as a federal city.
+const centralFederalDistrictOblasts = [
+  "Белгородская область",
+  "Брянская область",
+  "Владимирская область",
+  "Воронежская область",
+  "Ивановская область",
+  "Калужская область",
+  "Костромская область",
+  "Курская область",
+  "Липецкая область",
+  "Московская область",
+  "Орловская область",
+  "Рязанская область",
+  "Смоленская область",
+  "Тамбовская область",
+  "Тверская область",
+  "Тульская область",
+  "Ярославская область",
+];
+
+// Where the company ships and takes orders. This is the service area, not the
+// location: production stays in Smolensk, and the address must keep saying so.
+const areaServed = [
+  { "@type": "Country", name: "Россия" },
+  { "@type": "AdministrativeArea", name: "Центральный федеральный округ" },
+  { "@type": "City", name: "Москва" },
+  ...centralFederalDistrictOblasts.map((name) => ({ "@type": "AdministrativeArea", name })),
+];
+
 export function organizationSchema(): JsonLd {
   return {
     "@context": "https://schema.org",
@@ -48,7 +79,7 @@ export function organizationSchema(): JsonLd {
       "@type": "PostalAddress",
       ...siteConfig.address,
     },
-    areaServed: { "@type": "Country", name: "Россия" },
+    areaServed,
     contactPoint: [{
       "@type": "ContactPoint",
       telephone: siteConfig.telephone,
@@ -182,7 +213,7 @@ export function serviceSchema({ name, description, path, serviceType }: { name: 
     serviceType: serviceType ?? name,
     url: absoluteUrl(path),
     provider: { "@id": `${siteConfig.url}/#organization` },
-    areaServed: { "@type": "Country", name: "Россия" },
+    areaServed,
     availableChannel: {
       "@type": "ServiceChannel",
       serviceUrl: absoluteUrl("/contacts#contact-form"),
