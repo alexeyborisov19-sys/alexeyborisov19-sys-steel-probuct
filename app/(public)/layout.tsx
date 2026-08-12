@@ -24,7 +24,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml", sizes: "any" }],
-    shortcut: ["/icon.svg?v=2"],
+    // Yandex reads the legacy shortcut link and does not accept an SVG there,
+    // so it points at the raster app/favicon.ico.
+    shortcut: ["/favicon.ico"],
     apple: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
   },
   robots: {
