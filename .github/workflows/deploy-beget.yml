@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Get website source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Verify deployable source
         run: |
