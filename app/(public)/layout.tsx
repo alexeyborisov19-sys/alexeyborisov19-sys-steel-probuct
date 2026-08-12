@@ -27,7 +27,8 @@ export const metadata: Metadata = {
     // Yandex reads the legacy shortcut link and does not accept an SVG there,
     // so it points at the raster app/favicon.ico.
     shortcut: ["/favicon.ico"],
-    apple: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+    // iOS ignores an SVG touch icon, so this one stays raster as well.
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
   robots: {
     index: true,
