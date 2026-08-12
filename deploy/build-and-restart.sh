@@ -68,3 +68,12 @@ trap - EXIT
 # startOrReload keeps the count set above, so the cluster size needs no second pass.
 pm2 startOrReload ecosystem.config.cjs --env production --update-env
 pm2 save
+
+# Tell Yandex the release is live. This runs last and on purpose is best-effort:
+# the site is already serving by now, so a refused or throttled notification is
+# worth reporting but must never turn a good deploy into a failed one.
+if node scripts/submit-indexnow.mjs; then
+  echo "IndexNow: priority URLs submitted."
+else
+  echo "IndexNow: notification failed. The release itself is live and healthy."
+fi
