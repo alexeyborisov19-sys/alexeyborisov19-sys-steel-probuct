@@ -3,14 +3,18 @@
 // means ownership can be confirmed by a normal deploy, without editing
 // .env.production over SSH — and it survives a server rebuild. The environment
 // variable still wins wherever one is set.
+// Webmaster tools issue one token per registered address, so a site listed both
+// with and without www carries two. Every token is rendered; an extra one is
+// harmless, a missing one blocks confirmation.
 const verificationFallback = {
-  yandex: "1c5dc6516f272910",
-  google: "",
+  yandex: ["1c5dc6516f272910", "75b8861b4f6e8eb6"],
+  google: [] as string[],
 };
 
-function verificationToken(fromEnvironment: string | undefined, fallback: string) {
-  const token = (fromEnvironment ?? fallback).trim();
-  return token.length > 0 ? token : undefined;
+function verificationTokens(fromEnvironment: string | undefined, fallback: readonly string[]) {
+  const source = fromEnvironment ? fromEnvironment.split(",") : fallback;
+  const tokens = source.map((token) => token.trim()).filter((token) => token.length > 0);
+  return tokens.length > 0 ? tokens : undefined;
 }
 
 export const siteConfig = {
@@ -32,8 +36,8 @@ export const siteConfig = {
   logo: "/logo/steel-product.png",
   defaultOgImage: "/images/industry/hero-building-v1.png",
   verification: {
-    yandex: verificationToken(process.env.NEXT_PUBLIC_YANDEX_VERIFICATION, verificationFallback.yandex),
-    google: verificationToken(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION, verificationFallback.google),
+    yandex: verificationTokens(process.env.NEXT_PUBLIC_YANDEX_VERIFICATION, verificationFallback.yandex),
+    google: verificationTokens(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION, verificationFallback.google),
   },
 } as const;
 
