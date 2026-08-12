@@ -42,8 +42,8 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION,
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    yandex: siteConfig.verification.yandex,
+    google: siteConfig.verification.google,
   },
   openGraph: {
     type: "website",
