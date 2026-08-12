@@ -4,7 +4,7 @@
 // .env.production over SSH — and it survives a server rebuild. The environment
 // variable still wins wherever one is set.
 const verificationFallback = {
-  yandex: "",
+  yandex: "1c5dc6516f272910",
   google: "",
 };
 
