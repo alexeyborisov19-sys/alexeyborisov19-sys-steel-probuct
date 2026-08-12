@@ -57,8 +57,13 @@ pm2 startOrReload ecosystem.config.cjs --env production --update-env
 # startOrReload restarts the processes that are already running but keeps their
 # current count, so a changed cluster size is applied explicitly. The number is
 # read back from the ecosystem file to keep a single source of truth.
+# pm2 scale exits non-zero with "Nothing to do" when the size already matches,
+# so the current count is compared first.
 APP_NAME="$(node -p "require('./ecosystem.config.cjs').apps[0].name")"
 APP_INSTANCES="$(node -p "require('./ecosystem.config.cjs').apps[0].instances")"
-pm2 scale "$APP_NAME" "$APP_INSTANCES"
+RUNNING_INSTANCES="$(pm2 jlist | node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).filter((p) => p.name === '$APP_NAME').length")"
+if [ "$RUNNING_INSTANCES" != "$APP_INSTANCES" ]; then
+  pm2 scale "$APP_NAME" "$APP_INSTANCES"
+fi
 
 pm2 save
