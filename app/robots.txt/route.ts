@@ -9,7 +9,7 @@ Disallow: /api/
 Disallow: /internal/
 Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&_ym_status-check
 
-Host: www.steelprodukt.ru
+Host: ${siteConfig.url}
 Sitemap: ${siteConfig.url}/sitemap.xml
 Sitemap: ${siteConfig.url}/sitemap-images.xml
 `;
