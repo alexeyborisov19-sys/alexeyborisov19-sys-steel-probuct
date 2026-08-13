@@ -31,6 +31,10 @@ export const siteConfig = {
     streetAddress: "Рославльское шоссе, 7-й км, стр. 3",
     addressLocality: "Смоленск",
     addressRegion: "Смоленская область",
+    // The index the company gives for both its legal and postal address in
+    // lib/legal.ts. Production sits on the same street; correct it here if the
+    // site itself is served by a different one.
+    postalCode: "214009",
     addressCountry: "RU",
   },
   logo: "/logo/steel-product.png",

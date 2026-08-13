@@ -68,6 +68,9 @@ export function organizationSchema(): JsonLd {
     name: siteConfig.name,
     legalName: legalOperator.name,
     taxID: legalOperator.inn,
+    // The state registration number identifies the legal entity in Russian
+    // registries, which taxID alone does not.
+    identifier: [{ "@type": "PropertyValue", propertyID: "OGRN", value: legalOperator.ogrn }],
     alternateName: "СП Сталь Продукт",
     url: siteConfig.url,
     logo: absoluteUrl(siteConfig.logo),
