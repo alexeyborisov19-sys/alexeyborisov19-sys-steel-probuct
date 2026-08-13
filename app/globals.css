@@ -118,3 +118,11 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 640px) { .site-preloader__content { width: 80vw; } .site-preloader__content p { margin-top: 17px; font-size: 8px; } .site-preloader__status { bottom: 18px; width: 80%; font-size: 8px; } }
 @media (prefers-reduced-motion: reduce) { .site-preloader *, .site-preloader *::before, .site-preloader *::after, .production-cycle-track *, .production-cycle-track *::before, .journal-mark *, .journal-mark *::before, .journal-mark *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; } .site-preloader__content, .site-preloader__status { opacity: 1; transform: translateX(-50%); } .site-preloader__content { transform: none; } .production-cycle-item { opacity: 1; transform: none; } }
 @media (max-width: 640px) { .container { width: min(100% - 32px, 1320px); } }
+
+/* Yandex rejects a page as unreadable on a phone when much of its copy sits
+   below 12px, and just under half of the home page did. The approved desktop
+   scale is deliberately left alone: this raises only the floor, and only at
+   phone widths, where the fine print is the part that stops being legible. */
+@media (max-width: 767px) {
+  .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 12px; }
+}
