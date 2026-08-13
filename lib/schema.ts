@@ -83,6 +83,12 @@ export function organizationSchema(): JsonLd {
       ...siteConfig.address,
     },
     areaServed,
+    openingHoursSpecification: [{
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "08:00",
+      closes: "16:30",
+    }],
     contactPoint: [{
       "@type": "ContactPoint",
       telephone: siteConfig.telephone,

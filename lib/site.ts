@@ -27,13 +27,14 @@ export const siteConfig = {
   email: "info@steelprodukt.ru",
   telephone: "+79107803723",
   telephoneDisplay: "+7 910 780 37 23",
+  // The registered address, matching the entry in the state register and in
+  // lib/legal.ts. Search engines check a business against that record, so the
+  // markup follows it; the production site is a separate address and is quoted
+  // as such wherever the text is about production.
   address: {
-    streetAddress: "Рославльское шоссе, 7-й км, стр. 3",
+    streetAddress: "Рославльское шоссе, д. 99, стр. 2, помещ. 1, 2, 3, 4, 8",
     addressLocality: "Смоленск",
     addressRegion: "Смоленская область",
-    // The index the company gives for both its legal and postal address in
-    // lib/legal.ts. Production sits on the same street; correct it here if the
-    // site itself is served by a different one.
     postalCode: "214009",
     addressCountry: "RU",
   },

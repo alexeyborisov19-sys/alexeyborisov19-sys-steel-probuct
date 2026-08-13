@@ -2,6 +2,7 @@ import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
 import { articles } from "@/data/articles";
 import { productionServices } from "@/data/production-services";
+import { legalOperator } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 
 export const dynamic = "force-static";
@@ -40,7 +41,7 @@ export function GET() {
 ${siteConfig.description}
 
 Контакты: ${siteConfig.telephoneDisplay}, ${siteConfig.email}.
-Адрес производства: г. ${siteConfig.address.addressLocality}, ${siteConfig.address.streetAddress}.
+Адрес производства: ${legalOperator.productionAddress}.
 География поставок: Россия.
 
 ## Производственные возможности
