@@ -29,7 +29,7 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
   }
 }
 
-test("sends every quote funnel goal to counter 111263638", () => {
+test("sends every quote funnel goal to the analytics and advertising counters", () => {
   withAnalyticsWindow((calls) => {
     trackLeadEvent("quote_form_started", { form_location: "contacts" });
     trackLeadEvent("quote_file_attached", { files_added: 1 });
@@ -37,7 +37,8 @@ test("sends every quote funnel goal to counter 111263638", () => {
     trackLeadEvent("quote_request_success", { files_count: 1 });
     trackLeadEvent("quote_request_error", { error_code: "UPLOAD_REJECTED" });
 
-    assert.deepEqual(calls.map((call) => call[2]), [
+    const goalsInOrder = [...new Set(calls.map((call) => call[2]))];
+    assert.deepEqual(goalsInOrder, [
       "ym-open-leadform",
       "quote_form_started",
       "quote_file_attached",
@@ -46,7 +47,17 @@ test("sends every quote funnel goal to counter 111263638", () => {
       "quote_request_success",
       "quote_request_error",
     ]);
-    assert.ok(calls.every((call) => call[0] === 111263638 && call[1] === "reachGoal"));
+    assert.ok(calls.every((call) => call[1] === "reachGoal"));
+
+    // A goal that reaches only the analytics counter leaves Direct with nothing
+    // to optimise on, so every goal has to land in both.
+    for (const goal of goalsInOrder) {
+      assert.deepEqual(
+        calls.filter((call) => call[2] === goal).map((call) => call[0]),
+        [111263638, 111686322],
+        `goal ${goal} must reach both counters`,
+      );
+    }
   });
 });
 
@@ -99,7 +110,10 @@ test("never passes personal data to the Yandex goal callback", () => {
       message: "Содержимое заявки",
       error_code: "NETWORK_ERROR",
     });
-    assert.equal(calls.length, 1);
-    assert.deepEqual(calls[0][3], { error_code: "NETWORK_ERROR" });
+    // One call per counter, and neither may carry anything but the safe field.
+    assert.equal(calls.length, 2);
+    for (const call of calls) {
+      assert.deepEqual(call[3], { error_code: "NETWORK_ERROR" });
+    }
   });
 });
