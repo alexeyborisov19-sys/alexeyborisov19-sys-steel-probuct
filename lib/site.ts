@@ -8,7 +8,7 @@
 // harmless, a missing one blocks confirmation.
 const verificationFallback = {
   yandex: ["1c5dc6516f272910", "75b8861b4f6e8eb6"],
-  google: [] as string[],
+  google: ["bkE4wV8i2sVnhoxUav9pE1mcg1uxouPejFmHKniKZ1E"],
 };
 
 function verificationTokens(fromEnvironment: string | undefined, fallback: readonly string[]) {
