@@ -83,6 +83,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           title={article.title}
           description={article.lead}
           image={article.image}
+          imageAlt={`${article.title} — иллюстрация к материалу инженерного журнала`}
         />
 
         <article className="bg-[#0c1013] py-14 sm:py-20">

@@ -50,7 +50,9 @@ export function ProductionCycle({ stages }: ProductionCycleProps) {
             src={`/images/web/cycle-${image}`}
             width={428}
             height={240}
-            alt=""
+            // Each frame shows the stage it is labelled with, so it carries its own
+            // meaning and belongs in image search rather than being skipped as decor.
+            alt={`${title} — этап производства изделий из листового металла`}
             loading="lazy"
             decoding="async"
             className="production-cycle-image absolute inset-0 h-full w-full object-cover object-center opacity-60"

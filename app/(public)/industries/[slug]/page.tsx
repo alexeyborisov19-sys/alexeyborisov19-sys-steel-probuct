@@ -82,6 +82,7 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
         title={industry.title}
         description={description}
         image={image}
+        imageAlt={`${industry.title} — металлоизделия для объектов отрасли`}
         imageBrightness
       >
         <section className="bg-[#0c1013] py-14 sm:py-20">

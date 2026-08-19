@@ -4,7 +4,7 @@ import { InnerHero } from "./InnerHero";
 import { JsonLd } from "./JsonLd";
 import { breadcrumbSchema, webPageSchema, type Breadcrumb } from "@/lib/schema";
 
-type PageLayoutProps = { eyebrow: string; title: string; titleAccent?: string; description: string; image?: string; imageBrightness?: boolean; path?: string; children: React.ReactNode };
+type PageLayoutProps = { eyebrow: string; title: string; titleAccent?: string; description: string; image?: string; imageAlt?: string; imageBrightness?: boolean; path?: string; children: React.ReactNode };
 
 const parentSections = [
   { prefix: "/production/", name: "Производство", path: "/production" },

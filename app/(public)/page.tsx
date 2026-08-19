@@ -105,7 +105,7 @@ export default function Home() {
                     >
                       <img
                         src={cardImage.src}
-                        alt=""
+                        alt={`${solution.title} — изделия из листового металла`}
                         width={960}
                         height={540}
                         loading={index < 2 ? "eager" : "lazy"}
@@ -199,7 +199,7 @@ export default function Home() {
                       }
                       width={1080}
                       height={608}
-                      alt=""
+                      alt={`${project} — объект с металлоизделиями «Сталь Продукт»`}
                       loading="lazy"
                       decoding="async"
                       style={{ objectPosition: `${15 + index * 20}% 42%` }}

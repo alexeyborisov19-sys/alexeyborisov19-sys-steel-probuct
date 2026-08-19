@@ -61,6 +61,7 @@ export default async function ProductionServicePage({
         title={service.title}
         description={service.description}
         image={service.image}
+        imageAlt={`${service.title} — производственный участок «Сталь Продукт»`}
         imageBrightness
       >
         <section className="bg-[#0c1013] py-14 sm:py-20">

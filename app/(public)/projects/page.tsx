@@ -130,7 +130,7 @@ export default function ProjectsPage() {
                     }
                     width={1080}
                     height={608}
-                    alt=""
+                    alt={`${title}, ${city} — металлоизделия из листового металла на объекте`}
                     loading="lazy"
                     decoding="async"
                     className="h-full w-full object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02]"
