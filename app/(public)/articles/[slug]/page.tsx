@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { InnerHero } from "@/components/InnerHero";
 import { JsonLd } from "@/components/JsonLd";
 import { articleBySlug, articles } from "@/data/articles";
+import { relatedArticles } from "@/lib/related-articles";
 import { articleSchema, breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -50,6 +51,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   const path = `/articles/${article.slug}`;
   const wasUpdated = article.modifiedAt !== article.publishedAt;
+  const related = relatedArticles(article);
 
   return (
     <>
@@ -275,6 +277,33 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             </aside>
           </div>
         </article>
+
+        {related.length ? (
+          <section className="border-t border-white/10 bg-[#0c1013] py-14">
+            <div className="container">
+              <p className="eyebrow">Читайте также</p>
+              <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Смежные материалы журнала</h2>
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                {related.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/articles/${item.slug}`}
+                    className="group flex min-h-44 flex-col border border-white/15 bg-[#111519] p-5 transition hover:border-steel-orange hover:bg-[#15191c]"
+                  >
+                    <p className="text-[11px] font-bold uppercase text-white/45">{item.category}</p>
+                    <h3 className="mt-3 text-base font-semibold leading-snug group-hover:text-steel-orange">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-white/55">{item.lead}</p>
+                    <span className="mt-auto pt-4 text-[11px] font-bold uppercase text-steel-orange">
+                      Читать&nbsp; →
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section className="border-t border-white/10 bg-[#151719] py-12">
           <div className="container flex flex-col justify-between gap-6 border border-white/12 bg-[#101214] p-7 sm:flex-row sm:items-center">
