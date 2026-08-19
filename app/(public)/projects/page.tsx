@@ -65,7 +65,7 @@ export default function ProjectsPage() {
       eyebrow="Проектные сценарии"
       title="Решения для типовых объектов"
       description="Показываем возможный состав поставки для разных типов объектов. Это демонстрационные сценарии, а не заявления об участии в конкретных проектах."
-      image="/images/web/project-residential.jpg"
+      image="/images/web/project-residential.jpg" imageAlt="Жилой комплекс с фасадными металлокассетами и доборными элементами производства «Сталь Продукт»"
     >
       <section className="bg-[#0c1013] py-10">
         <div className="container">

@@ -136,7 +136,7 @@ export default function ChinaExhibitions2026Page() {
       eyebrow="Промышленный календарь · Китай"
       title={pageTitle}
       description="Крупные профессиональные площадки 2026 года и уже подтверждённые даты 2027 года: официальные ссылки, состав оборудования и понятная навигация по задачам."
-      image="/images/web/cycle-laser-cutting.jpg"
+      image="/images/web/cycle-laser-cutting.jpg" imageAlt="Лазерная резка листового металла на производстве"
       imageBrightness
     >
       <JsonLd

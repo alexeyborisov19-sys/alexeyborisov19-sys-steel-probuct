@@ -12,7 +12,7 @@ export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
   const brightenIndustry = solution.slug === "industry";
   const seo = solutionSeoBySlug[solution.slug];
   const faqItems = seo.faq;
-  return <><JsonLd data={[serviceSchema({ name: solution.title, description: solution.description, path: `/solutions/${solution.slug}`, serviceType: solution.eyebrow }), faqSchema(faqItems)]} /><PageLayout path={`/solutions/${solution.slug}`} eyebrow={solution.eyebrow} title={solution.title} description={solution.description} image={solution.image} imageBrightness={brightenIndustry}>
+  return <><JsonLd data={[serviceSchema({ name: solution.title, description: solution.description, path: `/solutions/${solution.slug}`, serviceType: solution.eyebrow }), faqSchema(faqItems)]} /><PageLayout path={`/solutions/${solution.slug}`} eyebrow={solution.eyebrow} title={solution.title} description={solution.description} image={solution.image} imageAlt={`${solution.title} — изделия из листового металла «Сталь Продукт»`} imageBrightness={brightenIndustry}>
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="grid gap-8 xl:grid-cols-[.94fr_1.06fr] xl:items-start">

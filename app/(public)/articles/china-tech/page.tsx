@@ -28,7 +28,7 @@ export default function ChinaTechPage() {
       eyebrow="Редакционный мониторинг"
       title="Технологии металлообработки Китая"
       description="Отбираем сильные инженерные решения, проверяем их по первичным источникам и объясняем на профессиональном русском языке — с выводами для российских производств и заказчиков."
-      image="/images/web/cycle-bending.jpg"
+      image="/images/web/cycle-bending.jpg" imageAlt="Гибка листового металла на прессе с числовым программным управлением"
       imageBrightness
     >
       <section className="china-tech-radar border-y border-white/10 bg-[#090d10] py-14 sm:py-20">

@@ -123,7 +123,7 @@ export default function ProductionPage() {
       eyebrow="Производство"
       title="Современное производство инженерных решений из листового металла"
       description="Полный цикл производства — от разработки и проектирования до упаковки и отгрузки готовой продукции. Контроль качества на каждом этапе."
-      image="/images/real-production/workshop-team.jpg"
+      image="/images/real-production/workshop-team.jpg" imageAlt="Производственный участок «Сталь Продукт»: специалисты за работой с изделиями из листового металла"
     >
       <section className="border-y border-white/10 bg-[#0c1013] py-7">
         <div className="container grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

@@ -247,7 +247,7 @@ export default function FacadeExhibitions2026Page() {
       eyebrow="Фасады · Архитектура · Международный календарь"
       title="Выставки фасадов и архитектуры — 2026–2027"
       description="Профессиональные события 2026 года и уже подтверждённые даты 2027 года: материалы, фасадные системы, архитектурное стекло, оборудование и технологии оболочки здания."
-      image="/images/industries/business-center.png"
+      image="/images/industries/business-center.png" imageAlt="Фасад бизнес-центра, облицованный металлокассетами"
       imageBrightness
     >
       <JsonLd
