@@ -51,16 +51,15 @@ export function createResettableOnce(callback: () => void) {
   };
 }
 
-// The advertising account carries its own counter. Direct optimises campaigns on
-// the goals recorded there, so a lead that reaches only the analytics counter is
-// invisible to the ad system and the campaign has nothing to learn from. Kept in
-// the repository rather than the environment because it is a fixed fact about
-// the account, like the IndexNow key.
-const advertisingCounterId = 111686322;
-
-/** Every counter the site reports to. Read at call time so tests can swap the environment. */
+/**
+ * Every counter the site reports to. Direct is pointed at this same counter
+ * instead of a second one: the site sent both identical data, so a separate
+ * advertising counter added a parallel data flow with nothing extra in it, and
+ * the cookie policy would have had to describe it. Read at call time so tests
+ * can swap the environment.
+ */
 export function yandexCounterIds() {
-  return [Number(process.env.NEXT_PUBLIC_YM_COUNTER_ID), advertisingCounterId]
+  return [Number(process.env.NEXT_PUBLIC_YM_COUNTER_ID)]
     .filter((counterId) => Number.isFinite(counterId) && counterId > 0);
 }
 

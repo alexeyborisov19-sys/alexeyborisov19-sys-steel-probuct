@@ -29,7 +29,7 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
   }
 }
 
-test("sends every quote funnel goal to the analytics and advertising counters", () => {
+test("sends every quote funnel goal to the analytics counter", () => {
   withAnalyticsWindow((calls) => {
     trackLeadEvent("quote_form_started", { form_location: "contacts" });
     trackLeadEvent("quote_file_attached", { files_added: 1 });
@@ -49,13 +49,13 @@ test("sends every quote funnel goal to the analytics and advertising counters", 
     ]);
     assert.ok(calls.every((call) => call[1] === "reachGoal"));
 
-    // A goal that reaches only the analytics counter leaves Direct with nothing
-    // to optimise on, so every goal has to land in both.
+    // Each goal is reported once, to the single configured counter. Direct reads
+    // the same counter, so a second copy would only duplicate the conversion.
     for (const goal of goalsInOrder) {
       assert.deepEqual(
         calls.filter((call) => call[2] === goal).map((call) => call[0]),
-        [111263638, 111686322],
-        `goal ${goal} must reach both counters`,
+        [111263638],
+        `goal ${goal} must reach the analytics counter exactly once`,
       );
     }
   });
@@ -110,10 +110,7 @@ test("never passes personal data to the Yandex goal callback", () => {
       message: "Содержимое заявки",
       error_code: "NETWORK_ERROR",
     });
-    // One call per counter, and neither may carry anything but the safe field.
-    assert.equal(calls.length, 2);
-    for (const call of calls) {
-      assert.deepEqual(call[3], { error_code: "NETWORK_ERROR" });
-    }
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0][3], { error_code: "NETWORK_ERROR" });
   });
 });
