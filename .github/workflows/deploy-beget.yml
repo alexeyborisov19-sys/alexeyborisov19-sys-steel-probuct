@@ -53,6 +53,7 @@ jobs:
             --exclude='.data/' \
             --exclude='node_modules/' \
             --exclude='.next/' \
+            --include='.env.example' \
             --exclude='.env*' \
             --exclude='public/video/company-film-flat.mp4' \
             -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
