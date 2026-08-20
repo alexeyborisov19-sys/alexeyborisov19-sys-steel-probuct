@@ -80,8 +80,35 @@ export function listBackups(context: PdAuthContext) {
     FROM backup_runs ORDER BY started_at DESC`).all();
   const restores = context.database.prepare(`SELECT id, backup_run_id, tested_at, tested_by, result, files_verified, isolated_target, notes
     FROM backup_restore_tests ORDER BY tested_at DESC LIMIT 100`).all();
-  const independentReady = (runs as Array<Record<string, unknown>>).some((row) => row.status === "PASS" && row.encrypted === 1 && row.destination_type !== "LOCAL_SAME_VPS" && row.restore_tested === 1);
-  return { runs, restores, status: { localEncrypted: "PASS", localRestore: "PASS", independentOffServer: independentReady ? "PASS" : "NOT_CONFIGURED", overall: independentReady ? "READY" : "PARTIAL_READINESS" } };
+  const verifiedRuns = (runs as Array<Record<string, unknown>>).filter((row) =>
+    row.status === "PASS"
+      && row.encrypted === 1
+      && row.restore_tested === 1
+      && row.restore_result === "PASS",
+  );
+  const localReady = verifiedRuns.some((row) => row.destination_type === "LOCAL_SAME_VPS");
+  const offServerReady = verifiedRuns.some((row) => row.destination_type !== "LOCAL_SAME_VPS");
+  const independentReady = verifiedRuns.some((row) =>
+    ["INDEPENDENT_OFF_ACCOUNT_RU", "SECOND_PROVIDER_RU"].includes(String(row.destination_type)),
+  );
+  return {
+    runs,
+    restores,
+    status: {
+      localEncrypted: localReady ? "PASS" : "NOT_CONFIGURED",
+      localRestore: localReady ? "PASS" : "NOT_VERIFIED",
+      offServerEncrypted: offServerReady ? "PASS" : "NOT_CONFIGURED",
+      offServerRestore: offServerReady ? "PASS" : "NOT_VERIFIED",
+      providerAccountIsolation: independentReady ? "PASS" : "ACCEPTED_RISK",
+      overall: independentReady
+        ? "READY"
+        : offServerReady
+          ? "READY_WITH_PROVIDER_WARNING"
+          : localReady
+            ? "PARTIAL_READINESS"
+            : "NOT_READY",
+    },
+  };
 }
 
 export function registerBackup(context: PdAuthContext, input: Record<string, unknown>) {

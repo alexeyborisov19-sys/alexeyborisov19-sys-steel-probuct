@@ -156,6 +156,16 @@ chmod 0600 "$ENV_FILE"
 
 bash "$APP_PATH/deploy/prepare-storage.sh" "$APP_USER"
 
+# The scheduled off-server job invokes this stable system path. Keep the
+# installed executable in sync with the deployed, reviewed repository version.
+test -f "$APP_PATH/deploy/backup-personal-data.sh" || {
+  echo "Personal-data backup script is missing from the release."
+  exit 1
+}
+install -m 0750 -o root -g root \
+  "$APP_PATH/deploy/backup-personal-data.sh" \
+  /usr/local/sbin/steelprodukt-pd-backup
+
 migrate_existing_records() {
   local source="$1"
   local destination="$2"

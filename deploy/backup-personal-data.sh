@@ -7,6 +7,7 @@ umask 077
 
 BACKUP_ROOT=${PD_BACKUP_PATH:-/var/backups/steelprodukt}
 KEY_FILE=${PD_BACKUP_ENCRYPTION_KEY_FILE:-/etc/steelprodukt/pd-backup.key}
+LEGAL_DOCUMENTS_RELATIVE='var/www/html/app/(public)/legal'
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 ARCHIVE="$BACKUP_ROOT/steelprodukt-pd-$STAMP.tar.gz.enc"
 HASH_FILE="$ARCHIVE.sha256"
@@ -29,10 +30,17 @@ ITEMS=(
   var/lib/steelprodukt/consent-audit
   var/lib/steelprodukt/quarantine
   var/lib/steelprodukt/admin
-  var/www/html/app/legal
+  "$LEGAL_DOCUMENTS_RELATIVE"
   var/www/html/lib/legal.ts
   var/www/html/LEGAL_COMPLIANCE_RU.md
 )
+
+for item in "${ITEMS[@]}"; do
+  if [[ -L "/$item" || ! -e "/$item" ]]; then
+    printf 'backup source is missing or unsafe: %s\n' "$item" >&2
+    exit 2
+  fi
+done
 
 tar -C / --numeric-owner --acls --xattrs -czf - "${ITEMS[@]}" \
   | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
@@ -45,7 +53,7 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
   -pass "file:$KEY_FILE" -in "$ARCHIVE" \
   | tar -C "$RESTORE_DIR" --no-same-owner --no-same-permissions -xzf -
 
-FILE_COUNT=$(python3 - "$RESTORE_DIR" <<'PY'
+FILE_COUNT=$(python3 - "$RESTORE_DIR" "$LEGAL_DOCUMENTS_RELATIVE" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -54,13 +62,14 @@ from pathlib import Path
 
 restore_root = Path(sys.argv[1])
 source_root = Path("/")
+legal_documents_relative = sys.argv[2]
 items = (
     "var/lib/steelprodukt/quote-leads",
     "var/lib/steelprodukt/assistant-leads",
     "var/lib/steelprodukt/consent-audit",
     "var/lib/steelprodukt/quarantine",
     "var/lib/steelprodukt/admin",
-    "var/www/html/app/legal",
+    legal_documents_relative,
     "var/www/html/lib/legal.ts",
     "var/www/html/LEGAL_COMPLIANCE_RU.md",
 )

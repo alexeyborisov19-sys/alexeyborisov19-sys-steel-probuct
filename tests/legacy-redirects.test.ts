@@ -3,6 +3,7 @@ import test from "node:test";
 import { NextRequest } from "next/server";
 import sitemap from "@/app/sitemap";
 import { middleware } from "@/middleware";
+import nextConfig from "@/next.config";
 
 const retiredRedirects = new Map([
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
@@ -22,6 +23,20 @@ for (const [source, destination] of retiredRedirects) {
     );
   });
 }
+
+test("Next.js redirect configuration does not override retired URLs with 308 or another destination", async () => {
+  const redirects = await (nextConfig as {
+    redirects: () => Promise<Array<{ source: string; destination: string; statusCode?: number }>>;
+  }).redirects();
+
+  for (const [source, destination] of retiredRedirects) {
+    const redirect = redirects.find((item) => item.source === source);
+
+    assert.ok(redirect, `${source}: redirect missing from Next.js configuration`);
+    assert.equal(redirect.destination, destination);
+    assert.equal(redirect.statusCode, 301);
+  }
+});
 
 test("retired URLs are excluded from sitemap", () => {
   const urls = sitemap().map((entry) => entry.url);

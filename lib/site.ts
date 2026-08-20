@@ -20,7 +20,7 @@ function verificationTokens(fromEnvironment: string | undefined, fallback: reado
 export const siteConfig = {
   name: "Сталь Продукт",
   legalName: "ООО «ЭНЕРГОАЛЬЯНС»",
-  description: "Инженерные решения из листового металла: проектирование, производство и поставка изделий для строительства, промышленности и инженерной инфраструктуры.",
+  description: "Проектирование и производство изделий из листового металла по КД: лазерный раскрой, гибка, сварка, окраска, контроль и поставка по России.",
   url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.steelprodukt.ru").replace(/\/$/, ""),
   locale: "ru_RU",
   language: "ru",

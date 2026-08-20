@@ -53,7 +53,7 @@ export default function IndustriesPage() {
         <div className="container">
           <div className="flex flex-wrap gap-3">
             <Link href="/contacts#contact-form" className="bg-steel-orange px-5 py-3 text-xs font-bold uppercase">
-              Получить расчет&nbsp; →
+              Получить расчёт&nbsp; →
             </Link>
             <Link href="/production" className="border border-white/30 px-5 py-3 text-xs font-bold uppercase">
               Посмотреть производство&nbsp; →
@@ -126,7 +126,7 @@ export default function IndustriesPage() {
 
                     <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3 text-xs font-bold uppercase">
                       <Link href={`/industries/${industry.slug}`} className="text-white transition hover:text-steel-orange">Открыть страницу отрасли&nbsp; →</Link>
-                      <Link href="/contacts#contact-form" className="text-steel-orange transition hover:text-orange-300">Получить состав и расчет&nbsp; →</Link>
+                      <Link href="/contacts#contact-form" className="text-steel-orange transition hover:text-orange-300">Получить состав и расчёт&nbsp; →</Link>
                       <Link href="/projects" className="text-white/65 transition hover:text-white">Посмотреть проекты&nbsp; →</Link>
                     </div>
                   </div>

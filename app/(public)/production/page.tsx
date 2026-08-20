@@ -6,13 +6,19 @@ import { ProductionShowreel } from "@/components/ProductionVideo";
 import { JsonLd } from "@/components/JsonLd";
 import { productionServices } from "@/data/production-services";
 import { semanticKeywords } from "@/data/semantic";
+import {
+  customerMaterialSummary,
+  laserCuttingCapabilities,
+  productionLeadTimeSummary,
+  productionOrderConditions,
+} from "@/data/manufacturing-facts";
 import { createPageMetadata } from "@/lib/seo";
 import { faqSchema, itemListSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Производство изделий из листового металла",
   description:
-    "Контрактное производство изделий из листового металла: КД, лазерная резка, гибка, сварка, окраска, опытные образцы и серийные партии с доставкой по России.",
+    `Производство изделий по КД: лазерная резка чёрной стали ${laserCuttingCapabilities.thicknessRange} на столе ${laserCuttingCapabilities.tableWorkingArea}, гибка, сварка и окраска.`,
   path: "/production",
   image: "/images/real-production/workshop-team.jpg",
   keywords: semanticKeywords.production,
@@ -72,7 +78,7 @@ const realProductionPhotos = [
 
 const capabilities = [
   ["Инженерный отдел", "Прорабатываем конструкцию, технологию изготовления и состав поставки до запуска заказа."],
-  ["3 лазерных комплекса с ЧПУ", "Точный раскрой листового металла для серийных и индивидуальных изделий."],
+  ["3 лазерных комплекса с ЧПУ", `Раскрой чёрной стали ${laserCuttingCapabilities.thicknessRange}; рабочее поле стола ${laserCuttingCapabilities.tableWorkingArea}.`],
   ["4 листогибочных комплекса", "Формируем стабильную геометрию деталей и повторяемость партии."],
   ["Сварочные посты", "Выполняем сварку и сборку с контролем геометрии готового изделия."],
   ["Слесарный участок", "Проводим доводку, подгонку и подготовительные операции перед сборкой и покрытием."],
@@ -102,6 +108,14 @@ const productionFaq = [
     answer:
       "Передайте чертежи, материал, количество и требования к покрытию. После проверки документации сообщим состав производственного маршрута, срок подготовки расчёта и необходимые уточнения.",
   },
+  {
+    question: "Какой средний производственный срок?",
+    answer: productionLeadTimeSummary,
+  },
+  {
+    question: "Работаете с давальческим сырьём?",
+    answer: customerMaterialSummary,
+  },
 ];
 
 export default function ProductionPage() {
@@ -121,18 +135,18 @@ export default function ProductionPage() {
     <PageLayout
       path="/production"
       eyebrow="Производство"
-      title="Современное производство инженерных решений из листового металла"
-      description="Полный цикл производства — от разработки и проектирования до упаковки и отгрузки готовой продукции. Контроль качества на каждом этапе."
+      title="Производство изделий из листового металла по КД"
+      description="Инженерная подготовка, лазерный раскрой, гибка, сварка, окраска, контроль и упаковка в одном согласованном маршруте."
       image="/images/real-production/workshop-team.jpg" imageAlt="Производственный участок «Сталь Продукт»: специалисты за работой с изделиями из листового металла"
     >
       <section className="border-y border-white/10 bg-[#0c1013] py-7">
         <div className="container grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {[
-            ["2000 м²", "производственных площадей"],
-            ["70+", "опытных специалистов"],
-            ["3", "лазерных комплекса с ЧПУ"],
-            ["Система", "контроля качества"],
-            ["По графику", "контроль этапов заказа"],
+            [laserCuttingCapabilities.thicknessRange, "чёрная сталь"],
+            [laserCuttingCapabilities.tableWorkingArea, "рабочее поле стола"],
+            [productionOrderConditions.typicalLeadTime, "средний срок изготовления"],
+            ["Давальческое", "сырьё после входного контроля"],
+            ["По КД", "от единичной детали до серии"],
           ].map(([value, label]) => (
             <div key={label} className="border-l border-white/10 px-4">
               <b className="text-3xl text-steel-orange">{value}</b>
@@ -148,7 +162,7 @@ export default function ProductionPage() {
           {[
             ["Контрактный выпуск", "Производим по КД заказчика, сопровождаем OEM-проекты и при необходимости адаптируем конструкцию под доступную технологию."],
             ["От образца до серии", "Запускаем прототип для проверки геометрии и сборки, затем фиксируем исполнение для повторяемых партий."],
-            ["Материалы", "Работаем с листовой, оцинкованной и нержавеющей сталью, алюминием — применимость уточняем по марке, толщине и операции."],
+            ["Материалы", `Режем чёрную сталь толщиной ${laserCuttingCapabilities.thicknessRange}. Другие материалы и давальческое сырьё принимаем после проверки марки, состояния и выбранной операции.`],
             ["Поставка по России", "Производство находится в Смоленске. Комплектуем и упаковываем заказы для Москвы, Московской области, ЦФО и других регионов."],
           ].map(([title, text], index) => <article key={title} className="border border-white/12 bg-[#111519] p-5"><span className="font-mono text-sm font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span><h2 className="mt-5 text-base font-semibold uppercase">{title}</h2><p className="mt-3 text-sm leading-6 text-white/58">{text}</p></article>)}
         </div>
@@ -289,14 +303,14 @@ export default function ProductionPage() {
             <div>
               <h3 className="text-xl font-semibold">Есть задача?</h3>
               <p className="mt-2 text-sm text-white/55">
-                Изготовим решение под ваши требования.
+                Проверим документацию и согласуем производственный маршрут для детали или партии.
               </p>
             </div>
             <Link
               href="/contacts#contact-form"
               className="bg-steel-orange px-7 py-4 text-xs font-bold uppercase"
             >
-              Получить расчет&nbsp; →
+              Получить расчёт&nbsp; →
             </Link>
           </div>
         </div>

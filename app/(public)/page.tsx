@@ -7,6 +7,12 @@ import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { ProductionCycle } from "@/components/ProductionCycle";
 import { semanticKeywords } from "@/data/semantic";
+import {
+  customerMaterialSummary,
+  laserCuttingCapabilities,
+  productionLeadTimeSummary,
+  productionOrderConditions,
+} from "@/data/manufacturing-facts";
 import { solutions } from "@/data/solutions";
 import { faqSchema, webPageSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
@@ -14,7 +20,7 @@ import { createPageMetadata } from "@/lib/seo";
 export const metadata: Metadata = createPageMetadata({
   title: "Инженерные решения из листового металла",
   description:
-    "Проектируем и производим изделия из листового металла по чертежам: от опытного образца до серии для строительства и промышленности с поставкой по России.",
+    `Изделия из листового металла по чертежам. Лазерная резка чёрной стали ${laserCuttingCapabilities.thicknessRange}, стол ${laserCuttingCapabilities.tableWorkingArea}, полный производственный цикл.`,
   path: "/",
   keywords: [
     ...semanticKeywords.core,
@@ -33,19 +39,19 @@ const cycle = [
 ] as const;
 const benefits = [
   [
-    "Современное производство",
-    "Высокоточное оборудование ведущих мировых брендов",
+    "Проверяемая технология",
+    "До запуска проверяем материал, геометрию, последовательность операций и контрольные размеры",
   ],
   [
     "Инженерный подход",
-    "Решаем нестандартные задачи и предлагаем оптимальные решения",
+    "Связываем КД, раскрой, гибку, сварку и покрытие в единый производственный маршрут",
   ],
   [
     "Контроль качества",
-    "Многоступенчатая проверка на всех этапах производства",
+    "Фиксируем критические параметры и контролируем первую деталь, комплектность и упаковку",
   ],
-  ["Управление сроками", "Фиксируем согласованный график и контролируем этапы заказа"],
-  ["Под ключ", "От проектирования до поставки готовой продукции"],
+  ["Срок по маршруту", `Средний производственный срок — ${productionOrderConditions.typicalLeadTime}; точную дату подтверждаем после проверки заказа`],
+  ["Материал заказчика", "Принимаем давальческое сырьё после входного контроля и подтверждения его пригодности"],
 ];
 const projects = [
   "Жилые комплексы",
@@ -69,6 +75,9 @@ const homeFaq = [
   { question: "Что производит компания «Сталь Продукт»?", answer: "Проектируем и изготавливаем фасадные элементы, металлокассеты, корпуса, шкафы, кожухи, рамы, кронштейны и нестандартные изделия из листового металла для строительства и промышленности." },
   { question: "Можно заказать металлоизделие по своему чертежу?", answer: "Да. Принимаем КД, PDF, DXF, DWG, STEP, 3D-модели, эскизы и технические задания. Перед запуском проверяем технологичность конструкции и состав исходных данных." },
   { question: "Выполняете полный цикл производства?", answer: "Да. В единый маршрут могут входить инженерная подготовка, лазерный раскрой, гибка на ЧПУ, сварка и сборка, порошковая окраска, контроль, упаковка и отгрузка." },
+  { question: "Какие возможности лазерной резки чёрной стали?", answer: `Рабочий диапазон по толщине — ${laserCuttingCapabilities.thicknessRange}, рабочее поле стола — ${laserCuttingCapabilities.tableWorkingArea}. Возможность изготовления конкретной детали подтверждаем по марке стали, геометрии и требованиям к кромке.` },
+  { question: "Какой средний срок изготовления?", answer: productionLeadTimeSummary },
+  { question: "Можно работать с металлом заказчика?", answer: customerMaterialSummary },
   { question: "Как заказать расчёт стоимости?", answer: "Приложите чертежи, укажите материал, количество и требования к покрытию. Подтвердим получение материалов и после инженерной проверки сообщим срок подготовки предложения." },
 ];
 
@@ -208,7 +217,7 @@ export default function Home() {
                   </div>
                   <div className="p-4">
                     <h3 className="text-xs font-bold">{project}</h3>
-                    <p className="mt-1 text-[10px] text-white/50">Демонстрационный состав решения</p>
+                    <p className="mt-1 text-[10px] text-white/50">Типовой состав и исходные данные</p>
                     <span className="mt-4 block text-xs text-steel-orange">
                       →
                     </span>
@@ -227,14 +236,14 @@ export default function Home() {
                 ваш проект?
               </h2>
               <p className="mt-3 text-xs text-white/55">
-                Отправьте заявку, и мы подготовим для вас коммерческое
-                предложение.
+                Передайте чертёж и параметры партии. Проверим технологичность,
+                уточним маршрут, срок и стоимость.
               </p>
               <Link
                 className="mt-5 inline-block bg-steel-orange px-5 py-3 text-xs font-bold uppercase"
                 href="/contacts#contact-form"
               >
-                Получить расчет&nbsp; →
+                Получить расчёт&nbsp; →
               </Link>
             </div>
             {[

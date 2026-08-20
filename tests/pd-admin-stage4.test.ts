@@ -429,6 +429,12 @@ test("CSV and XLSX neutralize formula injection without formula cells", () => {
 test("incident and governance registries validate data and keep off-server backup warning", async () => {
   const fixture = await stage4Fixture();
   try {
+    const emptyBackups = listBackups(fixture.officer);
+    assert.equal(emptyBackups.status.localEncrypted, "NOT_CONFIGURED");
+    assert.equal(emptyBackups.status.localRestore, "NOT_VERIFIED");
+    assert.equal(emptyBackups.status.offServerEncrypted, "NOT_CONFIGURED");
+    assert.equal(emptyBackups.status.overall, "NOT_READY");
+
     const lead = await addLead(fixture, "SP-20260101-EEE00001", { expired: false });
     assert.throws(() => createIncident(fixture.officer, { detectedAt: new Date().toISOString(), description: "Фиктивный инцидент", affectedSystems: "Тестовая система", dataCategories: "Технические данные", estimatedSubjects: "NaN", initialMeasures: "Изоляция тестового контура", legalBasis: "Тестовый регламент", requestIds: [lead.requestId] }), (error: unknown) => error instanceof PdStage4Error && error.code === "VALIDATION_ERROR");
     const incident = createIncident(fixture.officer, { detectedAt: new Date().toISOString(), description: "Фиктивный инцидент без реальной утечки", affectedSystems: "Тестовая система", dataCategories: "Технические метаданные", estimatedSubjects: 1, initialMeasures: "Изоляция тестового каталога", legalBasis: "Локальная проверка процесса", responsibleUserId: fixture.officerId, requestIds: [lead.requestId] });
@@ -446,7 +452,16 @@ test("incident and governance registries validate data and keep off-server backu
     const backups = listBackups(fixture.officer);
     assert.equal(backups.status.localEncrypted, "PASS");
     assert.equal(backups.status.localRestore, "PASS");
-    assert.equal(backups.status.independentOffServer, "NOT_CONFIGURED");
+    assert.equal(backups.status.offServerEncrypted, "NOT_CONFIGURED");
+    assert.equal(backups.status.providerAccountIsolation, "ACCEPTED_RISK");
     assert.equal(backups.status.overall, "PARTIAL_READINESS");
+
+    const offServer = registerBackup(fixture.officer, { startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), backupType: "FIXTURE", status: "PASS", destinationType: "BEGET_OBJECT_STORAGE_RU", encrypted: true, archiveSha256: "c".repeat(64), filesCount: 3, totalBytes: 1024, legalBasis: "Регистрация фиктивной off-server копии" });
+    registerRestoreTest(fixture.officer, offServer.id, { version: 1, result: "PASS", filesVerified: 3, isolatedTarget: "Изолированный временный fixture", notes: "Production не затрагивался", legalBasis: "Фиктивная проверка off-server восстановления" });
+    const offServerBackups = listBackups(fixture.officer);
+    assert.equal(offServerBackups.status.offServerEncrypted, "PASS");
+    assert.equal(offServerBackups.status.offServerRestore, "PASS");
+    assert.equal(offServerBackups.status.providerAccountIsolation, "ACCEPTED_RISK");
+    assert.equal(offServerBackups.status.overall, "READY_WITH_PROVIDER_WARNING");
   } finally { fixture.close(); }
 });

@@ -257,14 +257,14 @@ export default function ProjectsPage() {
             <div>
               <h3 className="text-xl font-semibold">Есть похожий проект?</h3>
               <p className="mt-2 text-sm text-white/55">
-                Рассчитаем стоимость и предложим оптимальное решение.
+                Проверим исходные данные и подготовим предложение по составу, сроку и стоимости.
               </p>
             </div>
             <Link
               href="/contacts#contact-form"
               className="bg-steel-orange px-7 py-4 text-xs font-bold uppercase"
             >
-              Получить расчет&nbsp; →
+              Получить расчёт&nbsp; →
             </Link>
           </div>
         </div>

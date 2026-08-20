@@ -12,15 +12,15 @@ const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-07-29T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/": new Date("2026-08-02T00:00:00.000Z"),
-  "/company": new Date("2026-08-02T00:00:00.000Z"),
-  "/contacts": new Date("2026-08-02T00:00:00.000Z"),
-  "/production": new Date("2026-08-02T00:00:00.000Z"),
-  "/solutions": new Date("2026-08-02T00:00:00.000Z"),
+  "/": new Date("2026-08-20T00:00:00.000Z"),
+  "/company": new Date("2026-08-20T00:00:00.000Z"),
+  "/contacts": new Date("2026-08-20T00:00:00.000Z"),
+  "/production": new Date("2026-08-20T00:00:00.000Z"),
+  "/solutions": new Date("2026-08-20T00:00:00.000Z"),
   "/industries": new Date("2026-08-02T00:00:00.000Z"),
   "/projects": new Date("2026-07-20T00:00:00.000Z"),
-  "/products": new Date("2026-08-02T00:00:00.000Z"),
-  "/articles": new Date("2026-07-29T00:00:00.000Z"),
+  "/products": new Date("2026-08-20T00:00:00.000Z"),
+  "/articles": new Date("2026-08-19T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
   "/calculator-metallokassety": new Date("2026-07-29T00:00:00.000Z"),
   "/products/metallokassety": new Date("2026-08-02T00:00:00.000Z"),
@@ -29,8 +29,8 @@ const staticModifiedAt: Record<string, Date> = {
 
 function contentModifiedAt(path: string) {
   if (path.startsWith("/legal/")) return legalUpdatedAt;
-  if (path.startsWith("/production/")) return new Date("2026-08-02T00:00:00.000Z");
-  if (path.startsWith("/solutions/")) return new Date("2026-08-02T00:00:00.000Z");
+  if (path.startsWith("/production/")) return new Date("2026-08-20T00:00:00.000Z");
+  if (path.startsWith("/solutions/")) return new Date("2026-08-20T00:00:00.000Z");
   if (path.startsWith("/industries/")) return new Date("2026-07-29T00:00:00.000Z");
   if (path.startsWith("/products/")) return new Date("2026-07-27T00:00:00.000Z");
   return staticModifiedAt[path] ?? new Date("2026-07-20T00:00:00.000Z");

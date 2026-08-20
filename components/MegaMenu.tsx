@@ -125,8 +125,8 @@ export function MegaMenu({ onClose }: { onClose: () => void }) {
           <div>
             <b className="text-lg">Не нашли нужное изделие?</b>
             <p className="mt-1 text-sm text-white/55">
-              Изготавливаем продукцию любой сложности по вашим чертежам и
-              техническому заданию.
+              Изготавливаем нестандартные детали и сборочные единицы по вашим
+              чертежам, 3D-моделям и техническому заданию.
             </p>
           </div>
           <Link
@@ -134,7 +134,7 @@ export function MegaMenu({ onClose }: { onClose: () => void }) {
             href="/contacts#contact-form"
             className="clip-corner whitespace-nowrap bg-steel-orange px-8 py-4 text-sm font-bold"
           >
-            Получить расчет&nbsp; →
+            Получить расчёт&nbsp; →
           </Link>
         </div>
       </section>

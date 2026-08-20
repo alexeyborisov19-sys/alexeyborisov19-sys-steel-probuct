@@ -74,6 +74,26 @@ export default async function ProductionServicePage({
               <p className="mt-6 max-w-4xl text-lg leading-8 text-white/72">
                 {service.lead}
               </p>
+              {service.specifications && (
+                <dl className="mt-8 grid gap-3 sm:grid-cols-2">
+                  {service.specifications.map((specification) => (
+                    <div
+                      key={specification.label}
+                      className="border border-white/12 bg-[#111519] p-5"
+                    >
+                      <dt className="text-[10px] font-bold uppercase tracking-[.14em] text-white/45">
+                        {specification.label}
+                      </dt>
+                      <dd className="mt-3 text-xl font-semibold text-steel-orange">
+                        {specification.value}
+                      </dd>
+                      <p className="mt-3 text-xs leading-5 text-white/55">
+                        {specification.note}
+                      </p>
+                    </div>
+                  ))}
+                </dl>
+              )}
               <div className="mt-8 border-l-2 border-steel-orange bg-[#111519] p-6 sm:p-7">
                 <p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">
                   Что получает заказчик

@@ -6,10 +6,15 @@ import { JsonLd } from "@/components/JsonLd";
 import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/seo";
 import { faqSchema } from "@/lib/schema";
+import {
+  customerMaterialSummary,
+  laserCuttingCapabilities,
+  productionLeadTimeSummary,
+} from "@/data/manufacturing-facts";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Получить расчёт металлоизделий",
-  description: "Заказать расчёт металлоизделий: отправьте PDF, DXF, DWG, STEP, спецификацию или ТЗ. Проверим документацию и сообщим срок подготовки предложения.",
+  description: `Расчёт металлоизделий по PDF, DXF, DWG или STEP. Лазерная резка чёрной стали ${laserCuttingCapabilities.thicknessRange}, стол ${laserCuttingCapabilities.tableWorkingArea}.`,
   path: "/contacts",
   keywords: ["расчёт металлоизделий", "заказать металлоизделия по чертежам", "стоимость изготовления деталей", "DXF DWG STEP производство", "подрядчик по металлообработке"],
 });
@@ -18,17 +23,19 @@ const contactFaq = [
   { question: "Какие файлы приложить к заявке?", answer: "Подойдут PDF, DXF, DWG, STEP, IGES, SLDPRT, IPT, изображения, спецификации и архивы. Для первичной оценки можно отправить эскиз или описание задачи." },
   { question: "Телефон обязателен?", answer: "Нет. Для отправки заявки достаточно указать хотя бы один способ связи — телефон или электронную почту." },
   { question: "Когда подтвердят получение материалов?", answer: "Подтвердим получение заявки в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации и состава заказа." },
+  { question: "Какой средний срок изготовления?", answer: productionLeadTimeSummary },
+  { question: "Можно использовать металл заказчика?", answer: customerMaterialSummary },
 ];
 
 export default function ContactsPage() {
-  return <><JsonLd data={faqSchema(contactFaq)} /><PageLayout path="/contacts" eyebrow="Получить расчёт" title="Обсудим ваш проект" description="Прикрепите чертёж, спецификацию или опишите задачу — подготовим коммерческое предложение и предложим оптимальное решение.">
+  return <><JsonLd data={faqSchema(contactFaq)} /><PageLayout path="/contacts" eyebrow="Получить расчёт" title="Передайте задачу на инженерную проверку" description="Приложите чертёж, 3D-модель, спецификацию или опишите изделие. Проверим исходные данные, уточним технологический маршрут и подготовим расчёт.">
     <ConversionActions />
     <section id="contact-form" className="bg-[#101112] py-14 sm:py-20">
       <div className="container grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
         <div className="border border-white/15 bg-[#151719] p-5 sm:p-8">
           <p className="eyebrow">Заявка на расчёт</p>
           <h2 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">Передайте исходные данные — мы подготовим решение</h2>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/60">Файлы поступят непосредственно в конструкторский и коммерческий отдел. При необходимости уточним технические детали до подготовки предложения.</p>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/60">Файлы поступят в инженерный и коммерческий отдел. Укажите материал, толщину, количество, критические размеры, покрытие и требуемую дату — это сократит число уточнений перед расчётом.</p>
           <div className="mt-8"><QuoteRequestForm /></div>
         </div>
 
@@ -42,6 +49,7 @@ export default function ContactsPage() {
             <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Адрес производства</p><address className="mt-2 not-italic leading-relaxed text-white/82">г. Смоленск, Рославльское шоссе,<br />7-й км, стр. 3</address></div>
           </div>
           <div className="mt-8 border border-white/10 bg-black/20 p-4 text-xs leading-relaxed text-white/55"><b className="text-white">Форматы чертежей:</b><br />PDF, DXF, DWG, STEP, IGES, SLDPRT, IPT, изображения, офисные документы и архивы.</div>
+          <div className="mt-3 border border-white/10 bg-black/20 p-4 text-xs leading-relaxed text-white/55"><b className="text-white">Лазерная резка чёрной стали:</b><br />толщина {laserCuttingCapabilities.thicknessRange}, рабочее поле стола {laserCuttingCapabilities.tableWorkingArea}. Давальческий материал принимаем после входного контроля.</div>
         </aside>
       </div>
     </section>

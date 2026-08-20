@@ -15,7 +15,7 @@ import { createPageMetadata } from "@/lib/seo";
 const pagePath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const pageTitle = "Календарь выставок по металлообработке в Китае — 2026–2027";
 const pageDescription = "Проверенный календарь выставок Китая на 2026–2027 годы: станки, лазерная резка, гибка, штамповка, сварка, роботизация, мехобработка, литьё и материалы.";
-const checkedAt = "2026-07-28";
+const checkedAt = "2026-08-19";
 
 export const metadata: Metadata = createPageMetadata({
   title: pageTitle,
@@ -168,7 +168,7 @@ export default function ChinaExhibitions2026Page() {
               ["14", "выставок 2026–2027"],
               [String(upcoming.length), "ещё пройдут в 2026 году"],
               ["9", "направлений технологий"],
-              ["28.07", "дата проверки календаря"],
+              ["19.08", "дата проверки календаря"],
             ].map(([number, label]) => (
               <div key={label} className="bg-[#101519] p-6">
                 <p className="font-mono text-3xl font-bold text-steel-orange">{number}</p>

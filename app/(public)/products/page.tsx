@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { productBySlug, productGroups, products } from "@/data/products";
 import { faqSchema, itemListSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
+import { productionLeadTimeSummary } from "@/data/manufacturing-facts";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Фасадные металлокассеты и доборные элементы",
@@ -18,7 +19,7 @@ export const metadata: Metadata = createPageMetadata({
 const faqItems = [
   { question: "Какие фасадные изделия представлены в каталоге?", answer: "В каталоге собраны металлокассеты открытого и скрытого крепления, перфорированные и объёмные кассеты, откосы, отливы, аквилоны, парапетные крышки и пожарные отсечки." },
   { question: "Можно изготовить элементы по размерам объекта?", answer: "Да. Размеры, полки, материал, толщина, крепление и цвет по RAL согласуются по раскладке, узлам или рабочим чертежам." },
-  { question: "Как получить цену и срок изготовления?", answer: "Передайте спецификацию, площадь или фасадную раскладку, выбранное исполнение, материал, цвет и количество. После проверки документации подготовим расчёт." },
+  { question: "Как получить цену и срок изготовления?", answer: `Передайте спецификацию, площадь или фасадную раскладку, выбранное исполнение, материал, цвет и количество. ${productionLeadTimeSummary}` },
 ];
 
 export default function ProductsPage() {
@@ -34,7 +35,7 @@ export default function ProductsPage() {
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="max-w-3xl border-l-2 border-steel-orange pl-5">
-          <p className="text-lg font-semibold leading-relaxed">Технические данные и чертежи из каталога встроены в каждую карточку. Подберём исполнение, размеры, покрытие и цвет по RAL под ваш объект.</p>
+          <p className="text-lg font-semibold leading-relaxed">В карточках приведены назначение, исходные данные и типовые схемы изделий. Финальные размеры, материал, крепление и покрытие согласуем по фасадной раскладке и рабочим узлам объекта.</p>
           <div className="mt-5 flex flex-wrap gap-5 text-xs font-bold uppercase text-steel-orange"><a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer">Скачать полный каталог PDF&nbsp; ↗</a><a href="/documents/katalog-fasadnyh-resheniy-kratkij-4-stranicy.pdf" target="_blank" rel="noreferrer">Краткий каталог - 4 страницы&nbsp; ↗</a><Link href="/contacts#contact-form">Отправить проект на расчёт&nbsp; →</Link></div>
         </div>
         {productGroups.map((group) => <section key={group.title} id={group.href?.startsWith("/products#") ? group.href.split("#")[1] : undefined} className="mt-16 first:mt-12">

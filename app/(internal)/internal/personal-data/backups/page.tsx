@@ -23,10 +23,12 @@ export default async function BackupsPage() {
       title="Контроль резервных копий"
       description="Локальная и off-server зашифрованные копии подтверждаются зарегистрированными backup runs и restore tests. Хранение у одного провайдера и в одном аккаунте остаётся отдельным риском."
     />
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <MetricCard label="Локальная encrypted backup" value={data.status.localEncrypted} />
       <MetricCard label="Локальный restore test" value={data.status.localRestore} />
-      <MetricCard label="Off-server encrypted" value={data.status.independentOffServer} tone="warning" />
+      <MetricCard label="Off-server encrypted" value={data.status.offServerEncrypted} />
+      <MetricCard label="Off-server restore test" value={data.status.offServerRestore} />
+      <MetricCard label="Другой аккаунт/провайдер" value={data.status.providerAccountIsolation} tone="warning" />
       <MetricCard label="Общий статус" value={data.status.overall} tone="warning" />
     </div>
 

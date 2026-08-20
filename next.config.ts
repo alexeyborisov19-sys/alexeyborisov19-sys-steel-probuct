@@ -85,13 +85,13 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/dimli",
-        destination: "/products",
-        permanent: true,
+        destination: "/solutions/engineering",
+        statusCode: 301,
       },
       {
         source: "/korzina",
         destination: "/solutions/climate",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/kronhtein",
@@ -101,12 +101,12 @@ const nextConfig: NextConfig = {
       {
         source: "/rehotka",
         destination: "/solutions/engineering",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/vnutri",
-        destination: "/solutions",
-        permanent: true,
+        destination: "/production/lazernaya-rezka-metalla",
+        statusCode: 301,
       },
     ];
   },

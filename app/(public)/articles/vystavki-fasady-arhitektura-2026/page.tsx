@@ -15,7 +15,7 @@ import { createPageMetadata } from "@/lib/seo";
 const pagePath = "/articles/vystavki-fasady-arhitektura-2026";
 const pageTitle = "Выставки фасадов и архитектурных инноваций — 2026–2027";
 const pageDescription = "Проверенный календарь фасадных и архитектурных выставок России, Китая и Дубая на 2026–2027 годы: даты, технологии, аудитория и официальные сайты.";
-const checkedAt = "2026-07-28";
+const checkedAt = "2026-08-19";
 
 export const metadata: Metadata = createPageMetadata({
   title: pageTitle,
@@ -315,7 +315,7 @@ export default function FacadeExhibitions2026Page() {
               ["16", "событий 2026–2027"],
               [String(upcoming.length), "ещё пройдут в 2026 году"],
               ["3", "страны и рынка"],
-              ["28.07", "дата проверки календаря"],
+              ["19.08", "дата проверки календаря"],
             ].map(([number, label]) => (
               <div key={label} className="bg-[#101519] p-6">
                 <p className="font-mono text-3xl font-bold text-steel-orange">{number}</p>

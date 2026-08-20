@@ -2,6 +2,11 @@ import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
 import { articles } from "@/data/articles";
 import { productionServices } from "@/data/production-services";
+import {
+  customerMaterialSummary,
+  laserCuttingTechnicalSummary,
+  productionLeadTimeSummary,
+} from "@/data/manufacturing-facts";
 import { legalOperator } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 
@@ -50,6 +55,9 @@ ${siteConfig.description}
 - 3 лазерных комплекса с ЧПУ, 4 листогибочных комплекса, панельгиб.
 - Сварочные посты, слесарный участок, 3 камеры порошковой окраски.
 - Цикл: инженерная проработка, раскрой, гибка, сварка и сборка, окраска, контроль качества, упаковка и отгрузка.
+- ${laserCuttingTechnicalSummary}
+- ${productionLeadTimeSummary}
+- ${customerMaterialSummary}
 
 ## Производственные операции
 

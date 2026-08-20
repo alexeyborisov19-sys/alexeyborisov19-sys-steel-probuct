@@ -8,7 +8,7 @@ import { InnerHero } from "@/components/InnerHero";
 import { JsonLd } from "@/components/JsonLd";
 import { articleBySlug, articles } from "@/data/articles";
 import { relatedArticles } from "@/lib/related-articles";
-import { articleSchema, breadcrumbSchema, webPageSchema } from "@/lib/schema";
+import { articleSchema, breadcrumbSchema, faqSchema, webPageSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 type ArticlePageProps = { params: Promise<{ slug: string }> };
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 
   return createPageMetadata({
     title: article.seoTitle ?? article.title,
-    description: article.lead,
+    description: article.metaDescription ?? article.lead,
     path: `/articles/${article.slug}`,
     image: article.image,
     keywords: article.keywords,
@@ -76,6 +76,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             dateModified: article.modifiedAt,
             citations: article.sources?.map((source) => source.url),
           }),
+          ...(article.faq?.length ? [faqSchema(article.faq)] : []),
         ]}
       />
       <Header />
@@ -127,6 +128,21 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 {article.lead}
               </p>
 
+              {article.keyTakeaways?.length ? (
+                <section className="mt-10 border border-steel-orange/35 bg-[#111519] p-6 sm:p-8" aria-labelledby="article-key-takeaways">
+                  <p className="eyebrow">Короткий инженерный вывод</p>
+                  <h2 id="article-key-takeaways" className="sr-only">Основные выводы статьи</h2>
+                  <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {article.keyTakeaways.map((item) => (
+                      <li key={item} className="flex gap-3 text-sm leading-6 text-white/72">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 bg-steel-orange" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
               <div className="mt-12 space-y-12">
                 {article.sections.map((section, index) => (
                   <section
@@ -149,6 +165,66 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                         {paragraph}
                       </p>
                     ))}
+
+                    {section.bullets?.length ? (
+                      <ul className="mt-6 grid gap-3 border-l border-steel-orange/35 pl-5">
+                        {section.bullets.map((item) => (
+                          <li key={item} className="text-sm leading-7 text-white/68">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
+                    {section.table ? (
+                      <div className="mt-7 overflow-x-auto border border-white/12 bg-[#111519]">
+                        <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                          <caption className="border-b border-white/12 px-5 py-4 text-left font-semibold text-white">
+                            {section.table.caption}
+                          </caption>
+                          <thead className="bg-white/[.04] text-[10px] uppercase tracking-[.1em] text-steel-orange">
+                            <tr>
+                              {section.table.columns.map((column) => (
+                                <th key={column} scope="col" className="border-r border-white/10 px-4 py-3 last:border-r-0">
+                                  {column}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {section.table.rows.map((row, rowIndex) => (
+                              <tr key={`${rowIndex}-${row[0]}`} className="border-t border-white/10 align-top">
+                                {row.map((cell, cellIndex) => (
+                                  <td key={`${cellIndex}-${cell.slice(0, 24)}`} className="border-r border-white/10 px-4 py-4 leading-6 text-white/66 last:border-r-0">
+                                    {cell}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {section.table.note ? (
+                          <p className="border-t border-white/10 px-5 py-4 text-xs leading-6 text-white/48">
+                            {section.table.note}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {section.example ? (
+                      <div className="mt-7 border border-white/12 bg-[#111519] p-5 sm:p-7">
+                        <p className="text-[10px] font-bold uppercase tracking-[.13em] text-steel-orange">Разбор ситуации</p>
+                        <h3 className="mt-3 text-xl font-semibold text-white">{section.example.title}</h3>
+                        <dl className="mt-5 grid gap-4 text-sm leading-7 sm:grid-cols-3">
+                          <div><dt className="font-semibold text-white">Исходные данные</dt><dd className="mt-1 text-white/62">{section.example.situation}</dd></div>
+                          <div><dt className="font-semibold text-white">Решение</dt><dd className="mt-1 text-white/62">{section.example.decision}</dd></div>
+                          <div><dt className="font-semibold text-white">Что проверяем</dt><dd className="mt-1 text-white/62">{section.example.result}</dd></div>
+                        </dl>
+                        {section.example.limitation ? (
+                          <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-6 text-white/48">{section.example.limitation}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {section.newsItems?.length ? (
                       <div className="mt-7 grid gap-5">
@@ -194,6 +270,23 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               </div>
 
               <ArticleCommercialLinks article={article} />
+
+              {article.faq?.length ? (
+                <section className="mt-12" aria-labelledby="article-faq">
+                  <p className="eyebrow">Вопросы по теме</p>
+                  <h2 id="article-faq" className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Частые вопросы</h2>
+                  <div className="mt-6 divide-y divide-white/10 border-y border-white/12">
+                    {article.faq.map((item) => (
+                      <details key={item.question} className="group py-5">
+                        <summary className="cursor-pointer list-none pr-8 text-base font-semibold text-white marker:content-none">
+                          {item.question}
+                        </summary>
+                        <p className="mt-3 max-w-4xl text-sm leading-7 text-white/64">{item.answer}</p>
+                      </details>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               {article.sources?.length ? (
                 <section className="mt-12 border border-white/12 bg-[#111519] p-6 sm:p-8">

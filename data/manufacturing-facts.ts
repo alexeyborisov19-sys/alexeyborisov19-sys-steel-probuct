@@ -1,0 +1,23 @@
+export const laserCuttingCapabilities = {
+  material: "чёрная сталь",
+  thicknessRange: "0,5–40 мм",
+  maximumThickness: "до 40 мм",
+  tableWorkingArea: "1500 × 3000 мм",
+} as const;
+
+export const productionOrderConditions = {
+  typicalLeadTime: "7–14 дней",
+  customerSuppliedMaterial: "работаем с давальческим сырьём",
+} as const;
+
+export const laserCuttingTechnicalSummary =
+  `Лазерная резка чёрной стали в диапазоне ${laserCuttingCapabilities.thicknessRange}. ` +
+  `Рабочее поле стола — ${laserCuttingCapabilities.tableWorkingArea}.`;
+
+export const productionLeadTimeSummary =
+  `Ориентировочный производственный срок — ${productionOrderConditions.typicalLeadTime} после согласования исходных данных. ` +
+  "Фактический срок зависит от загрузки оборудования, объёма партии и состава технологического маршрута.";
+
+export const customerMaterialSummary =
+  "Принимаем давальческий материал после входного контроля марки, толщины, габаритов и состояния поверхности. " +
+  "Пригодность сырья для выбранной технологии подтверждаем до запуска заказа.";

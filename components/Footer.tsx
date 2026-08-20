@@ -52,11 +52,11 @@ export function Footer() {
           </ul>
         </div>)}
         <div>
-          <p className="text-xs font-bold uppercase text-white">Контакты</p>
-          <a className="mt-4 block text-xs text-white" href="tel:+79107803723">+7 910 780 37 23</a>
-          <a className="mt-2 block text-xs text-white/55" href="mailto:info@steelprodukt.ru">info@steelprodukt.ru</a>
-          <a className="mt-2 block text-xs text-white/55 transition hover:text-steel-orange" href="https://www.steelprodukt.ru" target="_blank" rel="noreferrer">steelprodukt.ru ↗</a>
-          <p className="mt-3 text-xs leading-relaxed text-white/55"><span className="text-white/38">Производство:</span><br />г. Смоленск,<br />Рославльское шоссе,<br />7-й км, стр. 3</p>
+          <p className="text-sm font-bold uppercase tracking-[.08em] text-white">Контакты</p>
+          <a className="mt-4 block text-lg font-semibold leading-tight text-white transition hover:text-steel-orange" href="tel:+79107803723">+7 910 780 37 23</a>
+          <a className="mt-3 block text-base font-medium text-white/75 transition hover:text-steel-orange" href="mailto:info@steelprodukt.ru">info@steelprodukt.ru</a>
+          <a className="mt-2 block text-sm text-white/65 transition hover:text-steel-orange" href="https://www.steelprodukt.ru" target="_blank" rel="noreferrer">steelprodukt.ru ↗</a>
+          <p className="mt-4 text-sm leading-relaxed text-white/65"><span className="font-medium text-white/45">Производство:</span><br />г. Смоленск,<br />Рославльское шоссе,<br />7-й км, стр. 3</p>
         </div>
       </div>
       <div className="mt-9 border-t border-white/10 pt-5">

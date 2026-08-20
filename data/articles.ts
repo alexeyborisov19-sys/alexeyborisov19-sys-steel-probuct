@@ -2,10 +2,25 @@ import {
   additionalEngineeringArticles,
   articleEditorialEnhancements,
 } from "@/data/article-editorial";
+import { articleQualityRewrites } from "@/data/article-quality-rewrites";
 
 export type ArticleSection = {
   title: string;
   paragraphs?: string[];
+  bullets?: string[];
+  table?: {
+    caption: string;
+    columns: string[];
+    rows: string[][];
+    note?: string;
+  };
+  example?: {
+    title: string;
+    situation: string;
+    decision: string;
+    result: string;
+    limitation?: string;
+  };
   newsItems?: Array<{
     title: string;
     summary: string;
@@ -30,6 +45,7 @@ export type Article = {
   series?: string;
   title: string;
   seoTitle?: string;
+  metaDescription?: string;
   lead: string;
   image: string;
   readingTime: string;
@@ -37,6 +53,8 @@ export type Article = {
   modifiedAt: string;
   keywords: string[];
   sections: ArticleSection[];
+  keyTakeaways?: string[];
+  faq?: Array<{ question: string; answer: string }>;
   checklist: string[];
   related: { label: string; href: string };
   sources?: ArticleSource[];
@@ -671,9 +689,31 @@ const enrichedBaseArticles = baseArticles.map((article): Article => {
   };
 });
 
-export const articles: Article[] = [
+const editorialArticles: Article[] = [
   ...enrichedBaseArticles,
   ...additionalEngineeringArticles,
 ];
+
+export const articles: Article[] = editorialArticles.map((article) => {
+  const rewrite = articleQualityRewrites[article.slug];
+  if (!rewrite) return article;
+
+  const sources = [...(article.sources ?? []), ...(rewrite.extraSources ?? [])];
+
+  return {
+    ...article,
+    seoTitle: rewrite.seoTitle,
+    metaDescription: rewrite.metaDescription,
+    lead: rewrite.lead,
+    readingTime: rewrite.readingTime,
+    modifiedAt: rewrite.modifiedAt,
+    keyTakeaways: rewrite.keyTakeaways,
+    sections: [...article.sections, ...rewrite.additionalSections],
+    faq: rewrite.faq,
+    checklist: [...new Set([...article.checklist, ...(rewrite.extraChecklist ?? [])])],
+    sources: [...new Map(sources.map((source) => [source.url, source])).values()],
+    editorNote: rewrite.editorNote,
+  };
+});
 
 export const articleBySlug = Object.fromEntries(articles.map((article) => [article.slug, article]));
