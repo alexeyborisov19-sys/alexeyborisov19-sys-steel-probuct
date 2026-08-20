@@ -37,12 +37,21 @@ const nextConfig: NextConfig = {
   images: { remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }] },
   async redirects() {
     return [
+      // HTTP → HTTPS
       {
         source: "/:path*",
         has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
         destination: "https://www.steelprodukt.ru/:path*",
         permanent: true,
       },
+      // non-www → www
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "steelprodukt.ru" }],
+        destination: "https://www.steelprodukt.ru/:path*",
+        permanent: true,
+      },
+      // Legacy article redirects
       {
         source: "/articles/ezhednevnaya-svodka-rossiya-politika-promyshlennost-28-07-2026",
         destination: "/articles",
@@ -53,10 +62,50 @@ const nextConfig: NextConfig = {
         destination: "/articles",
         permanent: true,
       },
+      // Old 404 pages from Yandex Webmaster (301 permanent)
       {
-        source: "/:path*",
-        has: [{ type: "host", value: "steelprodukt.ru" }],
-        destination: "https://www.steelprodukt.ru/:path*",
+        source: "/krovla",
+        destination: "/products",
+        permanent: true,
+      },
+      {
+        source: "/lomedii",
+        destination: "/products",
+        permanent: true,
+      },
+      {
+        source: "/otdekrf",
+        destination: "/products",
+        permanent: true,
+      },
+      {
+        source: "/dekorattivnie",
+        destination: "/products",
+        permanent: true,
+      },
+      {
+        source: "/dimli",
+        destination: "/products",
+        permanent: true,
+      },
+      {
+        source: "/korzina",
+        destination: "/solutions/climate",
+        permanent: true,
+      },
+      {
+        source: "/kronhtein",
+        destination: "/solutions/engineering",
+        permanent: true,
+      },
+      {
+        source: "/rehotka",
+        destination: "/solutions/engineering",
+        permanent: true,
+      },
+      {
+        source: "/vnutri",
+        destination: "/solutions",
         permanent: true,
       },
     ];
