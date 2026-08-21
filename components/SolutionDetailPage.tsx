@@ -19,6 +19,17 @@ export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
           <div className="border-l-2 border-steel-orange pl-5"><p className="text-lg font-semibold leading-relaxed text-white/90">{solution.introduction}</p></div>
           <div className="grid gap-3 sm:grid-cols-3">{solution.highlights.map((highlight, index) => <article key={highlight.title} className="border border-white/12 bg-[#111519] p-5"><span className="font-mono text-xl font-bold text-steel-orange">0{index + 1}</span><h2 className="mt-6 text-base font-semibold uppercase leading-tight">{highlight.title}</h2><p className="mt-3 text-sm leading-relaxed text-white/58">{highlight.text}</p></article>)}</div>
         </div>
+        {seo.commercialFacts && (
+          <dl className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {seo.commercialFacts.map((fact) => (
+              <div key={fact.label} className="border border-white/12 bg-[#111519] p-5">
+                <dt className="text-[10px] font-bold uppercase tracking-[.14em] text-white/45">{fact.label}</dt>
+                <dd className="mt-3 text-xl font-semibold text-steel-orange">{fact.value}</dd>
+                <p className="mt-3 text-xs leading-5 text-white/55">{fact.note}</p>
+              </div>
+            ))}
+          </dl>
+        )}
       </div>
     </section>
 

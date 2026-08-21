@@ -93,6 +93,14 @@ const linksByTopic: Record<string, CommercialLink[]> = {
     { title: "Контрактное производство", description: "Изготовление по КД, DXF, DWG и STEP: от опытного образца до серии.", href: "/solutions/custom" },
     { title: "Инженерная подготовка", description: "Проверка технологичности, 3D-модели и рабочая документация.", href: "/production/proektirovanie-metalloizdeliy" },
   ],
+  "oshibki-v-chertezhah-dlya-proizvodstva-metalloizdeliy": [
+    { title: "Изготовление по чертежам", description: "Проверка КД, подготовка маршрута, опытный образец и серийный выпуск деталей.", href: "/solutions/custom" },
+    { title: "Инженерная подготовка", description: "Развёртки, сопряжения, допуски и технологичность до передачи в цех.", href: "/production/proektirovanie-metalloizdeliy" },
+  ],
+  "kak-proverit-tehnologichnost-korpusa-iz-listovogo-metalla": [
+    { title: "Металлические корпуса на заказ", description: "Корпуса, шкафы и кожухи: от DFM-проверки и образца до серийной поставки.", href: "/solutions/industry" },
+    { title: "Сварка и сборка корпусов", description: "Подготовка соединений, сборочная последовательность и контроль геометрии.", href: "/production/svarka-i-sborka-metalloizdeliy" },
+  ],
   "kak-vybrat-tolshchinu-listovogo-metalla": [
     { title: "Проектирование металлоизделий", description: "Подбор материала и толщины с учётом функции, технологии и серии.", href: "/production/proektirovanie-metalloizdeliy" },
     { title: "Лазерный раскрой", description: "Резка листовой стали, нержавейки, алюминия и оцинкованного металла по файлам.", href: "/production/lazernaya-rezka-metalla" },

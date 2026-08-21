@@ -75,6 +75,24 @@ test("every solution has its own commercial intent, FAQ and related links", () =
   }
 });
 
+test("drawing production and industrial housings use one strong landing page per intent", () => {
+  const custom = solutionSeoBySlug.custom;
+  const industry = solutionSeoBySlug.industry;
+  const drawingArticle = articles.find((article) => article.slug === "izdeliya-iz-listovogo-metalla-po-chertezham");
+  const housingArticle = articles.find((article) => article.slug === "kak-proverit-tehnologichnost-korpusa-iz-listovogo-metalla");
+
+  assert.match(custom.seoTitle, /деталей из листового металла по чертежам/i);
+  assert.match(industry.seoTitle, /металлические корпуса.*на заказ/i);
+  assert.equal(custom.commercialFacts?.length, 4);
+  assert.equal(industry.commercialFacts?.length, 4);
+  assert.ok(custom.faq.some((item) => /материалом заказчика/i.test(item.question)));
+  assert.ok(industry.faq.some((item) => /срок изготовления/i.test(item.question) && /7–14 дней/.test(item.answer)));
+  assert.ok(drawingArticle);
+  assert.ok(housingArticle);
+  assert.ok(getArticleCommercialLinks(drawingArticle).some((link) => link.href === "/solutions/custom"));
+  assert.ok(getArticleCommercialLinks(housingArticle).some((link) => link.href === "/solutions/industry"));
+});
+
 test("product and industry landing pages keep unique intent metadata", () => {
   const products = Object.values(productSeoBySlug);
   const industries = Object.values(industrySeoBySlug);

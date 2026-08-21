@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
+import { solutionSeoBySlug } from "@/data/solution-seo";
 import { articles } from "@/data/articles";
 import { productionServices } from "@/data/production-services";
 import { getIndustrySolutions } from "@/lib/industry-solutions";
@@ -30,7 +31,11 @@ const staticModifiedAt: Record<string, Date> = {
 function contentModifiedAt(path: string) {
   if (path.startsWith("/legal/")) return legalUpdatedAt;
   if (path.startsWith("/production/")) return new Date("2026-08-20T00:00:00.000Z");
-  if (path.startsWith("/solutions/")) return new Date("2026-08-20T00:00:00.000Z");
+  if (path.startsWith("/solutions/")) {
+    const solution = solutionDetails.find((item) => `/solutions/${item.slug}` === path);
+    const modifiedAt = solution ? solutionSeoBySlug[solution.slug]?.modifiedAt : undefined;
+    return modifiedAt ? new Date(`${modifiedAt}T00:00:00.000Z`) : new Date("2026-08-20T00:00:00.000Z");
+  }
   if (path.startsWith("/industries/")) return new Date("2026-07-29T00:00:00.000Z");
   if (path.startsWith("/products/")) return new Date("2026-07-27T00:00:00.000Z");
   return staticModifiedAt[path] ?? new Date("2026-07-20T00:00:00.000Z");
