@@ -7,8 +7,8 @@ const actions = [
   {
     eyebrow: "01 · Для архитектора и закупщика",
     title: "Каталог фасадных решений",
-    text: "Откройте компактный каталог: металлокассеты, парапетные крышки, откосы, отливы и доборные элементы.",
-    href: "/documents/katalog-fasadnyh-resheniy-kratkij-4-stranicy.pdf",
+    text: "Откройте актуальный каталог: металлокассеты, парапетные крышки, откосы, отливы и фасонные элементы.",
+    href: "/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf",
     label: "Скачать PDF-каталог",
     external: true,
     event: "catalog_download",
