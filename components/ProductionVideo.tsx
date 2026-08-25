@@ -21,16 +21,34 @@ export function ProductionShowreel() {
     }
   }, []);
 
-  useEffect(() => {
+  const syncAutomaticPlayback = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const reducedMotion = typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (document.visibilityState !== "visible" || reducedMotion) {
+      video.pause();
+      setIsPlaying(false);
+      return;
+    }
+
     void startVideo();
-
-    const resumeWhenVisible = () => {
-      if (document.visibilityState === "visible") void startVideo();
-    };
-
-    document.addEventListener("visibilitychange", resumeWhenVisible);
-    return () => document.removeEventListener("visibilitychange", resumeWhenVisible);
   }, [startVideo]);
+
+  useEffect(() => {
+    const motionQuery = typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+
+    syncAutomaticPlayback();
+    document.addEventListener("visibilitychange", syncAutomaticPlayback);
+    motionQuery?.addEventListener("change", syncAutomaticPlayback);
+    return () => {
+      document.removeEventListener("visibilitychange", syncAutomaticPlayback);
+      motionQuery?.removeEventListener("change", syncAutomaticPlayback);
+    };
+  }, [syncAutomaticPlayback]);
 
   return <section id="production-video" className="bg-[#0c1013] py-14 sm:py-16">
     <div className="container grid gap-8 lg:grid-cols-[minmax(0,.64fr)_minmax(0,1fr)] lg:items-center">
@@ -49,13 +67,12 @@ export function ProductionShowreel() {
         <video
           ref={videoRef}
           className="h-full w-full object-cover"
-          autoPlay
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           poster="/images/production-showreel-poster.png"
-          onCanPlay={() => void startVideo()}
+          onCanPlay={syncAutomaticPlayback}
           onPlaying={() => {
             setIsPlaying(true);
             setHasError(false);
