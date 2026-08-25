@@ -5,6 +5,7 @@ import test from "node:test";
 const publicLayoutPath = new URL("../app/(public)/layout.tsx", import.meta.url);
 const preloaderPath = new URL("../components/SitePreloader.tsx", import.meta.url);
 const productPagePath = new URL("../app/(public)/products/[slug]/page.tsx", import.meta.url);
+const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
 const deployWorkflowPath = new URL("../.github/workflows/deploy-beget.yml", import.meta.url);
 
@@ -25,6 +26,20 @@ test("technical product specifications keep a project-specific qualification", a
 
   assert.match(productPage, /Параметры на странице описывают доступные или типовые исполнения/);
   assert.match(productPage, /итоговые значения фиксируются по проектной документации/);
+});
+
+test("product pages explain pricing inputs without publishing invented prices", async () => {
+  const [productPage, pricingFactors] = await Promise.all([
+    readFile(productPagePath, "utf8"),
+    readFile(pricingFactorsPath, "utf8"),
+  ]);
+
+  assert.match(productPage, /<ProductPricingFactors productTitle=\{product\.title\} \/>/);
+  assert.match(pricingFactors, /От чего зависит цена/);
+  assert.match(pricingFactors, /Материал и толщина/);
+  assert.match(pricingFactors, /Объём партии/);
+  assert.match(pricingFactors, /чертёж, эскиз, STEP\/DXF\/DWG или спецификация/);
+  assert.doesNotMatch(pricingFactors, /от \d+[\s ]*₽|\d+[\s ]*руб/i);
 });
 
 test("Codex agent runtimes remain outside lint and production deployment scope", async () => {
