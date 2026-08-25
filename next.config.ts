@@ -35,6 +35,8 @@ const securityHeaders = [
     : []),
 ];
 
+const stablePublicAssetCache = "public, max-age=86400, stale-while-revalidate=604800";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: { remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }] },
@@ -143,12 +145,16 @@ const nextConfig: NextConfig = {
           { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
         ],
       },
-      // Public image names are stable (for example hero-main.webp), not content-hashed.
-      // Keep them cacheable, but revalidate them so replacing an image under the same
-      // public URL reaches returning visitors instead of being pinned for a year.
+      // Public image and video names are stable, not content-hashed. Keep them
+      // cacheable, but revalidate so replacing a file under the same URL reaches
+      // returning visitors instead of pinning stale media indefinitely.
       {
         source: "/images/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+        headers: [{ key: "Cache-Control", value: stablePublicAssetCache }],
+      },
+      {
+        source: "/video/:path*",
+        headers: [{ key: "Cache-Control", value: stablePublicAssetCache }],
       },
     ];
   },
