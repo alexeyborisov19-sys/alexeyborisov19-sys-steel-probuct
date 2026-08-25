@@ -38,6 +38,10 @@ export const siteConfig = {
     postalCode: "214009",
     addressCountry: "RU",
   },
+  productionAddress: {
+    line1: "г. Смоленск, Рославльское шоссе",
+    line2: "7-й км, стр. 3",
+  },
   logo: "/logo/steel-product.png",
   defaultOgImage: "/images/industry/hero-building-v1.png",
   verification: {

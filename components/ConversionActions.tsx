@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { trackLeadEvent } from "@/lib/analytics";
+import { siteConfig } from "@/lib/site";
 
 const actions = [
   {
@@ -26,8 +27,8 @@ const actions = [
     eyebrow: "03 · Если удобнее обсудить",
     title: "Написать в инженерный отдел",
     text: "Опишите задачу в письме или приложите материалы — это удобно для предварительной оценки нестандартного изделия.",
-    href: "mailto:info@steelprodukt.ru?subject=Запрос%20на%20инженерное%20решение",
-    label: "info@steelprodukt.ru",
+    href: `mailto:${siteConfig.email}?subject=Запрос%20на%20инженерное%20решение`,
+    label: siteConfig.email,
     external: true,
     event: "email_click",
   },

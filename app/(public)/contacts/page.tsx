@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/seo";
 import { faqSchema } from "@/lib/schema";
+import { siteConfig } from "@/lib/site";
 import {
   customerMaterialSummary,
   laserCuttingCapabilities,
@@ -27,6 +28,8 @@ const contactFaq = [
   { question: "Можно использовать металл заказчика?", answer: customerMaterialSummary },
 ];
 
+const siteHost = new URL(siteConfig.url).hostname.replace(/^www\./, "");
+
 export default function ContactsPage() {
   return <><JsonLd data={faqSchema(contactFaq)} /><PageLayout path="/contacts" eyebrow="Получить расчёт" title="Передайте задачу на инженерную проверку" description="Приложите чертёж, 3D-модель, спецификацию или опишите изделие. Проверим исходные данные, уточним технологический маршрут и подготовим расчёт.">
     <ConversionActions />
@@ -43,10 +46,10 @@ export default function ContactsPage() {
           <p className="eyebrow">Контакты</p>
           <h2 className="mt-3 text-2xl font-semibold">Удобно обсудить задачу напрямую?</h2>
           <div className="mt-7 space-y-5 text-sm">
-            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Телефон</p><a className="mt-2 block font-semibold transition hover:text-steel-orange" href="tel:+79107803723">+7 910 780 37 23</a></div>
-            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Электронная почта</p><a className="mt-2 block font-semibold transition hover:text-steel-orange" href="mailto:info@steelprodukt.ru">info@steelprodukt.ru</a></div>
-            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Сайт</p><a className="mt-2 block font-semibold transition hover:text-steel-orange" href="https://www.steelprodukt.ru" target="_blank" rel="noreferrer">steelprodukt.ru&nbsp; ↗</a></div>
-            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Адрес производства</p><address className="mt-2 not-italic leading-relaxed text-white/82">г. Смоленск, Рославльское шоссе,<br />7-й км, стр. 3</address></div>
+            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Телефон</p><a className="mt-2 block font-semibold transition hover:text-steel-orange" href={`tel:${siteConfig.telephone}`}>{siteConfig.telephoneDisplay}</a></div>
+            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Электронная почта</p><a className="mt-2 block font-semibold transition hover:text-steel-orange" href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a></div>
+            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Сайт</p><a className="mt-2 block font-semibold transition hover:text-steel-orange" href={siteConfig.url} target="_blank" rel="noreferrer">{siteHost}&nbsp; ↗</a></div>
+            <div className="border-l-2 border-steel-orange pl-4"><p className="text-xs uppercase tracking-[.12em] text-white/45">Адрес производства</p><address className="mt-2 not-italic leading-relaxed text-white/82">{siteConfig.productionAddress.line1},<br />{siteConfig.productionAddress.line2}</address></div>
           </div>
           <div className="mt-8 border border-white/10 bg-black/20 p-4 text-xs leading-relaxed text-white/55"><b className="text-white">Форматы чертежей:</b><br />PDF, DXF, DWG, STEP, IGES, SLDPRT, IPT, изображения, офисные документы и архивы.</div>
           <div className="mt-3 border border-white/10 bg-black/20 p-4 text-xs leading-relaxed text-white/55"><b className="text-white">Лазерная резка чёрной стали:</b><br />толщина {laserCuttingCapabilities.thicknessRange}, рабочее поле стола {laserCuttingCapabilities.tableWorkingArea}. Давальческий материал принимаем после входного контроля.</div>
