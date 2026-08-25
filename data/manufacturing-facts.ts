@@ -1,3 +1,5 @@
+// Confirmed company production facts. Change these values only from verified company data;
+// public pages, assistant knowledge and regression tests intentionally depend on this source of truth.
 export const laserCuttingCapabilities = {
   material: "чёрная сталь",
   thicknessRange: "0,5–40 мм",
