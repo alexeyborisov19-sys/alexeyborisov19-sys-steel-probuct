@@ -38,7 +38,7 @@ test("laser cutting page publishes the confirmed technical range without an unco
   assert.match(`${laserCutting.description} ${laserCutting.lead}`, /0,5–40 мм/);
   assert.match(laserCutting.lead, /чёрной стали/);
   assert.match(laserCutting.lead, /1500 × 3000 мм/);
-  assert.ok(laserCutting.faq.some((item) => /давальческого металла/i.test(item.question) && /входного контроля/i.test(item.answer)));
+  assert.ok(laserCutting.faq.some((item) => /металла заказчика/i.test(item.question) && /входного контроля/i.test(item.answer)));
   assert.ok(laserCutting.faq.some((item) => /срок лазерной резки/i.test(item.question) && /7–14 дней/i.test(item.answer)));
   assert.deepEqual(
     laserCutting.specifications?.map(({ value }) => value),
@@ -48,6 +48,13 @@ test("laser cutting page publishes the confirmed technical range without an unco
   const assistantLaserAnswer = buildKnowledgeFallback("Какая максимальная толщина и размер стола лазерной резки?");
   assert.match(assistantLaserAnswer, /чёрной стали.*0,5–40 мм/);
   assert.match(assistantLaserAnswer, /1500 × 3000 мм/);
+  const visibleLaserCopy = [
+    laserCutting.description,
+    ...laserCutting.specifications?.flatMap((item) => [item.label, item.value, item.note]) ?? [],
+    ...laserCutting.faq.flatMap((item) => [item.question, item.answer]),
+    assistantLaserAnswer,
+  ].join(" ");
+  assert.doesNotMatch(visibleLaserCopy, /давальч/i);
 });
 
 test("commercial copy keeps confirmed lead time and customer-supplied material conditions consistent", () => {
