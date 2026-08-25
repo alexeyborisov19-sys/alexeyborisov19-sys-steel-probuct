@@ -2,33 +2,66 @@ const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.steelprodukt.r
 const indexNowKey = "9f6d7c0b8a2e4f1c5d3b7a9e6c4f2d1b";
 const keyLocation = `${siteUrl}/indexnow-key.txt`;
 const requestedPaths = process.argv.slice(2).filter((path) => path !== "--");
-const paths = requestedPaths.length
-  ? requestedPaths
-  : [
-      "/",
-      "/production",
-      "/production/proektirovanie-metalloizdeliy",
-      "/production/lazernaya-rezka-metalla",
-      "/production/gibka-listovogo-metalla",
-      "/production/svarka-i-sborka-metalloizdeliy",
-      "/production/poroshkovaya-okraska-metalla",
-      "/solutions",
-      "/industries",
-      "/products",
-      "/products/korziny-dlya-konditsionerov",
-      "/products/ventilyacionnye-reshetki",
-      "/products/metallicheskie-korpusa",
-      "/products/zakladnye-detali",
-      "/articles",
-      "/articles/vystavki-fasady-arhitektura-2026",
-      "/sitemap.xml",
-      "/sitemap-images.xml",
-    ];
-const urlList = paths.map((path) => new URL(path, `${siteUrl}/`).toString());
-
 const endpoint = process.env.INDEXNOW_ENDPOINT || "https://yandex.com/indexnow";
 const maxAttempts = 3;
 const retryDelayMs = 3000;
+const minimumSitemapPriority = 0.85;
+const maximumBatchSize = 10_000;
+
+function decodeXmlText(value) {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'");
+}
+
+async function discoverPriorityUrls() {
+  const sitemapUrl = `${siteUrl}/sitemap.xml`;
+  const response = await fetch(sitemapUrl, {
+    headers: { "User-Agent": "SteelProdukt-IndexNow/1.0" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Could not load sitemap.xml for IndexNow: HTTP ${response.status}`);
+  }
+
+  const xml = await response.text();
+  const expectedHost = new URL(siteUrl).host;
+  const urls = [];
+
+  for (const match of xml.matchAll(/<url>([\s\S]*?)<\/url>/gi)) {
+    const block = match[1];
+    const loc = block.match(/<loc>([\s\S]*?)<\/loc>/i)?.[1];
+    const priorityText = block.match(/<priority>([\s\S]*?)<\/priority>/i)?.[1];
+    const priority = Number.parseFloat(priorityText?.trim() || "0");
+
+    if (!loc || !Number.isFinite(priority) || priority < minimumSitemapPriority) continue;
+
+    const url = new URL(decodeXmlText(loc.trim()));
+    if (url.host !== expectedHost) continue;
+    urls.push(url.toString());
+  }
+
+  if (!urls.length) {
+    throw new Error("sitemap.xml did not contain any IndexNow priority URLs");
+  }
+
+  return [...new Set([
+    ...urls,
+    sitemapUrl,
+    `${siteUrl}/sitemap-images.xml`,
+  ])];
+}
+
+const urlList = requestedPaths.length
+  ? [...new Set(requestedPaths.map((path) => new URL(path, `${siteUrl}/`).toString()))]
+  : await discoverPriorityUrls();
+
+if (urlList.length > maximumBatchSize) {
+  throw new Error(`IndexNow batch has ${urlList.length} URLs; maximum is ${maximumBatchSize}`);
+}
 
 // The connection to the endpoint gets dropped often enough that a single try
 // loses the notification without anyone noticing. A refused or reset connection
