@@ -9,6 +9,8 @@ const productPagePath = new URL("../app/(public)/products/[slug]/page.tsx", impo
 const productionPagePath = new URL("../app/(public)/production/page.tsx", import.meta.url);
 const projectsPagePath = new URL("../app/(public)/projects/page.tsx", import.meta.url);
 const contactsPagePath = new URL("../app/(public)/contacts/page.tsx", import.meta.url);
+const cassetteCalculatorPagePath = new URL("../app/(public)/calculator-metallokassety/page.tsx", import.meta.url);
+const cassetteCalculatorPath = new URL("../components/MetalCassetteCalculator.tsx", import.meta.url);
 const quoteRequestFormPath = new URL("../components/QuoteRequestForm.tsx", import.meta.url);
 const solutionDetailPath = new URL("../components/SolutionDetailPage.tsx", import.meta.url);
 const solutionDetailsDataPath = new URL("../data/solution-details.ts", import.meta.url);
@@ -47,6 +49,21 @@ test("product pages explain pricing inputs without publishing invented prices", 
   assert.match(pricingFactors, /Объём партии/);
   assert.match(pricingFactors, /чертёж, эскиз, STEP\/DXF\/DWG или спецификация/);
   assert.doesNotMatch(pricingFactors, /от \d+[\s ]*₽|\d+[\s ]*руб/i);
+});
+
+test("cassette calculator estimates quantity without publishing unverified prices", async () => {
+  const [calculator, page] = await Promise.all([
+    readFile(cassetteCalculatorPath, "utf8"),
+    readFile(cassetteCalculatorPagePath, "utf8"),
+  ]);
+
+  assert.doesNotMatch(calculator, /const prices\b|\bprice\b|\btotal\b|estimate:|₽/);
+  assert.doesNotMatch(page, /расчёт стоимости фасада|стоимость фасадных металлокассет|Ориентировочный расчёт стоимости|₽/i);
+  assert.match(calculator, /Ориентировочное количество/);
+  assert.match(calculator, /После проверки проекта/);
+  assert.match(calculator, /quantity: String\(result\.quantity\)/);
+  assert.match(page, /Калькулятор металлокассет — расчёт количества по площади/);
+  assert.match(page, /Почему калькулятор не показывает цену/);
 });
 
 test("production photo grids stay on responsive Next Image delivery", async () => {
