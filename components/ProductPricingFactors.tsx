@@ -17,7 +17,7 @@ const calculationInputs = [
   "способ крепления и комплектность, если они известны",
 ] as const;
 
-export function ProductPricingFactors({ productTitle }: { productTitle: string }) {
+export function ProductPricingFactors({ productTitle, showInputs = true }: { productTitle: string; showInputs?: boolean }) {
   const hasCassetteCalculator = /^Металлокассеты/i.test(productTitle);
 
   return <section className="border-y border-white/10 bg-[#0c1013] py-14 sm:py-20" aria-labelledby="product-price-factors">
@@ -27,12 +27,12 @@ export function ProductPricingFactors({ productTitle }: { productTitle: string }
           <p className="eyebrow">Стоимость изготовления</p>
           <h2 id="product-price-factors" className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">От чего зависит цена</h2>
           <p className="mt-5 text-sm leading-7 text-white/65">Стоимость изделия «{productTitle}» рассчитываем после проверки исходных данных. Не публикуем условную цену, которая может не соответствовать материалу, геометрии и объёму конкретного заказа.</p>
-          <div className="mt-7 border-l-2 border-steel-orange bg-white/[.035] p-5">
+          {showInputs && <div className="mt-7 border-l-2 border-steel-orange bg-white/[.035] p-5">
             <p className="text-xs font-bold uppercase tracking-[.1em] text-white/45">Для точного расчёта</p>
             <ul className="mt-4 space-y-2 text-sm leading-6 text-white/70">
               {calculationInputs.map((item) => <li key={item}><span className="mr-2 text-steel-orange">•</span>{item}</li>)}
             </ul>
-          </div>
+          </div>}
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link href="/contacts#contact-form" className="clip-corner inline-block bg-steel-orange px-7 py-4 text-center text-sm font-bold uppercase">Передать данные на расчёт&nbsp; →</Link>
             {hasCassetteCalculator && <Link href="/calculator-metallokassety" className="inline-block border border-white/25 px-7 py-4 text-center text-sm font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Калькулятор металлокассет&nbsp; →</Link>}
