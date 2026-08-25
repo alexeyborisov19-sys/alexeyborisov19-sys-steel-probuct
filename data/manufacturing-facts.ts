@@ -5,6 +5,15 @@ export const laserCuttingCapabilities = {
   tableWorkingArea: "1500 × 3000 мм",
 } as const;
 
+export const productionEquipment = {
+  laserComplexes: 3,
+  pressBrakes: 3,
+  panelBenders: 1,
+  powderCoatingBooths: 3,
+  shotBlastingChambers: 1,
+  laserCleaningSystems: 1,
+} as const;
+
 export const productionOrderConditions = {
   typicalLeadTime: "7–14 дней",
   customerSuppliedMaterial: "работаем с давальческим сырьём",
