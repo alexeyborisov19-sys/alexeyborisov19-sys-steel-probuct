@@ -117,7 +117,7 @@ const productionFaq = [
     answer: productionLeadTimeSummary,
   },
   {
-    question: "Работаете с давальческим сырьём?",
+    question: "Работаете с материалом заказчика?",
     answer: customerMaterialSummary,
   },
 ];
@@ -165,7 +165,7 @@ export default function ProductionPage() {
           {[
             ["Контрактный выпуск", "Производим по КД заказчика, сопровождаем OEM-проекты и при необходимости адаптируем конструкцию под доступную технологию."],
             ["От образца до серии", "Запускаем прототип для проверки геометрии и сборки, затем фиксируем исполнение для повторяемых партий."],
-            ["Материалы", `Режем чёрную сталь толщиной ${laserCuttingCapabilities.thicknessRange}. Другие материалы и давальческое сырьё принимаем после проверки марки, состояния и выбранной операции.`],
+            ["Материалы", `Режем чёрную сталь толщиной ${laserCuttingCapabilities.thicknessRange}. С другими материалами и металлом заказчика работаем после проверки марки, состояния и выбранной операции.`],
             ["Поставка по России", "Производство находится в Смоленске. Комплектуем и упаковываем заказы для Москвы, Московской области, ЦФО и других регионов."],
           ].map(([title, text], index) => <article key={title} className="border border-white/12 bg-[#111519] p-5"><span className="font-mono text-sm font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span><h2 className="mt-5 text-base font-semibold uppercase">{title}</h2><p className="mt-3 text-sm leading-6 text-white/58">{text}</p></article>)}
         </div>

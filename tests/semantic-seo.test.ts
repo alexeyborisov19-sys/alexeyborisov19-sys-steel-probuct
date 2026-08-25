@@ -54,10 +54,10 @@ test("laser cutting page publishes the confirmed technical range without an unco
 test("commercial copy keeps confirmed lead time and customer-supplied material conditions consistent", () => {
   assert.match(productionLeadTimeSummary, /7–14 дней/);
   assert.match(productionLeadTimeSummary, /загрузки оборудования/);
-  assert.match(customerMaterialSummary, /давальческий материал/);
+  assert.match(customerMaterialSummary, /металлом заказчика/);
   assert.match(customerMaterialSummary, /входного контроля/);
   assert.match(steelProductAssistantSystemPrompt, /7–14 дней/);
-  assert.match(steelProductAssistantSystemPrompt, /давальческий материал/);
+  assert.match(steelProductAssistantSystemPrompt, /металлом заказчика/);
   assert.match(buildKnowledgeFallback("Работаете с моим сырьём?"), /входного контроля/);
 });
 
