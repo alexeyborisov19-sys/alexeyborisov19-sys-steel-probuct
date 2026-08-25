@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { siteMode } from "@/data/site-mode";
 import { siteConfig } from "@/lib/site";
@@ -20,6 +20,8 @@ const navigation = [
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
+  const solutionsButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const navClass = (active: boolean) => `header-nav-link ${active ? "header-nav-link-active" : ""}`;
@@ -33,10 +35,18 @@ export function Header() {
     if (!mobileOpen && !solutionsOpen) return;
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMobileOpen(false);
-        setSolutionsOpen(false);
-      }
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      const trigger = mobileOpen
+        ? mobileMenuButtonRef.current
+        : solutionsOpen
+          ? solutionsButtonRef.current
+          : null;
+
+      setMobileOpen(false);
+      setSolutionsOpen(false);
+      trigger?.focus();
     };
 
     document.addEventListener("keydown", closeOnEscape);
@@ -68,6 +78,7 @@ export function Header() {
       <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch xl:flex">
         <Link className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></Link>
         <button
+          ref={solutionsButtonRef}
           type="button"
           className={navClass(pathname.startsWith("/solutions") || solutionsOpen)}
           onMouseEnter={() => setSolutionsOpen(true)}
@@ -86,6 +97,7 @@ export function Header() {
         <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-4 py-3 text-[10px] font-bold uppercase tracking-wider transition hover:bg-orange-600">Получить расчёт</Link>
       </div>
       <button
+        ref={mobileMenuButtonRef}
         type="button"
         onClick={() => setMobileOpen(!mobileOpen)}
         className="ml-auto grid h-10 w-10 shrink-0 place-items-center border border-white/30 xl:hidden"
