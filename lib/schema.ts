@@ -83,12 +83,6 @@ export function organizationSchema(): JsonLd {
       ...siteConfig.address,
     },
     areaServed,
-    openingHoursSpecification: [{
-      "@type": "OpeningHoursSpecification",
-      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      opens: "08:00",
-      closes: "16:30",
-    }],
     contactPoint: [{
       "@type": "ContactPoint",
       telephone: siteConfig.telephone,
@@ -227,7 +221,6 @@ export function serviceSchema({ name, description, path, serviceType }: { name: 
       "@type": "ServiceChannel",
       serviceUrl: absoluteUrl("/contacts#contact-form"),
       servicePhone: siteConfig.telephone,
-      serviceSmsNumber: siteConfig.telephone,
     },
   };
 }
