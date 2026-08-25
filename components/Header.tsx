@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { siteMode } from "@/data/site-mode";
+import { siteConfig } from "@/lib/site";
 import { Brand } from "./Brand";
 import { MegaMenu } from "./MegaMenu";
 
@@ -42,7 +43,25 @@ export function Header() {
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [mobileOpen, solutionsOpen]);
 
+  function skipToContent() {
+    const main = document.querySelector("main");
+    if (!(main instanceof HTMLElement)) return;
+    main.id = main.id || "main-content";
+    main.tabIndex = -1;
+    main.focus();
+  }
+
   return <header className="absolute inset-x-0 top-0 z-40 border-b border-white/15 bg-black/92 backdrop-blur-md">
+    <a
+      href="#main-content"
+      onClick={(event) => {
+        event.preventDefault();
+        skipToContent();
+      }}
+      className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:bg-steel-orange focus:px-4 focus:py-3 focus:text-xs focus:font-bold focus:uppercase focus:text-white"
+    >
+      Перейти к содержимому
+    </a>
     {siteMode.isTest ? <div role="status" className="flex h-7 items-center justify-center bg-steel-orange px-4 text-center text-[10px] font-bold uppercase tracking-[.14em] text-black sm:text-[11px]">{siteMode.label}</div> : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
       <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
@@ -63,7 +82,7 @@ export function Header() {
         })}
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 xl:flex">
-        <a href="tel:+79107803723" className="header-phone hidden whitespace-nowrap font-semibold 2xl:block">+7 910 780 37 23</a>
+        <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold 2xl:block">{siteConfig.telephoneDisplay}</a>
         <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-4 py-3 text-[10px] font-bold uppercase tracking-wider transition hover:bg-orange-600">Получить расчёт</Link>
       </div>
       <button
@@ -82,7 +101,7 @@ export function Header() {
         const active = isActive(item.href);
         return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
       })}
-      <a href="tel:+79107803723" className="text-steel-orange">+7 910 780 37 23</a>
+      <a href={`tel:${siteConfig.telephone}`} className="text-steel-orange">{siteConfig.telephoneDisplay}</a>
       <Link href="/contacts#contact-form" className="mt-2 bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase">Получить расчёт</Link>
     </nav>}
   </header>;
