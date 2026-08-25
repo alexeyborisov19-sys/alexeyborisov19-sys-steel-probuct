@@ -1,16 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function CompanyVideo() {
   const [isOpen, setIsOpen] = useState(false);
+  const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeVideo = useCallback(() => {
+    setIsOpen(false);
+    window.requestAnimationFrame(() => lastTriggerRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => event.key === "Escape" && setIsOpen(false);
+
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeVideo();
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen]);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [closeVideo, isOpen]);
+
+  function openVideo(trigger: HTMLButtonElement) {
+    lastTriggerRef.current = trigger;
+    setIsOpen(true);
+  }
 
   return <>
     <section id="company-video" className="bg-[#0c1013] py-14 sm:py-16">
@@ -20,12 +42,12 @@ export function CompanyVideo() {
           <h2 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">Познакомьтесь со «Сталь Продукт»</h2>
           <p className="mt-5 text-sm leading-relaxed text-white/62 sm:text-base">Видео о команде, инженерной экспертизе и реальном производстве. Показываем, как компания решает задачи клиентов — от идеи до готового изделия.</p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <button type="button" onClick={() => setIsOpen(true)} className="clip-corner bg-steel-orange px-6 py-3 text-xs font-bold uppercase transition hover:bg-orange-600">Смотреть фильм&nbsp; →</button>
+            <button type="button" onClick={(event) => openVideo(event.currentTarget)} className="clip-corner bg-steel-orange px-6 py-3 text-xs font-bold uppercase transition hover:bg-orange-600">Смотреть фильм&nbsp; →</button>
             <span className="inline-flex items-center border border-white/15 px-4 py-3 text-[11px] uppercase tracking-[.12em] text-white/55">1:59 · 720p HD</span>
           </div>
         </div>
 
-        <button type="button" onClick={() => setIsOpen(true)} className="production-video-frame group text-left" aria-label="Смотреть фильм о компании">
+        <button type="button" onClick={(event) => openVideo(event.currentTarget)} className="production-video-frame group text-left" aria-label="Смотреть фильм о компании">
           <video className="h-full w-full object-cover" muted loop autoPlay playsInline preload="metadata" poster="/images/company-video-poster.png">
             <source src="/video/company-film-flat.mp4" type="video/mp4" />
           </video>
@@ -41,7 +63,7 @@ export function CompanyVideo() {
 
     {isOpen ? <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Фильм о компании">
       <div className="relative w-full max-w-6xl border border-white/15 bg-[#0b0e10] p-2 shadow-[0_28px_100px_rgba(0,0,0,.85)]">
-        <button type="button" onClick={() => setIsOpen(false)} className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center border border-white/25 bg-black/65 text-xl text-white transition hover:border-steel-orange hover:text-steel-orange" aria-label="Закрыть видео">×</button>
+        <button ref={closeButtonRef} type="button" onClick={closeVideo} className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center border border-white/25 bg-black/65 text-xl text-white transition hover:border-steel-orange hover:text-steel-orange" aria-label="Закрыть видео">×</button>
         <video className="aspect-video w-full bg-black" controls autoPlay playsInline preload="metadata" poster="/images/company-video-poster.png">
           <source src="/video/company-film-flat.mp4" type="video/mp4" />
           Ваш браузер не поддерживает видео.
