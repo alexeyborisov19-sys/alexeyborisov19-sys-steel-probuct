@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
@@ -179,14 +180,12 @@ export default function ProductionPage() {
                 className="group overflow-hidden border border-white/10 bg-[#111519] transition hover:border-steel-orange"
               >
                 <div className="relative aspect-video overflow-hidden bg-[#192026]">
-                  <img
+                  <Image
                     src={image}
-                    width={428}
-                    height={240}
+                    fill
+                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 16.7vw"
                     alt={`${title} на производстве «Сталь Продукт»`}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02] transition duration-500 group-hover:scale-[1.035]"
+                    className="object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02] transition duration-500 group-hover:scale-[1.035]"
                   />
                 </div>
                 <div className="p-4">
@@ -227,14 +226,12 @@ export default function ProductionPage() {
                 key={photo.image}
                 className="group relative aspect-[16/9] overflow-hidden border border-white/10 bg-[#111519]"
               >
-                <img
+                <Image
                   src={photo.image}
-                  width={1600}
-                  height={900}
+                  fill
+                  sizes="(max-width: 1023px) 100vw, 50vw"
                   alt={`${photo.title} — реальное производство «Сталь Продукт»`}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[1.1]"
+                  className="object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[1.1]"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
@@ -257,14 +254,12 @@ export default function ProductionPage() {
                 className="group overflow-hidden border border-white/10 bg-[#111519] transition hover:border-steel-orange/60"
               >
                 <div className="relative aspect-[16/9] overflow-hidden">
-                  <img
+                  <Image
                     src={photo.image}
-                    width={1600}
-                    height={900}
+                    fill
+                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33.3vw"
                     alt={`${photo.title} — реальное производство «Сталь Продукт»`}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.1]"
+                    className="object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.1]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
                   <span className="absolute left-4 top-4 border border-steel-orange/60 bg-black/70 px-2 py-1 text-[8px] font-bold uppercase tracking-[.15em] text-steel-orange backdrop-blur-sm">
