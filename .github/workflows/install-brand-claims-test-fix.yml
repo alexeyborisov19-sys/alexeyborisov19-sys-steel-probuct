@@ -1,0 +1,101 @@
+name: Strengthen proof-backed brand claims
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-brand-claims-test-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Apply brand claims and repair stale regression
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, required=True):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  if required:
+                      raise SystemExit(f'{path}: missing expected fragment: {old[:120]}')
+                  return
+              p.write_text(text.replace(old, new, 1))
+
+          # Repair the stale test that still encoded the old three-press-brake assumption.
+          test_path = 'tests/site-quality-regressions.test.ts'
+          replace(test_path, 'assert.match(facts, /pressBrakes: 3/);', 'assert.match(facts, /pressBrakes: 4/);')
+          replace(test_path, '  assert.match(facts, /panelBenders: 1/);\n  assert.match(facts, /powderCoatingBooths: 3/);', '  assert.match(facts, /panelBenders: 1/);\n  assert.match(facts, /weldingStations: 4/);\n  assert.match(facts, /powderCoatingBooths: 3/);')
+          replace(test_path, '  assert.doesNotMatch(productionPage, /4 листогибочных/i);\n  assert.doesNotMatch(assistantKnowledge, /4 листогибочных|четыре листогибочных/i);', '  assert.doesNotMatch(productionPage, /3 листогибочных|три листогибочных/i);\n  assert.doesNotMatch(assistantKnowledge, /3 листогибочных|три листогибочных/i);')
+
+          # Homepage hero: one clear proof-backed brand promise above the existing brand line.
+          hero = 'components/Hero.tsx'
+          replace(
+              hero,
+              '<div className="max-w-3xl">\n        <h1',
+              '<div className="max-w-3xl">\n        <p className="mb-4 text-[11px] font-bold uppercase tracking-[.18em] text-steel-orange">Производство полного цикла · Смоленск</p>\n        <h1',
+          )
+          replace(
+              hero,
+              'Проектируем и изготавливаем детали, корпуса, фасадные и сборочные изделия по КД заказчика — от опытного образца до повторяемой серии.',
+              'От инженерно-конструкторской подготовки и КД до готовой промаркированной партии: раскрой, гибка, сварка, сборка, подготовка поверхности, окраска, контроль и упаковка в одном производственном маршруте.',
+          )
+
+          # Homepage: turn generic benefit cards into memorable, evidence-backed propositions.
+          home = 'app/(public)/page.tsx'
+          replace(home, '"Проверяемая технология",\n    "До запуска проверяем материал, геометрию, последовательность операций и контрольные размеры"', '"Производство полного цикла",\n    "Инженерно-конструкторская подготовка, раскрой, гибка, сварка, сборка, подготовка поверхности, окраска, контроль и упаковка — в одном маршруте"')
+          replace(home, '"Инженерный подход",\n    "Связываем КД, раскрой, гибку, сварку и покрытие в единый производственный маршрут"', '"От КД до готовой партии",\n    "Работаем по документации заказчика или готовим конструкцию к производству и сопровождаем её до комплектования партии"')
+          replace(home, '"Контроль качества",\n    "Фиксируем критические параметры и контролируем первую деталь, комплектность и упаковку"', '"От опытного образца до серии",\n    "Проверяем прототип, фиксируем согласованное исполнение и переводим изделие в повторяемый серийный выпуск"')
+
+          # Production page: keep SEO intent, strengthen the visible positioning.
+          production = 'app/(public)/production/page.tsx'
+          replace(production, 'eyebrow="Производство"', 'eyebrow="Производство полного цикла"')
+          replace(production, 'title="Производство изделий из листового металла по КД"', 'title="От КД до готовой партии из листового металла"')
+
+          # Company page: make the strongest verified differentiators explicit.
+          company = 'app/(public)/company/page.tsx'
+          replace(company, '["Один ответственный партнёр", "Берём задачу от инженерной проработки до готовой поставки, поэтому не перекладываем ответственность между подрядчиками."],', '["От КД до готовой партии", "Связываем инженерно-конструкторскую подготовку, производство, покрытие, контроль, комплектацию и отгрузку в единый маршрут."],')
+          replace(company, '["Инженерная экспертиза", "Анализируем чертежи, предлагаем технологичные решения и помогаем подготовить изделие к стабильному производству."],', '["Инженерно-конструкторский центр", "Разрабатываем и проверяем КД, оцениваем технологичность, сопровождаем опытный образец и готовим изделие к повторяемому серийному выпуску."],')
+          replace(company, '["Предсказуемый результат", "Планируем изготовление, контролируем качество на каждом этапе и готовим продукцию к безопасной отгрузке."],', '["От опытного образца до серии", "Проверяем геометрию и сборку на прототипе, фиксируем согласованное исполнение и переносим его в повторяемую партию."],')
+
+          # Guard the positioning without allowing empty superlatives to creep in.
+          test = Path('tests/manufacturing-facts-consistency.test.ts')
+          text = test.read_text()
+          marker = '  assert.match(company, /Производство полного цикла/);\n'
+          addition = '  assert.match(home, /Производство полного цикла/);\n  assert.match(home, /От КД до готовой партии/);\n  assert.match(home, /От опытного образца до серии/);\n'
+          if addition not in text:
+              text = text.replace(marker, marker + addition, 1)
+              test.write_text(text)
+
+          # Final safety checks.
+          checks = {
+              test_path: ['pressBrakes: 4', 'weldingStations: 4'],
+              hero: ['Производство полного цикла · Смоленск', 'одном производственном маршруте'],
+              home: ['Производство полного цикла', 'От КД до готовой партии', 'От опытного образца до серии'],
+              production: ['eyebrow="Производство полного цикла"', 'От КД до готовой партии из листового металла'],
+              company: ['От КД до готовой партии', 'Инженерно-конструкторский центр', 'От опытного образца до серии'],
+          }
+          for path, phrases in checks.items():
+              data = Path(path).read_text()
+              missing = [x for x in phrases if x not in data]
+              if missing:
+                  raise SystemExit(f'{path}: missing {missing}')
+          PY
+      - name: Commit brand positioning
+        run: |
+          git config user.name "steelprodukt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add components/Hero.tsx app/'(public)'/page.tsx app/'(public)'/production/page.tsx app/'(public)'/company/page.tsx tests/site-quality-regressions.test.ts tests/manufacturing-facts-consistency.test.ts
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "brand: strengthen proof-backed full-cycle positioning"
+          git push origin HEAD:main
