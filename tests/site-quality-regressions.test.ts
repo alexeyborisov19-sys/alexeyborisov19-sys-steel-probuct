@@ -8,6 +8,7 @@ const preloaderPath = new URL("../components/SitePreloader.tsx", import.meta.url
 const productPagePath = new URL("../app/(public)/products/[slug]/page.tsx", import.meta.url);
 const productionPagePath = new URL("../app/(public)/production/page.tsx", import.meta.url);
 const projectsPagePath = new URL("../app/(public)/projects/page.tsx", import.meta.url);
+const contactsPagePath = new URL("../app/(public)/contacts/page.tsx", import.meta.url);
 const solutionDetailPath = new URL("../components/SolutionDetailPage.tsx", import.meta.url);
 const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
@@ -75,6 +76,13 @@ test("solution production photos use responsive Next Image delivery", async () =
   assert.match(solutionDetail, /import Image from "next\/image"/);
   assert.doesNotMatch(solutionDetail, /<img\b/);
   assert.match(solutionDetail, /sizes="\(max-width: 767px\) 100vw, 33\.3vw"/);
+});
+
+test("contact copy avoids an unverified response-time SLA", async () => {
+  const contactsPage = await readFile(contactsPagePath, "utf8");
+
+  assert.doesNotMatch(contactsPage, /в течение рабочего дня/i);
+  assert.match(contactsPage, /Срок подготовки расчёта сообщим после проверки документации и состава заказа/);
 });
 
 test("Codex agent runtimes remain outside application lint scope", async () => {
