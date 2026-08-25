@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const INTRO_DURATION = 1700;
@@ -55,7 +56,15 @@ export function SitePreloader() {
       <div className="site-preloader__sheet site-preloader__sheet--left" />
       <div className="site-preloader__sheet site-preloader__sheet--right" />
       <div className="site-preloader__content">
-        <img className="site-preloader__logo" src="/logo/steel-product.png" alt="" width={1851} height={402} loading="eager" decoding="async" />
+        <Image
+          className="site-preloader__logo"
+          src="/logo/steel-product.png"
+          alt=""
+          width={1851}
+          height={402}
+          priority
+          sizes="(max-width: 640px) 82vw, 620px"
+        />
         <p>Инженерные решения из листового металла</p>
       </div>
     </div>
