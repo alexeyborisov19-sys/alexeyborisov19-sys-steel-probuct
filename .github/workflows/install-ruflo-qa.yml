@@ -1,0 +1,225 @@
+name: Install Ruflo orchestration and QA stack
+
+on:
+  push:
+    paths:
+      - .github/workflows/install-ruflo-qa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install pinned Ruflo and Playwright MCP
+        run: npm install --save-dev --save-exact ruflo@3.38.19 @playwright/mcp@0.0.79
+
+      - name: Initialize Ruflo project scaffold
+        run: npx -y ruflo@3.38.19 init --yes
+
+      - name: Install QA reviewer skills
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://raw.githubusercontent.com/wshobson/agents/d82998e7df393c671ede2387a8435075f0b633f5"
+          mkdir -p \
+            .agents/skills/code-reviewer \
+            .agents/skills/performance-engineer \
+            .agents/skills/accessibility-expert \
+            .agents/skills/security-auditor \
+            .agents/skills/test-automator
+          curl -fsSL "$BASE/plugins/comprehensive-review/agents/code-reviewer.md" -o .agents/skills/code-reviewer/SKILL.md
+          curl -fsSL "$BASE/plugins/observability-monitoring/agents/performance-engineer.md" -o .agents/skills/performance-engineer/SKILL.md
+          curl -fsSL "$BASE/plugins/ui-design/agents/accessibility-expert.md" -o .agents/skills/accessibility-expert/SKILL.md
+          curl -fsSL "$BASE/plugins/comprehensive-review/agents/security-auditor.md" -o .agents/skills/security-auditor/SKILL.md
+          curl -fsSL "$BASE/plugins/codebase-cleanup/agents/test-automator.md" -o .agents/skills/test-automator/SKILL.md
+
+      - name: Add site director and quality gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .agents/skills/site-director .agents/skills/site-quality-gate .codex scripts
+
+          cat > .agents/skills/site-director/SKILL.md <<'EOF'
+          ---
+          name: site-director
+          description: Orchestrates website work across engineering, manufacturing content, SEO, UX/UI, implementation, browser QA, performance, accessibility, security, and final code review. Use for any substantial page creation, redesign, conversion improvement, or site-wide change.
+          ---
+
+          # Site Director
+
+          Coordinate substantial website work as one pipeline rather than independent edits.
+
+          ## Required sequence
+          1. Inspect the existing implementation and relevant project context.
+          2. For product/manufacturing claims, use `manufacturing-technical-writer` first. Never invent standards, dimensions, tolerances, materials, loads, certifications, machine capabilities, or performance values.
+          3. For discoverability and conversion structure, use the installed SEO/marketing skills, including `seo-audit`/`ai-seo` when relevant.
+          4. For visual direction and UX, use `ui-ux-pro-max` before implementation when the task changes layout, hierarchy, typography, interaction, or responsive behavior.
+          5. Use `website-development` and the Superpowers workflow for implementation planning, code changes, tests, debugging, and verification.
+          6. Run the `site-quality-gate` before declaring the work complete.
+
+          ## Orchestration
+          If Ruflo MCP tools are available, use Ruflo to coordinate independent research/review tasks in parallel, but keep one clear implementation owner. Do not parallel-edit the same files without isolation.
+
+          ## Decision rule
+          A page is not complete because it builds. It is complete only when product facts, SEO intent, visual hierarchy, responsive behavior, browser behavior, performance risk, accessibility, security, and code quality have all been checked to the extent relevant to the change.
+          EOF
+
+          cat > .agents/skills/site-quality-gate/SKILL.md <<'EOF'
+          ---
+          name: site-quality-gate
+          description: Final acceptance gate for website changes. Uses browser verification, tests, performance, accessibility, security, and code review before completion claims.
+          ---
+
+          # Site Quality Gate
+
+          Apply this after implementation and before saying a website task is finished.
+
+          ## Gate order
+          1. Build/type/lint/test: run the project's relevant checks and fix failures.
+          2. Browser QA: when Playwright MCP is available, open the changed pages and verify the real rendered result, navigation, controls, forms, responsive behavior, overflow, broken assets, console-visible failures, and obvious regressions. Check desktop and mobile-sized viewports for UI work.
+          3. Functional testing: use `test-automator` for missing high-value tests and regression coverage.
+          4. Performance: use `performance-engineer` to identify avoidable bundle, rendering, image, animation, loading, and Core Web Vitals risks introduced by the change.
+          5. Accessibility: use `accessibility-expert` for keyboard, focus, semantics, contrast, labels, reduced motion, and WCAG-relevant issues.
+          6. Security: use `security-auditor` for changes touching forms, user input, APIs, authentication, headers, dependencies, or external integrations.
+          7. Final review: use `code-reviewer` to check correctness, maintainability, regressions, and production readiness.
+
+          ## Completion standard
+          Never claim success from code inspection alone when browser verification is available. Report any gate that could not be run and why. Critical failures block completion.
+          EOF
+
+          cat > .codex/mcp-config.example.toml <<'EOF'
+          # Fallback reference for ~/.codex/config.toml.
+          # The setup script registers these with `codex mcp add` automatically.
+
+          [mcp_servers.playwright]
+          command = "npx"
+          args = ["@playwright/mcp@0.0.79"]
+
+          [mcp_servers.ruflo]
+          command = "npx"
+          args = ["-y", "ruflo@3.38.19", "mcp", "start"]
+          EOF
+
+          cat > scripts/setup-codex-tools.mjs <<'EOF'
+          import { spawnSync } from 'node:child_process';
+
+          const isWindows = process.platform === 'win32';
+          const exe = (name) => isWindows ? `${name}.cmd` : name;
+
+          function run(command, args, { allowFailure = false } = {}) {
+            console.log(`\n> ${command} ${args.join(' ')}`);
+            const result = spawnSync(exe(command), args, {
+              stdio: 'inherit',
+              cwd: process.cwd(),
+              shell: false,
+            });
+            if (result.error) {
+              if (allowFailure) {
+                console.warn(`Skipped: ${result.error.message}`);
+                return false;
+              }
+              throw result.error;
+            }
+            if (result.status !== 0) {
+              if (allowFailure) return false;
+              process.exit(result.status ?? 1);
+            }
+            return true;
+          }
+
+          console.log('Setting up Steel Produkt Codex tools...');
+
+          run('npx', ['-y', 'ruflo@3.38.19', 'init', '--yes']);
+
+          // Refresh MCP registrations so pinned versions are used.
+          run('codex', ['mcp', 'remove', 'playwright'], { allowFailure: true });
+          run('codex', ['mcp', 'add', 'playwright', 'npx', '@playwright/mcp@0.0.79']);
+
+          run('codex', ['mcp', 'remove', 'ruflo'], { allowFailure: true });
+          run('codex', ['mcp', 'add', 'ruflo', '--', 'npx', '-y', 'ruflo@3.38.19', 'mcp', 'start']);
+
+          // Doctor can report optional-provider warnings; do not undo a successful MCP setup for those.
+          run('npx', ['-y', 'ruflo@3.38.19', 'doctor'], { allowFailure: true });
+
+          console.log('\nDone. Restart Codex or start a new session so MCP servers and project instructions are reloaded.');
+          EOF
+
+          npm pkg set "scripts.codex:tools:setup=node scripts/setup-codex-tools.mjs"
+          npm pkg set "scripts.ruflo:init=npx -y ruflo@3.38.19 init --yes"
+          npm pkg set "scripts.ruflo:doctor=npx -y ruflo@3.38.19 doctor"
+
+      - name: Add Codex team instructions
+        shell: bash
+        run: |
+          cat > AGENTS.md <<'EOF'
+          # Steel Produkt — Codex Agent Team
+
+          For substantial website tasks, treat the installed skills and MCP tools as one coordinated team.
+
+          ## Lead workflow
+          - Start with `.agents/skills/site-director/SKILL.md` for page creation, redesigns, conversion work, or site-wide changes.
+          - Use Ruflo MCP for orchestration when available.
+          - Use Superpowers / `website-development` as the implementation workflow.
+
+          ## Specialists
+          - Product/manufacturing truth: `manufacturing-technical-writer`, supported by `docs-architect`.
+          - SEO/growth: installed marketing skills (`seo-audit`, `ai-seo`, programmatic SEO, schema, content/CRO skills as relevant).
+          - UI/UX: `ui-ux-pro-max`.
+          - Engineering: Superpowers skills plus `website-development`.
+
+          ## Mandatory final gate for meaningful UI/site changes
+          Use `site-quality-gate` and, when available, Playwright MCP for real browser verification. Then apply `test-automator`, `performance-engineer`, `accessibility-expert`, `security-auditor` when relevant, and finish with `code-reviewer`.
+
+          ## Non-negotiable factual rule
+          Never invent technical product data, standards, tolerances, dimensions, materials, ratings, certifications, or manufacturing capabilities. If source evidence is missing, mark the claim as needing confirmation instead of filling the gap.
+          EOF
+
+      - name: Keep safe Ruflo scaffold files only
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Never commit runtime databases, caches, logs, secrets, or session state generated by Ruflo.
+          find .claude .claude-flow -type f \( -name '*.db' -o -name '*.sqlite*' -o -name '*.log' -o -name '*.lock' \) -delete 2>/dev/null || true
+
+      - name: Commit installed stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add package.json package-lock.json AGENTS.md scripts/setup-codex-tools.mjs .codex .agents
+
+          for p in CLAUDE.md .mcp.json .claude .claude-flow; do
+            if [ -e "$p" ]; then
+              if [ -d "$p" ]; then
+                find "$p" -type f \( \
+                  -name '*.md' -o -name '*.json' -o -name '*.toml' -o -name '*.yaml' -o -name '*.yml' -o \
+                  -name '*.js' -o -name '*.mjs' -o -name '*.ts' -o -name '*.sh' -o -name '*.txt' \
+                \) -print0 | xargs -0 -r git add -f
+              else
+                git add -f "$p"
+              fi
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit"
+          else
+            git commit -m "chore: install Ruflo, Playwright MCP and QA reviewers"
+            git push
+          fi
