@@ -17,11 +17,15 @@ function verificationTokens(fromEnvironment: string | undefined, fallback: reado
   return tokens.length > 0 ? tokens : undefined;
 }
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.steelprodukt.ru").replace(/\/$/, "");
+const siteHostDisplay = new URL(siteUrl).hostname.replace(/^www\./, "");
+
 export const siteConfig = {
   name: "Сталь Продукт",
   legalName: "ООО «ЭНЕРГОАЛЬЯНС»",
   description: "Проектирование и производство изделий из листового металла по КД: лазерный раскрой, гибка, сварка, окраска, контроль и поставка по России.",
-  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.steelprodukt.ru").replace(/\/$/, ""),
+  url: siteUrl,
+  hostDisplay: siteHostDisplay,
   locale: "ru_RU",
   language: "ru",
   email: "info@steelprodukt.ru",
