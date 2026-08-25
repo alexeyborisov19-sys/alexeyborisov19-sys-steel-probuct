@@ -15,6 +15,7 @@ const quoteRequestFormPath = new URL("../components/QuoteRequestForm.tsx", impor
 const solutionDetailPath = new URL("../components/SolutionDetailPage.tsx", import.meta.url);
 const solutionDetailsDataPath = new URL("../data/solution-details.ts", import.meta.url);
 const assistantKnowledgePath = new URL("../data/assistant-knowledge.ts", import.meta.url);
+const manufacturingFactsPath = new URL("../data/manufacturing-facts.ts", import.meta.url);
 const productionServicesPath = new URL("../data/production-services.ts", import.meta.url);
 const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
@@ -78,17 +79,41 @@ test("production photo grids stay on responsive Next Image delivery", async () =
   assert.match(productionPage, /sizes="\(max-width: 639px\) 100vw, \(max-width: 1023px\) 50vw, 33\.3vw"/);
 });
 
-test("production page and assistant keep the confirmed bending equipment count", async () => {
+test("confirmed production equipment stays centralized and synchronized", async () => {
+  const [facts, productionPage, assistantKnowledge] = await Promise.all([
+    readFile(manufacturingFactsPath, "utf8"),
+    readFile(productionPagePath, "utf8"),
+    readFile(assistantKnowledgePath, "utf8"),
+  ]);
+
+  assert.match(facts, /laserComplexes: 3/);
+  assert.match(facts, /pressBrakes: 3/);
+  assert.match(facts, /panelBenders: 1/);
+  assert.match(facts, /powderCoatingBooths: 3/);
+  assert.match(facts, /shotBlastingChambers: 1/);
+  assert.match(facts, /laserCleaningSystems: 1/);
+
+  assert.match(productionPage, /productionEquipment\.laserComplexes/);
+  assert.match(productionPage, /productionEquipment\.pressBrakes/);
+  assert.match(productionPage, /productionEquipment\.powderCoatingBooths/);
+  assert.match(assistantKnowledge, /productionEquipment\.laserComplexes/);
+  assert.match(assistantKnowledge, /productionEquipment\.pressBrakes/);
+  assert.match(assistantKnowledge, /productionEquipment\.powderCoatingBooths/);
+  assert.doesNotMatch(productionPage, /4 листогибочных/i);
+  assert.doesNotMatch(assistantKnowledge, /4 листогибочных|четыре листогибочных/i);
+});
+
+test("shot-blasting and laser cleaning both remain confirmed capabilities", async () => {
   const [productionPage, assistantKnowledge] = await Promise.all([
     readFile(productionPagePath, "utf8"),
     readFile(assistantKnowledgePath, "utf8"),
   ]);
 
-  assert.doesNotMatch(productionPage, /4 листогибочных/i);
-  assert.doesNotMatch(assistantKnowledge, /4 листогибочных|четыре листогибочных/i);
-  assert.match(productionPage, /3 листогибочных комплекса \+ панельгиб/);
-  assert.match(assistantKnowledge, /3 листогибочных комплекса и панельгиб/);
-  assert.match(assistantKnowledge, /три листогибочных комплекса и панельгиб/);
+  assert.match(productionPage, /Дробеструйная очистка/);
+  assert.match(productionPage, /Лазерная очистка/);
+  assert.match(assistantKnowledge, /Дробеструйная очистка/);
+  assert.match(assistantKnowledge, /Лазерная очистка/);
+  assert.match(assistantKnowledge, /дробеструйная и лазерная очистка поверхности/);
 });
 
 test("sample reconstruction does not claim material grade identification without evidence", async () => {
@@ -161,9 +186,6 @@ test("Codex agent runtimes remain outside application lint scope", async () => {
 });
 
 test("Codex agent runtimes remain outside production deployment when workflow sources are present", async (t) => {
-  // The production rsync intentionally excludes .github, so the server-side
-  // validation suite cannot read this file. In repository/CI checkouts where
-  // the workflow is present, keep validating the deployment boundary as well.
   if (!existsSync(deployWorkflowPath)) {
     t.skip("deployment workflow is intentionally absent from the production bundle");
     return;
