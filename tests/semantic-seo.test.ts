@@ -38,7 +38,10 @@ test("laser cutting page publishes the confirmed technical range without an unco
   assert.match(`${laserCutting.description} ${laserCutting.lead}`, /0,5–40 мм/);
   assert.match(laserCutting.lead, /чёрной стали/);
   assert.match(laserCutting.lead, /1500 × 3000 мм/);
-  assert.ok(laserCutting.faq.some((item) => /металла заказчика/i.test(item.question) && /входного контроля/i.test(item.answer)));
+  const customerMaterialFaq = laserCutting.faq.filter((item) => /материалом заказчика/i.test(item.question));
+  assert.equal(customerMaterialFaq.length, 1, "laser page should keep one customer-material FAQ");
+  assert.match(customerMaterialFaq[0].answer, /входного контроля/);
+  assert.match(laserCutting.description, /Работаем с материалом заказчика/);
   assert.ok(laserCutting.faq.some((item) => /срок лазерной резки/i.test(item.question) && /7–14 дней/i.test(item.answer)));
   assert.deepEqual(
     laserCutting.specifications?.map(({ value }) => value),

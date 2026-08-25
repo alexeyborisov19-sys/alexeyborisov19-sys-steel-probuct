@@ -139,7 +139,7 @@ export const productionServices: ProductionService[] = [
     shortTitle: "Лазерная резка",
     eyebrow: "Высокоточный раскрой",
     description:
-      `Лазерная резка чёрной стали ${laserCuttingCapabilities.thicknessRange} на столе ${laserCuttingCapabilities.tableWorkingArea} по DXF и чертежам. Материал заказчика, единичные детали и партии.`,
+      `Лазерная резка чёрной стали ${laserCuttingCapabilities.thicknessRange} на столе ${laserCuttingCapabilities.tableWorkingArea} по DXF и чертежам. Работаем с материалом заказчика, выполняем единичные детали и партии.`,
     lead:
       `Выполняем раскрой чёрной стали в диапазоне ${laserCuttingCapabilities.thicknessRange} на лазерных комплексах с ЧПУ. Рабочее поле стола — ${laserCuttingCapabilities.tableWorkingArea}. Для конкретной марки и детали проверяем геометрию контура, минимальные перемычки, требования к кромке и дальнейшие операции. Возможность резки нержавеющей и оцинкованной стали, алюминия и других материалов подтверждаем отдельно.`,
     image: "/images/real-production/laser-cutting-action.jpg",
@@ -232,10 +232,6 @@ export const productionServices: ProductionService[] = [
           `Рабочее поле стола составляет ${laserCuttingCapabilities.tableWorkingArea}. Фактическое размещение детали и технологические поля проверяем по DXF, толщине листа и принятой раскладке.`,
       },
       {
-        question: "Можно выполнить заказ из металла заказчика?",
-        answer: customerMaterialSummary,
-      },
-      {
         question: "Какой срок лазерной резки?",
         answer: productionLeadTimeSummary,
       },
@@ -262,7 +258,7 @@ export const productionServices: ProductionService[] = [
       {
         question: "Работаете ли вы с материалом заказчика?",
         answer:
-          "Такой вариант возможен, его условия обсуждаются отдельно. Заранее нужно согласовать марку, фактическую толщину, состояние поверхности и плоскостность листа, а также порядок учёта остатков и деловых обрезков. Состояние материала заказчика напрямую влияет на устойчивость режима, поэтому его проверяют до запуска.",
+          `${customerMaterialSummary} Для лазерного раскроя заранее согласуем фактическую толщину, состояние поверхности и плоскостность листа, а также порядок учёта остатков и деловых обрезков.`,
       },
       {
         question: "Как быстро можно получить расчёт стоимости?",
