@@ -39,7 +39,7 @@ test("laser cutting page publishes the confirmed technical range without an unco
   assert.match(laserCutting.lead, /чёрной стали/);
   assert.match(laserCutting.lead, /1500 × 3000 мм/);
   assert.ok(laserCutting.faq.some((item) => /максимальная толщина/i.test(item.question) && /0,5–40 мм.*до 40 мм/.test(item.answer)));
-  assert.ok(laserCutting.faq.some((item) => /давальческого металла/i.test(item.question) && /входного контроля/i.test(item.answer)));
+  assert.ok(laserCutting.faq.some((item) => /металла заказчика/i.test(item.question) && /входного контроля/i.test(item.answer)));
   assert.ok(laserCutting.faq.some((item) => /срок лазерной резки/i.test(item.question) && /7–14 дней/i.test(item.answer)));
   assert.deepEqual(
     laserCutting.specifications?.map(({ value }) => value),
