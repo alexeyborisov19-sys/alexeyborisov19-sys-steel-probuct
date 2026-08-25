@@ -44,4 +44,5 @@ test("production page keeps the approved full-cycle positioning and terminology"
   assert.match(page, /productionEquipment\.laserCleaningSystems/);
   assert.match(page, /Реальное производство/);
   assert.match(page, /реальное производство «Сталь Продукт»/i);
+  assert.doesNotMatch(page, /Оборудование и участки/);
 });

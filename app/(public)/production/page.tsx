@@ -42,8 +42,8 @@ const realProductionPhotos = [
   },
   {
     image: "/images/real-production/engineering-department.jpg",
-    title: "Инженерная подготовка",
-    description: "Проработка конструкции и производственной документации.",
+    title: "Инженерно-конструкторский центр",
+    description: "Разработка и проверка КД, технологическая подготовка и сопровождение изделия до запуска в производство.",
   },
   {
     image: "/images/real-production/press-brake-durma.jpg",
@@ -58,11 +58,11 @@ const realProductionPhotos = [
   {
     image: "/images/real-production/welding-station.jpg",
     title: "Сварочный пост",
-    description: "Сварка и сборка металлоизделий на производственном участке.",
+    description: "Сварка и сборка металлоизделий на одном из четырёх сварочных постов.",
   },
   {
     image: "/images/real-production/workshop-team.jpg",
-    title: "Работа производственного участка",
+    title: "Производственная команда",
     description: "Специалисты «Сталь Продукт» в действующем цехе.",
   },
   {
@@ -213,12 +213,12 @@ export default function ProductionPage() {
             <div>
               <p className="eyebrow">Реальное производство</p>
               <h2 className="mt-3 max-w-3xl text-3xl font-semibold sm:text-4xl">
-                Оборудование и участки — без рендеров
+                Реальное производство — без рендеров
               </h2>
             </div>
             <p className="max-w-xl text-sm leading-relaxed text-white/55">
-              Фотографии действующего производства «Сталь Продукт»: инженерная подготовка,
-              лазерная резка, гибка, сварка и работа специалистов в цехе.
+              Фотографии действующего производства «Сталь Продукт»: инженерно-конструкторский центр,
+              лазерные комплексы, гибочное производство, сварочно-сборочное направление и работа специалистов в цехе.
             </p>
           </div>
 
