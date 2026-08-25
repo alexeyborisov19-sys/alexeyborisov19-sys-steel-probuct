@@ -6,6 +6,7 @@ import test from "node:test";
 const publicLayoutPath = new URL("../app/(public)/layout.tsx", import.meta.url);
 const preloaderPath = new URL("../components/SitePreloader.tsx", import.meta.url);
 const productPagePath = new URL("../app/(public)/products/[slug]/page.tsx", import.meta.url);
+const productionPagePath = new URL("../app/(public)/production/page.tsx", import.meta.url);
 const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
 const deployWorkflowPath = new URL("../.github/workflows/deploy-beget.yml", import.meta.url);
@@ -41,6 +42,16 @@ test("product pages explain pricing inputs without publishing invented prices", 
   assert.match(pricingFactors, /Объём партии/);
   assert.match(pricingFactors, /чертёж, эскиз, STEP\/DXF\/DWG или спецификация/);
   assert.doesNotMatch(pricingFactors, /от \d+[\s ]*₽|\d+[\s ]*руб/i);
+});
+
+test("production photo grids stay on responsive Next Image delivery", async () => {
+  const productionPage = await readFile(productionPagePath, "utf8");
+
+  assert.match(productionPage, /import Image from "next\/image"/);
+  assert.doesNotMatch(productionPage, /<img\b/);
+  assert.match(productionPage, /sizes="\(max-width: 639px\) 100vw, \(max-width: 1023px\) 50vw, 16\.7vw"/);
+  assert.match(productionPage, /sizes="\(max-width: 1023px\) 100vw, 50vw"/);
+  assert.match(productionPage, /sizes="\(max-width: 639px\) 100vw, \(max-width: 1023px\) 50vw, 33\.3vw"/);
 });
 
 test("Codex agent runtimes remain outside application lint scope", async () => {
