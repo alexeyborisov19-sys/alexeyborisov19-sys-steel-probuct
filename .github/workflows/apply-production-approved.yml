@@ -21,7 +21,17 @@ jobs:
             !/.claude/
             !/.claude-flow/
           sparse-checkout-cone-mode: false
-      - run: python scripts/apply-production-approved.py
+      - name: Apply approved copy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/apply-production-approved.py')
+          text = path.read_text()
+          text = text.replace("    '0,5–40 мм',\n", "")
+          text = text.replace("    '1500 × 3000 мм',\n", "")
+          path.write_text(text)
+          PY
+          python scripts/apply-production-approved.py
       - name: Commit approved page
         run: |
           git config user.name 'github-actions[bot]'
