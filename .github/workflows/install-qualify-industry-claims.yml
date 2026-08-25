@@ -1,0 +1,81 @@
+name: Qualify industry engineering claims
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-qualify-industry-claims.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Qualify project-dependent safety and strength language
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('data/industry-seo.ts')
+          text = path.read_text()
+          replacements = {
+              '"Изготавливаем изделия для фасадов, галерей, витрин, фуд-кортов, инженерных зон, паркинга и разгрузочных помещений торговых центров. Прорабатываем безопасность кромок, доступ к оборудованию и стойкость отделки."':
+                  '"Изготавливаем изделия для фасадов, галерей, витрин, фуд-кортов, инженерных зон, паркинга и разгрузочных помещений торговых центров. Прорабатываем кромки, доступ к оборудованию и стойкость отделки по требованиям проекта."',
+              '{ title: "Обслуживание оборудования", text: "Прорабатываем двери, люки, съёмные панели и безопасный доступ к инженерным системам." },':
+                  '{ title: "Обслуживание оборудования", text: "Прорабатываем двери, люки, съёмные панели и сервисный доступ к инженерным системам по требованиям проекта." },',
+              '{ title: "Доступ к обслуживанию", text: "Прорабатываем съёмные элементы, люки, двери и безопасные зоны доступа." },':
+                  '{ title: "Доступ к обслуживанию", text: "Прорабатываем съёмные элементы, люки, двери и зоны сервисного доступа по проектной документации." },',
+              '"Производим корпуса, шкафы, кожухи, рамы, площадки, ограждения и комплектующие для действующих производств и новых линий. Учитываем монтаж, сервисный доступ, безопасность и повторяемость серийных позиций."':
+                  '"Производим корпуса, шкафы, кожухи, рамы, площадки, ограждения и комплектующие для действующих производств и новых линий. Учитываем монтаж, сервисный доступ, требования по безопасности из проектной документации и повторяемость серийных позиций."',
+              '{ title: "Обслуживание механизмов", text: "Предусматриваем люки, съёмные панели и безопасный доступ к узлам." },':
+                  '{ title: "Обслуживание механизмов", text: "Предусматриваем люки, съёмные панели и сервисный доступ к узлам по требованиям проекта." },',
+              '{ title: "Обслуживание механизмов", text: "Предусматриваем люки, съёмные панели и безопасный доступ к узлам." },':
+                  '{ title: "Обслуживание механизмов", text: "Предусматриваем люки, съёмные панели и сервисный доступ к узлам по требованиям проекта." },',
+              '{ title: "Интенсивная эксплуатация", text: "Прорабатываем прочность, кромки, крепления и возможность локальной замены элементов." },':
+                  '{ title: "Интенсивная эксплуатация", text: "Прорабатываем геометрию, кромки, крепления и возможность локальной замены элементов по требованиям проектной документации." },',
+          }
+
+          # Apply each unique source phrase once or more when intentionally shared.
+          shared = '{ title: "Обслуживание механизмов", text: "Предусматриваем люки, съёмные панели и безопасный доступ к узлам." },'
+          shared_new = '{ title: "Обслуживание механизмов", text: "Предусматриваем люки, съёмные панели и сервисный доступ к узлам по требованиям проекта." },'
+          expected_shared = text.count(shared)
+          if expected_shared < 1:
+              raise SystemExit('Expected at least one shared unsafe-service-access phrase')
+          text = text.replace(shared, shared_new)
+
+          for old, new in list(replacements.items()):
+              if old == shared:
+                  continue
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one industry phrase: {old[:100]} (found {count})')
+              text = text.replace(old, new, 1)
+
+          for forbidden in [
+              'безопасный доступ к инженерным системам',
+              'безопасные зоны доступа',
+              'безопасный доступ к узлам',
+              'Прорабатываем прочность, кромки, крепления',
+          ]:
+              if forbidden in text:
+                  raise SystemExit(f'Unqualified industry claim remains: {forbidden}')
+
+          path.write_text(text)
+          PY
+
+      - name: Commit qualified industry copy
+        run: |
+          git config user.name "steelprodukt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add 'data/industry-seo.ts'
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "content: qualify project-dependent industry claims"
+          git push origin HEAD:main
