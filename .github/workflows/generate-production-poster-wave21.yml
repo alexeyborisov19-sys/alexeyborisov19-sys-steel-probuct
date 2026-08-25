@@ -1,0 +1,58 @@
+name: Generate optimized production poster
+
+on:
+  push:
+    branches: [perf/production-poster-webp-wave21]
+    paths:
+      - '.github/workflows/generate-production-poster-wave21.yml'
+      - 'public/images/production-showreel-poster.png'
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            /*
+            !/.agents/
+            !/.codex/
+            !/.claude/
+            !/.claude-flow/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Generate WebP poster
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const sharp = require('sharp');
+          (async () => {
+            const input = 'public/images/production-showreel-poster.png';
+            const output = 'public/images/production-showreel-poster.webp';
+            const metadata = await sharp(input).metadata();
+            await sharp(input)
+              .resize({ width: 1600, withoutEnlargement: true })
+              .webp({ quality: 82, effort: 6 })
+              .toFile(output);
+            const before = fs.statSync(input).size;
+            const after = fs.statSync(output).size;
+            console.log(`poster ${metadata.width}x${metadata.height}: ${before} -> ${after} bytes`);
+            if (after >= before * 0.6) throw new Error('Optimized poster did not reduce size by at least 40%');
+          })().catch((error) => { console.error(error); process.exit(1); });
+          NODE
+      - name: Commit optimized poster
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add public/images/production-showreel-poster.webp
+          git diff --cached --quiet && exit 0
+          git commit -m 'perf: add optimized production poster [skip ci]'
+          git push
