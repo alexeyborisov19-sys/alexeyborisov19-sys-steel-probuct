@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { siteMode } from "@/data/site-mode";
 import { Brand } from "./Brand";
 import { MegaMenu } from "./MegaMenu";
 
@@ -27,6 +28,7 @@ export function Header() {
   }, [pathname]);
 
   return <header className="absolute inset-x-0 top-0 z-40 border-b border-white/15 bg-black/92 backdrop-blur-md">
+    {siteMode.isTest ? <div role="status" className="flex h-7 items-center justify-center bg-steel-orange px-4 text-center text-[10px] font-bold uppercase tracking-[.14em] text-black sm:text-[11px]">{siteMode.label}</div> : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
       <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
       <nav className="header-nav hidden items-stretch self-stretch xl:flex">
