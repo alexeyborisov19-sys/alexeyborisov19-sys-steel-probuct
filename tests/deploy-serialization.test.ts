@@ -19,20 +19,39 @@ test("production install avoids optional npm audit and funding work", async () =
   assert.match(buildScript, /npm ci --no-audit --no-fund/);
 });
 
+test("production preparation removes explicit development artifacts only", async () => {
+  const prepareScript = await readFile(prepareScriptPath, "utf8");
+  const cleanupStart = prepareScript.indexOf(
+    "Development-only agent/runtime artifacts from older deployment layouts",
+  );
+  const cleanupEnd = prepareScript.indexOf("install -d -m 0700", cleanupStart);
 
-    test("production preparation removes explicit development artifacts", async () => {
-      const prepareScript = await readFile(prepareScriptPath, "utf8");
+  assert.ok(cleanupStart >= 0, "cleanup policy marker must exist");
+  assert.ok(cleanupEnd > cleanupStart, "cleanup block must have a bounded end");
 
-      for (const artifact of [".agents", ".codex", ".claude", ".claude-flow", ".mcp.json", "AGENTS.md"]) {
-        assert.ok(prepareScript.includes(`$APP_PATH/${artifact}`));
-      }
-      assert.doesNotMatch(prepareScript, /rm -rf --[^
-]*\.data/);
-      assert.doesNotMatch(prepareScript, /rm -rf --[^
-]*\.env/);
-    });
+  const cleanupBlock = prepareScript.slice(cleanupStart, cleanupEnd);
+  for (const artifact of [
+    ".agents",
+    ".codex",
+    ".claude",
+    ".claude-flow",
+    ".mcp.json",
+    "AGENTS.md",
+    "tsconfig.tsbuildinfo",
+  ]) {
+    assert.ok(cleanupBlock.includes(`$APP_PATH/${artifact}`), `${artifact} must be removed`);
+  }
 
-    test("production build removes generated TypeScript incremental metadata", async () => {
-      const buildScript = await readFile(buildScriptPath, "utf8");
-      assert.ok(buildScript.includes('rm -f "$APP_PATH/tsconfig.tsbuildinfo"'));
-    });
+  for (const protectedPath of [".data", ".env", "node_modules", ".next"]) {
+    assert.ok(
+      !cleanupBlock.includes(`$APP_PATH/${protectedPath}`),
+      `${protectedPath} must not be removed by the dev-artifact cleanup`,
+    );
+  }
+});
+
+test("production build removes generated TypeScript incremental metadata", async () => {
+  const buildScript = await readFile(buildScriptPath, "utf8");
+
+  assert.ok(buildScript.includes('rm -f "$APP_PATH/tsconfig.tsbuildinfo"'));
+});
