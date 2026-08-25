@@ -1,0 +1,64 @@
+name: Apply assistant SLA wave 16
+
+on:
+  push:
+    branches:
+      - fix/assistant-unverified-sla-wave16
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: ${{ !contains(github.event.head_commit.message, '[wave16-applied]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/assistant-unverified-sla-wave16
+          sparse-checkout: |
+            /*
+            !/.agents/
+            !/.codex/
+            !/.claude/
+            !/.claude-flow/
+          sparse-checkout-cone-mode: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Remove unverified response-time promise
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('components/EngineeringAssistant.tsx')
+          source = path.read_text()
+          old = 'Подтвердим получение материалов в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации.'
+          new = 'Получение материалов и срок подготовки расчёта подтвердим после проверки документации.'
+          if source.count(old) != 1:
+              raise SystemExit(f'expected one assistant SLA match, found {source.count(old)}')
+          path.write_text(source.replace(old, new))
+
+          Path('tests/assistant-response-sla.test.ts').write_text('''import assert from "node:assert/strict";\nimport { readFile } from "node:fs/promises";\nimport test from "node:test";\n\nconst assistantPath = new URL("../components/EngineeringAssistant.tsx", import.meta.url);\n\ntest("assistant lead form does not promise an unverified response-time SLA", async () => {\n  const source = await readFile(assistantPath, "utf8");\n\n  assert.doesNotMatch(source, /в течение рабочего дня/i);\n  assert.match(source, /Получение материалов и срок подготовки расчёта подтвердим после проверки документации\./);\n});\n''')
+          PY
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Commit verified fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/EngineeringAssistant.tsx tests/assistant-response-sla.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: remove unverified assistant response SLA [wave16-applied]"
+          git push origin HEAD:fix/assistant-unverified-sla-wave16
