@@ -9,6 +9,7 @@ import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductPricingFactors } from "@/components/ProductPricingFactors";
+import { ManufacturingProofSection } from "@/components/ManufacturingProofSection";
 import { productBySlug, products } from "@/data/products";
 import { productSeoBySlug } from "@/data/product-seo";
 import { productSearchPhrases } from "@/data/semantic";
@@ -79,6 +80,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
       </div>
     </section>
+    <ManufacturingProofSection />
     {seo && <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
       <div className="container">
         <div className="grid gap-8 lg:grid-cols-[.82fr_1.18fr] lg:items-start">

@@ -4,6 +4,7 @@ import { PageLayout } from "@/components/PageLayout";
 import { JsonLd } from "@/components/JsonLd";
 import { FaqSection } from "@/components/FaqSection";
 import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";
+import { ManufacturingProofSection } from "@/components/ManufacturingProofSection";
 import { ProductCard } from "@/components/ProductCard";
 import { metalCassetteSpecs, productBySlug } from "@/data/products";
 import { faqSchema, productGroupSchema } from "@/lib/schema";
@@ -93,6 +94,7 @@ export default function MetalCassetteCollectionPage() {
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cassetteProducts.map((product) => <ProductCard key={product.slug} product={product} />)}</div>
       </div>
     </section>
+    <ManufacturingProofSection />
     <FaqSection items={faqItems} title="Вопросы о фасадных металлокассетах" />
     <section className="border-t border-white/10 bg-[#17191a] py-10">
       <div className="container flex flex-col justify-between gap-6 md:flex-row md:items-center">
