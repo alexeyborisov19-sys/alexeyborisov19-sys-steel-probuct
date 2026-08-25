@@ -1,0 +1,109 @@
+name: Optimize production page images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-optimize-production-images.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Convert production gallery images to Next Image
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/(public)/production/page.tsx')
+          text = path.read_text()
+
+          if 'import Image from "next/image";' not in text:
+              text = text.replace('import Link from "next/link";\n', 'import Image from "next/image";\nimport Link from "next/link";\n', 1)
+
+          replacements = [
+              (
+'''                  <img
+                    src={image}
+                    width={428}
+                    height={240}
+                    alt={`${title} на производстве «Сталь Продукт»`}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02] transition duration-500 group-hover:scale-[1.035]"
+                  />''',
+'''                  <Image
+                    src={image}
+                    fill
+                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 16.7vw"
+                    alt={`${title} на производстве «Сталь Продукт»`}
+                    className="object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02] transition duration-500 group-hover:scale-[1.035]"
+                  />'''
+              ),
+              (
+'''                <img
+                  src={photo.image}
+                  width={1600}
+                  height={900}
+                  alt={`${photo.title} — реальное производство «Сталь Продукт»`}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[1.1]"
+                />''',
+'''                <Image
+                  src={photo.image}
+                  fill
+                  sizes="(max-width: 1023px) 100vw, 50vw"
+                  alt={`${photo.title} — реальное производство «Сталь Продукт»`}
+                  className="object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[1.1]"
+                />'''
+              ),
+              (
+'''                  <img
+                    src={photo.image}
+                    width={1600}
+                    height={900}
+                    alt={`${photo.title} — реальное производство «Сталь Продукт»`}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.1]"
+                  />''',
+'''                  <Image
+                    src={photo.image}
+                    fill
+                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33.3vw"
+                    alt={`${photo.title} — реальное производство «Сталь Продукт»`}
+                    className="object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.1]"
+                  />'''
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one production image template, found {count}')
+              text = text.replace(old, new, 1)
+
+          if '<img' in text:
+              raise SystemExit('Unexpected <img> remains in production page')
+
+          path.write_text(text)
+          PY
+
+      - name: Commit optimized production page
+        run: |
+          git config user.name "steelprodukt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add 'app/(public)/production/page.tsx'
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "perf: optimize production page image delivery"
+          git push origin HEAD:main
