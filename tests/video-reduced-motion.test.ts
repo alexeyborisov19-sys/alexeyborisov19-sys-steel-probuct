@@ -26,7 +26,7 @@ test("automatic video previews respect reduced motion and page visibility", asyn
   assert.match(companyPreview, /preload="metadata"/);
   assert.ok(!companyPreview.includes("autoPlay"), "company preview must not use unconditional autoplay");
 
-  const productionPreview = videoTag(production, "<video\n          ref={videoRef}");
+  const productionPreview = videoTag(production, "<video\n          ref={videoRef}".replace("\\n", "\n"));
   assert.match(production, /prefers-reduced-motion: reduce/);
   assert.match(production, /document\.visibilityState !== "visible"/);
   assert.match(production, /manualPlaybackRef/);
