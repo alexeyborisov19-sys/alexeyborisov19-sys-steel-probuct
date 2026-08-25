@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export function ProductionShowreel() {
+  const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const manualPlaybackRef = useRef(false);
+  const inViewportRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
 
@@ -30,8 +32,8 @@ export function ProductionShowreel() {
 
     const reducedMotion = typeof window.matchMedia === "function"
       && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (document.visibilityState !== "visible") {
-      manualPlaybackRef.current = false;
+    if (document.visibilityState !== "visible" || !inViewportRef.current) {
+      if (document.visibilityState !== "visible") manualPlaybackRef.current = false;
       video.pause();
       setIsPlaying(false);
       return;
@@ -58,7 +60,25 @@ export function ProductionShowreel() {
     };
   }, [syncAutomaticPlayback]);
 
-  return <section id="production-video" className="bg-[#0c1013] py-14 sm:py-16">
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    if (typeof IntersectionObserver !== "function") {
+      inViewportRef.current = true;
+      syncAutomaticPlayback();
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      inViewportRef.current = entry.isIntersecting;
+      syncAutomaticPlayback();
+    }, { threshold: 0.15 });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [syncAutomaticPlayback]);
+
+  return <section ref={sectionRef} id="production-video" className="bg-[#0c1013] py-14 sm:py-16">
     <div className="container grid gap-8 lg:grid-cols-[minmax(0,.64fr)_minmax(0,1fr)] lg:items-center">
       <div className="max-w-xl">
         <p className="eyebrow">Технологический процесс</p>
@@ -78,7 +98,7 @@ export function ProductionShowreel() {
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="none"
           poster="/images/production-showreel-poster.png"
           onCanPlay={syncAutomaticPlayback}
           onPlaying={() => {
