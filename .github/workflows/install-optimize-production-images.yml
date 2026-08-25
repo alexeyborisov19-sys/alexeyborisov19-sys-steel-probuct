@@ -21,6 +21,7 @@ jobs:
       - name: Convert production gallery images to Next Image
         run: |
           python3 - <<'PY'
+          from base64 import b64decode
           from pathlib import Path
 
           path = Path('app/(public)/production/page.tsx')
@@ -29,64 +30,15 @@ jobs:
           if 'import Image from "next/image";' not in text:
               text = text.replace('import Link from "next/link";\n', 'import Image from "next/image";\nimport Link from "next/link";\n', 1)
 
-          replacements = [
-              (
-'''                  <img
-                    src={image}
-                    width={428}
-                    height={240}
-                    alt={`${title} на производстве «Сталь Продукт»`}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02] transition duration-500 group-hover:scale-[1.035]"
-                  />''',
-'''                  <Image
-                    src={image}
-                    fill
-                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 16.7vw"
-                    alt={`${title} на производстве «Сталь Продукт»`}
-                    className="object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02] transition duration-500 group-hover:scale-[1.035]"
-                  />'''
-              ),
-              (
-'''                <img
-                  src={photo.image}
-                  width={1600}
-                  height={900}
-                  alt={`${photo.title} — реальное производство «Сталь Продукт»`}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[1.1]"
-                />''',
-'''                <Image
-                  src={photo.image}
-                  fill
-                  sizes="(max-width: 1023px) 100vw, 50vw"
-                  alt={`${photo.title} — реальное производство «Сталь Продукт»`}
-                  className="object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[1.1]"
-                />'''
-              ),
-              (
-'''                  <img
-                    src={photo.image}
-                    width={1600}
-                    height={900}
-                    alt={`${photo.title} — реальное производство «Сталь Продукт»`}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.1]"
-                  />''',
-'''                  <Image
-                    src={photo.image}
-                    fill
-                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33.3vw"
-                    alt={`${photo.title} — реальное производство «Сталь Продукт»`}
-                    className="object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.1]"
-                  />'''
-              ),
+          encoded_pairs = [
+              ('ICAgICAgICAgICAgICAgICAgPGltZwogICAgICAgICAgICAgICAgICAgIHNyYz17aW1hZ2V9CiAgICAgICAgICAgICAgICAgICAgd2lkdGg9ezQyOH0KICAgICAgICAgICAgICAgICAgICBoZWlnaHQ9ezI0MH0KICAgICAgICAgICAgICAgICAgICBhbHQ9e2Ake3RpdGxlfSDQvdCwINC/0YDQvtC40LfQstC+0LTRgdGC0LLQtSDCq9Ch0YLQsNC70Ywg0J/RgNC+0LTRg9C60YLCu2B9CiAgICAgICAgICAgICAgICAgICAgbG9hZGluZz0ibGF6eSIKICAgICAgICAgICAgICAgICAgICBkZWNvZGluZz0iYXN5bmMiCiAgICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJoLWZ1bGwgdy1mdWxsIG9iamVjdC1jb3ZlciBicmlnaHRuZXNzLVsxLjA3XSBjb250cmFzdC1bMS4wMV0gc2F0dXJhdGUtWzEuMDJdIHRyYW5zaXRpb24gZHVyYXRpb24tNTAwIGdyb3VwLWhvdmVyOnNjYWxlLVsxLjAzNV0iCiAgICAgICAgICAgICAgICAgIC8+', 'ICAgICAgICAgICAgICAgICAgPEltYWdlCiAgICAgICAgICAgICAgICAgICAgc3JjPXtpbWFnZX0KICAgICAgICAgICAgICAgICAgICBmaWxsCiAgICAgICAgICAgICAgICAgICAgc2l6ZXM9IihtYXgtd2lkdGg6IDYzOXB4KSAxMDB2dywgKG1heC13aWR0aDogMTAyM3B4KSA1MHZ3LCAxNi43dnciCiAgICAgICAgICAgICAgICAgICAgYWx0PXtgJHt0aXRsZX0g0L3QsCDQv9GA0L7QuNC30LLQvtC00YHRgtCy0LUgwqvQodGC0LDQu9GMINCf0YDQvtC00YPQutGCwrtgfQogICAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT0ib2JqZWN0LWNvdmVyIGJyaWdodG5lc3MtWzEuMDddIGNvbnRyYXN0LVsxLjAxXSBzYXR1cmF0ZS1bMS4wMl0gdHJhbnNpdGlvbiBkdXJhdGlvbi01MDAgZ3JvdXAtaG92ZXI6c2NhbGUtWzEuMDM1XSIKICAgICAgICAgICAgICAgICAgLz4='),
+              ('ICAgICAgICAgICAgICAgIDxpbWcKICAgICAgICAgICAgICAgICAgc3JjPXtwaG90by5pbWFnZX0KICAgICAgICAgICAgICAgICAgd2lkdGg9ezE2MDB9CiAgICAgICAgICAgICAgICAgIGhlaWdodD17OTAwfQogICAgICAgICAgICAgICAgICBhbHQ9e2Ake3Bob3RvLnRpdGxlfSDigJQg0YDQtdCw0LvRjNC90L7QtSDQv9GA0L7QuNC30LLQvtC00YHRgtCy0L4gwqvQodGC0LDQu9GMINCf0YDQvtC00YPQutGCwrtgfQogICAgICAgICAgICAgICAgICBsb2FkaW5nPSJsYXp5IgogICAgICAgICAgICAgICAgICBkZWNvZGluZz0iYXN5bmMiCiAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT0iaC1mdWxsIHctZnVsbCBvYmplY3QtY292ZXIgYnJpZ2h0bmVzcy1bMS4wNF0gY29udHJhc3QtWzEuMDNdIHNhdHVyYXRlLVsuOThdIHRyYW5zaXRpb24gZHVyYXRpb24tNzAwIGdyb3VwLWhvdmVyOnNjYWxlLVsxLjAyNV0gZ3JvdXAtaG92ZXI6YnJpZ2h0bmVzcy1bMS4xXSIKICAgICAgICAgICAgICAgIC8+', 'ICAgICAgICAgICAgICAgIDxJbWFnZQogICAgICAgICAgICAgICAgICBzcmM9e3Bob3RvLmltYWdlfQogICAgICAgICAgICAgICAgICBmaWxsCiAgICAgICAgICAgICAgICAgIHNpemVzPSIobWF4LXdpZHRoOiAxMDIzcHgpIDEwMHZ3LCA1MHZ3IgogICAgICAgICAgICAgICAgICBhbHQ9e2Ake3Bob3RvLnRpdGxlfSDigJQg0YDQtdCw0LvRjNC90L7QtSDQv9GA0L7QuNC30LLQvtC00YHRgtCy0L4gwqvQodGC0LDQu9GMINCf0YDQvtC00YPQutGCwrtgfQogICAgICAgICAgICAgICAgICBjbGFzc05hbWU9Im9iamVjdC1jb3ZlciBicmlnaHRuZXNzLVsxLjA0XSBjb250cmFzdC1bMS4wM10gc2F0dXJhdGUtWy45OF0gdHJhbnNpdGlvbiBkdXJhdGlvbi03MDAgZ3JvdXAtaG92ZXI6c2NhbGUtWzEuMDI1XSBncm91cC1ob3ZlcjpicmlnaHRuZXNzLVsxLjFdIgogICAgICAgICAgICAgICAgLz4='),
+              ('ICAgICAgICAgICAgICAgICAgPGltZwogICAgICAgICAgICAgICAgICAgIHNyYz17cGhvdG8uaW1hZ2V9CiAgICAgICAgICAgICAgICAgICAgd2lkdGg9ezE2MDB9CiAgICAgICAgICAgICAgICAgICAgaGVpZ2h0PXs5MDB9CiAgICAgICAgICAgICAgICAgICAgYWx0PXtgJHtwaG90by50aXRsZX0g4oCUINGA0LXQsNC70YzQvdC+0LUg0L/RgNC+0LjQt9Cy0L7QtNGB0YLQstC+IMKr0KHRgtCw0LvRjCDQn9GA0L7QtNGD0LrRgsK7YH0KICAgICAgICAgICAgICAgICAgICBsb2FkaW5nPSJsYXp5IgogICAgICAgICAgICAgICAgICAgIGRlY29kaW5nPSJhc3luYyIKICAgICAgICAgICAgICAgICAgICBjbGFzc05hbWU9ImgtZnVsbCB3LWZ1bGwgb2JqZWN0LWNvdmVyIGJyaWdodG5lc3MtWzEuMDRdIGNvbnRyYXN0LVsxLjAzXSBzYXR1cmF0ZS1bLjk4XSB0cmFuc2l0aW9uIGR1cmF0aW9uLTcwMCBncm91cC1ob3ZlcjpzY2FsZS1bMS4wMzVdIGdyb3VwLWhvdmVyOmJyaWdodG5lc3MtWzEuMV0iCiAgICAgICAgICAgICAgICAgIC8+', 'ICAgICAgICAgICAgICAgICAgPEltYWdlCiAgICAgICAgICAgICAgICAgICAgc3JjPXtwaG90by5pbWFnZX0KICAgICAgICAgICAgICAgICAgICBmaWxsCiAgICAgICAgICAgICAgICAgICAgc2l6ZXM9IihtYXgtd2lkdGg6IDYzOXB4KSAxMDB2dywgKG1heC13aWR0aDogMTAyM3B4KSA1MHZ3LCAzMy4zdnciCiAgICAgICAgICAgICAgICAgICAgYWx0PXtgJHtwaG90by50aXRsZX0g4oCUINGA0LXQsNC70YzQvdC+0LUg0L/RgNC+0LjQt9Cy0L7QtNGB0YLQstC+IMKr0KHRgtCw0LvRjCDQn9GA0L7QtNGD0LrRgsK7YH0KICAgICAgICAgICAgICAgICAgICBjbGFzc05hbWU9Im9iamVjdC1jb3ZlciBicmlnaHRuZXNzLVsxLjA0XSBjb250cmFzdC1bMS4wM10gc2F0dXJhdGUtWy45OF0gdHJhbnNpdGlvbiBkdXJhdGlvbi03MDAgZ3JvdXAtaG92ZXI6c2NhbGUtWzEuMDM1XSBncm91cC1ob3ZlcjpicmlnaHRuZXNzLVsxLjFdIgogICAgICAgICAgICAgICAgICAvPg=='),
           ]
 
-          for old, new in replacements:
+          for old64, new64 in encoded_pairs:
+              old = b64decode(old64).decode()
+              new = b64decode(new64).decode()
               count = text.count(old)
               if count != 1:
                   raise SystemExit(f'Expected exactly one production image template, found {count}')
