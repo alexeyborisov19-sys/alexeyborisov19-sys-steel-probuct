@@ -9,75 +9,35 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
-      - name: Probe public site from outside Beget
+      - name: Monitor public HTTPS during deployment
         run: |
           set -u
-          echo '=== EXTERNAL DNS ==='
+          failures=0
+          consecutive=0
+          max_consecutive=0
+          checks=0
+          echo '=== DNS ==='
           getent ahosts www.steelprodukt.ru || true
-          getent ahosts steelprodukt.ru || true
-          echo '=== EXTERNAL HTTPS ==='
-          curl -sSIL --max-time 12 -o /dev/null -w 'WWW_HTTP=%{http_code} CONNECT=%{time_connect} TLS=%{time_appconnect} TOTAL=%{time_total}\n' https://www.steelprodukt.ru/ || true
-          curl -sSIL --max-time 12 -o /dev/null -w 'APEX_HTTP=%{http_code} CONNECT=%{time_connect} TLS=%{time_appconnect} TOTAL=%{time_total}\n' https://steelprodukt.ru/ || true
-
-      - name: Configure secure server access
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          install -m 700 -d ~/.ssh
-          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-
-      - name: Diagnose and recover website
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_USER: ${{ secrets.BEGET_USER }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
-        run: |
-          set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
-          set -u
-          echo '=== TIME ==='
-          date -Is
-          echo '=== MEMORY ==='
-          free -h || true
-          echo '=== DISK ==='
-          df -h / || true
-          echo '=== PM2 BEFORE ==='
-          sudo -iu nodejs pm2 status steelprodukt || true
-          echo '=== PORT 3000 BEFORE ==='
-          ss -ltnp 2>/dev/null | grep ':3000' || true
-          local_code=$(curl -sS --max-time 8 -o /tmp/steelprodukt-local.html -w '%{http_code}' http://127.0.0.1:3000/ || true)
-          public_code=$(curl -k -sS --max-time 8 --resolve www.steelprodukt.ru:443:127.0.0.1 -o /tmp/steelprodukt-public.html -w '%{http_code}' https://www.steelprodukt.ru/ || true)
-          echo "LOCAL_HTTP=${local_code:-curl_failed}"
-          echo "PUBLIC_VIA_NGINX_HTTP=${public_code:-curl_failed}"
-
-          if [ "$local_code" != "200" ] || [ "$public_code" != "200" ]; then
-            echo '=== RECOVERY ==='
-            cd "$APP_PATH" || exit 1
-            sudo -iu nodejs bash -lc "cd '$APP_PATH' && pm2 reload ecosystem.config.cjs --only steelprodukt --env production --update-env" || \
-              sudo -iu nodejs pm2 restart steelprodukt --update-env || true
-            sudo nginx -t && sudo systemctl reload nginx || true
-            sleep 3
-          fi
-
-          echo '=== PM2 AFTER ==='
-          sudo -iu nodejs pm2 status steelprodukt || true
-          echo '=== RECENT PM2 LOGS ==='
-          sudo -iu nodejs pm2 logs steelprodukt --lines 40 --nostream || true
-          echo '=== FINAL CHECK ==='
-          final_local=$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)
-          final_public=$(curl -k -sS --max-time 8 --resolve www.steelprodukt.ru:443:127.0.0.1 -o /dev/null -w '%{http_code}' https://www.steelprodukt.ru/ || true)
-          echo "FINAL_LOCAL_HTTP=${final_local:-curl_failed}"
-          echo "FINAL_PUBLIC_VIA_NGINX_HTTP=${final_public:-curl_failed}"
-          test "$final_local" = "200"
-          test "$final_public" = "200"
-          REMOTE
+          echo '=== 3 MINUTE AVAILABILITY MONITOR ==='
+          end=$((SECONDS + 180))
+          while [ "$SECONDS" -lt "$end" ]; do
+            checks=$((checks + 1))
+            code=$(curl -sS --max-time 4 -o /dev/null -w '%{http_code}' https://www.steelprodukt.ru/ || true)
+            now=$(date -u +%H:%M:%S)
+            if [ "$code" = "200" ]; then
+              consecutive=0
+              echo "$now check=$checks http=200"
+            else
+              failures=$((failures + 1))
+              consecutive=$((consecutive + 1))
+              if [ "$consecutive" -gt "$max_consecutive" ]; then max_consecutive=$consecutive; fi
+              echo "$now check=$checks http=${code:-curl_failed} FAILURE"
+            fi
+            sleep 2
+          done
+          echo "RESULT checks=$checks failures=$failures max_consecutive_failures=$max_consecutive"
+          test "$failures" -eq 0
