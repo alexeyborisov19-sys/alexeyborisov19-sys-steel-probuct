@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export function ProductionShowreel() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const manualPlaybackRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const startVideo = useCallback(async () => {
+  const startVideo = useCallback(async (manual = false) => {
     const video = videoRef.current;
     if (!video) return;
+    if (manual) manualPlaybackRef.current = true;
 
     try {
       video.muted = true;
@@ -17,20 +19,44 @@ export function ProductionShowreel() {
       setIsPlaying(true);
       setHasError(false);
     } catch {
+      if (manual) manualPlaybackRef.current = false;
       setIsPlaying(false);
     }
   }, []);
 
-  useEffect(() => {
-    void startVideo();
+  const syncAutomaticPlayback = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
 
-    const resumeWhenVisible = () => {
-      if (document.visibilityState === "visible") void startVideo();
-    };
-
-    document.addEventListener("visibilitychange", resumeWhenVisible);
-    return () => document.removeEventListener("visibilitychange", resumeWhenVisible);
+    const reducedMotion = typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (document.visibilityState !== "visible") {
+      manualPlaybackRef.current = false;
+      video.pause();
+      setIsPlaying(false);
+      return;
+    }
+    if (reducedMotion && !manualPlaybackRef.current) {
+      video.pause();
+      setIsPlaying(false);
+      return;
+    }
+    if (!reducedMotion) void startVideo();
   }, [startVideo]);
+
+  useEffect(() => {
+    const motionQuery = typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+
+    syncAutomaticPlayback();
+    document.addEventListener("visibilitychange", syncAutomaticPlayback);
+    motionQuery?.addEventListener("change", syncAutomaticPlayback);
+    return () => {
+      document.removeEventListener("visibilitychange", syncAutomaticPlayback);
+      motionQuery?.removeEventListener("change", syncAutomaticPlayback);
+    };
+  }, [syncAutomaticPlayback]);
 
   return <section id="production-video" className="bg-[#0c1013] py-14 sm:py-16">
     <div className="container grid gap-8 lg:grid-cols-[minmax(0,.64fr)_minmax(0,1fr)] lg:items-center">
@@ -49,19 +75,19 @@ export function ProductionShowreel() {
         <video
           ref={videoRef}
           className="h-full w-full object-cover"
-          autoPlay
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           poster="/images/production-showreel-poster.png"
-          onCanPlay={() => void startVideo()}
+          onCanPlay={syncAutomaticPlayback}
           onPlaying={() => {
             setIsPlaying(true);
             setHasError(false);
           }}
           onPause={() => setIsPlaying(false)}
           onError={() => {
+            manualPlaybackRef.current = false;
             setIsPlaying(false);
             setHasError(true);
           }}
@@ -71,7 +97,7 @@ export function ProductionShowreel() {
         </video>
         {!isPlaying ? <button
           type="button"
-          onClick={() => void startVideo()}
+          onClick={() => void startVideo(true)}
           className="absolute inset-0 z-10 grid place-items-center bg-black/25 transition hover:bg-black/15"
           aria-label="Запустить видео производства"
         >
