@@ -28,6 +28,11 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(".0", "")} МБ`;
 }
 
+function focusFormField(form: HTMLFormElement, name: string) {
+  const field = form.elements.namedItem(name);
+  if (field instanceof HTMLElement) field.focus();
+}
+
 export function QuoteRequestForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -107,8 +112,14 @@ export function QuoteRequestForm() {
     setFeedback(null);
     const form = event.currentTarget;
     const formData = new FormData(form);
+    const name = String(formData.get("name") ?? "").trim();
     const phone = String(formData.get("phone") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
+    if (!name) {
+      setFeedback({ type: "error", message: "Укажите имя — это обязательное поле." });
+      focusFormField(form, "name");
+      return;
+    }
     if (!phone && !email) {
       setFeedback({ type: "error", message: "Укажите телефон или электронную почту — достаточно одного способа связи." });
       return;
