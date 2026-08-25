@@ -1,0 +1,170 @@
+name: Install site-wide strengthening package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-site-strengthening-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Apply site-wide strengthening
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # 1. Solutions: show the same proof-backed manufacturing advantage used on product pages.
+          solution = Path('components/SolutionDetailPage.tsx')
+          text = solution.read_text()
+          if 'ManufacturingProofSection' not in text:
+              text = text.replace(
+                  'import { SolutionItemVisual } from "./SolutionItemVisual";\n',
+                  'import { SolutionItemVisual } from "./SolutionItemVisual";\nimport { ManufacturingProofSection } from "./ManufacturingProofSection";\n',
+                  1,
+              )
+              marker = '    <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">\n      <div className="container">\n        <div className="max-w-3xl"><p className="eyebrow">Состав решения</p>'
+              if marker not in text:
+                  raise SystemExit('SolutionDetailPage: insertion marker missing')
+              text = text.replace(marker, '    <ManufacturingProofSection />\n\n' + marker, 1)
+              solution.write_text(text)
+
+          # 2. Industry detail pages: reinforce that the matrix is backed by a real production route.
+          industry = Path('app/(public)/industries/[slug]/page.tsx')
+          text = industry.read_text()
+          if 'ManufacturingProofSection' not in text:
+              text = text.replace(
+                  'import { PageLayout } from "@/components/PageLayout";\n',
+                  'import { PageLayout } from "@/components/PageLayout";\nimport { ManufacturingProofSection } from "@/components/ManufacturingProofSection";\n',
+                  1,
+              )
+              marker = '        {seo && <FaqSection items={seo.faq} title={`Вопросы: ${industry.title.toLowerCase()}`} />}\n'
+              if marker not in text:
+                  raise SystemExit('IndustryPage: insertion marker missing')
+              text = text.replace(marker, '        <ManufacturingProofSection />\n        {seo && <FaqSection items={seo.faq} title={`Вопросы: ${industry.title.toLowerCase()}`} />}\n', 1)
+              industry.write_text(text)
+
+          # 3. Metal cassette collection: calculator no longer publishes money, so copy must not promise it.
+          cassettes = Path('app/(public)/products/metallokassety/page.tsx')
+          text = cassettes.read_text()
+          text = text.replace('Калькулятор стоимости&nbsp; →', 'Калькулятор металлокассет&nbsp; →')
+          text = text.replace(
+              'Калькулятор даёт ориентир, точное предложение готовится после проверки документации.',
+              'Калькулятор показывает ориентировочное количество кассет для заданной площади; точное коммерческое предложение готовится после проверки раскладки и документации.',
+          )
+          cassettes.write_text(text)
+
+          # 4. Homepage project scenarios: route every scenario to its real industry page and use honest alt text.
+          home = Path('app/(public)/page.tsx')
+          text = home.read_text()
+          old_projects = '''const projects = [
+            "Жилые комплексы",
+            "Бизнес-центры",
+            "Торговые объекты",
+            "Промышленные предприятия",
+            "Инженерная инфраструктура",
+          ];'''
+          new_projects = '''const projects = [
+            { title: "Жилые комплексы", href: "/industries/zhilye-kompleksy", image: "/images/industries/residential.jpg" },
+            { title: "Бизнес-центры", href: "/industries/biznes-centry", image: "/images/industries/business-center.jpg" },
+            { title: "Торговые центры", href: "/industries/torgovye-centry", image: "/images/industries/shopping-center.jpg" },
+            { title: "Производственные предприятия", href: "/industries/proizvodstvennye-predpriyatiya", image: "/images/industries/production.jpg" },
+            { title: "Инженерная инфраструктура", href: "/industries/inzhenernaya-infrastruktura", image: "/images/industries/infrastructure.jpg" },
+          ] as const;'''
+          if old_projects in text:
+              text = text.replace(old_projects, new_projects, 1)
+          elif 'href: "/industries/zhilye-kompleksy"' not in text:
+              raise SystemExit('Home: project list marker missing')
+
+          text = text.replace('{projects.map((project, index) => (', '{projects.map((project, index) => (')
+          text = text.replace('href="/projects"\n                  key={project}', 'href={project.href}\n                  key={project.title}')
+          text = text.replace('src={index % 2 ? "/images/web/hero-main.webp" : "/images/web/project-residential.jpg"}', 'src={project.image}')
+          text = text.replace('alt={`${project} — объект с металлоизделиями «Сталь Продукт»`}', 'alt={`${project.title} — типовой сценарий применения металлоизделий`}')
+          text = text.replace('<h3 className="text-xs font-bold">{project}</h3>', '<h3 className="text-xs font-bold">{project.title}</h3>')
+          text = text.replace('<p className="mt-1 text-[10px] text-white/50">Типовой состав и исходные данные</p>', '<p className="mt-1 text-[10px] text-white/50">Типовой состав решения и исходные данные</p>')
+          home.write_text(text)
+
+          # 5. Footer internal links: exact sector labels should go to exact sector pages.
+          footer = Path('components/Footer.tsx')
+          text = footer.read_text()
+          text = text.replace('["Для объектов", ["Строительство", "Промышленность", "Инженерная инфраструктура"]],', '["Для объектов", ["Жилые комплексы", "Производственные предприятия", "Инженерная инфраструктура"]],')
+          text = text.replace('  "Строительство": "/industries",\n  "Промышленность": "/industries",\n  "Инженерная инфраструктура": "/industries",', '  "Жилые комплексы": "/industries/zhilye-kompleksy",\n  "Производственные предприятия": "/industries/proizvodstvennye-predpriyatiya",\n  "Инженерная инфраструктура": "/industries/inzhenernaya-infrastruktura",')
+          footer.write_text(text)
+
+          # 6. Company page: keep praise anchored to demonstrable in-house operations and expose more proof metrics.
+          company = Path('app/(public)/company/page.tsx')
+          text = company.read_text()
+          text = text.replace(
+              '[`${productionEquipment.pressBrakes} + ${productionEquipment.panelBenders}`, "листогиба + панельгиб"],',
+              '[`${productionEquipment.pressBrakes}`, "листогибочных комплекса"],\n  [`${productionEquipment.weldingStations}`, "сварочных поста"],\n  [`${productionEquipment.powderCoatingBooths}`, "камеры порошковой окраски"],',
+          )
+          text = text.replace('lg:grid-cols-4', 'lg:grid-cols-6', 1)
+          text = text.replace(
+              'Не передаём критичные операции подрядчикам и контролируем результат до отгрузки.',
+              'Основные операции производственного маршрута выполняем на собственной площадке и контролируем результат до комплектации и отгрузки.',
+          )
+          company.write_text(text)
+
+          # 7. Solutions index: replace CSS background images with responsive Next Image.
+          solutions_index = Path('app/(public)/solutions/page.tsx')
+          text = solutions_index.read_text()
+          if 'import Image from "next/image";' not in text:
+              text = 'import Image from "next/image";\n' + text
+          old_media = '''              <div
+                className={`solution-media -mx-6 -mt-6 mb-6 aspect-video ${solution.imageClassName ?? ""}`}
+                style={{ backgroundImage: `url('${solution.image}')` }}
+              />'''
+          new_media = '''              <div className={`solution-media relative -mx-6 -mt-6 mb-6 aspect-video overflow-hidden ${solution.imageClassName ?? ""}`}>
+                <Image
+                  src={solution.image}
+                  alt={`${solution.title} — решения из листового металла`}
+                  fill
+                  priority={index === 0}
+                  sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"
+                  className="object-cover"
+                />
+              </div>'''
+          if old_media in text:
+              text = text.replace(old_media, new_media, 1)
+          elif '<Image' not in text:
+              raise SystemExit('Solutions index: image marker missing')
+          solutions_index.write_text(text)
+
+          # 8. Regression checks for the new contract.
+          test = Path('tests/site-strengthening.test.ts')
+          test.write_text('''import assert from "node:assert/strict";\nimport { readFile } from "node:fs/promises";\nimport test from "node:test";\n\nconst read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), "utf8");\n\ntest("solutions and industries expose proof-backed manufacturing positioning", async () => {\n  const [solution, industry] = await Promise.all([\n    read("components/SolutionDetailPage.tsx"),\n    read("app/(public)/industries/[slug]/page.tsx"),\n  ]);\n  assert.match(solution, /ManufacturingProofSection/);\n  assert.match(industry, /ManufacturingProofSection/);\n});\n\ntest("metal cassette collection does not promise a price calculator", async () => {\n  const source = await read("app/(public)/products/metallokassety/page.tsx");\n  assert.doesNotMatch(source, /Калькулятор стоимости/);\n  assert.doesNotMatch(source, /Калькулятор даёт ориентир/);\n  assert.match(source, /ориентировочное количество кассет/);\n});\n\ntest("homepage scenarios use direct industry routes and honest image descriptions", async () => {\n  const source = await read("app/(public)/page.tsx");\n  for (const route of [\n    "/industries/zhilye-kompleksy",\n    "/industries/biznes-centry",\n    "/industries/torgovye-centry",\n    "/industries/proizvodstvennye-predpriyatiya",\n    "/industries/inzhenernaya-infrastruktura",\n  ]) assert.ok(source.includes(route));\n  assert.doesNotMatch(source, /объект с металлоизделиями/);\n  assert.match(source, /типовой сценарий применения металлоизделий/);\n});\n\ntest("footer sends sector links directly to sector landing pages", async () => {\n  const source = await read("components/Footer.tsx");\n  assert.match(source, /industries\\/zhilye-kompleksy/);\n  assert.match(source, /industries\\/proizvodstvennye-predpriyatiya/);\n  assert.match(source, /industries\\/inzhenernaya-infrastruktura/);\n});\n\ntest("company positioning stays anchored to verified in-house operations", async () => {\n  const source = await read("app/(public)/company/page.tsx");\n  assert.doesNotMatch(source, /Не передаём критичные операции подрядчикам/);\n  assert.match(source, /Основные операции производственного маршрута выполняем на собственной площадке/);\n  assert.match(source, /productionEquipment\\.weldingStations/);\n  assert.match(source, /productionEquipment\\.powderCoatingBooths/);\n});\n\ntest("solutions index uses responsive Next Image rather than CSS background images", async () => {\n  const source = await read("app/(public)/solutions/page.tsx");\n  assert.match(source, /import Image from "next\\/image"/);\n  assert.match(source, /sizes="\\(max-width: 767px\\) 100vw/);\n  assert.doesNotMatch(source, /backgroundImage:/);\n});\n''')
+
+          # Final static assertions before commit.
+          checks = {
+              solution: 'ManufacturingProofSection',
+              industry: 'ManufacturingProofSection',
+              cassettes: 'Калькулятор металлокассет',
+              home: '/industries/zhilye-kompleksy',
+              footer: '/industries/proizvodstvennye-predpriyatiya',
+              company: 'Основные операции производственного маршрута выполняем на собственной площадке',
+              solutions_index: 'next/image',
+          }
+          for path, fragment in checks.items():
+              obj = locals()[path]
+              if fragment not in obj.read_text():
+                  raise SystemExit(f'{obj}: expected fragment missing: {fragment}')
+          PY
+
+      - name: Commit site strengthening
+        run: |
+          git config user.name "steelprodukt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add components/SolutionDetailPage.tsx app/'(public)'/industries/'[slug]'/page.tsx app/'(public)'/products/metallokassety/page.tsx app/'(public)'/page.tsx components/Footer.tsx app/'(public)'/company/page.tsx app/'(public)'/solutions/page.tsx tests/site-strengthening.test.ts
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: strengthen brand proof SEO and navigation across site"
+          git push origin HEAD:main
