@@ -3,6 +3,7 @@ import type { CommercialProductLanding } from "@/data/commercial-product-landing
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
+import { ProductPricingFactors } from "@/components/ProductPricingFactors";
 import { faqSchema } from "@/lib/schema";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
@@ -51,6 +52,8 @@ export function CommercialProductLandingPage({ landing }: { landing: CommercialP
       <section className="bg-[#0c1013] py-14 sm:py-20">
         <div className="container"><div className="max-w-3xl"><p className="eyebrow">Техническая рамка</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Что фиксируем до запуска</h2><p className="mt-4 text-sm leading-relaxed text-white/60">Точные характеристики определяются по документации конкретного заказа. Ниже — параметры, которые нужно согласовать, чтобы расчёт и производство не опирались на предположения.</p></div><div className="mt-8 overflow-hidden border border-white/12"><dl>{landing.specifications.map((spec) => <div key={spec.label} className="grid border-b border-white/10 last:border-0 md:grid-cols-[.25fr_.32fr_.43fr]"><dt className="bg-white/[.035] px-5 py-4 text-sm font-semibold">{spec.label}</dt><dd className="px-5 py-4 text-sm font-semibold text-white/82">{spec.value}</dd><dd className="px-5 py-4 text-sm leading-relaxed text-white/55">{spec.note}</dd></div>)}</dl></div></div>
       </section>
+
+      <ProductPricingFactors productTitle={landing.title} showInputs={false} />
 
       <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
         <div className="container grid gap-10 xl:grid-cols-[1fr_.9fr]"><div><p className="eyebrow">Для расчёта</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Что передать в работу</h2><ul className="mt-7 grid gap-3 sm:grid-cols-2">{landing.requirements.map((item) => <li key={item} className="border-b border-white/10 pb-3 text-sm leading-relaxed text-white/78"><span className="mr-2 text-steel-orange">•</span>{item}</li>)}</ul></div><aside className="border border-white/12 bg-[#141719] p-6 sm:p-8"><p className="eyebrow">Исходные данные</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Можно начать с неполного комплекта</h3><p className="mt-4 text-sm leading-relaxed text-white/60">Принимаем PDF, DXF, DWG, STEP, спецификации, эскизы и фотографии. Если данных недостаточно, сформируем перечень уточнений до расчёта.</p><Link href="/contacts#contact-form" className="clip-corner mt-7 inline-block bg-steel-orange px-6 py-4 text-xs font-bold uppercase">Передать исходные данные&nbsp; →</Link></aside></div>
