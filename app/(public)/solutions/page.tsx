@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
@@ -45,10 +46,16 @@ export default function SolutionsPage() {
               key={solution.title}
               className="border border-white/10 bg-[#111519] p-6"
             >
-              <div
-                className={`solution-media -mx-6 -mt-6 mb-6 aspect-video ${solution.imageClassName ?? ""}`}
-                style={{ backgroundImage: `url('${solution.image}')` }}
-              />
+              <div className={`solution-media relative -mx-6 -mt-6 mb-6 aspect-video overflow-hidden ${solution.imageClassName ?? ""}`}>
+                <Image
+                  src={solution.image}
+                  alt={`${solution.title} — решения из листового металла`}
+                  fill
+                  priority={index === 0}
+                  sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"
+                  className="object-cover"
+                />
+              </div>
               <span className="text-2xl text-steel-orange">
                 {solution.icon}
               </span>
