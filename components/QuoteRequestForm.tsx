@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { createResettableOnce, trackLeadEvent } from "@/lib/analytics";
 import { legalLinks } from "@/lib/legal";
+import { siteConfig } from "@/lib/site";
 
 const MAX_FILES = 10;
 const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
@@ -221,7 +222,7 @@ export function QuoteRequestForm() {
           <p className="text-sm font-semibold text-white">Чертежи и техническая документация</p>
           <p className="mt-1 text-xs leading-relaxed text-white/50">До 10 файлов, суммарно до 10 МБ; каждый — до 7 МБ. Можно приложить чертежи, спецификации, визуализации и фотографии.</p>
         </div>
-        <a href="mailto:info@steelprodukt.ru" className="shrink-0 text-xs font-bold text-steel-orange transition hover:text-orange-400">info@steelprodukt.ru&nbsp; ↗</a>
+        <a href={`mailto:${siteConfig.email}`} className="shrink-0 text-xs font-bold text-steel-orange transition hover:text-orange-400">{siteConfig.email}&nbsp; ↗</a>
       </div>
 
       <label className="mt-5 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/25 bg-[#111519] px-5 py-8 text-center transition hover:border-steel-orange hover:bg-[#15191c]">
