@@ -143,13 +143,12 @@ const nextConfig: NextConfig = {
           { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
         ],
       },
+      // Public image names are stable (for example hero-main.webp), not content-hashed.
+      // Keep them cacheable, but revalidate them so replacing an image under the same
+      // public URL reaches returning visitors instead of being pinned for a year.
       {
         source: "/images/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
-      },
-      {
-        source: "/images/web/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
     ];
   },
