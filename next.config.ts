@@ -39,6 +39,7 @@ const stablePublicAssetCache = "public, max-age=86400, stale-while-revalidate=60
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   images: { remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }] },
   async redirects() {
     return [
