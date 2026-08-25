@@ -17,9 +17,10 @@ trap cleanup_audit_server EXIT
 
 cd "$APP_PATH"
 npm ci
-# Generated route types from the previous release must not participate in
-# typecheck after App Router paths have changed.
-rm -rf .next
+# Keep the currently serving .next build intact while source validation runs.
+# Only generated route types can become stale after App Router paths change;
+# they are safe to regenerate and are not required by the running application.
+rm -rf .next/types .next/dev/types
 npm run env:check
 npm run lint
 npm run typecheck
