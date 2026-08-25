@@ -1,0 +1,178 @@
+name: Install Web Development and Technical Writing Agents
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/install-dev-tech-agents.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch pinned Superpowers
+        run: |
+          rm -rf /tmp/superpowers
+          git clone --filter=blob:none https://github.com/obra/superpowers.git /tmp/superpowers
+          git -C /tmp/superpowers checkout b36e0829c6d0140e93cfef2ca599b1b07d4a7797
+
+      - name: Install Superpowers skills for Codex
+        run: |
+          mkdir -p .agents/skills
+          for skill in /tmp/superpowers/skills/*; do
+            [ -d "$skill" ] || continue
+            name="$(basename "$skill")"
+            rm -rf ".agents/skills/$name"
+            cp -R "$skill" ".agents/skills/$name"
+          done
+          mkdir -p .agents/vendor/superpowers
+          cp /tmp/superpowers/.codex-plugin/plugin.json .agents/vendor/superpowers/plugin.json
+          printf '%s\n' 'obra/superpowers' 'commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797' > .agents/vendor/superpowers/SOURCE.txt
+
+      - name: Fetch pinned technical documentation agent
+        run: |
+          rm -rf /tmp/wshobson-agents
+          git clone --filter=blob:none https://github.com/wshobson/agents.git /tmp/wshobson-agents
+          git -C /tmp/wshobson-agents checkout d82998e7df393c671ede2387a8435075f0b633f5
+
+      - name: Install docs architect skill
+        run: |
+          mkdir -p .agents/skills/docs-architect
+          cp /tmp/wshobson-agents/plugins/code-documentation/agents/docs-architect.md .agents/skills/docs-architect/SKILL.md
+          mkdir -p .agents/vendor/docs-architect
+          printf '%s\n' 'wshobson/agents' 'agent: plugins/code-documentation/agents/docs-architect.md' 'commit: d82998e7df393c671ede2387a8435075f0b633f5' > .agents/vendor/docs-architect/SOURCE.txt
+
+      - name: Add website development router
+        run: |
+          mkdir -p .agents/skills/website-development
+          cat > .agents/skills/website-development/SKILL.md <<'EOF'
+          ---
+          name: website-development
+          description: End-to-end website engineering for production websites. Use when building, changing, refactoring, debugging, testing, or shipping website pages, components, navigation, forms, interactions, integrations, responsive behavior, accessibility, performance, or frontend architecture. Coordinates Superpowers development workflows with the installed UI/UX and SEO skills.
+          ---
+
+          # Website Development
+
+          Act as the lead engineer for a production website. Build maintainable, fast, accessible, search-friendly code rather than disposable demos.
+
+          ## Required workflow
+
+          1. Inspect the existing project structure, framework, conventions, and deployment path before changing code.
+          2. Use the relevant Superpowers skills for brainstorming, planning, implementation, debugging, testing, review, and verification.
+          3. Use `ui-ux-pro-max` for design-system, layout, typography, responsive, accessibility, and interaction decisions when visual work is involved.
+          4. Preserve the existing brand and component language unless the task explicitly requests a redesign.
+          5. Use the installed SEO/marketing skills when changes affect metadata, semantic structure, internal linking, schema, landing pages, conversion, or search visibility.
+          6. Verify the finished work before claiming completion.
+
+          ## Engineering quality floor
+
+          - Semantic HTML and clear content hierarchy.
+          - Responsive behavior at mobile, tablet, laptop, and wide desktop widths.
+          - Keyboard access, visible focus, meaningful labels, and reduced-motion handling.
+          - Avoid layout shift, unnecessary client JavaScript, oversized dependencies, and render-blocking assets.
+          - Reuse components and tokens; do not duplicate styles without a reason.
+          - Keep URLs, metadata, canonical behavior, redirects, sitemap behavior, and structured data intact unless intentionally changed.
+          - Treat forms, analytics, consent, tracking, and external integrations as production systems with failure states.
+          - Add or update tests where they materially protect behavior.
+          - Never replace working production behavior with a visual mock unless explicitly requested.
+
+          ## Output behavior
+
+          When implementing, prefer concrete code changes over long explanations. Report what changed, what was verified, and any remaining risk or dependency.
+          EOF
+
+      - name: Add manufacturing technical writer
+        run: |
+          mkdir -p .agents/skills/manufacturing-technical-writer
+          cat > .agents/skills/manufacturing-technical-writer/SKILL.md <<'EOF'
+          ---
+          name: manufacturing-technical-writer
+          description: Technical and manufacturing writing for industrial products and production processes. Use for technical descriptions, specifications, datasheets, product passports, manuals, work instructions, process descriptions, quality-control documents, tender technical responses, commercial-proposal technical sections, manufacturing website copy, and engineering explanations.
+          ---
+
+          # Manufacturing Technical Writer
+
+          Write as an industrial technical writer working with engineers, technologists, production managers, procurement teams, operators, and B2B customers. Prioritize technical accuracy, traceability, clarity, and useful structure over promotional language.
+
+          Use `docs-architect` as the documentation-architecture baseline when a document is long, complex, or needs a formal hierarchy.
+
+          ## Non-negotiable factual discipline
+
+          - Never invent dimensions, tolerances, material grades, coating thicknesses, loads, capacities, process parameters, certifications, test results, standards, GOST/ISO/EN references, warranty terms, production times, or equipment capabilities.
+          - Separate supplied facts from assumptions and recommendations.
+          - If a technical value is missing, mark it as `to be confirmed` or phrase the text so the missing value is not fabricated.
+          - Cite standards only when they are provided or verified from a reliable current source.
+          - Preserve units exactly when source data is authoritative; otherwise normalize to SI and keep units consistent.
+          - Check numerical consistency across tables, headings, drawings, and prose.
+
+          ## Writing style
+
+          - Precise Russian technical prose by default when the user's material is Russian; use the requested language otherwise.
+          - Prefer short declarative sentences, explicit subjects, and active voice where practical.
+          - Use one term consistently for one component or operation.
+          - Avoid vague claims such as “high quality”, “innovative”, “unique”, or “reliable” unless supported by a measurable fact.
+          - Explain cause and effect: what the operation does, why it is required, what parameter controls the result, and what can go wrong.
+          - Distinguish requirement, recommendation, option, limitation, and measured result.
+
+          ## Recommended structures
+
+          For a product or assembly:
+          1. Purpose and application
+          2. Construction and components
+          3. Materials and finishes
+          4. Key technical parameters
+          5. Manufacturing process
+          6. Interfaces, mounting, or connection requirements
+          7. Quality control and acceptance
+          8. Packaging, transport, storage, and maintenance when relevant
+          9. Limitations and options
+
+          For a manufacturing process:
+          1. Input material and prerequisites
+          2. Equipment and tooling
+          3. Operation sequence
+          4. Critical parameters and tolerances
+          5. In-process inspection
+          6. Acceptance criteria
+          7. Typical defects, causes, and corrective actions
+          8. Safety and handling notes when supported by source information
+
+          For a technical commercial text:
+          - State the customer's problem first.
+          - Describe the engineering solution and production route.
+          - Quantify only verified capabilities.
+          - Explain manufacturability, repeatability, inspection, logistics, and options where relevant.
+          - Keep sales language subordinate to engineering evidence.
+
+          ## Audience modes
+
+          Adapt depth without changing facts:
+          - Engineer/technologist: parameters, interfaces, tolerances, process logic, failure modes.
+          - Procurement/tender: scope, compliance, deliverables, options, exclusions, acceptance.
+          - Customer/site visitor: application, construction, benefits explained through technical facts.
+          - Operator/production: ordered actions, checks, stop conditions, safety-critical notes.
+
+          ## Final quality check
+
+          Before finalizing, verify terminology, units, numbers, cross-references, unsupported claims, missing assumptions, and whether a competent engineer could reproduce or evaluate the described product/process from the text.
+          EOF
+
+      - name: Commit installed agents
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .agents/skills .agents/vendor
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: install web development and manufacturing writing agents"
+            git push
+          fi
