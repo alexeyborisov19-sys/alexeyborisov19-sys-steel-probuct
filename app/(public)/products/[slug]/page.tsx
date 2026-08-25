@@ -8,6 +8,7 @@ import { InnerHero } from "@/components/InnerHero";
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductPricingFactors } from "@/components/ProductPricingFactors";
 import { productBySlug, products } from "@/data/products";
 import { productSeoBySlug } from "@/data/product-seo";
 import { productSearchPhrases } from "@/data/semantic";
@@ -97,6 +98,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </div>
     </section>}
     {product.specs && <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20"><div className="container"><div className="max-w-2xl"><p className="eyebrow">Технические параметры</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Материалы и исполнение</h2><p className="mt-4 text-sm leading-6 text-white/58">Параметры на странице описывают доступные или типовые исполнения. Для конкретного заказа итоговые значения фиксируются по проектной документации, согласованному образцу и условиям эксплуатации до запуска в производство.</p></div><div className="mt-8 overflow-hidden border border-white/12"><dl>{product.specs.map((spec) => <div key={spec.label} className="grid border-b border-white/10 last:border-0 md:grid-cols-[.38fr_.62fr]"><dt className="bg-white/[.035] px-5 py-4 text-sm font-semibold">{spec.label}</dt><dd className="px-5 py-4 text-sm leading-relaxed text-white/68">{spec.value}</dd></div>)}</dl></div></div></section>}
+    <ProductPricingFactors productTitle={product.title} />
     <FaqSection items={faqItems} title={`Вопросы о «${product.title}»`} />
     {relatedIndustries.length > 0 && <section className="bg-[#101112] py-14 sm:py-20">
       <div className="container">
