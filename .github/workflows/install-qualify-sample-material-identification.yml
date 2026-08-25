@@ -1,0 +1,47 @@
+name: Qualify sample material identification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-qualify-sample-material-identification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Qualify material identification from a sample
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('data/production-services.ts')
+          text = path.read_text()
+          old = 'По образцу, фотографиям и замерам восстанавливаем геометрию, определяем материал и толщину, воспроизводим конструкцию соединений и готовим комплект для изготовления.'
+          new = 'По образцу, фотографиям и замерам восстанавливаем геометрию, фиксируем измеряемую толщину и конструкцию соединений. Марку материала принимаем по документации заказчика или подтверждаем отдельной идентификацией до запуска; затем готовим комплект для изготовления.'
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one sample-material claim, found {count}')
+          text = text.replace(old, new, 1)
+          if 'определяем материал и толщину' in text:
+              raise SystemExit('Unqualified sample-material claim remains')
+          path.write_text(text)
+          PY
+
+      - name: Commit qualified sample-material copy
+        run: |
+          git config user.name "steelprodukt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add 'data/production-services.ts'
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "content: qualify material identification from samples"
+          git push origin HEAD:main
