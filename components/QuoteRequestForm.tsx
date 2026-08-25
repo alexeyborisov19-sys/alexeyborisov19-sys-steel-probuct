@@ -247,7 +247,7 @@ export function QuoteRequestForm() {
       </div> : null}
     </div>
 
-    {feedback ? <p role="status" className={`border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"}`}>{feedback.message}</p> : null}
+    {feedback ? <p role={feedback.type === "error" ? "alert" : "status"} className={`border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"}`}>{feedback.message}</p> : null}
 
     <div className="border-t border-white/10 pt-6">
       <p className="mb-4 text-[11px] leading-relaxed text-white/48">
