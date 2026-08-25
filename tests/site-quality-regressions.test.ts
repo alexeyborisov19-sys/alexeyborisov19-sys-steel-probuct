@@ -10,6 +10,7 @@ const productionPagePath = new URL("../app/(public)/production/page.tsx", import
 const projectsPagePath = new URL("../app/(public)/projects/page.tsx", import.meta.url);
 const contactsPagePath = new URL("../app/(public)/contacts/page.tsx", import.meta.url);
 const solutionDetailPath = new URL("../components/SolutionDetailPage.tsx", import.meta.url);
+const solutionDetailsDataPath = new URL("../data/solution-details.ts", import.meta.url);
 const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
 const deployWorkflowPath = new URL("../.github/workflows/deploy-beget.yml", import.meta.url);
@@ -76,6 +77,25 @@ test("solution production photos use responsive Next Image delivery", async () =
   assert.match(solutionDetail, /import Image from "next\/image"/);
   assert.doesNotMatch(solutionDetail, /<img\b/);
   assert.match(solutionDetail, /sizes="\(max-width: 767px\) 100vw, 33\.3vw"/);
+});
+
+test("solution engineering claims defer project-dependent loads and fastening to project data", async () => {
+  const solutionDetails = await readFile(solutionDetailsDataPath, "utf8");
+
+  for (const phrase of [
+    "размещаются безопасно",
+    "Организуют безопасную",
+    "для безопасного доступа",
+    "подбираем под нагрузку",
+    "Изготавливаются под нагрузку",
+  ]) {
+    assert.ok(!solutionDetails.includes(phrase), `unqualified engineering claim must stay removed: ${phrase}`);
+  }
+
+  assert.match(solutionDetails, /расчётные нагрузки и узлы крепления задаются проектом/);
+  assert.match(solutionDetails, /Сечения и точки крепления принимаются по КД и расчётным данным проекта/);
+  assert.match(solutionDetails, /Расчётные нагрузки и параметры ограждений задаются проектной документацией/);
+  assert.match(solutionDetails, /ветровой нагрузке[\s\S]*принимаем из проектной документации/);
 });
 
 test("contact copy avoids an unverified response-time SLA", async () => {
