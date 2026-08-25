@@ -9,6 +9,7 @@ const productPagePath = new URL("../app/(public)/products/[slug]/page.tsx", impo
 const productionPagePath = new URL("../app/(public)/production/page.tsx", import.meta.url);
 const projectsPagePath = new URL("../app/(public)/projects/page.tsx", import.meta.url);
 const contactsPagePath = new URL("../app/(public)/contacts/page.tsx", import.meta.url);
+const quoteRequestFormPath = new URL("../components/QuoteRequestForm.tsx", import.meta.url);
 const solutionDetailPath = new URL("../components/SolutionDetailPage.tsx", import.meta.url);
 const solutionDetailsDataPath = new URL("../data/solution-details.ts", import.meta.url);
 const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
@@ -98,11 +99,17 @@ test("solution engineering claims defer project-dependent loads and fastening to
   assert.match(solutionDetails, /ветровой нагрузке[\s\S]*принимаем из проектной документации/);
 });
 
-test("contact copy avoids an unverified response-time SLA", async () => {
-  const contactsPage = await readFile(contactsPagePath, "utf8");
+test("contact and quote-form copy avoid an unverified response-time SLA", async () => {
+  const [contactsPage, quoteRequestForm] = await Promise.all([
+    readFile(contactsPagePath, "utf8"),
+    readFile(quoteRequestFormPath, "utf8"),
+  ]);
 
   assert.doesNotMatch(contactsPage, /в течение рабочего дня/i);
+  assert.doesNotMatch(quoteRequestForm, /в течение рабочего дня/i);
   assert.match(contactsPage, /Срок подготовки расчёта сообщим после проверки документации и состава заказа/);
+  assert.match(quoteRequestForm, /После отправки материалы поступят на инженерную и коммерческую проверку/);
+  assert.match(quoteRequestForm, /Материалы переданы на проверку\. Срок подготовки расчёта сообщим после проверки документации/);
 });
 
 test("Codex agent runtimes remain outside application lint scope", async () => {
