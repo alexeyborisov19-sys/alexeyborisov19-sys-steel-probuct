@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Footer } from "@/components/Footer";
@@ -112,16 +113,14 @@ export default function Home() {
                     <div
                       className={`relative -mx-5 -mt-5 mb-5 aspect-video overflow-hidden bg-[#192026] ${solution.imageClassName ?? ""}`}
                     >
-                      <img
+                      <Image
                         src={cardImage.src}
                         alt={`${solution.title} — изделия из листового металла`}
-                        width={960}
-                        height={540}
-                        loading={index < 2 ? "eager" : "lazy"}
-                        fetchPriority={index === 0 ? "high" : "auto"}
-                        decoding="async"
+                        fill
+                        priority={index === 0}
+                        sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 20vw"
                         style={{ objectPosition: cardImage.position }}
-                        className="h-full w-full object-cover brightness-[1.06] contrast-[1.02] saturate-[1.04] transition duration-500 group-hover:scale-[1.035] group-hover:brightness-[1.14]"
+                        className="object-cover brightness-[1.06] contrast-[1.02] saturate-[1.04] transition duration-500 group-hover:scale-[1.035] group-hover:brightness-[1.14]"
                       />
                     </div>
                     <p className="text-lg text-steel-orange">{solution.icon}</p>
@@ -200,19 +199,13 @@ export default function Home() {
                   className="overflow-hidden border border-white/10 bg-[#111519] transition hover:border-steel-orange"
                 >
                   <div className="relative aspect-video overflow-hidden bg-[#192026]">
-                    <img
-                      src={
-                        index % 2
-                          ? "/images/web/hero-main.webp"
-                          : "/images/web/project-residential.jpg"
-                      }
-                      width={1080}
-                      height={608}
+                    <Image
+                      src={index % 2 ? "/images/web/hero-main.webp" : "/images/web/project-residential.jpg"}
+                      fill
                       alt={`${project} — объект с металлоизделиями «Сталь Продукт»`}
-                      loading="lazy"
-                      decoding="async"
+                      sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 20vw"
                       style={{ objectPosition: `${15 + index * 20}% 42%` }}
-                      className="h-full w-full object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02]"
+                      className="object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02]"
                     />
                   </div>
                   <div className="p-4">
