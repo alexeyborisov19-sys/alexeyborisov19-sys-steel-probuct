@@ -4,8 +4,28 @@ import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
 import { ProductPricingFactors } from "@/components/ProductPricingFactors";
+import { productionEquipment } from "@/data/manufacturing-facts";
 import { faqSchema } from "@/lib/schema";
 import { absoluteUrl, siteConfig } from "@/lib/site";
+
+const productionProofs = [
+  {
+    title: "Производство полного цикла",
+    text: "Инженерно-конструкторская подготовка, раскрой, гибка, сварка, сборка, подготовка поверхности, окраска, контроль, комплектация и упаковка объединены в один производственный маршрут.",
+  },
+  {
+    title: "Инженерно-конструкторский центр",
+    text: "Разрабатываем и проверяем КД, оцениваем технологичность и готовим изделие к стабильному повторяемому выпуску, а не только к изготовлению одной детали.",
+  },
+  {
+    title: "Собственная производственная база",
+    text: `${productionEquipment.laserComplexes} лазерных комплекса, ${productionEquipment.pressBrakes} листогибочных комплекса, ${productionEquipment.panelBenders} панельгиб, ${productionEquipment.weldingStations} сварочных поста и ${productionEquipment.powderCoatingBooths} камеры порошковой окраски работают внутри единой производственной цепочки.`,
+  },
+  {
+    title: "От опытного образца до серии",
+    text: "Новый проект можно начать с прототипа, зафиксировать согласованное исполнение и затем перевести изделие в повторяемую серийную партию.",
+  },
+] as const;
 
 function productSchema(landing: CommercialProductLanding) {
   return {
@@ -42,6 +62,27 @@ export function CommercialProductLandingPage({ landing }: { landing: CommercialP
         <div className="container grid gap-8 xl:grid-cols-[.94fr_1.06fr] xl:items-start">
           <div className="border-l-2 border-steel-orange pl-5"><p className="text-lg font-semibold leading-relaxed text-white/90">{landing.introduction}</p></div>
           <div className="grid gap-3 sm:grid-cols-3">{landing.highlights.map((item, index) => <article key={item.title} className="border border-white/12 bg-[#111519] p-5"><span className="font-mono text-xl font-bold text-steel-orange">0{index + 1}</span><h2 className="mt-6 text-base font-semibold uppercase leading-tight">{item.title}</h2><p className="mt-3 text-sm leading-relaxed text-white/58">{item.text}</p></article>)}</div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-[#151719] py-14 sm:py-20">
+        <div className="container">
+          <div className="max-w-3xl">
+            <p className="eyebrow">Почему «Сталь Продукт»</p>
+            <h2 className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">Не отдельная операция, а полный маршрут до готовой партии</h2>
+            <p className="mt-4 text-sm leading-7 text-white/62">Берём на себя не только изготовление детали. Связываем инженерную подготовку, производство, покрытие, контроль и комплектацию так, чтобы заказ проходил через согласованную технологическую цепочку.</p>
+          </div>
+          <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {productionProofs.map((proof, index) => <article key={proof.title} className="border border-white/12 bg-[#101214] p-6">
+              <span className="font-mono text-sm font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
+              <h3 className="mt-5 text-base font-semibold uppercase leading-tight">{proof.title}</h3>
+              <p className="mt-4 text-sm leading-relaxed text-white/60">{proof.text}</p>
+            </article>)}
+          </div>
+          <div className="mt-7 flex flex-col justify-between gap-4 border-l-2 border-steel-orange bg-black/20 px-5 py-4 sm:flex-row sm:items-center">
+            <p className="text-sm font-semibold leading-relaxed text-white/82">От чертежа и опытного образца — к повторяемой партии, подготовленной к организованной отгрузке.</p>
+            <Link href="/production" className="whitespace-nowrap text-xs font-bold uppercase text-steel-orange">Смотреть производство&nbsp; →</Link>
+          </div>
         </div>
       </section>
 
