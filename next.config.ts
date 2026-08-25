@@ -28,7 +28,10 @@ const securityHeaders = [
   },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   ...(process.env.NODE_ENV === "production"
-    ? [{ key: "Content-Security-Policy", value: contentSecurityPolicy }]
+    ? [
+        { key: "Content-Security-Policy", value: contentSecurityPolicy },
+        { key: "Strict-Transport-Security", value: "max-age=31536000" },
+      ]
     : []),
 ];
 
