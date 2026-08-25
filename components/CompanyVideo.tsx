@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export function CompanyVideo() {
   const [isOpen, setIsOpen] = useState(false);
+  const sectionRef = useRef<HTMLElement | null>(null);
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const previewInViewportRef = useRef(false);
   const modalVideoRef = useRef<HTMLVideoElement | null>(null);
   const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -14,29 +16,52 @@ export function CompanyVideo() {
     window.requestAnimationFrame(() => lastTriggerRef.current?.focus());
   }, []);
 
-  useEffect(() => {
+  const syncPreviewPlayback = useCallback(() => {
     const video = previewVideoRef.current;
-    if (!video || typeof window.matchMedia !== "function") return;
+    if (!video) return;
 
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncPreviewPlayback = () => {
-      if (isOpen || document.visibilityState !== "visible" || motionQuery.matches) {
-        video.pause();
-        return;
-      }
+    const reducedMotion = typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (isOpen || document.visibilityState !== "visible" || reducedMotion || !previewInViewportRef.current) {
+      video.pause();
+      return;
+    }
 
-      video.muted = true;
-      void video.play().catch(() => undefined);
-    };
+    video.muted = true;
+    void video.play().catch(() => undefined);
+  }, [isOpen]);
+
+  useEffect(() => {
+    const motionQuery = typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
 
     syncPreviewPlayback();
     document.addEventListener("visibilitychange", syncPreviewPlayback);
-    motionQuery.addEventListener("change", syncPreviewPlayback);
+    motionQuery?.addEventListener("change", syncPreviewPlayback);
     return () => {
       document.removeEventListener("visibilitychange", syncPreviewPlayback);
-      motionQuery.removeEventListener("change", syncPreviewPlayback);
+      motionQuery?.removeEventListener("change", syncPreviewPlayback);
     };
-  }, [isOpen]);
+  }, [syncPreviewPlayback]);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    if (typeof IntersectionObserver !== "function") {
+      previewInViewportRef.current = true;
+      syncPreviewPlayback();
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      previewInViewportRef.current = entry.isIntersecting;
+      syncPreviewPlayback();
+    }, { threshold: 0.15 });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [syncPreviewPlayback]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,7 +112,7 @@ export function CompanyVideo() {
   }
 
   return <>
-    <section id="company-video" className="bg-[#0c1013] py-14 sm:py-16">
+    <section ref={sectionRef} id="company-video" className="bg-[#0c1013] py-14 sm:py-16">
       <div className="container grid gap-8 lg:grid-cols-[minmax(0,.64fr)_minmax(0,1fr)] lg:items-center">
         <div className="max-w-xl">
           <p className="eyebrow">Фильм о компании</p>
@@ -100,7 +125,7 @@ export function CompanyVideo() {
         </div>
 
         <button type="button" onClick={(event) => openVideo(event.currentTarget)} className="production-video-frame group text-left" aria-label="Смотреть фильм о компании">
-          <video ref={previewVideoRef} className="h-full w-full object-cover" muted loop playsInline preload="metadata" poster="/images/company-video-poster.png">
+          <video ref={previewVideoRef} className="h-full w-full object-cover" muted loop playsInline preload="none" poster="/images/company-video-poster.png">
             <source src="/video/company-film-flat.mp4" type="video/mp4" />
           </video>
           <span className="absolute inset-0 bg-black/10 transition group-hover:bg-black/0" />
