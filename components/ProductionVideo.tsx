@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export function ProductionShowreel() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const manualPlaybackRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const startVideo = useCallback(async () => {
+  const startVideo = useCallback(async (manual = false) => {
     const video = videoRef.current;
     if (!video) return;
+    if (manual) manualPlaybackRef.current = true;
 
     try {
       video.muted = true;
@@ -17,6 +19,7 @@ export function ProductionShowreel() {
       setIsPlaying(true);
       setHasError(false);
     } catch {
+      if (manual) manualPlaybackRef.current = false;
       setIsPlaying(false);
     }
   }, []);
@@ -27,13 +30,18 @@ export function ProductionShowreel() {
 
     const reducedMotion = typeof window.matchMedia === "function"
       && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (document.visibilityState !== "visible" || reducedMotion) {
+    if (document.visibilityState !== "visible") {
+      manualPlaybackRef.current = false;
       video.pause();
       setIsPlaying(false);
       return;
     }
-
-    void startVideo();
+    if (reducedMotion && !manualPlaybackRef.current) {
+      video.pause();
+      setIsPlaying(false);
+      return;
+    }
+    if (!reducedMotion) void startVideo();
   }, [startVideo]);
 
   useEffect(() => {
@@ -79,6 +87,7 @@ export function ProductionShowreel() {
           }}
           onPause={() => setIsPlaying(false)}
           onError={() => {
+            manualPlaybackRef.current = false;
             setIsPlaying(false);
             setHasError(true);
           }}
@@ -88,7 +97,7 @@ export function ProductionShowreel() {
         </video>
         {!isPlaying ? <button
           type="button"
-          onClick={() => void startVideo()}
+          onClick={() => void startVideo(true)}
           className="absolute inset-0 z-10 grid place-items-center bg-black/25 transition hover:bg-black/15"
           aria-label="Запустить видео производства"
         >
