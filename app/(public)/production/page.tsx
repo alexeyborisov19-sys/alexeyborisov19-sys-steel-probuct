@@ -144,13 +144,12 @@ export default function ProductionPage() {
       image="/images/real-production/workshop-team.jpg" imageAlt="Производственный участок «Сталь Продукт»: специалисты за работой с изделиями из листового металла"
     >
       <section className="border-y border-white/10 bg-[#0c1013] py-7">
-        <div className="container grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="container grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             [laserCuttingCapabilities.thicknessRange, "чёрная сталь"],
             [laserCuttingCapabilities.tableWorkingArea, "рабочее поле стола"],
             [productionOrderConditions.typicalLeadTime, "средний срок изготовления"],
-            ["Давальческое", "сырьё после входного контроля"],
-            ["По КД", "от единичной детали до серии"],
+            ["По КД / ТЗ", "от единичной детали до серии"],
           ].map(([value, label]) => (
             <div key={label} className="border-l border-white/10 px-4">
               <b className="text-3xl text-steel-orange">{value}</b>
