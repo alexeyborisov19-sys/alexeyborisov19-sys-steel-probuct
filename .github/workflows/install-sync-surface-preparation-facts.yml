@@ -1,4 +1,4 @@
-name: Sync surface preparation facts
+name: Fix assistant surface-preparation routing
 
 on:
   push:
@@ -11,92 +11,41 @@ permissions:
   contents: write
 
 jobs:
-  sync:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Sync public production copy and assistant knowledge
+      - name: Route cleaning requests before generic laser cutting
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          production = Path('app/(public)/production/page.tsx')
-          text = production.read_text()
-          replacements = [
-              (
-                  '"Камера дробеструйной очистки"',
-                  '"Дробеструйная камера + лазерная очистка"',
-              ),
-              (
-                  '"Подготавливаем поверхность металла перед окраской для надёжного сцепления покрытия."',
-                  '"Очищаем и подготавливаем поверхность по согласованному маршруту с учётом материала, состояния изделия и следующей технологической операции."',
-              ),
-          ]
-          for old, new in replacements:
-              if text.count(old) != 1:
-                  raise SystemExit(f'Expected one production phrase: {old}')
-              text = text.replace(old, new, 1)
-          production.write_text(text)
-
-          assistant = Path('data/assistant-knowledge.ts')
-          text = assistant.read_text()
-
-          if 'surfacePreparationSummary,' not in text:
-              marker = '  productionOrderConditions,\n} from "@/data/manufacturing-facts";'
-              if text.count(marker) != 1:
-                  raise SystemExit('Expected one manufacturing-facts import block')
-              text = text.replace(
-                  marker,
-                  '  productionOrderConditions,\n  surfacePreparationSummary,\n} from "@/data/manufacturing-facts";',
-                  1,
-              )
-
-          old_fact = '  "Камера дробеструйной очистки для подготовки поверхности перед нанесением покрытия.",'
-          if text.count(old_fact) != 1:
-              raise SystemExit('Expected one old surface-preparation fact')
-          text = text.replace(old_fact, '  surfacePreparationSummary,', 1)
-
-          old_suggestions = '  if (includesAny(text, ["порош", "покрас", "ral", "цвет", "дробест"])) {'
-          if text.count(old_suggestions) != 1:
-              raise SystemExit('Expected one coating suggestion branch')
-          text = text.replace(
-              old_suggestions,
-              '  if (includesAny(text, ["порош", "покрас", "ral", "цвет", "дробест", "лазерная очист", "очистк поверхности"])) {',
-              1,
-          )
-
-          anchor = '  if (includesAny(text, ["лазер", "раскрой", "резк"])) {\n'
-          surface_branch = (
-              '  if (includesAny(text, ["лазерная очист", "дробест", "очистк поверхности", "подготовк поверхности"])) {\n'
-              '    return `${surfacePreparationSummary} Укажите материал, состояние поверхности, габариты изделия и следующую операцию — например, окраску, сварку или сборку.`;\n'
+          path = Path('data/assistant-knowledge.ts')
+          text = path.read_text()
+          generic = '  if (includesAny(text, ["лазер", "раскрой", "резк"])) {\n'
+          branch = (
+              '  if (includesAny(text, ["лазерная чист", "лазерная очист", "дробест", "очистк поверхности", "подготовк поверхности"])) {\n'
+              '    return `${productionEquipment.powderCoatingBooths} камеры порошковой окраски; доступны дробеструйная и лазерная очистка поверхности. Конкретный способ подготовки выбираем по материалу, состоянию изделия и следующей технологической операции. Укажите материал, состояние поверхности и габариты изделия.`;\n'
               '  }\n\n'
           )
-          if surface_branch not in text:
-              if text.count(anchor) != 1:
-                  raise SystemExit('Expected one laser-cutting fallback branch')
-              text = text.replace(anchor, surface_branch + anchor, 1)
-
-          old_coating = '    return "Работают три камеры порошковой окраски и камера дробеструйной очистки. Цвет, фактура и подготовка поверхности подбираются по материалу и условиям эксплуатации. Укажите габариты изделия, материал, количество и требуемый RAL.";'
-          if text.count(old_coating) != 1:
-              raise SystemExit('Expected one coating fallback')
-          text = text.replace(
-              old_coating,
-              '    return `Работают три камеры порошковой окраски. ${surfacePreparationSummary} Цвет, фактура и подготовка поверхности подбираются по материалу и условиям эксплуатации. Укажите габариты изделия, материал, количество и требуемый RAL.`;',
-              1,
-          )
-
-          assistant.write_text(text)
+          if branch not in text:
+              if text.count(generic) != 1:
+                  raise SystemExit('Expected one generic laser-cutting branch')
+              text = text.replace(generic, branch + generic, 1)
+          if text.index(branch) > text.index(generic):
+              raise SystemExit('Surface-preparation branch must precede generic laser cutting')
+          path.write_text(text)
           PY
 
-      - name: Commit synchronized facts
+      - name: Commit assistant routing fix
         run: |
           git config user.name "steelprodukt-site-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add 'app/(public)/production/page.tsx' 'data/assistant-knowledge.ts'
+          git add 'data/assistant-knowledge.ts'
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m "content: sync shot blasting and laser cleaning facts"
+          git commit -m "fix: route cleaning requests before laser cutting"
           git push origin HEAD:main
