@@ -29,6 +29,15 @@ jobs:
     steps:
       - name: Get website source
         uses: actions/checkout@v5
+        timeout-minutes: 5
+        with:
+          sparse-checkout: |
+            /*
+            !/.agents/
+            !/.codex/
+            !/.claude/
+            !/.claude-flow/
+          sparse-checkout-cone-mode: false
 
       - name: Verify deployable source
         run: |
