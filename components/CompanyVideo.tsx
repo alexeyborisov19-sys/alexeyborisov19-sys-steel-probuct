@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export function CompanyVideo() {
   const [isOpen, setIsOpen] = useState(false);
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const modalVideoRef = useRef<HTMLVideoElement | null>(null);
   const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -40,15 +41,41 @@ export function CompanyVideo() {
   useEffect(() => {
     if (!isOpen) return;
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      closeVideo();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeVideo();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const first = closeButtonRef.current;
+      const last = modalVideoRef.current;
+      if (!first || !last) return;
+
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+        return;
+      }
+      if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+        return;
+      }
+      if (active !== first && active !== last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      document.body.style.overflow = previousOverflow;
       window.cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", onKeyDown);
     };
@@ -89,7 +116,7 @@ export function CompanyVideo() {
     {isOpen ? <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Фильм о компании">
       <div className="relative w-full max-w-6xl border border-white/15 bg-[#0b0e10] p-2 shadow-[0_28px_100px_rgba(0,0,0,.85)]">
         <button ref={closeButtonRef} type="button" onClick={closeVideo} className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center border border-white/25 bg-black/65 text-xl text-white transition hover:border-steel-orange hover:text-steel-orange" aria-label="Закрыть видео">×</button>
-        <video className="aspect-video w-full bg-black" controls autoPlay playsInline preload="metadata" poster="/images/company-video-poster.png">
+        <video ref={modalVideoRef} tabIndex={0} className="aspect-video w-full bg-black" controls autoPlay playsInline preload="metadata" poster="/images/company-video-poster.png">
           <source src="/video/company-film-flat.mp4" type="video/mp4" />
           Ваш браузер не поддерживает видео.
         </video>
