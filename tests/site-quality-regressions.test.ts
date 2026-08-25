@@ -7,6 +7,8 @@ const publicLayoutPath = new URL("../app/(public)/layout.tsx", import.meta.url);
 const preloaderPath = new URL("../components/SitePreloader.tsx", import.meta.url);
 const productPagePath = new URL("../app/(public)/products/[slug]/page.tsx", import.meta.url);
 const productionPagePath = new URL("../app/(public)/production/page.tsx", import.meta.url);
+const projectsPagePath = new URL("../app/(public)/projects/page.tsx", import.meta.url);
+const solutionDetailPath = new URL("../components/SolutionDetailPage.tsx", import.meta.url);
 const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
 const deployWorkflowPath = new URL("../.github/workflows/deploy-beget.yml", import.meta.url);
@@ -52,6 +54,27 @@ test("production photo grids stay on responsive Next Image delivery", async () =
   assert.match(productionPage, /sizes="\(max-width: 639px\) 100vw, \(max-width: 1023px\) 50vw, 16\.7vw"/);
   assert.match(productionPage, /sizes="\(max-width: 1023px\) 100vw, 50vw"/);
   assert.match(productionPage, /sizes="\(max-width: 639px\) 100vw, \(max-width: 1023px\) 50vw, 33\.3vw"/);
+});
+
+test("project scenarios expose real destinations instead of mock controls", async () => {
+  const projectsPage = await readFile(projectsPagePath, "utf8");
+
+  assert.match(projectsPage, /import Image from "next\/image"/);
+  assert.doesNotMatch(projectsPage, /<img\b/);
+  assert.doesNotMatch(projectsPage, /<select\b|<input\b|Показать ещё|href="#project-detail"/);
+  assert.match(projectsPage, /\/industries\/zhilye-kompleksy/);
+  assert.match(projectsPage, /\/industries\/proizvodstvennye-predpriyatiya/);
+  assert.match(projectsPage, /\/industries\/cod-i-tehnologicheskaya-infrastruktura/);
+  assert.match(projectsPage, /\/industries\/agropromyshlennyj-kompleks/);
+  assert.match(projectsPage, /Демонстрационный сценарий/);
+});
+
+test("solution production photos use responsive Next Image delivery", async () => {
+  const solutionDetail = await readFile(solutionDetailPath, "utf8");
+
+  assert.match(solutionDetail, /import Image from "next\/image"/);
+  assert.doesNotMatch(solutionDetail, /<img\b/);
+  assert.match(solutionDetail, /sizes="\(max-width: 767px\) 100vw, 33\.3vw"/);
 });
 
 test("Codex agent runtimes remain outside application lint scope", async () => {
