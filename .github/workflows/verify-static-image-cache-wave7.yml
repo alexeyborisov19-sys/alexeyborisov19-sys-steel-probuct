@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
+        with:
+          sparse-checkout: |
+            /*
+            !/.agents/
+            !/.codex/
+            !/.claude/
+            !/.claude-flow/
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22.13.0'
