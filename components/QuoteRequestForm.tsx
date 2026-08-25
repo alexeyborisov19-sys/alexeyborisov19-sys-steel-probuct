@@ -50,7 +50,6 @@ export function QuoteRequestForm() {
     const area = params.get("area");
     const thickness = params.get("thickness");
     const quantity = Number(params.get("quantity") ?? "");
-    const estimate = Number(params.get("estimate") ?? "");
     const formatNumber = (value: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
 
     const summary = [
@@ -59,7 +58,6 @@ export function QuoteRequestForm() {
       "Размер кассеты: 1170×545 мм. Руст: 20×20 мм.",
       thickness ? `Выбранная толщина металла: ${thickness} мм.` : "",
       Number.isFinite(quantity) && quantity > 0 ? `Ориентировочное количество по калькулятору: ≈ ${formatNumber(quantity)} шт.` : "",
-      Number.isFinite(estimate) && estimate > 0 ? `Ориентировочная стоимость по калькулятору: ≈ ${formatNumber(estimate)} ₽.` : "",
       "Необходима проверка специалистом и итоговое коммерческое предложение.",
     ].filter(Boolean).join("\n");
 
