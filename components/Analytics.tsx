@@ -6,12 +6,7 @@ import { yandexCounterIds } from "@/lib/analytics";
 import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
 const counterIds = yandexCounterIds();
-
-// Webvisor remains intentionally disabled in code. The published cookies and
-// privacy policies state that enabling session recording requires a separate
-// data-scope assessment and a policy update first, so an environment variable
-// must not be able to switch it on silently.
-const webvisorEnabled = false;
+const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
 
 /**
  * Analytics remains completely inactive until the corresponding public IDs are
