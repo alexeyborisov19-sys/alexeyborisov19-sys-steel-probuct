@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
@@ -42,14 +43,25 @@ test("product pages explain pricing inputs without publishing invented prices", 
   assert.doesNotMatch(pricingFactors, /от \d+[\s ]*₽|\d+[\s ]*руб/i);
 });
 
-test("Codex agent runtimes remain outside lint and production deployment scope", async () => {
-  const [eslintConfig, deployWorkflow] = await Promise.all([
-    readFile(eslintPath, "utf8"),
-    readFile(deployWorkflowPath, "utf8"),
-  ]);
+test("Codex agent runtimes remain outside application lint scope", async () => {
+  const eslintConfig = await readFile(eslintPath, "utf8");
 
   for (const path of [".agents", ".codex", ".claude", ".claude-flow"]) {
     assert.ok(eslintConfig.includes(`\"${path}/**\"`), `${path} must remain excluded from ESLint`);
+  }
+});
+
+test("Codex agent runtimes remain outside production deployment when workflow sources are present", async (t) => {
+  // The production rsync intentionally excludes .github, so the server-side
+  // validation suite cannot read this file. In repository/CI checkouts where
+  // the workflow is present, keep validating the deployment boundary as well.
+  if (!existsSync(deployWorkflowPath)) {
+    t.skip("deployment workflow is intentionally absent from the production bundle");
+    return;
+  }
+
+  const deployWorkflow = await readFile(deployWorkflowPath, "utf8");
+  for (const path of [".agents", ".codex", ".claude", ".claude-flow"]) {
     assert.ok(deployWorkflow.includes(`--exclude='${path}/'`), `${path} must remain excluded from production rsync`);
   }
 
