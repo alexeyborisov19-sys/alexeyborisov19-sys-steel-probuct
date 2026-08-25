@@ -99,7 +99,7 @@ export function ProductionShowreel() {
           loop
           playsInline
           preload="none"
-          poster="/images/production-showreel-poster.png"
+          poster="/images/production-showreel-poster.webp"
           onCanPlay={syncAutomaticPlayback}
           onPlaying={() => {
             setIsPlaying(true);
