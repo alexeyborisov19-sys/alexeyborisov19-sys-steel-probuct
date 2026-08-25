@@ -18,6 +18,8 @@ const calculationInputs = [
 ] as const;
 
 export function ProductPricingFactors({ productTitle }: { productTitle: string }) {
+  const hasCassetteCalculator = /^Металлокассеты/i.test(productTitle);
+
   return <section className="border-y border-white/10 bg-[#0c1013] py-14 sm:py-20" aria-labelledby="product-price-factors">
     <div className="container">
       <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-start">
@@ -31,7 +33,10 @@ export function ProductPricingFactors({ productTitle }: { productTitle: string }
               {calculationInputs.map((item) => <li key={item}><span className="mr-2 text-steel-orange">•</span>{item}</li>)}
             </ul>
           </div>
-          <Link href="/contacts#contact-form" className="clip-corner mt-7 inline-block bg-steel-orange px-7 py-4 text-sm font-bold uppercase">Передать данные на расчёт&nbsp; →</Link>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link href="/contacts#contact-form" className="clip-corner inline-block bg-steel-orange px-7 py-4 text-center text-sm font-bold uppercase">Передать данные на расчёт&nbsp; →</Link>
+            {hasCassetteCalculator && <Link href="/calculator-metallokassety" className="inline-block border border-white/25 px-7 py-4 text-center text-sm font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Калькулятор металлокассет&nbsp; →</Link>}
+          </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {pricingFactors.map((factor, index) => <article key={factor.title} className="border border-white/12 bg-[#111519] p-5 sm:p-6">
