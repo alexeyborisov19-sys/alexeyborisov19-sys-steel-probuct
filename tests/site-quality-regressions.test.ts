@@ -87,8 +87,9 @@ test("confirmed production equipment stays centralized and synchronized", async 
   ]);
 
   assert.match(facts, /laserComplexes: 3/);
-  assert.match(facts, /pressBrakes: 3/);
+  assert.match(facts, /pressBrakes: 4/);
   assert.match(facts, /panelBenders: 1/);
+  assert.match(facts, /weldingStations: 4/);
   assert.match(facts, /powderCoatingBooths: 3/);
   assert.match(facts, /shotBlastingChambers: 1/);
   assert.match(facts, /laserCleaningSystems: 1/);
@@ -99,8 +100,8 @@ test("confirmed production equipment stays centralized and synchronized", async 
   assert.match(assistantKnowledge, /productionEquipment\.laserComplexes/);
   assert.match(assistantKnowledge, /productionEquipment\.pressBrakes/);
   assert.match(assistantKnowledge, /productionEquipment\.powderCoatingBooths/);
-  assert.doesNotMatch(productionPage, /4 листогибочных/i);
-  assert.doesNotMatch(assistantKnowledge, /4 листогибочных|четыре листогибочных/i);
+  assert.doesNotMatch(productionPage, /3 листогибочных|три листогибочных/i);
+  assert.doesNotMatch(assistantKnowledge, /3 листогибочных|три листогибочных/i);
 });
 
 test("shot-blasting and laser cleaning both remain confirmed capabilities", async () => {
