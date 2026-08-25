@@ -9,12 +9,7 @@ const cassette = {
   rustMm: 20,
 };
 
-const prices = [
-  { thickness: "0,5", value: 1627 },
-  { thickness: "0,7", value: 1764 },
-  { thickness: "1,0", value: 2074 },
-  { thickness: "1,2", value: 2300 },
-] as const;
+const thicknesses = ["0,5", "0,7", "1,0", "1,2"] as const;
 
 const moduleWidthMm = cassette.widthMm + cassette.rustMm;
 const moduleHeightMm = cassette.heightMm + cassette.rustMm;
@@ -30,21 +25,18 @@ const areaFormatter = new Intl.NumberFormat("ru-RU", {
 
 export function MetalCassetteCalculator() {
   const [areaInput, setAreaInput] = useState("100");
-  const [selectedThickness, setSelectedThickness] = useState<(typeof prices)[number]["thickness"]>("0,5");
+  const [selectedThickness, setSelectedThickness] = useState<(typeof thicknesses)[number]>("0,5");
 
   const result = useMemo(() => {
     const parsedArea = Number(areaInput.trim().replace(/\s+/g, "").replace(",", "."));
     const area = Number.isFinite(parsedArea) && parsedArea > 0 ? parsedArea : 0;
-    const price = prices.find((item) => item.thickness === selectedThickness)?.value ?? prices[0].value;
     const quantity = area > 0 ? Math.ceil(area / moduleArea) : 0;
 
     return {
       area,
-      price,
       quantity,
-      total: area * price,
     };
-  }, [areaInput, selectedThickness]);
+  }, [areaInput]);
 
   const specialistHref = result.area > 0
     ? {
@@ -54,7 +46,6 @@ export function MetalCassetteCalculator() {
           area: String(result.area),
           thickness: selectedThickness,
           quantity: String(result.quantity),
-          estimate: String(result.total),
         },
         hash: "contact-form",
       }
@@ -70,7 +61,7 @@ export function MetalCassetteCalculator() {
             Калькулятор металлокассет
           </h2>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/62">
-            Укажите площадь фасада и толщину металла. Калькулятор определит ориентировочное количество кассет и стоимость изготовления по базовой цене.
+            Укажите площадь фасада и предполагаемую толщину металла. Калькулятор определит ориентировочное количество кассет, а исходные данные можно сразу передать специалисту для коммерческого расчёта.
           </p>
 
           <div className="mt-7 border border-white/12 bg-[#0c1013] p-4 sm:p-5">
@@ -99,27 +90,27 @@ export function MetalCassetteCalculator() {
 
           <fieldset className="mt-6 min-w-0">
             <legend className="text-[11px] font-bold uppercase tracking-[.12em] text-white/60">
-              Толщина металла
+              Предполагаемая толщина металла
             </legend>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {prices.map((item) => {
-                const isSelected = selectedThickness === item.thickness;
+              {thicknesses.map((thickness) => {
+                const isSelected = selectedThickness === thickness;
 
                 return (
                   <button
-                    key={item.thickness}
+                    key={thickness}
                     type="button"
                     aria-pressed={isSelected}
-                    onClick={() => setSelectedThickness(item.thickness)}
+                    onClick={() => setSelectedThickness(thickness)}
                     className={`min-w-0 border px-3 py-3 text-left transition ${
                       isSelected
                         ? "border-steel-orange bg-steel-orange text-white"
                         : "border-white/15 bg-[#0c1013] text-white hover:border-steel-orange/70"
                     }`}
                   >
-                    <span className="block text-lg font-semibold">{item.thickness} мм</span>
+                    <span className="block text-lg font-semibold">{thickness} мм</span>
                     <span className={`mt-1 block text-[10px] font-bold uppercase tracking-[.08em] ${isSelected ? "text-white/75" : "text-white/40"}`}>
-                      ≈ {numberFormatter.format(item.value)} ₽ / м²
+                      Передадим в заявку
                     </span>
                   </button>
                 );
@@ -147,55 +138,53 @@ export function MetalCassetteCalculator() {
           <div className="flex items-center justify-between border-b border-white/12 pb-5">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[.14em] text-steel-orange">Результат</p>
-              <p className="mt-1 text-xs text-white/45">Ориентировочный расчёт</p>
+              <p className="mt-1 text-xs text-white/45">Ориентировочное количество</p>
             </div>
             <span className="flex h-12 w-12 items-center justify-center border border-steel-orange/50 text-2xl text-steel-orange">Σ</span>
           </div>
 
           <div className="mt-7">
             <p className="text-[10px] font-bold uppercase tracking-[.12em] text-white/45">
-              Ориентировочная стоимость
+              Металлокассеты
             </p>
             <p aria-live="polite" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              {result.total > 0 ? `≈ ${numberFormatter.format(result.total)} ₽` : "—"}
+              {result.quantity > 0 ? `≈ ${numberFormatter.format(result.quantity)} шт.` : "—"}
             </p>
             <p className="mt-3 text-xs leading-5 text-white/45">
-              Предварительная оценка. Точную стоимость рассчитает специалист после проверки исходных данных.
+              Количество рассчитано по модулю 1190 × 565 мм. Точная раскладка определяется по геометрии фасада, проёмам, углам и рабочей документации.
             </p>
           </div>
 
           <dl className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             <div className="bg-[#0d1114] p-4">
-              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Ориентировочное количество</dt>
-              <dd className="mt-2 text-2xl font-semibold text-steel-orange">
-                {result.quantity > 0 ? `≈ ${numberFormatter.format(result.quantity)} шт.` : "—"}
-              </dd>
-            </div>
-            <div className="bg-[#0d1114] p-4">
               <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Площадь для оценки</dt>
-              <dd className="mt-2 text-2xl font-semibold">
+              <dd className="mt-2 text-2xl font-semibold text-steel-orange">
                 {result.area > 0 ? `${areaFormatter.format(result.area)} м²` : "—"}
               </dd>
             </div>
             <div className="bg-[#0d1114] p-4">
-              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Ориентир за м²</dt>
-              <dd className="mt-2 text-lg font-semibold">≈ {numberFormatter.format(result.price)} ₽</dd>
+              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Предполагаемая толщина</dt>
+              <dd className="mt-2 text-2xl font-semibold">{selectedThickness} мм</dd>
             </div>
             <div className="bg-[#0d1114] p-4">
-              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Выбранная толщина</dt>
-              <dd className="mt-2 text-lg font-semibold">{selectedThickness} мм</dd>
+              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Расчётный модуль</dt>
+              <dd className="mt-2 text-lg font-semibold">1190 × 565 мм</dd>
+            </div>
+            <div className="bg-[#0d1114] p-4">
+              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Коммерческая стоимость</dt>
+              <dd className="mt-2 text-lg font-semibold">После проверки проекта</dd>
             </div>
           </dl>
 
           <p className="mt-5 text-[11px] leading-5 text-white/38">
-            Расчёт носит информационный характер и не является публичной офертой. В стоимость не включены подсистема, крепёж, доборные элементы и доставка. Итоговая цена зависит от раскладки, проёмов, углов, покрытия и цвета по RAL.
+            Расчёт количества носит предварительный характер. Коммерческая стоимость формируется после проверки раскладки, проёмов, углов, материала, покрытия, доборных элементов и объёма партии.
           </p>
 
           <Link
             href={specialistHref}
             className="clip-corner mt-7 inline-flex max-w-full justify-center break-words bg-steel-orange px-7 py-4 text-center text-sm font-bold uppercase leading-snug transition hover:bg-orange-600"
           >
-            Передать специалисту для точного расчёта&nbsp; →
+            Передать специалисту для расчёта&nbsp; →
           </Link>
           <p className="mt-3 text-center text-[11px] leading-5 text-white/45">
             На следующем шаге можно прикрепить PDF, DXF, DWG, STEP, изображения и архивы.
