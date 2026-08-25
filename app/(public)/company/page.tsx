@@ -24,7 +24,9 @@ const metrics = [
   ["2000+", "м² производственных площадей"],
   ["70+", "опытных специалистов"],
   [`${productionEquipment.laserComplexes}`, "лазерных комплекса"],
-  [`${productionEquipment.pressBrakes} + ${productionEquipment.panelBenders}`, "листогиба + панельгиб"],
+  [`${productionEquipment.pressBrakes}`, "листогибочных комплекса"],
+  [`${productionEquipment.weldingStations}`, "сварочных поста"],
+  [`${productionEquipment.powderCoatingBooths}`, "камеры порошковой окраски"],
 ];
 
 const solutions = [
@@ -96,7 +98,7 @@ export default function CompanyPage() {
           {[
             ["01", "Разрабатываем", "От КД и опытного образца до готовности к серийному изготовлению."],
             ["02", "Производим", "Работаем по чертежам заказчика или разрабатываем решение с нуля."],
-            ["03", "Поставляем", "Не передаём критичные операции подрядчикам и контролируем результат до отгрузки."],
+            ["03", "Поставляем", "Основные операции производственного маршрута выполняем на собственной площадке и контролируем результат до комплектации и отгрузки."],
           ].map(([number, title, description]) => <article key={number} className="border-white/12 px-0 py-5 sm:border-r sm:px-6 sm:first:pl-0 sm:last:border-r-0 sm:last:pr-0">
             <span className="text-2xl font-bold text-steel-orange">{number}</span>
             <h3 className="mt-4 text-sm font-semibold uppercase tracking-[.08em]">{title}</h3>
@@ -107,7 +109,7 @@ export default function CompanyPage() {
     </section>
 
     <section className="border-y border-white/10 bg-[#0c1013] py-8">
-      <div className="container grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="container grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
         {metrics.map(([number, label]) => <article key={label} className="border-l border-white/10 px-5 py-2">
           <strong className="text-3xl text-steel-orange sm:text-4xl">{number}</strong>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-[.1em] text-white/58">{label}</p>

@@ -7,6 +7,7 @@ import { JsonLd } from "./JsonLd";
 import { PageLayout } from "./PageLayout";
 import { SolutionDiagram } from "./SolutionDiagram";
 import { SolutionItemVisual } from "./SolutionItemVisual";
+import { ManufacturingProofSection } from "./ManufacturingProofSection";
 import { faqSchema, serviceSchema } from "@/lib/schema";
 
 export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
@@ -33,6 +34,8 @@ export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
         )}
       </div>
     </section>
+
+    <ManufacturingProofSection />
 
     <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
       <div className="container">

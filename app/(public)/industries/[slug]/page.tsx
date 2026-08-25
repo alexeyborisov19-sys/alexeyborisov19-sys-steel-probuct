@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
+import { ManufacturingProofSection } from "@/components/ManufacturingProofSection";
 import { industrySeoBySlug } from "@/data/industry-seo";
 import {
   getIndustrySolutionBySlug,
@@ -167,6 +168,7 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
             </div>
           </div>
         </section>
+        <ManufacturingProofSection />
         {seo && <FaqSection items={seo.faq} title={`Вопросы: ${industry.title.toLowerCase()}`} />}
       </PageLayout>
     </>

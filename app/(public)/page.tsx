@@ -56,12 +56,12 @@ const benefits = [
   ["Материал заказчика", "Принимаем давальческое сырьё после входного контроля и подтверждения его пригодности"],
 ];
 const projects = [
-  "Жилые комплексы",
-  "Бизнес-центры",
-  "Торговые объекты",
-  "Промышленные предприятия",
-  "Инженерная инфраструктура",
-];
+  { title: "Жилые комплексы", href: "/industries/zhilye-kompleksy", image: "/images/industries/residential.jpg" },
+  { title: "Бизнес-центры", href: "/industries/biznes-centry", image: "/images/industries/business-center.jpg" },
+  { title: "Торговые центры", href: "/industries/torgovye-centry", image: "/images/industries/shopping-center.jpg" },
+  { title: "Производственные предприятия", href: "/industries/proizvodstvennye-predpriyatiya", image: "/images/industries/production.jpg" },
+  { title: "Инженерная инфраструктура", href: "/industries/inzhenernaya-infrastruktura", image: "/images/industries/infrastructure.jpg" },
+] as const;
 const solutionCardImages: Record<string, { src: string; position?: string }> = {
   "Архитектурные решения": { src: "/images/industry/cards/architecture.webp" },
   "Решения для кондиционирования": {
@@ -195,23 +195,23 @@ export default function Home() {
             <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {projects.map((project, index) => (
                 <Link
-                  href="/projects"
-                  key={project}
+                  href={project.href}
+                  key={project.title}
                   className="overflow-hidden border border-white/10 bg-[#111519] transition hover:border-steel-orange"
                 >
                   <div className="relative aspect-video overflow-hidden bg-[#192026]">
                     <Image
-                      src={index % 2 ? "/images/web/hero-main.webp" : "/images/web/project-residential.jpg"}
+                      src={project.image}
                       fill
-                      alt={`${project} — объект с металлоизделиями «Сталь Продукт»`}
+                      alt={`${project.title} — типовой сценарий применения металлоизделий`}
                       sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 20vw"
                       style={{ objectPosition: `${15 + index * 20}% 42%` }}
                       className="object-cover brightness-[1.07] contrast-[1.01] saturate-[1.02]"
                     />
                   </div>
                   <div className="p-4">
-                    <h3 className="text-xs font-bold">{project}</h3>
-                    <p className="mt-1 text-[10px] text-white/50">Типовой состав и исходные данные</p>
+                    <h3 className="text-xs font-bold">{project.title}</h3>
+                    <p className="mt-1 text-[10px] text-white/50">Типовой состав решения и исходные данные</p>
                     <span className="mt-4 block text-xs text-steel-orange">
                       →
                     </span>

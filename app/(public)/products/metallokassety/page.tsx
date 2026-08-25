@@ -20,7 +20,7 @@ export const metadata: Metadata = createPageMetadata({
 const faqItems = [
   { question: "Чем отличаются металлокассеты открытого и скрытого крепления?", answer: "У открытого исполнения точки фиксации доступны на боковых полках, у скрытого они располагаются внутри замкового узла. Выбор зависит от архитектуры, подсистемы, требований к замене и бюджета проекта." },
   { question: "Можно изготовить кассеты нестандартного размера и цвета?", answer: "Да. Размер, глубина, полки, перфорация, толщина металла и цвет по RAL согласуются по фасадной раскладке и узлам объекта." },
-  { question: "Что нужно, чтобы рассчитать стоимость фасадных кассет?", answer: "Передайте площадь или раскладку, тип кассеты, материал, толщину, цвет, количество проёмов и доборных элементов. Калькулятор даёт ориентир, точное предложение готовится после проверки документации." },
+  { question: "Что нужно, чтобы рассчитать стоимость фасадных кассет?", answer: "Передайте площадь или раскладку, тип кассеты, материал, толщину, цвет, количество проёмов и доборных элементов. Калькулятор показывает ориентировочное количество кассет для заданной площади; точное коммерческое предложение готовится после проверки раскладки и документации." },
   { question: "Поставляете металлокассеты в Москву и по России?", answer: "Да. Производство находится в Смоленске; упаковку и логистику согласуем для Москвы, Московской области, ЦФО и других регионов России." },
 ];
 
@@ -66,7 +66,7 @@ export default function MetalCassetteCollectionPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="clip-corner bg-steel-orange px-5 py-3 text-xs font-bold uppercase">Скачать каталог PDF&nbsp; ↗</a>
               <Link href="/contacts#contact-form" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Получить расчёт&nbsp; →</Link>
-              <Link href="/calculator-metallokassety" className="border border-steel-orange/50 px-5 py-3 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">Калькулятор стоимости&nbsp; →</Link>
+              <Link href="/calculator-metallokassety" className="border border-steel-orange/50 px-5 py-3 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">Калькулятор металлокассет&nbsp; →</Link>
             </div>
           </div>
           <div>
