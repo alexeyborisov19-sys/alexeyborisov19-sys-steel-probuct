@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.agents/**'
+      - '.codex/**'
+      - '.claude/**'
+      - '.claude-flow/**'
+      - '.mcp.json'
+      - 'AGENTS.md'
+      - '.github/workflows/install-*.yml'
   workflow_dispatch:
 
 permissions:
@@ -50,6 +58,12 @@ jobs:
           rsync -az --delete-delay \
             --exclude='.git/' \
             --exclude='.github/' \
+            --exclude='.agents/' \
+            --exclude='.codex/' \
+            --exclude='.claude/' \
+            --exclude='.claude-flow/' \
+            --exclude='.mcp.json' \
+            --exclude='AGENTS.md' \
             --exclude='.data/' \
             --exclude='node_modules/' \
             --exclude='.next/' \
