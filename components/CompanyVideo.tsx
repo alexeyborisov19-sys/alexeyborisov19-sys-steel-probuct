@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export function CompanyVideo() {
   const [isOpen, setIsOpen] = useState(false);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -11,6 +12,30 @@ export function CompanyVideo() {
     setIsOpen(false);
     window.requestAnimationFrame(() => lastTriggerRef.current?.focus());
   }, []);
+
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || typeof window.matchMedia !== "function") return;
+
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPreviewPlayback = () => {
+      if (isOpen || document.visibilityState !== "visible" || motionQuery.matches) {
+        video.pause();
+        return;
+      }
+
+      video.muted = true;
+      void video.play().catch(() => undefined);
+    };
+
+    syncPreviewPlayback();
+    document.addEventListener("visibilitychange", syncPreviewPlayback);
+    motionQuery.addEventListener("change", syncPreviewPlayback);
+    return () => {
+      document.removeEventListener("visibilitychange", syncPreviewPlayback);
+      motionQuery.removeEventListener("change", syncPreviewPlayback);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -48,7 +73,7 @@ export function CompanyVideo() {
         </div>
 
         <button type="button" onClick={(event) => openVideo(event.currentTarget)} className="production-video-frame group text-left" aria-label="Смотреть фильм о компании">
-          <video className="h-full w-full object-cover" muted loop autoPlay playsInline preload="metadata" poster="/images/company-video-poster.png">
+          <video ref={previewVideoRef} className="h-full w-full object-cover" muted loop playsInline preload="metadata" poster="/images/company-video-poster.png">
             <source src="/video/company-film-flat.mp4" type="video/mp4" />
           </video>
           <span className="absolute inset-0 bg-black/10 transition group-hover:bg-black/0" />
