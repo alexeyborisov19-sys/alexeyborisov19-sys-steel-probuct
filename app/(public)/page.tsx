@@ -31,7 +31,7 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 const cycle = [
-  ["Проектирование", "design.jpg"],
+  ["Инженерно-конструкторская подготовка", "design.jpg"],
   ["Раскрой металла", "laser-cutting.jpg"],
   ["Гибка", "bending.jpg"],
   ["Сварка и сборка", "welding.jpg"],
@@ -76,7 +76,7 @@ const solutionCardImages: Record<string, { src: string; position?: string }> = {
 const homeFaq = [
   { question: "Что производит компания «Сталь Продукт»?", answer: "Проектируем и изготавливаем фасадные элементы, металлокассеты, корпуса, шкафы, кожухи, рамы, кронштейны и нестандартные изделия из листового металла для строительства и промышленности." },
   { question: "Можно заказать металлоизделие по своему чертежу?", answer: "Да. Принимаем КД, PDF, DXF, DWG, STEP, 3D-модели, эскизы и технические задания. Перед запуском проверяем технологичность конструкции и состав исходных данных." },
-  { question: "Выполняете полный цикл производства?", answer: "Да. В единый маршрут могут входить инженерная подготовка, лазерный раскрой, гибка на ЧПУ, сварка и сборка, порошковая окраска, контроль, упаковка и отгрузка." },
+  { question: "Выполняете полный цикл производства?", answer: `Да. В единый маршрут могут входить инженерно-конструкторская подготовка, ${productionEquipment.laserComplexes} лазерных комплекса, ${productionEquipment.pressBrakes} листогибочных комплекса и ${productionEquipment.panelBenders} панельгиб, слесарно-доводочные операции, ${productionEquipment.weldingStations} сварочных поста, сборочное производство, дробеструйная и лазерная очистка, ${productionEquipment.powderCoatingBooths} камеры порошковой окраски, контроль качества, комплектация, упаковка и отгрузка.` },
   { question: "Какие возможности лазерной резки чёрной стали?", answer: `Рабочий диапазон по толщине — ${laserCuttingCapabilities.thicknessRange}, рабочее поле стола — ${laserCuttingCapabilities.tableWorkingArea}. Возможность изготовления конкретной детали подтверждаем по марке стали, геометрии и требованиям к кромке.` },
   { question: "Какой средний срок изготовления?", answer: productionLeadTimeSummary },
   { question: "Можно работать с металлом заказчика?", answer: customerMaterialSummary },
@@ -222,7 +222,7 @@ export default function Home() {
           </div>
         </section>
         <section className="bg-[#17191a] py-9">
-          <div className="container grid gap-7 lg:grid-cols-[1.35fr_repeat(5,1fr)] lg:items-center">
+          <div className="container grid gap-7 lg:grid-cols-[1.35fr_repeat(6,1fr)] lg:items-center">
             <div>
               <h2 className="text-2xl font-semibold uppercase leading-tight">
                 Готовы обсудить
@@ -245,7 +245,8 @@ export default function Home() {
               ["70+", "опытных специалистов"],
               [`${productionEquipment.laserComplexes}`, "лазерных комплекса"],
               [`${productionEquipment.pressBrakes}`, "листогибочных комплекса"],
-              ["Система", "контроля качества"],
+              [`${productionEquipment.weldingStations}`, "сварочных поста"],
+              [`${productionEquipment.powderCoatingBooths}`, "камеры порошковой окраски"],
             ].map(([value, label]) => (
               <div key={label} className="border-l border-white/10 pl-5">
                 <b className="text-3xl text-steel-orange">{value}</b>
