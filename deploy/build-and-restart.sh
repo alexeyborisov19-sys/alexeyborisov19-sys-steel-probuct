@@ -6,6 +6,8 @@ AUDIT_PORT="${SEO_AUDIT_PORT:-3011}"
 AUDIT_LOG="$(mktemp /tmp/steelprodukt-seo-audit.XXXXXX.log)"
 AUDIT_PID=""
 DEPLOY_LOCK="${STEELPRODUKT_DEPLOY_LOCK:-/tmp/steelprodukt-production-deploy.lock}"
+CANDIDATE_DIST=".next-candidate"
+PREVIOUS_DIST=".next-previous"
 
 # GitHub Actions cancels superseded workflow runs, but an SSH child can outlive
 # the runner cancellation briefly. Serialize work on the Beget host as well so
@@ -51,12 +53,21 @@ if [ "$RUNNING_INSTANCES" -gt 0 ] && [ "$RUNNING_INSTANCES" != "$APP_INSTANCES" 
   pm2 scale "$APP_NAME" "$APP_INSTANCES"
 fi
 
-npm run build
+# Never run next build against the directory used by the live process. Next.js
+# recreates build manifests during compilation; rebuilding .next in place caused
+# intermittent MODULE_NOT_FOUND/ENOENT responses while users were browsing.
+rm -rf "$CANDIDATE_DIST" "$PREVIOUS_DIST"
+NEXT_DIST_DIR="$CANDIDATE_DIST" npm run build
 # TypeScript/Next may recreate incremental compiler metadata during validation/build.
 # It is not a production runtime artifact, so do not leave it on the server.
 rm -f "$APP_PATH/tsconfig.tsbuildinfo"
 
-npm run start -- --hostname 127.0.0.1 --port "$AUDIT_PORT" >"$AUDIT_LOG" 2>&1 &
+test -f "$CANDIDATE_DIST/required-server-files.json"
+test -f "$CANDIDATE_DIST/server/middleware-manifest.json"
+
+# Start and audit the candidate on a private port while the current .next build
+# continues serving production traffic on port 3000.
+NEXT_DIST_DIR="$CANDIDATE_DIST" npm run start -- --hostname 127.0.0.1 --port "$AUDIT_PORT" >"$AUDIT_LOG" 2>&1 &
 AUDIT_PID="$!"
 
 audit_ready=false
@@ -82,13 +93,46 @@ cleanup_audit_server
 AUDIT_PID=""
 trap - EXIT
 
-# startOrReload keeps the count set above, so the cluster size needs no second pass.
-pm2 startOrReload ecosystem.config.cjs --env production --update-env
+wait_for_production() {
+  for _ in $(seq 1 40); do
+    if curl -fsS --max-time 2 "http://127.0.0.1:3000/robots.txt" >/dev/null; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
+# The candidate has passed build + startup + SEO audit. Only now stop the old
+# worker, swap build directories, and start the new worker. The interruption is
+# limited to the short process restart instead of the full Next.js build window.
+if [ "$RUNNING_INSTANCES" -gt 0 ]; then
+  pm2 delete "$APP_NAME" || true
+fi
+if [ -d .next ]; then
+  mv .next "$PREVIOUS_DIST"
+fi
+mv "$CANDIDATE_DIST" .next
+
+if pm2 start ecosystem.config.cjs --env production --update-env && wait_for_production; then
+  rm -rf "$PREVIOUS_DIST"
+else
+  echo "Candidate failed after promotion; rolling back the previous build."
+  pm2 delete "$APP_NAME" || true
+  rm -rf .next
+  if [ -d "$PREVIOUS_DIST" ]; then
+    mv "$PREVIOUS_DIST" .next
+    pm2 start ecosystem.config.cjs --env production --update-env || true
+    wait_for_production || true
+  fi
+  exit 1
+fi
+
 pm2 save
 
-# Tell Yandex the release is live. This runs last and on purpose is best-effort:
-# the site is already serving by now, so a refused or throttled notification is
-# worth reporting but must never turn a good deploy into a failed one.
+# Tell search engines the release is live. This runs last and on purpose is
+# best-effort: the site is already serving by now, so a refused or throttled
+# notification is worth reporting but must never turn a good deploy into a failed one.
 if node scripts/submit-indexnow.mjs; then
   echo "IndexNow: priority URLs submitted."
 else
