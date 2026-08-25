@@ -1,0 +1,113 @@
+name: Install safe Beget production cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-beget-production-cleanup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install explicit production cleanup
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          prepare = Path('deploy/prepare-production.sh')
+          prepare_text = prepare.read_text()
+          marker = '''test -f "$ENV_FILE" || {
+            echo "Production environment file is missing: $ENV_FILE"
+            exit 1
+          }
+          '''
+          cleanup = marker + '''
+          # Development-only agent/runtime artifacts from older deployment layouts must never
+          # remain inside the production application directory. Keep this list explicit:
+          # protected runtime data, environment files, node_modules and .next are not touched.
+          rm -rf -- \
+            "$APP_PATH/.agents" \
+            "$APP_PATH/.codex" \
+            "$APP_PATH/.claude" \
+            "$APP_PATH/.claude-flow"
+          rm -f -- \
+            "$APP_PATH/.mcp.json" \
+            "$APP_PATH/AGENTS.md" \
+            "$APP_PATH/tsconfig.tsbuildinfo"
+          '''
+          if 'Development-only agent/runtime artifacts from older deployment layouts' not in prepare_text:
+              if marker not in prepare_text:
+                  raise SystemExit('prepare-production.sh: insertion marker missing')
+              prepare.write_text(prepare_text.replace(marker, cleanup, 1))
+
+          build = Path('deploy/build-and-restart.sh')
+          build_text = build.read_text()
+          build_marker = 'npm run build\n'
+          build_cleanup = '''npm run build
+          # TypeScript/Next may recreate incremental compiler metadata during validation/build.
+          # It is not a production runtime artifact, so do not leave it on the server.
+          rm -f "$APP_PATH/tsconfig.tsbuildinfo"
+          '''
+          if 'TypeScript/Next may recreate incremental compiler metadata' not in build_text:
+              if build_marker not in build_text:
+                  raise SystemExit('build-and-restart.sh: build marker missing')
+              build.write_text(build_text.replace(build_marker, build_cleanup, 1))
+
+          test = Path('tests/deploy-serialization.test.ts')
+          test_text = test.read_text()
+          if 'production preparation removes only explicit development artifacts' not in test_text:
+              test_text = test_text.replace(
+                  'const buildScriptPath = new URL("../deploy/build-and-restart.sh", import.meta.url);',
+                  'const buildScriptPath = new URL("../deploy/build-and-restart.sh", import.meta.url);\nconst prepareScriptPath = new URL("../deploy/prepare-production.sh", import.meta.url);',
+                  1,
+              )
+              test_text += '''
+
+test("production preparation removes only explicit development artifacts", async () => {
+  const prepareScript = await readFile(prepareScriptPath, "utf8");
+
+  for (const artifact of [".agents", ".codex", ".claude", ".claude-flow", ".mcp.json", "AGENTS.md"]) {
+    assert.match(prepareScript, new RegExp(`\\$APP_PATH/${artifact.replaceAll(".", "\\\\.")}`));
+  }
+  assert.doesNotMatch(prepareScript, /rm\s+-rf[^\n]*\.data/);
+  assert.doesNotMatch(prepareScript, /rm\s+-rf[^\n]*\.env/);
+});
+
+test("production build removes generated TypeScript incremental metadata", async () => {
+  const buildScript = await readFile(buildScriptPath, "utf8");
+  assert.match(buildScript, /rm -f "\\$APP_PATH\/tsconfig\.tsbuildinfo"/);
+});
+'''
+              test.write_text(test_text)
+
+          # Static safety assertions before committing.
+          p = prepare.read_text()
+          b = build.read_text()
+          t = test.read_text()
+          for fragment in ['$APP_PATH/.agents', '$APP_PATH/.codex', '$APP_PATH/.claude-flow', '$APP_PATH/.mcp.json', '$APP_PATH/AGENTS.md']:
+              if fragment not in p:
+                  raise SystemExit(f'prepare-production.sh missing {fragment}')
+          if 'rm -f "$APP_PATH/tsconfig.tsbuildinfo"' not in b:
+              raise SystemExit('build-and-restart.sh missing tsbuildinfo cleanup')
+          if 'production preparation removes only explicit development artifacts' not in t:
+              raise SystemExit('cleanup regression test missing')
+          PY
+
+      - name: Commit cleanup policy
+        run: |
+          git config user.name "steelprodukt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add deploy/prepare-production.sh deploy/build-and-restart.sh tests/deploy-serialization.test.ts
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "ops: remove obsolete dev artifacts from production"
+          git push origin HEAD:main
