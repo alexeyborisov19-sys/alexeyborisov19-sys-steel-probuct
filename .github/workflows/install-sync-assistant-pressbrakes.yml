@@ -22,13 +22,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           path = Path('data/assistant-knowledge.ts')
           text = path.read_text()
-          old = 'return "На производстве работают три листогибочных комплекса и панельгиб. Для проверки гибки нужны материал, толщина, длина гиба, углы, геометрия полок и количество деталей.";'
-          new = 'return `На производстве работают ${productionEquipment.pressBrakes} листогибочных комплекса и панельгиб. Для проверки гибки нужны материал, толщина, длина гиба, углы, геометрия полок и количество деталей.`;'
-          if old not in text:
-              raise SystemExit('Expected hard-coded assistant bending fact not found')
-          path.write_text(text.replace(old, new, 1))
+          pattern = r'return "На производстве работают три листогибочных комплекса и панельгиб\.([^\"]*)";'
+          replacement = r'return `На производстве работают ${productionEquipment.pressBrakes} листогибочных комплекса и панельгиб.\1`;'
+          updated, count = re.subn(pattern, replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected one hard-coded assistant bending fact, found {count}')
+          path.write_text(updated)
           PY
 
       - name: Commit synced fact
