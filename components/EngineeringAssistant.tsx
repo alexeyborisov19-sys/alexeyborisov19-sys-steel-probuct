@@ -538,7 +538,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                     ) : null}
 
                     <p className="text-[10px] leading-5 text-white/48">
-                      Подтвердим получение материалов в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации.
+                      Получение материалов и срок подготовки расчёта подтвердим после проверки документации.
                     </p>
 
                     <button
