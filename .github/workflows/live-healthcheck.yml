@@ -13,6 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Probe public site from outside Beget
+        run: |
+          set -u
+          echo '=== EXTERNAL DNS ==='
+          getent ahosts www.steelprodukt.ru || true
+          getent ahosts steelprodukt.ru || true
+          echo '=== EXTERNAL HTTPS ==='
+          curl -sSIL --max-time 12 -o /dev/null -w 'WWW_HTTP=%{http_code} CONNECT=%{time_connect} TLS=%{time_appconnect} TOTAL=%{time_total}\n' https://www.steelprodukt.ru/ || true
+          curl -sSIL --max-time 12 -o /dev/null -w 'APEX_HTTP=%{http_code} CONNECT=%{time_connect} TLS=%{time_appconnect} TOTAL=%{time_total}\n' https://steelprodukt.ru/ || true
+
       - name: Configure secure server access
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
