@@ -561,12 +561,12 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
         onClick={toggleAssistant}
         whileHover={{ scale: 1.025 }}
         whileTap={{ scale: 0.97 }}
-        className="assistant-launcher group flex h-[58px] items-center gap-3 border border-steel-orange/65 bg-[#111519] pl-3 pr-4 shadow-[0_14px_50px_rgba(0,0,0,.58),0_0_26px_rgba(234,91,12,.16)]"
+        className="assistant-launcher group flex h-[58px] items-center gap-0 border border-steel-orange/65 bg-[#111519] px-1.5 shadow-[0_14px_50px_rgba(0,0,0,.58),0_0_26px_rgba(234,91,12,.16)] sm:gap-3 sm:pl-3 sm:pr-4"
         aria-expanded={open}
         aria-label={open ? "Закрыть инженерного помощника" : "Открыть инженерного помощника"}
       >
         <EngineerBrandMark compact />
-        <span className="min-w-[142px] whitespace-nowrap text-left">
+        <span className="hidden min-w-[142px] whitespace-nowrap text-left sm:block">
           <b className="block text-[10px] leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
           <span className="mt-1 block text-[9px] leading-none text-white/45">Задать технический вопрос</span>
         </span>
