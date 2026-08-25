@@ -38,3 +38,10 @@ test("company positioning stays anchored to verified in-house operations", async
   assert.match(source, /productionEquipment\.weldingStations/);
   assert.match(source, /productionEquipment\.powderCoatingBooths/);
 });
+
+test("solutions index uses responsive Next Image instead of CSS background images", async () => {
+  const source = await read("app/(public)/solutions/page.tsx");
+  assert.match(source, /import Image from "next\/image"/);
+  assert.match(source, /sizes="\(max-width: 767px\) 100vw, \(max-width: 1279px\) 50vw, 33vw"/);
+  assert.doesNotMatch(source, /backgroundImage:/);
+});
