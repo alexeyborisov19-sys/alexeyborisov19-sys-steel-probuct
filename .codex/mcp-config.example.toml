@@ -1,0 +1,10 @@
+# Fallback reference for ~/.codex/config.toml.
+# The setup script registers these with `codex mcp add` automatically.
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@0.0.79"]
+
+[mcp_servers.ruflo]
+command = "npx"
+args = ["-y", "ruflo@3.38.19", "mcp", "start"]
