@@ -5,6 +5,16 @@ APP_PATH="${1:-/var/www/html}"
 AUDIT_PORT="${SEO_AUDIT_PORT:-3011}"
 AUDIT_LOG="$(mktemp /tmp/steelprodukt-seo-audit.XXXXXX.log)"
 AUDIT_PID=""
+DEPLOY_LOCK="${STEELPRODUKT_DEPLOY_LOCK:-/tmp/steelprodukt-production-deploy.lock}"
+
+# GitHub Actions cancels superseded workflow runs, but an SSH child can outlive
+# the runner cancellation briefly. Serialize work on the Beget host as well so
+# two npm installs/builds can never compete for the same limited memory.
+exec 9>"$DEPLOY_LOCK"
+if ! flock -w 900 9; then
+  echo "Timed out waiting for another Steel Produkt production deploy to finish."
+  exit 1
+fi
 
 cleanup_audit_server() {
   if [ -n "$AUDIT_PID" ] && kill -0 "$AUDIT_PID" 2>/dev/null; then
@@ -16,7 +26,10 @@ cleanup_audit_server() {
 trap cleanup_audit_server EXIT
 
 cd "$APP_PATH"
-npm ci
+# Audit/funding metadata is not needed during deployment and costs extra network,
+# CPU and memory on a constrained host. Dependency integrity is still enforced
+# by package-lock.json through npm ci.
+npm ci --no-audit --no-fund
 # Keep the currently serving .next build intact while source validation runs.
 # Only generated route types can become stale after App Router paths change;
 # they are safe to regenerate and are not required by the running application.
