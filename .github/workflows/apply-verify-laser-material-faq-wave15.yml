@@ -44,19 +44,13 @@ jobs:
             raise SystemExit('Laser description source fragment not found')
           text = text.replace(old_description, new_description, 1)
 
-          duplicate_block = '''      {
-        question: "Можно выполнить заказ из металла заказчика?",
-        answer: customerMaterialSummary,
-      },
-'''
+          duplicate_block = '      {\n        question: "Можно выполнить заказ из металла заказчика?",\n        answer: customerMaterialSummary,\n      },\n'
           if duplicate_block not in text:
             raise SystemExit('Duplicate customer-material FAQ block not found')
           text = text.replace(duplicate_block, '', 1)
 
-          old_answer = '''        answer:
-          "Такой вариант возможен, его условия обсуждаются отдельно. Заранее нужно согласовать марку, фактическую толщину, состояние поверхности и плоскостность листа, а также порядок учёта остатков и деловых обрезков. Состояние материала заказчика напрямую влияет на устойчивость режима, поэтому его проверяют до запуска.",'''
-          new_answer = '''        answer:
-          `${customerMaterialSummary} Для лазерного раскроя заранее согласуем фактическую толщину, состояние поверхности и плоскостность листа, а также порядок учёта остатков и деловых обрезков.`,'''
+          old_answer = '        answer:\n          "Такой вариант возможен, его условия обсуждаются отдельно. Заранее нужно согласовать марку, фактическую толщину, состояние поверхности и плоскостность листа, а также порядок учёта остатков и деловых обрезков. Состояние материала заказчика напрямую влияет на устойчивость режима, поэтому его проверяют до запуска.",'
+          new_answer = '        answer:\n          `${customerMaterialSummary} Для лазерного раскроя заранее согласуем фактическую толщину, состояние поверхности и плоскостность листа, а также порядок учёта остатков и деловых обрезков.`,'
           if old_answer not in text:
             raise SystemExit('Detailed customer-material FAQ answer not found')
           text = text.replace(old_answer, new_answer, 1)
@@ -65,11 +59,7 @@ jobs:
           test_path = Path('tests/semantic-seo.test.ts')
           test_text = test_path.read_text(encoding='utf-8')
           old_assertion = '  assert.ok(laserCutting.faq.some((item) => /металла заказчика/i.test(item.question) && /входного контроля/i.test(item.answer)));\n'
-          new_assertion = '''  const customerMaterialFaq = laserCutting.faq.filter((item) => /материалом заказчика/i.test(item.question));
-  assert.equal(customerMaterialFaq.length, 1, "laser page should keep one customer-material FAQ");
-  assert.match(customerMaterialFaq[0].answer, /входного контроля/);
-  assert.match(laserCutting.description, /Работаем с материалом заказчика/);
-'''
+          new_assertion = '  const customerMaterialFaq = laserCutting.faq.filter((item) => /материалом заказчика/i.test(item.question));\n  assert.equal(customerMaterialFaq.length, 1, "laser page should keep one customer-material FAQ");\n  assert.match(customerMaterialFaq[0].answer, /входного контроля/);\n  assert.match(laserCutting.description, /Работаем с материалом заказчика/);\n'
           if old_assertion not in test_text:
             raise SystemExit('Customer-material FAQ assertion not found')
           test_path.write_text(test_text.replace(old_assertion, new_assertion, 1), encoding='utf-8')
