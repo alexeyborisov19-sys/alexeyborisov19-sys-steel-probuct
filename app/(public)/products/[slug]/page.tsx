@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -71,7 +72,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <Link href="/contacts#contact-form" className="clip-corner mt-9 inline-block bg-steel-orange px-7 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
           </div>
           <figure className="overflow-hidden border border-white/12 bg-[#f4f4f1] p-4 sm:p-6">
-            <img src={product.technicalImage} alt={`Технический чертёж изделия «${product.title}»`} width={800} height={550} loading="eager" fetchPriority="high" decoding="async" className="h-auto w-full" />
+            <Image src={product.technicalImage} alt={`Технический чертёж изделия «${product.title}»`} width={800} height={550} priority sizes="(max-width: 1279px) 100vw, 48vw" className="h-auto w-full" />
             <figcaption className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 text-sm text-black/70 sm:flex-row sm:items-center sm:justify-between"><span>Технический чертёж из каталога «Сталь Продукт»</span><a href={product.sourceSheet} target="_blank" rel="noreferrer" className="font-bold text-[#d74d0b]">Открыть полный лист&nbsp; ↗</a></figcaption>
           </figure>
         </div>
@@ -95,7 +96,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
       </div>
     </section>}
-    {product.specs && <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20"><div className="container"><div className="max-w-2xl"><p className="eyebrow">Технические параметры</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Материалы и исполнение</h2></div><div className="mt-8 overflow-hidden border border-white/12"><dl>{product.specs.map((spec) => <div key={spec.label} className="grid border-b border-white/10 last:border-0 md:grid-cols-[.38fr_.62fr]"><dt className="bg-white/[.035] px-5 py-4 text-sm font-semibold">{spec.label}</dt><dd className="px-5 py-4 text-sm leading-relaxed text-white/68">{spec.value}</dd></div>)}</dl></div></div></section>}
+    {product.specs && <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20"><div className="container"><div className="max-w-2xl"><p className="eyebrow">Технические параметры</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Материалы и исполнение</h2><p className="mt-4 text-sm leading-6 text-white/58">Параметры на странице описывают доступные или типовые исполнения. Для конкретного заказа итоговые значения фиксируются по проектной документации, согласованному образцу и условиям эксплуатации до запуска в производство.</p></div><div className="mt-8 overflow-hidden border border-white/12"><dl>{product.specs.map((spec) => <div key={spec.label} className="grid border-b border-white/10 last:border-0 md:grid-cols-[.38fr_.62fr]"><dt className="bg-white/[.035] px-5 py-4 text-sm font-semibold">{spec.label}</dt><dd className="px-5 py-4 text-sm leading-relaxed text-white/68">{spec.value}</dd></div>)}</dl></div></div></section>}
     <FaqSection items={faqItems} title={`Вопросы о «${product.title}»`} />
     {relatedIndustries.length > 0 && <section className="bg-[#101112] py-14 sm:py-20">
       <div className="container">
