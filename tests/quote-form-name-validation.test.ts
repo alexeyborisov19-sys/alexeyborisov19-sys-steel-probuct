@@ -18,3 +18,10 @@ test("quote form validates required inputs before the network request and focuse
   assert.match(quoteForm, /formData\.get\("personalDataConsent"\) !== "yes"[\s\S]*focusFormField\(form, "personalDataConsent"\)/);
   assert.match(quoteForm, /field instanceof HTMLElement\) field\.focus\(\)/);
 });
+
+test("quote form announces errors assertively and success feedback politely", async () => {
+  const quoteForm = await readFile(quoteFormPath, "utf8");
+
+  assert.match(quoteForm, /role=\{feedback\.type === "error" \? "alert" : "status"\}/);
+  assert.doesNotMatch(quoteForm, /<p role="status" className=\{`border/);
+});
