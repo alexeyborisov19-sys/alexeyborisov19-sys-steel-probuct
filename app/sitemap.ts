@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { commercialProductLandings } from "@/data/commercial-product-landings";
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
 import { solutionSeoBySlug } from "@/data/solution-seo";
@@ -70,8 +71,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
     "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/calculator-metallokassety",
     "/products/metallokassety", "/products/dobornye-elementy",
-    "/products/korziny-dlya-konditsionerov", "/products/ventilyacionnye-reshetki",
-    "/products/metallicheskie-korpusa", "/products/zakladnye-detali",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];
   const paths = [
@@ -80,6 +79,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...solutionDetails.map((solution) => `/solutions/${solution.slug}`),
     ...getIndustrySolutions().map((industry) => `/industries/${industry.slug}`),
     ...products.map((product) => `/products/${product.slug}`),
+    ...commercialProductLandings.map((landing) => `/products/${landing.slug}`),
     ...articles.map((article) => `/articles/${article.slug}`),
   ];
 

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import sitemap from "@/app/sitemap";
 import { GET as getImageSitemap } from "@/app/sitemap-images.xml/route";
 import { commercialProductLandings } from "@/data/commercial-product-landings";
+import { absoluteUrl } from "@/lib/site";
 
 const read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -18,6 +20,19 @@ test("products hub includes every commercial landing in its structured catalog a
     assert.ok(
       source.includes(`/products/${landing.slug}`),
       `${landing.slug}: commercial landing must remain directly linked from /products`,
+    );
+  }
+});
+
+test("main sitemap derives every commercial product landing from the canonical registry", () => {
+  const urls = sitemap().map((entry) => entry.url);
+
+  for (const landing of commercialProductLandings) {
+    const url = absoluteUrl(`/products/${landing.slug}`);
+    assert.equal(
+      urls.filter((candidate) => candidate === url).length,
+      1,
+      `${landing.slug}: expected exactly one entry in sitemap.xml`,
     );
   }
 });
