@@ -1,0 +1,73 @@
+name: Install product proof positioning
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-product-proof-sections.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Apply proof-backed positioning
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          product = Path('app/(public)/products/[slug]/page.tsx')
+          text = product.read_text()
+          if 'ManufacturingProofSection' not in text:
+              text = text.replace(
+                  'import { ProductPricingFactors } from "@/components/ProductPricingFactors";\n',
+                  'import { ProductPricingFactors } from "@/components/ProductPricingFactors";\nimport { ManufacturingProofSection } from "@/components/ManufacturingProofSection";\n',
+                  1,
+              )
+              text = text.replace(
+                  '    </section>\n    {seo && <section',
+                  '    </section>\n    <ManufacturingProofSection />\n    {seo && <section',
+                  1,
+              )
+              product.write_text(text)
+
+          cassettes = Path('app/(public)/products/metallokassety/page.tsx')
+          text = cassettes.read_text()
+          if 'ManufacturingProofSection' not in text:
+              text = text.replace(
+                  'import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";\n',
+                  'import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";\nimport { ManufacturingProofSection } from "@/components/ManufacturingProofSection";\n',
+                  1,
+              )
+              text = text.replace(
+                  '    </section>\n    <FaqSection items={faqItems}',
+                  '    </section>\n    <ManufacturingProofSection />\n    <FaqSection items={faqItems}',
+                  1,
+              )
+              cassettes.write_text(text)
+
+          test = Path('tests/brand-positioning.test.ts')
+          test.write_text('''import assert from "node:assert/strict";\nimport { readFile } from "node:fs/promises";\nimport test from "node:test";\n\nconst proofPath = new URL("../components/ManufacturingProofSection.tsx", import.meta.url);\nconst productPath = new URL("../app/(public)/products/[slug]/page.tsx", import.meta.url);\nconst cassettePath = new URL("../app/(public)/products/metallokassety/page.tsx", import.meta.url);\nconst commercialPath = new URL("../components/CommercialProductLandingPage.tsx", import.meta.url);\n\ntest("product pages keep proof-backed manufacturing positioning", async () => {\n  const [proof, product, cassettes, commercial] = await Promise.all([\n    readFile(proofPath, "utf8"),\n    readFile(productPath, "utf8"),\n    readFile(cassettePath, "utf8"),\n    readFile(commercialPath, "utf8"),\n  ]);\n\n  assert.match(proof, /Производство полного цикла/);\n  assert.match(proof, /Инженерно-конструкторский центр/);\n  assert.match(proof, /Собственная производственная база/);\n  assert.match(proof, /От опытного образца до серии/);\n  assert.match(proof, /productionEquipment\\.pressBrakes/);\n  assert.match(proof, /productionEquipment\\.weldingStations/);\n  assert.match(product, /<ManufacturingProofSection \\/>/);\n  assert.match(cassettes, /<ManufacturingProofSection \\/>/);\n  assert.match(commercial, /Почему «Сталь Продукт»/);\n});\n''')
+
+          for path in [product, cassettes]:
+              data = path.read_text()
+              if 'ManufacturingProofSection' not in data:
+                  raise SystemExit(f'{path}: proof section was not installed')
+          PY
+
+      - name: Commit positioning
+        run: |
+          git config user.name "steelprodukt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/'(public)'/products/'[slug]'/page.tsx app/'(public)'/products/metallokassety/page.tsx tests/brand-positioning.test.ts
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "brand: extend proof-backed positioning across product catalog"
+          git push origin HEAD:main
