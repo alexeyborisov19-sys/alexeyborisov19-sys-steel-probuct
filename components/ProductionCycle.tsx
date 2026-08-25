@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -46,16 +47,14 @@ export function ProductionCycle({ stages }: ProductionCycleProps) {
           className="production-cycle-item relative aspect-video overflow-hidden bg-[#101112] p-4 transition-colors duration-300 hover:bg-[#171b1e] lg:aspect-auto lg:min-h-36"
           style={{ "--cycle-delay": `${index * 85}ms` } as React.CSSProperties}
         >
-          <img
+          <Image
             src={`/images/web/cycle-${image}`}
-            width={428}
-            height={240}
+            fill
+            sizes="(max-width: 1023px) 100vw, 100vw"
             // Each frame shows the stage it is labelled with, so it carries its own
             // meaning and belongs in image search rather than being skipped as decor.
             alt={`${title} — этап производства изделий из листового металла`}
-            loading="lazy"
-            decoding="async"
-            className="production-cycle-image absolute inset-0 h-full w-full object-cover object-center opacity-60"
+            className="production-cycle-image object-cover object-center opacity-60"
           />
           <div className="relative">
             <b className="text-xl text-steel-orange">{String(index + 1).padStart(2, "0")}</b>
