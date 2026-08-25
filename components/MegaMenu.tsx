@@ -32,6 +32,11 @@ export function MegaMenu({ onClose }: { onClose: () => void }) {
         id="solutions-mega-menu"
         aria-label="Раздел решений"
         onMouseLeave={onClose}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            onClose();
+          }
+        }}
         className="overflow-hidden rounded-md border border-white/15 bg-[#111417]/[.98] shadow-2xl shadow-black/70"
       >
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 p-5">
