@@ -20,6 +20,7 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const pathname = usePathname();
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const navClass = (active: boolean) => `header-nav-link ${active ? "header-nav-link-active" : ""}`;
 
   useEffect(() => {
@@ -27,12 +28,26 @@ export function Header() {
     setSolutionsOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!mobileOpen && !solutionsOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        setSolutionsOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen, solutionsOpen]);
+
   return <header className="absolute inset-x-0 top-0 z-40 border-b border-white/15 bg-black/92 backdrop-blur-md">
     {siteMode.isTest ? <div role="status" className="flex h-7 items-center justify-center bg-steel-orange px-4 text-center text-[10px] font-bold uppercase tracking-[.14em] text-black sm:text-[11px]">{siteMode.label}</div> : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
       <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
       <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch xl:flex">
-        <Link className={navClass(pathname === "/company")} href="/company"><span>Компания</span></Link>
+        <Link className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></Link>
         <button
           type="button"
           className={navClass(pathname.startsWith("/solutions") || solutionsOpen)}
@@ -42,7 +57,10 @@ export function Header() {
           aria-haspopup="true"
           aria-controls="solutions-mega-menu"
         ><span>Решения</span><b aria-hidden="true">{solutionsOpen ? "⌃" : "⌄"}</b></button>
-        {navigation.slice(1).map((item) => <Link key={item.href} className={navClass(pathname === item.href)} href={item.href}><span>{item.label}</span></Link>)}
+        {navigation.slice(1).map((item) => {
+          const active = isActive(item.href);
+          return <Link key={item.href} className={navClass(active)} href={item.href} aria-current={active ? "page" : undefined}><span>{item.label}</span></Link>;
+        })}
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 xl:flex">
         <a href="tel:+79107803723" className="header-phone hidden whitespace-nowrap font-semibold 2xl:block">+7 910 780 37 23</a>
@@ -59,8 +77,11 @@ export function Header() {
     </div>
     {solutionsOpen && <MegaMenu onClose={() => setSolutionsOpen(false)} />}
     {mobileOpen && <nav id="mobile-navigation" aria-label="Мобильная навигация" className="header-mobile-nav container flex flex-col border-t border-white/15 py-4 xl:hidden">
-      <Link href="/solutions">Решения</Link>
-      {navigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
+      <Link href="/solutions" aria-current={pathname.startsWith("/solutions") ? "page" : undefined}>Решения</Link>
+      {navigation.map((item) => {
+        const active = isActive(item.href);
+        return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
+      })}
       <a href="tel:+79107803723" className="text-steel-orange">+7 910 780 37 23</a>
       <Link href="/contacts#contact-form" className="mt-2 bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase">Получить расчёт</Link>
     </nav>}
