@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
@@ -77,15 +78,13 @@ export default function IndustriesPage() {
               return (
                 <article key={industry.title} className="overflow-hidden border border-white/15 bg-[#111519] shadow-[0_18px_45px_rgba(0,0,0,.16)]">
                   <div className="solution-media relative aspect-[16/6] overflow-hidden border-b border-white/10">
-                    <img
+                    <Image
                       src={`/images/industries/${visual}`}
                       alt={`${industry.title} — решения из листового металла`}
-                      width={1600}
-                      height={600}
-                      loading={index < 2 ? "eager" : "lazy"}
-                      fetchPriority={index < 2 ? "high" : "auto"}
-                      decoding="async"
-                      className="absolute inset-0 h-full w-full object-cover"
+                      fill
+                      priority={index < 2}
+                      sizes="(max-width: 1023px) 100vw, 50vw"
+                      className="object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-[#0c1013]/80 via-transparent to-transparent" />
                     <span className="absolute left-5 top-5 border border-steel-orange/70 px-2 py-1 text-[10px] font-bold tracking-[.14em] text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
