@@ -14,6 +14,8 @@ const cassetteCalculatorPath = new URL("../components/MetalCassetteCalculator.ts
 const quoteRequestFormPath = new URL("../components/QuoteRequestForm.tsx", import.meta.url);
 const solutionDetailPath = new URL("../components/SolutionDetailPage.tsx", import.meta.url);
 const solutionDetailsDataPath = new URL("../data/solution-details.ts", import.meta.url);
+const assistantKnowledgePath = new URL("../data/assistant-knowledge.ts", import.meta.url);
+const productionServicesPath = new URL("../data/production-services.ts", import.meta.url);
 const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", import.meta.url);
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
 const deployWorkflowPath = new URL("../.github/workflows/deploy-beget.yml", import.meta.url);
@@ -74,6 +76,27 @@ test("production photo grids stay on responsive Next Image delivery", async () =
   assert.match(productionPage, /sizes="\(max-width: 639px\) 100vw, \(max-width: 1023px\) 50vw, 16\.7vw"/);
   assert.match(productionPage, /sizes="\(max-width: 1023px\) 100vw, 50vw"/);
   assert.match(productionPage, /sizes="\(max-width: 639px\) 100vw, \(max-width: 1023px\) 50vw, 33\.3vw"/);
+});
+
+test("production page and assistant keep the confirmed bending equipment count", async () => {
+  const [productionPage, assistantKnowledge] = await Promise.all([
+    readFile(productionPagePath, "utf8"),
+    readFile(assistantKnowledgePath, "utf8"),
+  ]);
+
+  assert.doesNotMatch(productionPage, /4 листогибочных/i);
+  assert.doesNotMatch(assistantKnowledge, /4 листогибочных|четыре листогибочных/i);
+  assert.match(productionPage, /3 листогибочных комплекса \+ панельгиб/);
+  assert.match(assistantKnowledge, /3 листогибочных комплекса и панельгиб/);
+  assert.match(assistantKnowledge, /три листогибочных комплекса и панельгиб/);
+});
+
+test("sample reconstruction does not claim material grade identification without evidence", async () => {
+  const productionServices = await readFile(productionServicesPath, "utf8");
+
+  assert.doesNotMatch(productionServices, /определяем материал и толщину/i);
+  assert.match(productionServices, /фиксируем измеряемую толщину и конструкцию соединений/);
+  assert.match(productionServices, /Марку материала принимаем по документации заказчика или подтверждаем отдельной идентификацией до запуска/);
 });
 
 test("project scenarios expose real destinations instead of mock controls", async () => {
