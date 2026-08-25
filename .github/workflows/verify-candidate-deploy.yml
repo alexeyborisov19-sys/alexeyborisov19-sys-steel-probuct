@@ -1,0 +1,60 @@
+name: Verify candidate deployment
+
+on:
+  push:
+    branches:
+      - fix/deploy-candidate-build-wave13
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout website source
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            /*
+            !/.agents/
+            !/.codex/
+            !/.claude/
+            !/.claude-flow/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build candidate dist directory
+        run: NEXT_DIST_DIR=.next-ci-candidate npm run build
+      - name: Start candidate build
+        run: |
+          set -euo pipefail
+          NEXT_DIST_DIR=.next-ci-candidate npm run start -- --hostname 127.0.0.1 --port 3012 >/tmp/steelprodukt-candidate-ci.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=false
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3012/robots.txt >/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat /tmp/steelprodukt-candidate-ci.log
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          test -f .next-ci-candidate/required-server-files.json
+          test -f .next-ci-candidate/server/middleware-manifest.json
