@@ -13,6 +13,7 @@ import {
   laserCuttingCapabilities,
   productionLeadTimeSummary,
   productionOrderConditions,
+  productionEquipment,
 } from "@/data/manufacturing-facts";
 import { solutions } from "@/data/solutions";
 import { faqSchema, webPageSchema } from "@/lib/schema";
@@ -242,8 +243,8 @@ export default function Home() {
             {[
               ["2000+", "м² производственных площадей"],
               ["70+", "опытных специалистов"],
-              ["3", "лазерных комплекса"],
-              ["4", "листогибочных комплекса"],
+              [`${productionEquipment.laserComplexes}`, "лазерных комплекса"],
+              [`${productionEquipment.pressBrakes}`, "листогибочных комплекса"],
               ["Система", "контроля качества"],
             ].map(([value, label]) => (
               <div key={label} className="border-l border-white/10 pl-5">
