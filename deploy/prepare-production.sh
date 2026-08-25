@@ -29,6 +29,12 @@ test -f "$ENV_FILE" || {
   exit 1
 }
 
+# Development-only agent/runtime artifacts from older deployment layouts must never
+# remain inside the production application directory. Keep this list explicit:
+# protected runtime data, environment files, node_modules and .next are not touched.
+rm -rf --   "$APP_PATH/.agents"   "$APP_PATH/.codex"   "$APP_PATH/.claude"   "$APP_PATH/.claude-flow"
+rm -f --   "$APP_PATH/.mcp.json"   "$APP_PATH/AGENTS.md"   "$APP_PATH/tsconfig.tsbuildinfo"
+
 install -d -m 0700 -o root -g root "$BACKUP_ROOT" "$BACKUP_DIR"
 install -m 0600 -o root -g root "$ENV_FILE" "$BACKUP_DIR/env.production.before"
 

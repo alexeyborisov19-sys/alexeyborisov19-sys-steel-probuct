@@ -52,6 +52,9 @@ if [ "$RUNNING_INSTANCES" -gt 0 ] && [ "$RUNNING_INSTANCES" != "$APP_INSTANCES" 
 fi
 
 npm run build
+# TypeScript/Next may recreate incremental compiler metadata during validation/build.
+# It is not a production runtime artifact, so do not leave it on the server.
+rm -f "$APP_PATH/tsconfig.tsbuildinfo"
 
 npm run start -- --hostname 127.0.0.1 --port "$AUDIT_PORT" >"$AUDIT_LOG" 2>&1 &
 AUDIT_PID="$!"
