@@ -27,15 +27,6 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Wait for production deployment lock
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_USER: ${{ secrets.BEGET_USER }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-        run: |
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
-            "exec 9>/tmp/steelprodukt-production-deploy.lock; flock -w 900 9; echo 'Production deploy lock is free.'"
-
       - name: Dry-run production synchronization
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -68,6 +59,7 @@ jobs:
           else
             echo 'STALE_MANAGED_FILES_FOUND'
             printf '%s\n' "$stale"
+            exit 1
           fi
 
       - name: Check obsolete excluded development artifacts
@@ -80,14 +72,15 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
           set -euo pipefail
           found=0
-          for rel in .git .github .agents .codex .claude .claude-flow .mcp.json AGENTS.md; do
+          for rel in .git .github .agents .codex .claude .claude-flow .mcp.json AGENTS.md tsconfig.tsbuildinfo; do
             if [ -e "$APP_PATH/$rel" ]; then
               echo "OBSOLETE_DEV_ARTIFACT=$rel"
               found=1
             fi
           done
-          if [ "$found" -eq 0 ]; then
-            echo 'OBSOLETE_DEV_ARTIFACTS=0'
+          if [ "$found" -ne 0 ]; then
+            exit 1
           fi
-          # Do not inspect or print .env*, protected .data, node_modules or .next contents.
+          echo 'OBSOLETE_DEV_ARTIFACTS=0'
+          # Deliberately do not inspect or print .env*, protected .data, node_modules or .next contents.
           REMOTE
