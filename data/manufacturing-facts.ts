@@ -9,6 +9,7 @@ export const productionEquipment = {
   laserComplexes: 3,
   pressBrakes: 4,
   panelBenders: 1,
+  weldingStations: 4,
   powderCoatingBooths: 3,
   shotBlastingChambers: 1,
   laserCleaningSystems: 1,
@@ -24,11 +25,20 @@ export const laserCuttingTechnicalSummary =
   `Рабочее поле стола — ${laserCuttingCapabilities.tableWorkingArea}.`;
 
 export const bendingEquipmentSummary =
-  `${productionEquipment.pressBrakes} листогибочных комплекса и панельгиб.`;
+  `${productionEquipment.pressBrakes} листогибочных комплекса и ${productionEquipment.panelBenders} панельгиб.`;
+
+export const engineeringCenterSummary =
+  "Инженерно-конструкторский центр: разработка и проверка КД, технологическая подготовка, опытные образцы и оптимизация изделий под серийное производство.";
+
+export const fabricationAndAssemblySummary =
+  `${productionEquipment.weldingStations} сварочных поста, слесарно-доводочные операции и отдельное сборочное производство.`;
 
 export const surfacePreparationSummary =
   "На производстве есть дробеструйная камера и система лазерной очистки. " +
   "Конкретный способ очистки и подготовки поверхности выбираем по материалу, состоянию изделия и следующей технологической операции.";
+
+export const finishingAndDispatchSummary =
+  `${productionEquipment.powderCoatingBooths} камеры порошковой окраски, контроль качества, комплектация и упаковка перед отгрузкой.`;
 
 export const productionLeadTimeSummary =
   `Ориентировочный производственный срок — ${productionOrderConditions.typicalLeadTime} после согласования исходных данных. ` +
