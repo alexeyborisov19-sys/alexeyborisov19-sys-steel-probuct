@@ -25,8 +25,8 @@ const faqItems = [
 
 const series = [
   ["Стандарт", "Открытый крепёж", "Крепёж проходит через боковые полки и формирует техническую сетку. Подходит, когда важны понятный монтаж, сервис и быстрая локальная замена кассеты."],
-  ["Премиум", "Скрытый крепёж", "Замковая система на кляммерах прячет точки фиксации. Для гладкой монолитной плоскости без визуального шума и риска подтёков у крепежа."],
-  ["Рельеф", "3D-геометрия", "Z-образные, трапециевидные и волнообразные грани с глубиной от 15 до 80 мм создают объём, светотень и дополнительную жёсткость панели."],
+  ["Премиум", "Скрытый крепёж", "Замковая система на кляммерах скрывает точки фиксации и помогает получить более цельную фасадную плоскость. Исполнение и узлы крепления согласуются по проекту."],
+  ["Рельеф", "3D-геометрия", "Z-образные, трапециевидные и волнообразные грани создают объём и светотень. Глубина и профиль рельефа подбираются под архитектурную задачу и технологичность конкретной кассеты."],
   ["Ажур", "Перфорация", "Лазерная перфорация выполняется до гибки. Рисунок и процент пустотности подбираются под фасад, экран, подсветку или фирменную графику объекта."],
 ];
 
@@ -68,9 +68,12 @@ export default function MetalCassetteCollectionPage() {
               <Link href="/calculator-metallokassety" className="border border-steel-orange/50 px-5 py-3 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">Калькулятор стоимости&nbsp; →</Link>
             </div>
           </div>
-          <dl className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-            {metalCassetteSpecs.slice(0, 4).map((spec) => <div key={spec.label} className="bg-[#0d1012] p-4"><dt className="text-[10px] font-bold uppercase tracking-[.12em] text-steel-orange">{spec.label}</dt><dd className="mt-2 text-xs leading-relaxed text-white/70">{spec.value}</dd></div>)}
-          </dl>
+          <div>
+            <p className="mb-3 text-xs leading-5 text-white/50">Ниже указаны типовые или доступные исполнения. Итоговые параметры конкретного заказа фиксируются по проекту, согласованному образцу и условиям эксплуатации до запуска в производство.</p>
+            <dl className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
+              {metalCassetteSpecs.slice(0, 4).map((spec) => <div key={spec.label} className="bg-[#0d1012] p-4"><dt className="text-[10px] font-bold uppercase tracking-[.12em] text-steel-orange">{spec.label}</dt><dd className="mt-2 text-xs leading-relaxed text-white/70">{spec.value}</dd></div>)}
+            </dl>
+          </div>
         </div>
 
         <MetalCassetteCalculator />
