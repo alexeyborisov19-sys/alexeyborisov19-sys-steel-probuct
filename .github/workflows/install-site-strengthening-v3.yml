@@ -109,16 +109,15 @@ jobs:
           test = Path('tests/site-strengthening.test.ts')
           test.write_text('''import assert from "node:assert/strict";\nimport { readFile } from "node:fs/promises";\nimport test from "node:test";\n\nconst read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), "utf8");\n\ntest("solutions and industries expose proof-backed manufacturing positioning", async () => {\n  const [solution, industry] = await Promise.all([read("components/SolutionDetailPage.tsx"), read("app/(public)/industries/[slug]/page.tsx")]);\n  assert.match(solution, /ManufacturingProofSection/);\n  assert.match(industry, /ManufacturingProofSection/);\n});\n\ntest("metal cassette collection does not promise a price calculator", async () => {\n  const source = await read("app/(public)/products/metallokassety/page.tsx");\n  assert.doesNotMatch(source, /Калькулятор стоимости/);\n  assert.doesNotMatch(source, /Калькулятор даёт ориентир/);\n  assert.match(source, /ориентировочное количество кассет/);\n});\n\ntest("homepage scenarios use direct industry routes and honest image descriptions", async () => {\n  const source = await read("app/(public)/page.tsx");\n  for (const route of ["/industries/zhilye-kompleksy", "/industries/biznes-centry", "/industries/torgovye-centry", "/industries/proizvodstvennye-predpriyatiya", "/industries/inzhenernaya-infrastruktura"]) assert.ok(source.includes(route));\n  assert.doesNotMatch(source, /объект с металлоизделиями/);\n  assert.match(source, /типовой сценарий применения металлоизделий/);\n});\n\ntest("footer sends sector links directly to sector landing pages", async () => {\n  const source = await read("components/Footer.tsx");\n  assert.match(source, /industries\\/zhilye-kompleksy/);\n  assert.match(source, /industries\\/proizvodstvennye-predpriyatiya/);\n  assert.match(source, /industries\\/inzhenernaya-infrastruktura/);\n});\n\ntest("company positioning stays anchored to verified in-house operations", async () => {\n  const source = await read("app/(public)/company/page.tsx");\n  assert.doesNotMatch(source, /Не передаём критичные операции подрядчикам/);\n  assert.match(source, /Основные операции производственного маршрута выполняем на собственной площадке/);\n  assert.match(source, /productionEquipment\\.weldingStations/);\n  assert.match(source, /productionEquipment\\.powderCoatingBooths/);\n});\n''')
 
-          checks = {
-              solution: 'ManufacturingProofSection',
-              industry: 'ManufacturingProofSection',
-              cassettes: 'Калькулятор металлокассет',
-              home: '/industries/zhilye-kompleksy',
-              footer: '/industries/proizvodstvennye-predpriyatiya',
-              company: 'Основные операции производственного маршрута выполняем на собственной площадке',
-          }
-          for name, fragment in checks.items():
-              obj = locals()[name]
+          checks = [
+              (solution, 'ManufacturingProofSection'),
+              (industry, 'ManufacturingProofSection'),
+              (cassettes, 'Калькулятор металлокассет'),
+              (home, '/industries/zhilye-kompleksy'),
+              (footer, '/industries/proizvodstvennye-predpriyatiya'),
+              (company, 'Основные операции производственного маршрута выполняем на собственной площадке'),
+          ]
+          for obj, fragment in checks:
               if fragment not in obj.read_text():
                   raise SystemExit(f'{obj}: expected fragment missing: {fragment}')
           PY
