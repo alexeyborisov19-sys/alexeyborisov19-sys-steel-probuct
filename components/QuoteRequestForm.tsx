@@ -123,17 +123,14 @@ export function QuoteRequestForm() {
     }
     if (!phone && !email) {
       setFeedback({ type: "error", message: "Укажите телефон или электронную почту — достаточно одного способа связи." });
-      focusFormField(form, "phone");
       return;
     }
     if (email && !/^\S+@\S+\.\S+$/.test(email)) {
       setFeedback({ type: "error", message: "Проверьте адрес электронной почты." });
-      focusFormField(form, "email");
       return;
     }
     if (formData.get("personalDataConsent") !== "yes") {
       setFeedback({ type: "error", message: "Для отправки заявки необходимо согласие на обработку персональных данных." });
-      focusFormField(form, "personalDataConsent");
       return;
     }
     formData.append("consentTimestamp", new Date().toISOString());
