@@ -153,7 +153,7 @@ export function QuoteRequestForm() {
       trackLeadEvent("quote_request_success", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
       setFeedback({
         type: "success",
-        message: `${payload.message || "Заявка принята."}${payload.requestId ? ` Номер заявки: ${payload.requestId}.` : ""} Подтвердим получение материалов в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации.`,
+        message: `${payload.message || "Заявка принята."}${payload.requestId ? ` Номер заявки: ${payload.requestId}.` : ""} Материалы переданы на проверку. Срок подготовки расчёта сообщим после проверки документации.`,
       });
     } catch (error) {
       trackLeadEvent("quote_request_error", {
@@ -251,7 +251,7 @@ export function QuoteRequestForm() {
       </label>
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="max-w-xl">
-          <p className="text-xs font-semibold leading-relaxed text-white/70">Подтвердим получение материалов в течение рабочего дня.</p>
+          <p className="text-xs font-semibold leading-relaxed text-white/70">После отправки материалы поступят на инженерную и коммерческую проверку.</p>
           <p className="mt-1 text-[11px] leading-relaxed text-white/42">Срок подготовки расчёта сообщим после проверки документации. Поля со звёздочкой обязательны.</p>
         </div>
       <button disabled={isSending} type="submit" className="clip-corner shrink-0 bg-steel-orange px-8 py-4 text-xs font-bold uppercase transition hover:bg-orange-600 disabled:cursor-wait disabled:opacity-65">{isSending ? "Отправляем…" : "Получить расчёт →"}</button>
