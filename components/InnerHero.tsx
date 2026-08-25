@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { siteMode } from "@/data/site-mode";
 
 type InnerHeroProps = { eyebrow: string; title: string; titleAccent?: string; description: string; image?: string; imageAlt?: string; imageBrightness?: boolean };
 
 export function InnerHero({ eyebrow, title, titleAccent, description, image, imageAlt, imageBrightness = false }: InnerHeroProps) {
-  return <section className="relative isolate min-h-[620px] overflow-hidden pt-[88px]">
+  const spacing = siteMode.isTest ? "min-h-[648px] pt-[116px]" : "min-h-[620px] pt-[88px]";
+
+  return <section className={`relative isolate overflow-hidden ${spacing}`}>
     {/* A backdrop carries no meaning and stays hidden from assistive tech; a photo
         that actually depicts the subject gets described and can be found in image
         search. The caller decides which of the two it is passing. */}

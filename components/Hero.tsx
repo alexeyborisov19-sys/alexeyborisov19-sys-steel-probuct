@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { laserCuttingCapabilities } from "@/data/manufacturing-facts";
+import { siteMode } from "@/data/site-mode";
 
 export function Hero() {
-  return <section className="relative isolate min-h-[610px] overflow-hidden bg-steel-black pt-[72px]">
+  const spacing = siteMode.isTest ? "min-h-[638px] pt-[100px]" : "min-h-[610px] pt-[72px]";
+
+  return <section className={`relative isolate overflow-hidden bg-steel-black ${spacing}`}>
     <img src="/images/web/hero-main.webp" width={1280} height={720} alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
     <div className="hero-surface absolute inset-0" aria-hidden="true" />
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_50%,rgba(234,91,12,.23),transparent_31%)]" aria-hidden="true" />
