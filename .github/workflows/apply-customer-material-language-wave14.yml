@@ -11,11 +11,20 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 2
         with:
           ref: fix/customer-material-language-wave14
           fetch-depth: 1
+          sparse-checkout: |
+            /*
+            !/.agents/
+            !/.codex/
+            !/.claude/
+            !/.claude-flow/
+          sparse-checkout-cone-mode: false
       - name: Apply client-facing material language
         shell: bash
         run: |
