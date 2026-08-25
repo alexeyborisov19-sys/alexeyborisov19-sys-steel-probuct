@@ -1,4 +1,4 @@
-name: Optimize production page images
+name: Optimize solution page images
 
 on:
   push:
@@ -18,44 +18,37 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Convert production gallery images to Next Image
+      - name: Convert solution production images to Next Image
         run: |
           python3 - <<'PY'
           from base64 import b64decode
           from pathlib import Path
 
-          path = Path('app/(public)/production/page.tsx')
+          path = Path('components/SolutionDetailPage.tsx')
           text = path.read_text()
 
           if 'import Image from "next/image";' not in text:
               text = text.replace('import Link from "next/link";\n', 'import Image from "next/image";\nimport Link from "next/link";\n', 1)
 
-          encoded_pairs = [
-              ('ICAgICAgICAgICAgICAgICAgPGltZwogICAgICAgICAgICAgICAgICAgIHNyYz17aW1hZ2V9CiAgICAgICAgICAgICAgICAgICAgd2lkdGg9ezQyOH0KICAgICAgICAgICAgICAgICAgICBoZWlnaHQ9ezI0MH0KICAgICAgICAgICAgICAgICAgICBhbHQ9e2Ake3RpdGxlfSDQvdCwINC/0YDQvtC40LfQstC+0LTRgdGC0LLQtSDCq9Ch0YLQsNC70Ywg0J/RgNC+0LTRg9C60YLCu2B9CiAgICAgICAgICAgICAgICAgICAgbG9hZGluZz0ibGF6eSIKICAgICAgICAgICAgICAgICAgICBkZWNvZGluZz0iYXN5bmMiCiAgICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPSJoLWZ1bGwgdy1mdWxsIG9iamVjdC1jb3ZlciBicmlnaHRuZXNzLVsxLjA3XSBjb250cmFzdC1bMS4wMV0gc2F0dXJhdGUtWzEuMDJdIHRyYW5zaXRpb24gZHVyYXRpb24tNTAwIGdyb3VwLWhvdmVyOnNjYWxlLVsxLjAzNV0iCiAgICAgICAgICAgICAgICAgIC8+', 'ICAgICAgICAgICAgICAgICAgPEltYWdlCiAgICAgICAgICAgICAgICAgICAgc3JjPXtpbWFnZX0KICAgICAgICAgICAgICAgICAgICBmaWxsCiAgICAgICAgICAgICAgICAgICAgc2l6ZXM9IihtYXgtd2lkdGg6IDYzOXB4KSAxMDB2dywgKG1heC13aWR0aDogMTAyM3B4KSA1MHZ3LCAxNi43dnciCiAgICAgICAgICAgICAgICAgICAgYWx0PXtgJHt0aXRsZX0g0L3QsCDQv9GA0L7QuNC30LLQvtC00YHRgtCy0LUgwqvQodGC0LDQu9GMINCf0YDQvtC00YPQutGCwrtgfQogICAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT0ib2JqZWN0LWNvdmVyIGJyaWdodG5lc3MtWzEuMDddIGNvbnRyYXN0LVsxLjAxXSBzYXR1cmF0ZS1bMS4wMl0gdHJhbnNpdGlvbiBkdXJhdGlvbi01MDAgZ3JvdXAtaG92ZXI6c2NhbGUtWzEuMDM1XSIKICAgICAgICAgICAgICAgICAgLz4='),
-              ('ICAgICAgICAgICAgICAgIDxpbWcKICAgICAgICAgICAgICAgICAgc3JjPXtwaG90by5pbWFnZX0KICAgICAgICAgICAgICAgICAgd2lkdGg9ezE2MDB9CiAgICAgICAgICAgICAgICAgIGhlaWdodD17OTAwfQogICAgICAgICAgICAgICAgICBhbHQ9e2Ake3Bob3RvLnRpdGxlfSDigJQg0YDQtdCw0LvRjNC90L7QtSDQv9GA0L7QuNC30LLQvtC00YHRgtCy0L4gwqvQodGC0LDQu9GMINCf0YDQvtC00YPQutGCwrtgfQogICAgICAgICAgICAgICAgICBsb2FkaW5nPSJsYXp5IgogICAgICAgICAgICAgICAgICBkZWNvZGluZz0iYXN5bmMiCiAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT0iaC1mdWxsIHctZnVsbCBvYmplY3QtY292ZXIgYnJpZ2h0bmVzcy1bMS4wNF0gY29udHJhc3QtWzEuMDNdIHNhdHVyYXRlLVsuOThdIHRyYW5zaXRpb24gZHVyYXRpb24tNzAwIGdyb3VwLWhvdmVyOnNjYWxlLVsxLjAyNV0gZ3JvdXAtaG92ZXI6YnJpZ2h0bmVzcy1bMS4xXSIKICAgICAgICAgICAgICAgIC8+', 'ICAgICAgICAgICAgICAgIDxJbWFnZQogICAgICAgICAgICAgICAgICBzcmM9e3Bob3RvLmltYWdlfQogICAgICAgICAgICAgICAgICBmaWxsCiAgICAgICAgICAgICAgICAgIHNpemVzPSIobWF4LXdpZHRoOiAxMDIzcHgpIDEwMHZ3LCA1MHZ3IgogICAgICAgICAgICAgICAgICBhbHQ9e2Ake3Bob3RvLnRpdGxlfSDigJQg0YDQtdCw0LvRjNC90L7QtSDQv9GA0L7QuNC30LLQvtC00YHRgtCy0L4gwqvQodGC0LDQu9GMINCf0YDQvtC00YPQutGCwrtgfQogICAgICAgICAgICAgICAgICBjbGFzc05hbWU9Im9iamVjdC1jb3ZlciBicmlnaHRuZXNzLVsxLjA0XSBjb250cmFzdC1bMS4wM10gc2F0dXJhdGUtWy45OF0gdHJhbnNpdGlvbiBkdXJhdGlvbi03MDAgZ3JvdXAtaG92ZXI6c2NhbGUtWzEuMDI1XSBncm91cC1ob3ZlcjpicmlnaHRuZXNzLVsxLjFdIgogICAgICAgICAgICAgICAgLz4='),
-              ('ICAgICAgICAgICAgICAgICAgPGltZwogICAgICAgICAgICAgICAgICAgIHNyYz17cGhvdG8uaW1hZ2V9CiAgICAgICAgICAgICAgICAgICAgd2lkdGg9ezE2MDB9CiAgICAgICAgICAgICAgICAgICAgaGVpZ2h0PXs5MDB9CiAgICAgICAgICAgICAgICAgICAgYWx0PXtgJHtwaG90by50aXRsZX0g4oCUINGA0LXQsNC70YzQvdC+0LUg0L/RgNC+0LjQt9Cy0L7QtNGB0YLQstC+IMKr0KHRgtCw0LvRjCDQn9GA0L7QtNGD0LrRgsK7YH0KICAgICAgICAgICAgICAgICAgICBsb2FkaW5nPSJsYXp5IgogICAgICAgICAgICAgICAgICAgIGRlY29kaW5nPSJhc3luYyIKICAgICAgICAgICAgICAgICAgICBjbGFzc05hbWU9ImgtZnVsbCB3LWZ1bGwgb2JqZWN0LWNvdmVyIGJyaWdodG5lc3MtWzEuMDRdIGNvbnRyYXN0LVsxLjAzXSBzYXR1cmF0ZS1bLjk4XSB0cmFuc2l0aW9uIGR1cmF0aW9uLTcwMCBncm91cC1ob3ZlcjpzY2FsZS1bMS4wMzVdIGdyb3VwLWhvdmVyOmJyaWdodG5lc3MtWzEuMV0iCiAgICAgICAgICAgICAgICAgIC8+', 'ICAgICAgICAgICAgICAgICAgPEltYWdlCiAgICAgICAgICAgICAgICAgICAgc3JjPXtwaG90by5pbWFnZX0KICAgICAgICAgICAgICAgICAgICBmaWxsCiAgICAgICAgICAgICAgICAgICAgc2l6ZXM9IihtYXgtd2lkdGg6IDYzOXB4KSAxMDB2dywgKG1heC13aWR0aDogMTAyM3B4KSA1MHZ3LCAzMy4zdnciCiAgICAgICAgICAgICAgICAgICAgYWx0PXtgJHtwaG90by50aXRsZX0g4oCUINGA0LXQsNC70YzQvdC+0LUg0L/RgNC+0LjQt9Cy0L7QtNGB0YLQstC+IMKr0KHRgtCw0LvRjCDQn9GA0L7QtNGD0LrRgsK7YH0KICAgICAgICAgICAgICAgICAgICBjbGFzc05hbWU9Im9iamVjdC1jb3ZlciBicmlnaHRuZXNzLVsxLjA0XSBjb250cmFzdC1bMS4wM10gc2F0dXJhdGUtWy45OF0gdHJhbnNpdGlvbiBkdXJhdGlvbi03MDAgZ3JvdXAtaG92ZXI6c2NhbGUtWzEuMDM1XSBncm91cC1ob3ZlcjpicmlnaHRuZXNzLVsxLjFdIgogICAgICAgICAgICAgICAgICAvPg=='),
-          ]
-
-          for old64, new64 in encoded_pairs:
-              old = b64decode(old64).decode()
-              new = b64decode(new64).decode()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'Expected exactly one production image template, found {count}')
-              text = text.replace(old, new, 1)
+          old = b64decode('PGltZyBzcmM9e3N0YWdlLmltYWdlfSBhbHQ9e3N0YWdlLnRpdGxlfSB3aWR0aD17MTI4MH0gaGVpZ2h0PXs3MjB9IGxvYWRpbmc9ImxhenkiIGRlY29kaW5nPSJhc3luYyIgY2xhc3NOYW1lPXtgaC1mdWxsIHctZnVsbCBvYmplY3QtY292ZXIgdHJhbnNpdGlvbiBkdXJhdGlvbi01MDAgaG92ZXI6c2NhbGUtWzEuMDNdICR7YnJpZ2h0ZW5JbmR1c3RyeSA/ICJicmlnaHRuZXNzLVsxLjE2XSBjb250cmFzdC1bMS4wMl0gc2F0dXJhdGUtWzEuMDNdIiA6ICJicmlnaHRuZXNzLVsxLjA4XSBjb250cmFzdC1bMS4wMV0gc2F0dXJhdGUtWzEuMDJdIn1gfSAvPg==').decode()
+          new = b64decode('PEltYWdlIHNyYz17c3RhZ2UuaW1hZ2V9IGFsdD17c3RhZ2UudGl0bGV9IGZpbGwgc2l6ZXM9IihtYXgtd2lkdGg6IDc2N3B4KSAxMDB2dywgMzMuM3Z3IiBjbGFzc05hbWU9e2BvYmplY3QtY292ZXIgdHJhbnNpdGlvbiBkdXJhdGlvbi01MDAgaG92ZXI6c2NhbGUtWzEuMDNdICR7YnJpZ2h0ZW5JbmR1c3RyeSA/ICJicmlnaHRuZXNzLVsxLjE2XSBjb250cmFzdC1bMS4wMl0gc2F0dXJhdGUtWzEuMDNdIiA6ICJicmlnaHRuZXNzLVsxLjA4XSBjb250cmFzdC1bMS4wMV0gc2F0dXJhdGUtWzEuMDJdIn1gfSAvPg==').decode()
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one solution production image template, found {count}')
+          text = text.replace(old, new, 1)
 
           if '<img' in text:
-              raise SystemExit('Unexpected <img> remains in production page')
+              raise SystemExit('Unexpected <img> remains in SolutionDetailPage')
 
           path.write_text(text)
           PY
 
-      - name: Commit optimized production page
+      - name: Commit optimized solution component
         run: |
           git config user.name "steelprodukt-site-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add 'app/(public)/production/page.tsx'
+          git add 'components/SolutionDetailPage.tsx'
           git diff --cached --check
           git diff --cached --quiet && exit 0
-          git commit -m "perf: optimize production page image delivery"
+          git commit -m "perf: optimize solution production image delivery"
           git push origin HEAD:main
