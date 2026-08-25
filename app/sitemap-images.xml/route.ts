@@ -1,4 +1,5 @@
 import { articles } from "@/data/articles";
+import { commercialProductLandings } from "@/data/commercial-product-landings";
 import { products } from "@/data/products";
 import { productionServices } from "@/data/production-services";
 import { solutionDetails } from "@/data/solution-details";
@@ -105,6 +106,14 @@ export function GET() {
         path: product.technicalImage,
         title: product.title,
         caption: `Техническое изображение изделия «${product.title}».`,
+      }],
+    })),
+    ...commercialProductLandings.map((landing) => ({
+      pagePath: `/products/${landing.slug}`,
+      images: [{
+        path: landing.image,
+        title: landing.title,
+        caption: landing.description,
       }],
     })),
     ...articles.map((article) => ({
