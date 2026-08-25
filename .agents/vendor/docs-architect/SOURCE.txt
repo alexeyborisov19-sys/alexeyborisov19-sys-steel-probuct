@@ -1,0 +1,3 @@
+wshobson/agents
+agent: plugins/code-documentation/agents/docs-architect.md
+commit: d82998e7df393c671ede2387a8435075f0b633f5
