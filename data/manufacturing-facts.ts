@@ -23,6 +23,13 @@ export const laserCuttingTechnicalSummary =
   `Лазерная резка чёрной стали в диапазоне ${laserCuttingCapabilities.thicknessRange}. ` +
   `Рабочее поле стола — ${laserCuttingCapabilities.tableWorkingArea}.`;
 
+export const bendingEquipmentSummary =
+  `${productionEquipment.pressBrakes} листогибочных комплекса и панельгиб.`;
+
+export const surfacePreparationSummary =
+  "На производстве есть дробеструйная камера и система лазерной очистки. " +
+  "Конкретный способ очистки и подготовки поверхности выбираем по материалу, состоянию изделия и следующей технологической операции.";
+
 export const productionLeadTimeSummary =
   `Ориентировочный производственный срок — ${productionOrderConditions.typicalLeadTime} после согласования исходных данных. ` +
   "Фактический срок зависит от загрузки оборудования, объёма партии и состава технологического маршрута.";
