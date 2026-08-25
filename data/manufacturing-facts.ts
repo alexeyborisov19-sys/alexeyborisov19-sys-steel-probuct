@@ -7,7 +7,7 @@ export const laserCuttingCapabilities = {
 
 export const productionEquipment = {
   laserComplexes: 3,
-  pressBrakes: 3,
+  pressBrakes: 4,
   panelBenders: 1,
   powderCoatingBooths: 3,
   shotBlastingChambers: 1,
