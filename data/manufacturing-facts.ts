@@ -19,7 +19,7 @@ export const productionEquipment = {
 
 export const productionOrderConditions = {
   typicalLeadTime: "7–14 дней",
-  customerSuppliedMaterial: "работаем с давальческим сырьём",
+  customerSuppliedMaterial: "работаем с металлом заказчика",
 } as const;
 
 export const laserCuttingTechnicalSummary =
@@ -47,5 +47,5 @@ export const productionLeadTimeSummary =
   "Фактический срок зависит от загрузки оборудования, объёма партии и состава технологического маршрута.";
 
 export const customerMaterialSummary =
-  "Принимаем давальческий материал после входного контроля марки, толщины, габаритов и состояния поверхности. " +
-  "Пригодность сырья для выбранной технологии подтверждаем до запуска заказа.";
+  "Работаем с металлом заказчика после входного контроля марки, толщины, габаритов и состояния поверхности. " +
+  "До запуска подтверждаем, что материал подходит для выбранных операций.";
