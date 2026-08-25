@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { FaqSection } from "@/components/FaqSection";
 import { PageLayout } from "@/components/PageLayout";
 import { ProductCard } from "@/components/ProductCard";
+import { commercialProductLandings } from "@/data/commercial-product-landings";
 import { productBySlug, productGroups, products } from "@/data/products";
 import { faqSchema, itemListSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
@@ -23,6 +24,17 @@ const commercialDirections = [
   { href: "/products/zakladnye-detali", title: "Закладные детали", text: "Пластины и сварные узлы по КМ, КМД и рабочим чертежам." },
 ];
 
+const catalogStructuredItems = [
+  ...products.map((product) => ({
+    name: product.title,
+    path: `/products/${product.slug}`,
+  })),
+  ...commercialProductLandings.map((landing) => ({
+    name: landing.title,
+    path: `/products/${landing.slug}`,
+  })),
+];
+
 const faqItems = [
   { question: "Какие фасадные изделия представлены в каталоге?", answer: "В каталоге собраны металлокассеты открытого и скрытого крепления, перфорированные и объёмные кассеты, откосы, отливы, аквилоны, парапетные крышки и пожарные отсечки." },
   { question: "Можно изготовить элементы по размерам объекта?", answer: "Да. Размеры, полки, материал, толщина, крепление и цвет по RAL согласуются по раскладке, узлам или рабочим чертежам." },
@@ -31,13 +43,10 @@ const faqItems = [
 
 export default function ProductsPage() {
   return <><JsonLd data={[itemListSchema({
-    name: "Фасадные решения и продукция из листового металла",
-    description: "Каталог металлокассет, доборных и фасонных элементов с техническими характеристиками и чертежами.",
+    name: "Продукция и коммерческие изделия из листового металла",
+    description: "Каталог фасадных изделий и отдельных коммерческих направлений с прямыми страницами продукции, техническими данными и исходными требованиями для расчёта.",
     path: "/products",
-    items: products.map((product) => ({
-      name: product.title,
-      path: `/products/${product.slug}`,
-    })),
+    items: catalogStructuredItems,
   }), faqSchema(faqItems)]} /><PageLayout path="/products" eyebrow="Архитектурные решения" title="Фасадные решения из листового металла" description="Металлокассеты, доборные и фасонные элементы, изготовленные под параметры конкретного объекта." image="/images/web/hero-main.webp">
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
