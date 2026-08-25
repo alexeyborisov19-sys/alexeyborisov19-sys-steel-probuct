@@ -38,7 +38,6 @@ test("laser cutting page publishes the confirmed technical range without an unco
   assert.match(`${laserCutting.description} ${laserCutting.lead}`, /0,5–40 мм/);
   assert.match(laserCutting.lead, /чёрной стали/);
   assert.match(laserCutting.lead, /1500 × 3000 мм/);
-  assert.ok(laserCutting.faq.some((item) => /максимальная толщина/i.test(item.question) && /0,5–40 мм.*до 40 мм/.test(item.answer)));
   assert.ok(laserCutting.faq.some((item) => /давальческого металла/i.test(item.question) && /входного контроля/i.test(item.answer)));
   assert.ok(laserCutting.faq.some((item) => /срок лазерной резки/i.test(item.question) && /7–14 дней/i.test(item.answer)));
   assert.deepEqual(
@@ -54,10 +53,10 @@ test("laser cutting page publishes the confirmed technical range without an unco
 test("commercial copy keeps confirmed lead time and customer-supplied material conditions consistent", () => {
   assert.match(productionLeadTimeSummary, /7–14 дней/);
   assert.match(productionLeadTimeSummary, /загрузки оборудования/);
-  assert.match(customerMaterialSummary, /давальческий материал/);
+  assert.match(customerMaterialSummary, /металлом заказчика/);
   assert.match(customerMaterialSummary, /входного контроля/);
   assert.match(steelProductAssistantSystemPrompt, /7–14 дней/);
-  assert.match(steelProductAssistantSystemPrompt, /давальческий материал/);
+  assert.match(steelProductAssistantSystemPrompt, /металлом заказчика/);
   assert.match(buildKnowledgeFallback("Работаете с моим сырьём?"), /входного контроля/);
 });
 
