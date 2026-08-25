@@ -3,6 +3,7 @@ import { Analytics } from "@/components/Analytics";
 import { CookieConsent } from "@/components/CookieConsent";
 import { EngineeringAssistantLauncher } from "@/components/EngineeringAssistantLauncher";
 import { JsonLd } from "@/components/JsonLd";
+import { SitePreloader } from "@/components/SitePreloader";
 import { organizationSchema, websiteSchema } from "@/lib/schema";
 import { siteConfig } from "@/lib/site";
 
@@ -68,6 +69,7 @@ export default function PublicLayout({ children }: Readonly<{ children: React.Re
     <>
       <JsonLd data={[organizationSchema(), websiteSchema()]} />
       <Analytics />
+      <SitePreloader />
       {children}
       <EngineeringAssistantLauncher />
       <CookieConsent />
