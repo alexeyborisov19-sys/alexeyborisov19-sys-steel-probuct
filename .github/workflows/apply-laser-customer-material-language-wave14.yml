@@ -1,0 +1,67 @@
+name: Apply laser customer material language wave14
+
+on:
+  push:
+    branches:
+      - fix/customer-material-language-wave14
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 2
+        with:
+          ref: fix/customer-material-language-wave14
+          fetch-depth: 1
+          sparse-checkout: |
+            /*
+            !/.agents/
+            !/.codex/
+            !/.claude/
+            !/.claude-flow/
+          sparse-checkout-cone-mode: false
+      - name: Apply visible customer material language
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('data/production-services.ts')
+          text = path.read_text(encoding='utf-8')
+          replacements = [
+            ('Давальческий металл, единичные детали и партии.', 'Материал заказчика, единичные детали и партии.'),
+            ('Давальческое сырьё проходит входной контроль до запуска в работу.', 'Металл заказчика проходит входной контроль до запуска в работу.'),
+            ('question: "Можно выполнить заказ из давальческого металла?"', 'question: "Можно выполнить заказ из металла заказчика?"'),
+            ('Состояние давальческого материала напрямую влияет на устойчивость режима, поэтому его проверяют до запуска.', 'Состояние материала заказчика напрямую влияет на устойчивость режима, поэтому его проверяют до запуска.'),
+          ]
+          for old, new in replacements:
+            if old not in text:
+              raise SystemExit(f'Expected source fragment not found: {old}')
+            text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+
+          test_path = Path('tests/semantic-seo.test.ts')
+          test_text = test_path.read_text(encoding='utf-8')
+          old = 'assert.ok(laserCutting.faq.some((item) => /давальческого металла/i.test(item.question) && /входного контроля/i.test(item.answer)));'
+          new = 'assert.ok(laserCutting.faq.some((item) => /металла заказчика/i.test(item.question) && /входного контроля/i.test(item.answer)));'
+          if old not in test_text:
+            raise SystemExit('Expected laser FAQ assertion not found')
+          test_path.write_text(test_text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/production-services.ts tests/semantic-seo.test.ts
+          git commit -m "copy: remove internal material jargon from laser page"
+          git push origin HEAD:fix/customer-material-language-wave14
