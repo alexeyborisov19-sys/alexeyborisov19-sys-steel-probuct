@@ -2,14 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import sitemap from "@/app/sitemap";
 
-const productionApprovedAt = Date.parse("2026-08-25T21:24:08.000Z");
+const expectedFreshness = new Map([
+  ["https://www.steelprodukt.ru/production", Date.parse("2026-08-25T21:24:08.000Z")],
+  ["https://www.steelprodukt.ru/products", Date.parse("2026-08-25T15:45:53.000Z")],
+]);
 
-test("production hub lastmod follows the latest approved production-page revision", () => {
-  const production = sitemap().find((entry) => entry.url === "https://www.steelprodukt.ru/production");
+test("commercial hub lastmod values follow their latest approved revisions", () => {
+  const entries = new Map(sitemap().map((entry) => [entry.url, entry]));
 
-  assert.ok(production?.lastModified, "production hub must have lastModified");
-  assert.ok(
-    new Date(production.lastModified).getTime() >= productionApprovedAt,
-    "production sitemap lastmod must not predate the approved production-page revision",
-  );
+  for (const [url, approvedAt] of expectedFreshness) {
+    const entry = entries.get(url);
+    assert.ok(entry?.lastModified, `${url}: must have lastModified`);
+    assert.ok(
+      new Date(entry.lastModified).getTime() >= approvedAt,
+      `${url}: sitemap lastmod must not predate the approved page revision`,
+    );
+  }
 });
