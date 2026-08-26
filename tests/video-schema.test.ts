@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { organizationSchema, videoSchema } from "@/lib/schema";
 
@@ -37,4 +38,16 @@ test("page-scoped video schemas expose valid absolute video metadata", () => {
     assert.match(String(video.contentUrl), /^https:\/\/www\.steelprodukt\.ru\/video\//);
     assert.match(String(video.thumbnailUrl), /^https:\/\/www\.steelprodukt\.ru\/images\//);
   }
+});
+
+test("visible video components emit their own VideoObject markup", async () => {
+  const [companySource, productionSource] = await Promise.all([
+    readFile(new URL("../components/CompanyVideo.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/ProductionVideo.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(companySource, /<JsonLd data=\{videoSchema\(\{/);
+  assert.match(companySource, /path: "\/company#company-video"/);
+  assert.match(productionSource, /<JsonLd data=\{videoSchema\(\{/);
+  assert.match(productionSource, /path: "\/production#production-video"/);
 });
