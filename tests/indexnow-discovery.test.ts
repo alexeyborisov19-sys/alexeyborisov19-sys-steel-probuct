@@ -6,14 +6,21 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+const publishedIndexNowKey = "abcdef1234567890";
 
-test("IndexNow derives commercial URLs from sitemap priority instead of a hard-coded list", async () => {
+test("IndexNow derives commercial URLs from sitemap priority and uses the published verification key", async () => {
   let submittedBody: { host: string; key: string; keyLocation: string; urlList: string[] } | undefined;
 
   const server = createServer(async (request, response) => {
     const address = server.address();
     assert.ok(address && typeof address !== "string");
     const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    if (request.method === "GET" && request.url === "/indexnow-key.txt") {
+      response.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end(publishedIndexNowKey);
+      return;
+    }
 
     if (request.method === "GET" && request.url === "/sitemap.xml") {
       response.writeHead(200, { "Content-Type": "application/xml; charset=utf-8" });
@@ -74,6 +81,7 @@ test("IndexNow derives commercial URLs from sitemap priority instead of a hard-c
       ].sort(),
     );
     assert.equal(submittedBody.host, `127.0.0.1:${address.port}`);
+    assert.equal(submittedBody.key, publishedIndexNowKey);
     assert.equal(submittedBody.keyLocation, `${baseUrl}/indexnow-key.txt`);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));

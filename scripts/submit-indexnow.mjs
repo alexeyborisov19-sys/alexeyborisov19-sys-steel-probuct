@@ -1,5 +1,4 @@
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.steelprodukt.ru").replace(/\/$/, "");
-const indexNowKey = "9f6d7c0b8a2e4f1c5d3b7a9e6c4f2d1b";
 const keyLocation = `${siteUrl}/indexnow-key.txt`;
 const requestedPaths = process.argv.slice(2).filter((path) => path !== "--");
 const endpoint = process.env.INDEXNOW_ENDPOINT || "https://yandex.com/indexnow";
@@ -15,6 +14,23 @@ function decodeXmlText(value) {
     .replaceAll("&gt;", ">")
     .replaceAll("&quot;", '"')
     .replaceAll("&apos;", "'");
+}
+
+async function loadPublishedKey() {
+  const response = await fetch(keyLocation, {
+    headers: { "User-Agent": "SteelProdukt-IndexNow/1.0" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Could not load published IndexNow key: HTTP ${response.status}`);
+  }
+
+  const key = (await response.text()).trim();
+  if (!/^[a-zA-Z0-9-]{8,128}$/.test(key)) {
+    throw new Error("Published IndexNow key has an invalid format");
+  }
+
+  return key;
 }
 
 async function discoverPriorityUrls() {
@@ -55,6 +71,7 @@ async function discoverPriorityUrls() {
   ])];
 }
 
+const indexNowKey = await loadPublishedKey();
 const urlList = requestedPaths.length
   ? [...new Set(requestedPaths.map((path) => new URL(path, `${siteUrl}/`).toString()))]
   : await discoverPriorityUrls();
