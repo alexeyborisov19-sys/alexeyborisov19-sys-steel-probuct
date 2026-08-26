@@ -21,7 +21,7 @@ const staticModifiedAt: Record<string, Date> = {
   "/solutions": new Date("2026-08-20T00:00:00.000Z"),
   "/industries": new Date("2026-08-02T00:00:00.000Z"),
   "/projects": new Date("2026-07-20T00:00:00.000Z"),
-  "/products": new Date("2026-08-20T00:00:00.000Z"),
+  "/products": new Date("2026-08-25T15:45:53.000Z"),
   "/articles": new Date("2026-08-20T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
   "/calculator-metallokassety": new Date("2026-07-29T00:00:00.000Z"),
