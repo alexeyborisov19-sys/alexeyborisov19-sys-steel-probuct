@@ -20,6 +20,8 @@ const legalModifiedAt: Record<string, Date> = {
 };
 const productionServicesModifiedAt = new Date("2026-08-25T20:45:11.000Z");
 const solutionDetailsModifiedAt = new Date("2026-08-25T14:09:18.000Z");
+const industryPagesModifiedAt = new Date("2026-08-25T15:10:21.000Z");
+const productPagesModifiedAt = new Date("2026-08-25T15:03:23.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
@@ -36,7 +38,7 @@ const staticModifiedAt: Record<string, Date> = {
   "/articles": new Date("2026-08-20T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
   "/calculator-metallokassety": new Date("2026-08-25T13:18:54.000Z"),
-  "/products/metallokassety": new Date("2026-08-25T15:10:21.000Z"),
+  "/products/metallokassety": productPagesModifiedAt,
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
   "/products/korziny-dlya-konditsionerov": new Date("2026-08-25T00:00:00.000Z"),
   "/products/ventilyacionnye-reshetki": new Date("2026-08-25T00:00:00.000Z"),
@@ -54,8 +56,8 @@ function contentModifiedAt(path: string) {
     const seoModifiedAt = new Date(`${modifiedAt}T00:00:00.000Z`);
     return seoModifiedAt > solutionDetailsModifiedAt ? seoModifiedAt : solutionDetailsModifiedAt;
   }
-  if (path.startsWith("/industries/")) return new Date("2026-07-29T00:00:00.000Z");
-  if (path.startsWith("/products/")) return staticModifiedAt[path] ?? new Date("2026-07-27T00:00:00.000Z");
+  if (path.startsWith("/industries/")) return industryPagesModifiedAt;
+  if (path.startsWith("/products/")) return staticModifiedAt[path] ?? productPagesModifiedAt;
   return staticModifiedAt[path] ?? new Date("2026-07-20T00:00:00.000Z");
 }
 
