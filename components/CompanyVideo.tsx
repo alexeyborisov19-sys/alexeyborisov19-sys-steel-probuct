@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { JsonLd } from "@/components/JsonLd";
+import { videoSchema } from "@/lib/schema";
 
 export function CompanyVideo() {
   const [isOpen, setIsOpen] = useState(false);
@@ -112,6 +114,15 @@ export function CompanyVideo() {
   }
 
   return <>
+    <JsonLd data={videoSchema({
+      name: "Сталь Продукт — о компании",
+      description: "Фильм о команде, инженерной экспертизе и реальном производстве компании «Сталь Продукт».",
+      path: "/company#company-video",
+      contentPath: "/video/company-film-flat.mp4",
+      thumbnailPath: "/images/company-video-poster.png",
+      uploadDate: "2026-07-21T08:17:40Z",
+      duration: "PT1M59S",
+    })} />
     <section ref={sectionRef} id="company-video" className="bg-[#0c1013] py-14 sm:py-16">
       <div className="container grid gap-8 lg:grid-cols-[minmax(0,.64fr)_minmax(0,1fr)] lg:items-center">
         <div className="max-w-xl">
