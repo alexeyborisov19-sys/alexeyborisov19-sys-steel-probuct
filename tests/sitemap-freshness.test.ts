@@ -6,10 +6,15 @@ const expectedFreshness = new Map([
   ["https://www.steelprodukt.ru/company", Date.parse("2026-08-25T15:10:21.000Z")],
   ["https://www.steelprodukt.ru/contacts", Date.parse("2026-08-25T17:32:36.000Z")],
   ["https://www.steelprodukt.ru/production", Date.parse("2026-08-25T21:24:08.000Z")],
+  ["https://www.steelprodukt.ru/industries", Date.parse("2026-08-20T14:44:10.000Z")],
+  ["https://www.steelprodukt.ru/projects", Date.parse("2026-08-25T12:06:42.000Z")],
   ["https://www.steelprodukt.ru/products", Date.parse("2026-08-25T15:45:53.000Z")],
+  ["https://www.steelprodukt.ru/calculator-metallokassety", Date.parse("2026-08-25T13:18:54.000Z")],
+  ["https://www.steelprodukt.ru/products/metallokassety", Date.parse("2026-08-25T15:10:21.000Z")],
+  ["https://www.steelprodukt.ru/products/dobornye-elementy", Date.parse("2026-08-19T19:17:15.000Z")],
 ]);
 
-test("commercial hub lastmod values follow their latest approved revisions", () => {
+test("important sitemap lastmod values follow meaningful page revisions", () => {
   const entries = new Map(sitemap().map((entry) => [entry.url, entry]));
 
   for (const [url, approvedAt] of expectedFreshness) {
@@ -17,7 +22,7 @@ test("commercial hub lastmod values follow their latest approved revisions", () 
     assert.ok(entry?.lastModified, `${url}: must have lastModified`);
     assert.ok(
       new Date(entry.lastModified).getTime() >= approvedAt,
-      `${url}: sitemap lastmod must not predate the approved page revision`,
+      `${url}: sitemap lastmod must not predate the meaningful page revision`,
     );
   }
 });
