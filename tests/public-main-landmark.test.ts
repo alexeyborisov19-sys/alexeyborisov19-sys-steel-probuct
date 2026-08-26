@@ -27,3 +27,11 @@ test("the SEO crawler checks source assets without forcing expensive image optim
   assert.match(auditSource, /imagePaths\.add\(imagePathForAudit\(src\)\)/);
   assert.doesNotMatch(auditSource, /imagePaths\.add\(src\)/);
 });
+
+test("the SEO crawler understands Next Image fill and preload semantics", async () => {
+  const auditSource = await readFile(new URL("../scripts/audit-seo.mjs", import.meta.url), "utf8");
+
+  assert.match(auditSource, /const nextImageMode = tagAttribute\(tag, "data-nimg"\)\.toLowerCase\(\)/);
+  assert.match(auditSource, /nextImageMode !== "fill"/);
+  assert.match(auditSource, /!nextImageMode/);
+});
