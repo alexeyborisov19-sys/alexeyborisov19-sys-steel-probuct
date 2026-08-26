@@ -2,15 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { NextRequest } from "next/server";
 import sitemap from "@/app/sitemap";
-import { middleware } from "@/middleware";
+import { config as middlewareConfig, middleware } from "@/middleware";
 import nextConfig from "@/next.config";
-
-const middlewareRedirects = new Map([
-  ["/vnutri", "/production/lazernaya-rezka-metalla"],
-  ["/dimli", "/solutions/engineering"],
-  ["/rehotka", "/solutions/engineering"],
-  ["/korzina", "/solutions/climate"],
-]);
 
 const legacyRedirects = new Map([
   ["/articles/ezhednevnaya-svodka-rossiya-politika-promyshlennost-28-07-2026", "/articles"],
@@ -26,7 +19,7 @@ const legacyRedirects = new Map([
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
 ]);
 
-for (const [source, destination] of middlewareRedirects) {
+for (const [source, destination] of legacyRedirects) {
   test(`${source} redirects directly to ${destination}`, () => {
     const response = middleware(new NextRequest(`https://www.steelprodukt.ru${source}`));
 
@@ -38,17 +31,25 @@ for (const [source, destination] of middlewareRedirects) {
   });
 }
 
-test("all legacy content redirects use one direct explicit 301", async () => {
+test("middleware matcher covers every legacy content redirect", () => {
+  const matchers = new Set(middlewareConfig.matcher);
+
+  for (const source of legacyRedirects.keys()) {
+    assert.equal(matchers.has(source), true, `${source}: missing from middleware matcher`);
+  }
+});
+
+test("Next.js redirect manifest does not preempt legacy middleware redirects", async () => {
   const redirects = await (nextConfig as {
-    redirects: () => Promise<Array<{ source: string; destination: string; statusCode?: number }>>;
+    redirects: () => Promise<Array<{ source: string }>>;
   }).redirects();
 
-  for (const [source, destination] of legacyRedirects) {
-    const redirect = redirects.find((item) => item.source === source);
-
-    assert.ok(redirect, `${source}: redirect missing from Next.js configuration`);
-    assert.equal(redirect.destination, destination);
-    assert.equal(redirect.statusCode, 301, `${source}: legacy content redirect must be HTTP 301`);
+  for (const source of legacyRedirects.keys()) {
+    assert.equal(
+      redirects.some((item) => item.source === source),
+      false,
+      `${source}: legacy redirect must have a single owner in middleware`,
+    );
   }
 });
 
