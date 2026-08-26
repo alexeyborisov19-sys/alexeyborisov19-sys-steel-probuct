@@ -43,77 +43,19 @@ const nextConfig: NextConfig = {
   images: { remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }] },
   async redirects() {
     return [
-      // HTTP → HTTPS
+      // Transport/canonical host redirects stay in Next config. Legacy content
+      // redirects live in middleware so they can emit a tested direct HTTP 301.
       {
         source: "/:path*",
         has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
         destination: "https://www.steelprodukt.ru/:path*",
         permanent: true,
       },
-      // non-www → www
       {
         source: "/:path*",
         has: [{ type: "host", value: "steelprodukt.ru" }],
         destination: "https://www.steelprodukt.ru/:path*",
         permanent: true,
-      },
-      // Legacy article redirects. Use an explicit 301 for old indexed content;
-      // Next.js `permanent: true` emits 308 instead.
-      {
-        source: "/articles/ezhednevnaya-svodka-rossiya-politika-promyshlennost-28-07-2026",
-        destination: "/articles",
-        statusCode: 301,
-      },
-      {
-        source: "/articles/ezhednevnaya-svodka-metalloobrabotka-proizvodstvo-28-07-2026",
-        destination: "/articles",
-        statusCode: 301,
-      },
-      // Old 404 pages from Yandex Webmaster (301 permanent)
-      {
-        source: "/krovla",
-        destination: "/products",
-        statusCode: 301,
-      },
-      {
-        source: "/lomedii",
-        destination: "/products",
-        statusCode: 301,
-      },
-      {
-        source: "/otdekrf",
-        destination: "/products",
-        statusCode: 301,
-      },
-      {
-        source: "/dekorattivnie",
-        destination: "/products",
-        statusCode: 301,
-      },
-      {
-        source: "/dimli",
-        destination: "/solutions/engineering",
-        statusCode: 301,
-      },
-      {
-        source: "/korzina",
-        destination: "/solutions/climate",
-        statusCode: 301,
-      },
-      {
-        source: "/kronhtein",
-        destination: "/solutions/engineering",
-        statusCode: 301,
-      },
-      {
-        source: "/rehotka",
-        destination: "/solutions/engineering",
-        statusCode: 301,
-      },
-      {
-        source: "/vnutri",
-        destination: "/production/lazernaya-rezka-metalla",
-        statusCode: 301,
       },
     ];
   },
