@@ -57,37 +57,38 @@ const nextConfig: NextConfig = {
         destination: "https://www.steelprodukt.ru/:path*",
         permanent: true,
       },
-      // Legacy article redirects
+      // Legacy article redirects. Use an explicit 301 for old indexed content;
+      // Next.js `permanent: true` emits 308 instead.
       {
         source: "/articles/ezhednevnaya-svodka-rossiya-politika-promyshlennost-28-07-2026",
         destination: "/articles",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/articles/ezhednevnaya-svodka-metalloobrabotka-proizvodstvo-28-07-2026",
         destination: "/articles",
-        permanent: true,
+        statusCode: 301,
       },
       // Old 404 pages from Yandex Webmaster (301 permanent)
       {
         source: "/krovla",
         destination: "/products",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/lomedii",
         destination: "/products",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/otdekrf",
         destination: "/products",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/dekorattivnie",
         destination: "/products",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/dimli",
@@ -102,7 +103,7 @@ const nextConfig: NextConfig = {
       {
         source: "/kronhtein",
         destination: "/solutions/engineering",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/rehotka",
