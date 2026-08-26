@@ -13,7 +13,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "seo:audit": "node scripts/audit-seo.mjs",
+    "seo:audit": "node scripts/audit-seo.mjs && node scripts/audit-legacy-redirects.mjs",
     "env:check": "node --import tsx scripts/validate-production-env.ts",
     "retention:cleanup": "node scripts/cleanup-expired-leads.mjs",
     "secrets:scan": "node scripts/run-gitleaks.mjs",
