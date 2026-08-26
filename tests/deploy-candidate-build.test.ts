@@ -14,7 +14,14 @@ test("production builds and audits a candidate before replacing the active Next 
   assert.match(nextConfig, /distDir: process\.env\.NEXT_DIST_DIR \|\| "\.next"/);
   assert.match(buildScript, /CANDIDATE_DIST="\.next-candidate"/);
   assert.match(buildScript, /NEXT_DIST_DIR="\$CANDIDATE_DIST" npm run build/);
-  assert.match(buildScript, /NEXT_DIST_DIR="\$CANDIDATE_DIST" npm run start/);
+  assert.match(
+    buildScript,
+    /NEXT_DIST_DIR="\$CANDIDATE_DIST" node \.\/node_modules\/next\/dist\/bin\/next start/,
+  );
+  assert.doesNotMatch(buildScript, /NEXT_DIST_DIR="\$CANDIDATE_DIST" npm run start/);
+  assert.match(buildScript, /SEO_AUDIT_PORT:-/);
+  assert.match(buildScript, /server\.listen\(0, "127\.0\.0\.1"/);
+  assert.match(buildScript, /if ! kill -0 "\$AUDIT_PID" 2>\/dev\/null; then[\s\S]*?curl -fsS "http:\/\/127\.0\.0\.1:\$AUDIT_PORT\/robots\.txt"/);
   assert.match(buildScript, /test -f "\$CANDIDATE_DIST\/required-server-files\.json"/);
   assert.match(buildScript, /test -f "\$CANDIDATE_DIST\/server\/middleware-manifest\.json"/);
   assert.match(buildScript, /mv "\$CANDIDATE_DIST" \.next/);
