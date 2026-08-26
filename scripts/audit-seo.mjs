@@ -275,7 +275,7 @@ for (const publicUrl of urls) {
     if (!tagAttribute(tag, "loading") && tagAttribute(tag, "fetchpriority").toLowerCase() !== "high") {
       warnings.push(`${path}: у изображения ${src || "(без src)"} не задан режим загрузки`);
     }
-    if (src.startsWith("/")) imagePaths.add(src.split("?")[0]);
+    if (src.startsWith("/")) imagePaths.add(src);
   }
 
   for (const type of expectedSchemaTypes(path)) {

@@ -14,7 +14,7 @@ const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-07-29T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/": new Date("2026-08-20T00:00:00.000Z"),
+  "/": new Date("2026-08-26T00:00:00.000Z"),
   "/company": new Date("2026-08-20T00:00:00.000Z"),
   "/contacts": new Date("2026-08-21T00:00:00.000Z"),
   "/production": new Date("2026-08-20T00:00:00.000Z"),

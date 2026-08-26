@@ -58,7 +58,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     breadcrumbSchema([{ name: "Главная", path: "/" }, { name: "Продукция", path: "/products" }, { name: product.title, path: `/products/${product.slug}` }]),
     productSchema(product),
     faqSchema(faqItems),
-  ]} /><Header /><main>
+  ]} /><Header /><main id="main-content" tabIndex={-1}>
     <InnerHero eyebrow={product.category} title={product.title} description={product.lead} image="/images/web/hero-main.webp" />
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { laserCuttingCapabilities } from "@/data/manufacturing-facts";
+import { productionEquipment } from "@/data/manufacturing-facts";
 import { siteMode } from "@/data/site-mode";
 
 export function Hero() {
@@ -27,7 +27,7 @@ export function Hero() {
         <p className="mt-5 text-[11px] leading-5 text-white/60">♢&nbsp; Принимаем PDF, DXF, DWG и STEP · Работаем с давальческим материалом после входного контроля</p>
       </div>
       <div className="mt-12 grid grid-cols-2 border border-white/20 bg-black/30 backdrop-blur-sm lg:mt-0">
-        {[['2000+','м² производства'],['70+','специалистов'],[laserCuttingCapabilities.thicknessRange,'чёрная сталь'],[laserCuttingCapabilities.tableWorkingArea,'рабочее поле лазера']].map(([value,label]) => <div key={label} className="min-w-[150px] border border-white/10 p-5"><b className="block text-2xl text-steel-orange sm:text-3xl">{value}</b><span className="mt-1 block text-xs uppercase tracking-wider text-white/65">{label}</span></div>)}
+        {[['2000+','м² производства'],['70+','специалистов'],[productionEquipment.laserComplexes,'лазерных комплекса'],[productionEquipment.pressBrakes,'листогибочных комплекса']].map(([value,label]) => <div key={label} className="min-w-[150px] border border-white/10 p-5"><b className="block text-2xl text-steel-orange sm:text-3xl">{value}</b><span className="mt-1 block text-xs uppercase tracking-wider text-white/65">{label}</span></div>)}
       </div>
     </div>
   </section>;

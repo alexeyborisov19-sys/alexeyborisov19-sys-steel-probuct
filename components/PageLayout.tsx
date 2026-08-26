@@ -91,7 +91,7 @@ export function PageLayout({ children, path, ...hero }: PageLayoutProps) {
       />
     ) : null}
     <Header />
-    <main><InnerHero {...hero} {...contextualAction} />{children}</main>
+    <main id="main-content" tabIndex={-1}><InnerHero {...hero} {...contextualAction} />{children}</main>
     <Footer />
   </>;
 }

@@ -155,7 +155,7 @@ export default function ArticlesPage() {
         ]}
       />
       <Header />
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section className="journal-hero relative overflow-hidden border-b border-white/12 pt-[76px]">
           <img
             src="/images/web/hero-main.webp"

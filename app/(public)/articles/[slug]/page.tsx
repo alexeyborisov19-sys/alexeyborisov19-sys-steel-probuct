@@ -80,7 +80,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         ]}
       />
       <Header />
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <InnerHero
           eyebrow={article.category}
           title={article.title}
