@@ -70,6 +70,12 @@ export default function PublicLayout({ children }: Readonly<{ children: React.Re
       <JsonLd data={[organizationSchema(), websiteSchema()]} />
       <Analytics />
       <SitePreloader />
+      <div
+        className="border-b border-black/20 bg-steel-orange px-4 py-2 text-center text-[11px] font-bold uppercase tracking-[.12em] text-black sm:text-xs"
+        role="status"
+      >
+        Сайт работает в тестовом режиме до завершения согласования документов.
+      </div>
       {children}
       <EngineeringAssistantLauncher />
       <CookieConsent />
