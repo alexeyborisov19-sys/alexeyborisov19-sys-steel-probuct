@@ -15,8 +15,8 @@ const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-07-29T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
   "/": new Date("2026-08-26T00:00:00.000Z"),
-  "/company": new Date("2026-08-20T00:00:00.000Z"),
-  "/contacts": new Date("2026-08-21T00:00:00.000Z"),
+  "/company": new Date("2026-08-25T15:10:21.000Z"),
+  "/contacts": new Date("2026-08-25T17:32:36.000Z"),
   "/production": new Date("2026-08-25T21:24:08.000Z"),
   "/solutions": new Date("2026-08-20T00:00:00.000Z"),
   "/industries": new Date("2026-08-02T00:00:00.000Z"),
