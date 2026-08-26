@@ -6,9 +6,18 @@ import { solutionSeoBySlug } from "@/data/solution-seo";
 import { articles } from "@/data/articles";
 import { productionServices } from "@/data/production-services";
 import { getIndustrySolutions } from "@/lib/industry-solutions";
+import { legalDocumentVersions } from "@/lib/legal";
 import { absoluteUrl } from "@/lib/site";
 
-const legalUpdatedAt = new Date("2026-07-30T00:00:00.000Z");
+const legalFallbackUpdatedAt = new Date("2026-07-30T00:00:00.000Z");
+const legalModifiedAt: Record<string, Date> = {
+  "/legal/privacy": new Date(`${legalDocumentVersions.privacy}T00:00:00.000Z`),
+  "/legal/personal-data-consent": new Date(`${legalDocumentVersions.personalDataConsent}T00:00:00.000Z`),
+  "/legal/marketing-consent": new Date(`${legalDocumentVersions.marketingConsent}T00:00:00.000Z`),
+  "/legal/cookies": new Date(`${legalDocumentVersions.cookies}T00:00:00.000Z`),
+  "/legal/services": new Date(`${legalDocumentVersions.services}T00:00:00.000Z`),
+  "/legal/terms": new Date(`${legalDocumentVersions.terms}T00:00:00.000Z`),
+};
 const productionServicesModifiedAt = new Date("2026-08-25T20:45:11.000Z");
 const solutionDetailsModifiedAt = new Date("2026-08-25T14:09:18.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
@@ -36,7 +45,7 @@ const staticModifiedAt: Record<string, Date> = {
 };
 
 function contentModifiedAt(path: string) {
-  if (path.startsWith("/legal/")) return legalUpdatedAt;
+  if (path.startsWith("/legal/")) return legalModifiedAt[path] ?? legalFallbackUpdatedAt;
   if (path.startsWith("/production/")) return productionServicesModifiedAt;
   if (path.startsWith("/solutions/")) {
     const solution = solutionDetails.find((item) => `/solutions/${item.slug}` === path);
