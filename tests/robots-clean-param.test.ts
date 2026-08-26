@@ -33,6 +33,7 @@ test("robots.txt consolidates tracking-only URL variants with Clean-param", asyn
     assert.ok(configured.has(parameter), `${parameter}: tracking parameter must remain covered by Clean-param`);
   }
 
+  assert.doesNotMatch(robots, /^Host:/im, "obsolete Yandex Host directive must stay removed");
   assert.match(robots, /^Sitemap: https:\/\/www\.steelprodukt\.ru\/sitemap\.xml$/im);
   assert.match(robots, /^Sitemap: https:\/\/www\.steelprodukt\.ru\/sitemap-images\.xml$/im);
 });
