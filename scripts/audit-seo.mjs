@@ -103,6 +103,15 @@ function pagePath(value) {
   return `${url.pathname === "/" ? "/" : url.pathname.replace(/\/$/, "")}${url.search}`;
 }
 
+function imagePathForAudit(src) {
+  const url = new URL(src, canonicalOrigin);
+  if (url.pathname === "/_next/image") {
+    const sourcePath = url.searchParams.get("url");
+    if (sourcePath?.startsWith("/")) return sourcePath;
+  }
+  return `${url.pathname}${url.search}`;
+}
+
 function internalLink(href, base) {
   if (!href || /^(?:mailto:|tel:|javascript:|data:)/i.test(href)) return null;
   try {
@@ -275,7 +284,7 @@ for (const publicUrl of urls) {
     if (!tagAttribute(tag, "loading") && tagAttribute(tag, "fetchpriority").toLowerCase() !== "high") {
       warnings.push(`${path}: у изображения ${src || "(без src)"} не задан режим загрузки`);
     }
-    if (src.startsWith("/")) imagePaths.add(src);
+    if (src.startsWith("/")) imagePaths.add(imagePathForAudit(src));
   }
 
   for (const type of expectedSchemaTypes(path)) {

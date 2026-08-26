@@ -18,9 +18,12 @@ test("every public page shell renders the skip-link target in server HTML", asyn
   }
 });
 
-test("the SEO crawler preserves query parameters for optimized image requests", async () => {
+test("the SEO crawler checks source assets without forcing expensive image optimization", async () => {
   const auditSource = await readFile(new URL("../scripts/audit-seo.mjs", import.meta.url), "utf8");
 
-  assert.match(auditSource, /imagePaths\.add\(src\)/);
-  assert.doesNotMatch(auditSource, /imagePaths\.add\(src\.split\(\"\?\"\)\[0\]\)/);
+  assert.match(auditSource, /function imagePathForAudit\(src\)/);
+  assert.match(auditSource, /url\.pathname === "\/_next\/image"/);
+  assert.match(auditSource, /url\.searchParams\.get\("url"\)/);
+  assert.match(auditSource, /imagePaths\.add\(imagePathForAudit\(src\)\)/);
+  assert.doesNotMatch(auditSource, /imagePaths\.add\(src\)/);
 });
