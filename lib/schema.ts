@@ -5,6 +5,15 @@ import { absoluteUrl, siteConfig } from "./site";
 export type JsonLd = Record<string, unknown>;
 export type Breadcrumb = { name: string; path: string };
 export type FaqItem = { question: string; answer: string };
+export type VideoSchemaInput = {
+  name: string;
+  description: string;
+  path: string;
+  contentPath: string;
+  thumbnailPath: string;
+  uploadDate: string;
+  duration: string;
+};
 export type ArticleSchemaInput = {
   headline: string;
   description: string;
@@ -104,28 +113,6 @@ export function organizationSchema(): JsonLd {
         itemOffered: { "@type": "Service", name, url: absoluteUrl(path) },
       })),
     },
-    subjectOf: [
-      {
-        "@type": "VideoObject",
-        name: "Сталь Продукт — о компании",
-        description: "Фильм о команде, инженерной экспертизе и реальном производстве компании «Сталь Продукт».",
-        url: absoluteUrl("/company#company-video"),
-        contentUrl: absoluteUrl("/video/company-film-flat.mp4"),
-        thumbnailUrl: absoluteUrl("/images/company-video-poster.png"),
-        uploadDate: "2026-07-21T08:17:40Z",
-        duration: "PT1M59S",
-      },
-      {
-        "@type": "VideoObject",
-        name: "Производство Сталь Продукт",
-        description: "Короткая нарезка технологических операций: гибка, лазерная резка и сборка изделий из листового металла.",
-        url: absoluteUrl("/production#production-video"),
-        contentUrl: absoluteUrl("/video/production-showreel-web.mp4"),
-        thumbnailUrl: absoluteUrl("/images/production-showreel-poster.png"),
-        uploadDate: "2026-07-21T08:17:40Z",
-        duration: "PT11S",
-      },
-    ],
     knowsAbout: [
       "Изделия из листового металла",
       "Металлокассеты",
@@ -147,6 +134,20 @@ export function websiteSchema(): JsonLd {
     name: siteConfig.name,
     inLanguage: siteConfig.language,
     publisher: { "@id": `${siteConfig.url}/#organization` },
+  };
+}
+
+export function videoSchema({ name, description, path, contentPath, thumbnailPath, uploadDate, duration }: VideoSchemaInput): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name,
+    description,
+    url: absoluteUrl(path),
+    contentUrl: absoluteUrl(contentPath),
+    thumbnailUrl: absoluteUrl(thumbnailPath),
+    uploadDate,
+    duration,
   };
 }
 
