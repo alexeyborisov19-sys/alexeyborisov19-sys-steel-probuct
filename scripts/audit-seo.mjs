@@ -277,11 +277,16 @@ for (const publicUrl of urls) {
 
   for (const tag of imageTags) {
     const src = tagAttribute(tag, "src");
+    const nextImageMode = tagAttribute(tag, "data-nimg").toLowerCase();
     if (!/\balt=(?:"[^"]*"|'[^']*')/i.test(tag)) errors.push(`${path}: у изображения ${src || "(без src)"} отсутствует alt`);
-    if (!tagAttribute(tag, "width") || !tagAttribute(tag, "height")) {
+    if ((!tagAttribute(tag, "width") || !tagAttribute(tag, "height")) && nextImageMode !== "fill") {
       warnings.push(`${path}: у изображения ${src || "(без src)"} не заданы width/height`);
     }
-    if (!tagAttribute(tag, "loading") && tagAttribute(tag, "fetchpriority").toLowerCase() !== "high") {
+    if (
+      !tagAttribute(tag, "loading")
+      && tagAttribute(tag, "fetchpriority").toLowerCase() !== "high"
+      && !nextImageMode
+    ) {
       warnings.push(`${path}: у изображения ${src || "(без src)"} не задан режим загрузки`);
     }
     if (src.startsWith("/")) imagePaths.add(imagePathForAudit(src));
