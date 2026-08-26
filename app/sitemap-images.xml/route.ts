@@ -28,8 +28,6 @@ function escapeXml(value: string) {
 function imageXml(image: ImageEntry["images"][number]) {
   return `<image:image>
       <image:loc>${escapeXml(absoluteUrl(image.path))}</image:loc>
-      <image:title>${escapeXml(image.title)}</image:title>
-      <image:caption>${escapeXml(image.caption)}</image:caption>
     </image:image>`;
 }
 
