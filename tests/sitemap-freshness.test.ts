@@ -6,6 +6,8 @@ const expectedFreshness = new Map([
   ["https://www.steelprodukt.ru/company", Date.parse("2026-08-25T15:10:21.000Z")],
   ["https://www.steelprodukt.ru/contacts", Date.parse("2026-08-25T17:32:36.000Z")],
   ["https://www.steelprodukt.ru/production", Date.parse("2026-08-25T21:24:08.000Z")],
+  ["https://www.steelprodukt.ru/production/proektirovanie-metalloizdeliy", Date.parse("2026-08-25T20:45:11.000Z")],
+  ["https://www.steelprodukt.ru/solutions/climate", Date.parse("2026-08-25T14:09:18.000Z")],
   ["https://www.steelprodukt.ru/industries", Date.parse("2026-08-20T14:44:10.000Z")],
   ["https://www.steelprodukt.ru/projects", Date.parse("2026-08-25T12:06:42.000Z")],
   ["https://www.steelprodukt.ru/products", Date.parse("2026-08-25T15:45:53.000Z")],
