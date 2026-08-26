@@ -22,6 +22,7 @@ const productionServicesModifiedAt = new Date("2026-08-25T20:45:11.000Z");
 const solutionDetailsModifiedAt = new Date("2026-08-25T14:09:18.000Z");
 const industryPagesModifiedAt = new Date("2026-08-25T15:10:21.000Z");
 const productPagesModifiedAt = new Date("2026-08-25T15:03:23.000Z");
+const commercialProductPagesModifiedAt = new Date("2026-08-25T14:58:46.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
@@ -40,10 +41,10 @@ const staticModifiedAt: Record<string, Date> = {
   "/calculator-metallokassety": new Date("2026-08-25T13:18:54.000Z"),
   "/products/metallokassety": productPagesModifiedAt,
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
-  "/products/korziny-dlya-konditsionerov": new Date("2026-08-25T00:00:00.000Z"),
-  "/products/ventilyacionnye-reshetki": new Date("2026-08-25T00:00:00.000Z"),
-  "/products/metallicheskie-korpusa": new Date("2026-08-25T00:00:00.000Z"),
-  "/products/zakladnye-detali": new Date("2026-08-25T00:00:00.000Z"),
+  "/products/korziny-dlya-konditsionerov": commercialProductPagesModifiedAt,
+  "/products/ventilyacionnye-reshetki": commercialProductPagesModifiedAt,
+  "/products/metallicheskie-korpusa": commercialProductPagesModifiedAt,
+  "/products/zakladnye-detali": commercialProductPagesModifiedAt,
 };
 
 function contentModifiedAt(path: string) {
