@@ -24,7 +24,7 @@ test("image sitemap uses the current Google image sitemap vocabulary", async () 
 
 test("image sitemap only references unique canonical pages from the main sitemap", async () => {
   const xml = await getImageSitemap().text();
-  const pageUrls = [...xml.matchAll(/<url>\s*<loc>(.*?)<\/loc>/gs)].map((match) => decodeXml(match[1].trim()));
+  const pageUrls = [...xml.matchAll(/<url>\s*<loc>([\s\S]*?)<\/loc>/g)].map((match) => decodeXml(match[1].trim()));
   const imageUrls = [...xml.matchAll(/<image:loc>(.*?)<\/image:loc>/g)].map((match) => decodeXml(match[1].trim()));
   const mainUrls = new Set(sitemap().map((entry) => String(entry.url)));
 
