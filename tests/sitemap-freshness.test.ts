@@ -14,6 +14,9 @@ const expectedFreshness = new Map([
   ["https://www.steelprodukt.ru/calculator-metallokassety", Date.parse("2026-08-25T13:18:54.000Z")],
   ["https://www.steelprodukt.ru/products/metallokassety", Date.parse("2026-08-25T15:10:21.000Z")],
   ["https://www.steelprodukt.ru/products/dobornye-elementy", Date.parse("2026-08-19T19:17:15.000Z")],
+  ["https://www.steelprodukt.ru/legal/privacy", Date.parse("2026-08-13T00:00:00.000Z")],
+  ["https://www.steelprodukt.ru/legal/personal-data-consent", Date.parse("2026-08-13T00:00:00.000Z")],
+  ["https://www.steelprodukt.ru/legal/services", Date.parse("2026-08-13T00:00:00.000Z")],
 ]);
 
 test("important sitemap lastmod values follow meaningful page revisions", () => {
