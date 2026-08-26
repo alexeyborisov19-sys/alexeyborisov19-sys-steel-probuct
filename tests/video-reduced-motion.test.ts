@@ -5,11 +5,11 @@ import test from "node:test";
 const companyVideoPath = new URL("../components/CompanyVideo.tsx", import.meta.url);
 const productionVideoPath = new URL("../components/ProductionVideo.tsx", import.meta.url);
 
-function videoTag(source: string, marker: string) {
-  const start = source.indexOf(marker);
-  assert.ok(start >= 0, `missing video marker: ${marker}`);
+function videoTag(source: string, marker: string | RegExp) {
+  const start = typeof marker === "string" ? source.indexOf(marker) : source.search(marker);
+  assert.ok(start >= 0, `missing video marker: ${String(marker)}`);
   const end = source.indexOf(">", start);
-  assert.ok(end > start, `unterminated video tag: ${marker}`);
+  assert.ok(end > start, `unterminated video tag: ${String(marker)}`);
   return source.slice(start, end + 1);
 }
 
@@ -19,7 +19,7 @@ test("automatic video previews respect reduced motion, page visibility and viewp
     readFile(productionVideoPath, "utf8"),
   ]);
 
-  const companyPreview = videoTag(company, "<video ref={previewVideoRef}");
+  const companyPreview = videoTag(company, /<video\s+ref=\{previewVideoRef\}/);
   assert.match(company, /prefers-reduced-motion: reduce/);
   assert.match(company, /document\.visibilityState !== "visible"/);
   assert.match(company, /previewInViewportRef/);
@@ -29,7 +29,7 @@ test("automatic video previews respect reduced motion, page visibility and viewp
   assert.match(companyPreview, /preload="none"/);
   assert.ok(!companyPreview.includes("autoPlay"), "company preview must not use unconditional autoplay");
 
-  const productionPreview = videoTag(production, "<video\n          ref={videoRef}".replace("\\n", "\n"));
+  const productionPreview = videoTag(production, /<video\s+ref=\{videoRef\}/);
   assert.match(production, /prefers-reduced-motion: reduce/);
   assert.match(production, /document\.visibilityState !== "visible"/);
   assert.match(production, /inViewportRef/);
