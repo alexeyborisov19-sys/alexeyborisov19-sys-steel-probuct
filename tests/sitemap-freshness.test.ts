@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import sitemap from "@/app/sitemap";
+import { commercialProductLandings } from "@/data/commercial-product-landings";
 
 const expectedFreshness = new Map([
   ["https://www.steelprodukt.ru/company", Date.parse("2026-08-25T15:10:21.000Z")],
@@ -20,6 +21,11 @@ const expectedFreshness = new Map([
   ["https://www.steelprodukt.ru/legal/personal-data-consent", Date.parse("2026-08-13T00:00:00.000Z")],
   ["https://www.steelprodukt.ru/legal/services", Date.parse("2026-08-13T00:00:00.000Z")],
 ]);
+
+const commercialLandingRevision = Date.parse("2026-08-25T14:58:46.000Z");
+for (const landing of commercialProductLandings) {
+  expectedFreshness.set(`https://www.steelprodukt.ru/products/${landing.slug}`, commercialLandingRevision);
+}
 
 test("important sitemap lastmod values follow meaningful page revisions", () => {
   const entries = new Map(sitemap().map((entry) => [entry.url, entry]));
