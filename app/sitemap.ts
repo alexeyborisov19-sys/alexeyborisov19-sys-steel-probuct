@@ -9,6 +9,8 @@ import { getIndustrySolutions } from "@/lib/industry-solutions";
 import { absoluteUrl } from "@/lib/site";
 
 const legalUpdatedAt = new Date("2026-07-30T00:00:00.000Z");
+const productionServicesModifiedAt = new Date("2026-08-25T20:45:11.000Z");
+const solutionDetailsModifiedAt = new Date("2026-08-25T14:09:18.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
@@ -35,11 +37,13 @@ const staticModifiedAt: Record<string, Date> = {
 
 function contentModifiedAt(path: string) {
   if (path.startsWith("/legal/")) return legalUpdatedAt;
-  if (path.startsWith("/production/")) return new Date("2026-08-20T00:00:00.000Z");
+  if (path.startsWith("/production/")) return productionServicesModifiedAt;
   if (path.startsWith("/solutions/")) {
     const solution = solutionDetails.find((item) => `/solutions/${item.slug}` === path);
     const modifiedAt = solution ? solutionSeoBySlug[solution.slug]?.modifiedAt : undefined;
-    return modifiedAt ? new Date(`${modifiedAt}T00:00:00.000Z`) : new Date("2026-08-20T00:00:00.000Z");
+    if (!modifiedAt) return solutionDetailsModifiedAt;
+    const seoModifiedAt = new Date(`${modifiedAt}T00:00:00.000Z`);
+    return seoModifiedAt > solutionDetailsModifiedAt ? seoModifiedAt : solutionDetailsModifiedAt;
   }
   if (path.startsWith("/industries/")) return new Date("2026-07-29T00:00:00.000Z");
   if (path.startsWith("/products/")) return staticModifiedAt[path] ?? new Date("2026-07-27T00:00:00.000Z");
