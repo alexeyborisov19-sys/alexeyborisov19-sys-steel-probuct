@@ -26,10 +26,20 @@ test("production builds and audits a candidate before replacing the active Next 
   assert.match(buildScript, /test -f "\$CANDIDATE_DIST\/server\/middleware-manifest\.json"/);
   assert.match(buildScript, /mv "\$CANDIDATE_DIST" \.next/);
   assert.match(buildScript, /Candidate failed after promotion; rolling back the previous build\./);
+  assert.match(
+    buildScript,
+    /SEO_AUDIT_BASE_URL="http:\/\/127\.0\.0\.1:3000" node scripts\/audit-legacy-redirects\.mjs/,
+  );
 
   const candidateBuild = buildScript.indexOf('NEXT_DIST_DIR="$CANDIDATE_DIST" npm run build');
   const stopOldWorker = buildScript.indexOf('pm2 delete "$APP_NAME"');
+  const productionRedirectAudit = buildScript.indexOf('SEO_AUDIT_BASE_URL="http://127.0.0.1:3000" node scripts/audit-legacy-redirects.mjs');
+  const discardPreviousBuild = buildScript.indexOf('rm -rf "$PREVIOUS_DIST"');
   assert.ok(candidateBuild >= 0 && stopOldWorker > candidateBuild, "the live worker must stay up during the candidate build");
+  assert.ok(
+    productionRedirectAudit > stopOldWorker && discardPreviousBuild > productionRedirectAudit,
+    "the promoted build must prove legacy redirects before the rollback build is discarded",
+  );
 
   assert.doesNotMatch(buildScript, /\nnpm run build\n/);
 });
