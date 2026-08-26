@@ -126,7 +126,9 @@ if [ -d .next ]; then
 fi
 mv "$CANDIDATE_DIST" .next
 
-if pm2 start ecosystem.config.cjs --env production --update-env && wait_for_production; then
+if pm2 start ecosystem.config.cjs --env production --update-env \
+  && wait_for_production \
+  && SEO_AUDIT_BASE_URL="http://127.0.0.1:3000" node scripts/audit-legacy-redirects.mjs; then
   rm -rf "$PREVIOUS_DIST"
 else
   echo "Candidate failed after promotion; rolling back the previous build."
