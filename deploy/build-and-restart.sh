@@ -2,7 +2,13 @@
 set -euo pipefail
 
 APP_PATH="${1:-/var/www/html}"
-AUDIT_PORT="${SEO_AUDIT_PORT:-3011}"
+if [ -n "${SEO_AUDIT_PORT:-}" ]; then
+  AUDIT_PORT="$SEO_AUDIT_PORT"
+else
+  AUDIT_PORT="$(
+    node -e 'const net=require("node:net"); const server=net.createServer(); server.on("error",(error)=>{console.error(error);process.exit(1)}); server.listen(0, "127.0.0.1",()=>{console.log(server.address().port);server.close();});'
+  )"
+fi
 AUDIT_LOG="$(mktemp /tmp/steelprodukt-seo-audit.XXXXXX.log)"
 AUDIT_PID=""
 DEPLOY_LOCK="${STEELPRODUKT_DEPLOY_LOCK:-/tmp/steelprodukt-production-deploy.lock}"
@@ -65,18 +71,24 @@ rm -f "$APP_PATH/tsconfig.tsbuildinfo"
 test -f "$CANDIDATE_DIST/required-server-files.json"
 test -f "$CANDIDATE_DIST/server/middleware-manifest.json"
 
-# Start and audit the candidate on a private port while the current .next build
-# continues serving production traffic on port 3000.
-NEXT_DIST_DIR="$CANDIDATE_DIST" npm run start -- --hostname 127.0.0.1 --port "$AUDIT_PORT" >"$AUDIT_LOG" 2>&1 &
+# Start and audit the candidate on a private free port while the current .next
+# build continues serving production traffic on port 3000. Run Next directly so
+# AUDIT_PID belongs to the actual server process rather than an npm wrapper that
+# can exit while leaving a stale child listening on the audit port.
+NEXT_DIST_DIR="$CANDIDATE_DIST" node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port "$AUDIT_PORT" >"$AUDIT_LOG" 2>&1 &
 AUDIT_PID="$!"
 
 audit_ready=false
 for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:$AUDIT_PORT/robots.txt" >/dev/null; then
-    audit_ready=true
+  # Never accept a response from a stale server left on the port by an older
+  # deploy. The process we just started must still be alive before and after the
+  # readiness request succeeds.
+  if ! kill -0 "$AUDIT_PID" 2>/dev/null; then
     break
   fi
-  if ! kill -0 "$AUDIT_PID" 2>/dev/null; then
+  if curl -fsS "http://127.0.0.1:$AUDIT_PORT/robots.txt" >/dev/null \
+    && kill -0 "$AUDIT_PID" 2>/dev/null; then
+    audit_ready=true
     break
   fi
   sleep 1
