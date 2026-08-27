@@ -95,3 +95,34 @@ test("production publishes the release built on the runner instead of building o
   assert.match(workflow, /NEXT_PUBLIC_YM_COUNTER_ID/);
   assert.match(workflow, /The Yandex Metrica counter is absent from the built client bundle\./);
 });
+
+test("an interrupted promotion cannot leave production without a worker", async () => {
+  const buildScript = await readFile(buildScriptPath, "utf8");
+
+  // GitHub Actions cancels superseded runs, which kills the SSH child at an
+  // arbitrary point. Between "pm2 delete" and "pm2 start" nothing answers on
+  // port 3000, so that window must restore a serving state before exiting.
+  assert.match(buildScript, /trap restore_service_on_abort INT TERM HUP/);
+  assert.match(buildScript, /restore_service_on_abort\(\) \{/);
+  assert.match(buildScript, /promotion_in_progress=true/);
+
+  const guardInstalled = buildScript.indexOf("trap restore_service_on_abort INT TERM HUP");
+  const windowOpens = buildScript.indexOf("promotion_in_progress=true");
+  const stopOldWorker = buildScript.indexOf('pm2 delete "$APP_NAME"');
+  const guardCleared = buildScript.lastIndexOf("trap - INT TERM HUP");
+
+  assert.ok(guardInstalled >= 0, "the abort guard must be installed");
+  assert.ok(windowOpens > guardInstalled, "the guard must be armed before the window opens");
+  assert.ok(stopOldWorker > windowOpens, "the old worker must only stop inside the guarded window");
+  assert.ok(guardCleared > stopOldWorker, "the guard must stay armed until the new worker is audited");
+
+  // The recovery itself must put a build back and restart the worker.
+  const handler = buildScript.slice(
+    buildScript.indexOf("restore_service_on_abort() {"),
+    guardInstalled,
+  );
+  assert.match(handler, /mv "\$CANDIDATE_DIST" \.next/);
+  assert.match(handler, /mv "\$PREVIOUS_DIST" \.next/);
+  assert.match(handler, /pm2 start ecosystem\.config\.cjs --env production --update-env/);
+  assert.match(handler, /wait_for_production/);
+});
