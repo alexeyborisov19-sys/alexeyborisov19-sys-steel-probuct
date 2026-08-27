@@ -4,12 +4,12 @@ import test from "node:test";
 
 const globalErrorPath = new URL("../app/global-error.tsx", import.meta.url);
 
-test("global error performs a full document reload for stale client bundles", async () => {
+test("global error hard-navigates for stale client bundles", async () => {
   const source = await readFile(globalErrorPath, "utf8");
 
-  assert.match(source, /window\.location\.reload\(\)/);
+  assert.match(source, /location\.replace/);
   assert.match(source, /ChunkLoadError/);
   assert.match(source, /sessionStorage/);
-  assert.match(source, /onClick=\{forceDocumentReload\}/);
-  assert.ok(!source.includes("onClick={reset}"), "global error must not retry only the stale React tree");
+  assert.match(source, /hardNavigateFresh/);
+  assert.ok(!source.includes("window.location.reload()"), "must not use cache-prone reload()");
 });
