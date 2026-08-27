@@ -2,6 +2,9 @@
 set -euo pipefail
 
 APP_PATH="${1:-/var/www/html}"
+# The commit this deploy is publishing. Positional because sudo -i resets the
+# environment; the variable form stays supported for direct invocations.
+EXPECTED_BUILD_COMMIT="${2:-${EXPECTED_BUILD_COMMIT:-}}"
 if [ -n "${SEO_AUDIT_PORT:-}" ]; then
   AUDIT_PORT="$SEO_AUDIT_PORT"
 else
@@ -39,18 +42,55 @@ cd "$APP_PATH"
 # CPU and memory on a constrained host. Dependency integrity is still enforced
 # by package-lock.json through npm ci.
 npm ci --no-audit --no-fund
+
+# The workflow builds the release on a GitHub runner and ships the result here as
+# $CANDIDATE_DIST, because next build peaks around 1.9GB and this host does not
+# reliably have that free — deploy #281 was OOM-killed mid-build. A candidate that
+# arrives already built was also already linted, typechecked and tested on the
+# runner, so none of that is repeated here.
+#
+# Building locally is still supported and still correct: without a shipped
+# candidate the script does the whole job exactly as before.
+PREBUILT_CANDIDATE=false
+if [ -f "$CANDIDATE_DIST/required-server-files.json" ]; then
+  # An interrupted deploy can leave a candidate tree behind. Promoting one as if
+  # it were the new release would silently publish the wrong code, so a shipped
+  # candidate must carry the commit this deploy is for. The workflow always sends
+  # EXPECTED_BUILD_COMMIT; a manual run without it keeps the old behaviour.
+  if [ -n "${EXPECTED_BUILD_COMMIT:-}" ]; then
+    CANDIDATE_COMMIT="$(cat "$CANDIDATE_DIST/BUILD_COMMIT" 2>/dev/null || true)"
+    if [ "$CANDIDATE_COMMIT" != "$EXPECTED_BUILD_COMMIT" ]; then
+      echo "The prepared release is for commit '${CANDIDATE_COMMIT:-<none>}', but this deploy is for '$EXPECTED_BUILD_COMMIT'."
+      echo "Refusing to publish a release that does not match the deployed source."
+      exit 1
+    fi
+  fi
+  PREBUILT_CANDIDATE=true
+  echo "Using the release built on the runner; skipping build and source validation."
+fi
+
 # Keep the currently serving .next build intact while source validation runs.
 # Only generated route types can become stale after App Router paths change;
 # they are safe to regenerate and are not required by the running application.
 rm -rf .next/types .next/dev/types
 # Leftover candidate/previous trees from an interrupted deploy must not be
 # linted (generated JS triggers thousands of eslint errors). Remove them before
-# validation; the live .next directory stays untouched until promotion.
-rm -rf "$CANDIDATE_DIST" "$PREVIOUS_DIST"
+# validation; the live .next directory stays untouched until promotion. A
+# candidate shipped from the runner is the release itself, so it is kept.
+rm -rf "$PREVIOUS_DIST"
+if [ "$PREBUILT_CANDIDATE" != true ]; then
+  rm -rf "$CANDIDATE_DIST"
+fi
+
+# Runtime configuration lives on this host, not on the runner, so it is validated
+# here in both modes.
 npm run env:check
-npm run lint
-npm run typecheck
-npm run test
+
+if [ "$PREBUILT_CANDIDATE" != true ]; then
+  npm run lint
+  npm run typecheck
+  npm run test
+fi
 
 # The configured cluster size is applied before the build, which is by far the
 # most memory-hungry step: shrinking the cluster first hands that memory back
@@ -64,14 +104,16 @@ if [ "$RUNNING_INSTANCES" -gt 0 ] && [ "$RUNNING_INSTANCES" != "$APP_INSTANCES" 
   pm2 scale "$APP_NAME" "$APP_INSTANCES"
 fi
 
-# Never run next build against the directory used by the live process. Next.js
-# recreates build manifests during compilation; rebuilding .next in place caused
-# intermittent MODULE_NOT_FOUND/ENOENT responses while users were browsing.
-rm -rf "$CANDIDATE_DIST" "$PREVIOUS_DIST"
-NEXT_DIST_DIR="$CANDIDATE_DIST" npm run build
-# TypeScript/Next may recreate incremental compiler metadata during validation/build.
-# It is not a production runtime artifact, so do not leave it on the server.
-rm -f "$APP_PATH/tsconfig.tsbuildinfo"
+if [ "$PREBUILT_CANDIDATE" != true ]; then
+  # Never run next build against the directory used by the live process. Next.js
+  # recreates build manifests during compilation; rebuilding .next in place caused
+  # intermittent MODULE_NOT_FOUND/ENOENT responses while users were browsing.
+  rm -rf "$CANDIDATE_DIST" "$PREVIOUS_DIST"
+  NEXT_DIST_DIR="$CANDIDATE_DIST" npm run build
+  # TypeScript/Next may recreate incremental compiler metadata during validation/build.
+  # It is not a production runtime artifact, so do not leave it on the server.
+  rm -f "$APP_PATH/tsconfig.tsbuildinfo"
+fi
 
 # A browser tab opened before promotion can request an old lazy-loaded Next.js
 # chunk after the new release goes live. Preserve still-recent static assets from

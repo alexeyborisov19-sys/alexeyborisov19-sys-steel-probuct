@@ -22,9 +22,174 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Build and publish website
+  # next build peaks around 1.9GB. The Beget host does not reliably have that
+  # free, and deploy #281 was OOM-killed mid-build, so the release is built on a
+  # runner and shipped to the host as a finished .next tree.
+  #
+  # NEXT_PUBLIC_* values are inlined into the client bundle while it is built, so
+  # the runner needs the same ones the host would have used. They are read from
+  # the host's own .env.production rather than restated here: a second copy would
+  # drift, and one of them — NEXT_PUBLIC_YM_COUNTER_ID — has no fallback in the
+  # code, so a wrong or missing value silently stops Yandex Metrica.
+  config:
+    name: Read public build configuration
     runs-on: ubuntu-latest
+    outputs:
+      site_url: ${{ steps.read.outputs.site_url }}
+      ym_counter_id: ${{ steps.read.outputs.ym_counter_id }}
+      ym_webvisor: ${{ steps.read.outputs.ym_webvisor }}
+      yandex_verification: ${{ steps.read.outputs.yandex_verification }}
+      google_verification: ${{ steps.read.outputs.google_verification }}
+
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Read NEXT_PUBLIC_* from the production environment
+        id: read
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          # Only the NEXT_PUBLIC_ prefix is ever read. Those values are compiled
+          # into pages that browsers download, so they are public by construction;
+          # nothing else from .env.production leaves the host.
+          PUBLIC_ENV="$(
+            ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+              "$BEGET_USER@$BEGET_HOST" \
+              "grep -E '^NEXT_PUBLIC_[A-Z0-9_]+=' '$BEGET_APP_PATH/.env.production' || true"
+          )"
+
+          value_of() {
+            printf '%s\n' "$PUBLIC_ENV" \
+              | sed -n "s/^$1=//p" \
+              | head -n 1 \
+              | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/"
+          }
+
+          SITE_URL="$(value_of NEXT_PUBLIC_SITE_URL)"
+          YM_COUNTER_ID="$(value_of NEXT_PUBLIC_YM_COUNTER_ID)"
+          YM_WEBVISOR="$(value_of NEXT_PUBLIC_YM_WEBVISOR)"
+          YANDEX_VERIFICATION="$(value_of NEXT_PUBLIC_YANDEX_VERIFICATION)"
+          GOOGLE_VERIFICATION="$(value_of NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION)"
+
+          # Fail loudly rather than build a release whose analytics or canonical
+          # origin are quietly wrong. The two checked here are the ones the site
+          # cannot fall back to in code.
+          for required in SITE_URL YM_COUNTER_ID; do
+            if [ -z "${!required}" ]; then
+              echo "NEXT_PUBLIC_$required is missing from $BEGET_APP_PATH/.env.production."
+              echo "The build would ship without it, so the deploy stops here."
+              exit 1
+            fi
+          done
+
+          {
+            echo "site_url=$SITE_URL"
+            echo "ym_counter_id=$YM_COUNTER_ID"
+            echo "ym_webvisor=$YM_WEBVISOR"
+            echo "yandex_verification=$YANDEX_VERIFICATION"
+            echo "google_verification=$GOOGLE_VERIFICATION"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Read ${#PUBLIC_ENV} bytes of public configuration from the host."
+
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    needs: config
+
+    steps:
+      - name: Get website source
+        uses: actions/checkout@v5
+        timeout-minutes: 5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Pinned rather than read from the engines range in package.json: a range
+          # resolves to whatever the runner happens to offer, and the release must
+          # be built on a predictable major.
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # These ran on the host before, competing with the build for its memory.
+      # They run here now, and build-and-restart.sh skips them when it receives a
+      # candidate that was built on a runner.
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_SITE_URL: ${{ needs.config.outputs.site_url }}
+          NEXT_PUBLIC_YM_COUNTER_ID: ${{ needs.config.outputs.ym_counter_id }}
+          NEXT_PUBLIC_YM_WEBVISOR: ${{ needs.config.outputs.ym_webvisor }}
+          NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ needs.config.outputs.yandex_verification }}
+          NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ needs.config.outputs.google_verification }}
+        run: npm run build
+
+      - name: Confirm the counter reached the client bundle
+        env:
+          YM_COUNTER_ID: ${{ needs.config.outputs.ym_counter_id }}
+        run: |
+          set -euo pipefail
+          # Metrica failing is silent and would go unnoticed for weeks, so the
+          # counter is verified in the built output instead of being assumed.
+          if ! grep -rqF "$YM_COUNTER_ID" .next/static; then
+            echo "The Yandex Metrica counter is absent from the built client bundle."
+            exit 1
+          fi
+          echo "Counter present in the client bundle."
+
+      - name: Stamp the release with its commit
+        run: |
+          set -euo pipefail
+          # The host refuses a candidate that does not carry the commit it is
+          # deploying, so an interrupted run can never leave behind a stale tree
+          # that a later deploy would promote as if it were the new release.
+          printf '%s' "$GITHUB_SHA" > .next/BUILD_COMMIT
+
+      - name: Package the release
+        run: |
+          set -euo pipefail
+          # .next/cache is build state, not a runtime artifact: it is by far the
+          # largest part of the tree (258MB of 294MB) and the host never reads it.
+          tar --exclude=./cache -czf next-build.tar.gz -C .next .
+          ls -lh next-build.tar.gz
+
+      - name: Upload the release
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: next-build.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+
+  deploy:
+    name: Publish website
+    runs-on: ubuntu-latest
+    needs: build
 
     steps:
       - name: Get website source
@@ -44,6 +209,20 @@ jobs:
           test -f package.json
           test -f ecosystem.config.cjs
           test -d app
+
+      - name: Download the release
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+
+      - name: Unpack the release
+        run: |
+          set -euo pipefail
+          mkdir -p next-candidate
+          tar -xzf next-build.tar.gz -C next-candidate
+          rm -f next-build.tar.gz
+          test -f next-candidate/required-server-files.json
+          test -f next-candidate/server/middleware-manifest.json
 
       - name: Configure secure server access
         env:
@@ -76,20 +255,37 @@ jobs:
             --exclude='.data/' \
             --exclude='node_modules/' \
             --exclude='.next/' \
+            --exclude='.next-candidate/' \
+            --exclude='.next-previous/' \
+            --exclude='next-candidate/' \
             --include='.env.example' \
             --exclude='.env*' \
             --exclude='public/video/company-film-flat.mp4' \
             -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
             ./ "$BEGET_USER@$BEGET_HOST:$BEGET_APP_PATH/"
 
-      - name: Build and restart application on Beget
+      # Sent after the source sync so the tree above cannot delete it. The host
+      # picks it up as an already-built release and skips its own build.
+      - name: Upload the built release
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
           BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
+            ./next-candidate/ "$BEGET_USER@$BEGET_HOST:$BEGET_APP_PATH/.next-candidate/"
+
+      - name: Restart application on Beget
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' EXPECTED_BUILD_COMMIT='$GITHUB_SHA' bash -s" <<'REMOTE'
           set -euo pipefail
           test -n "$APP_PATH"
           mkdir -p "$APP_PATH"
@@ -99,7 +295,10 @@ jobs:
           }
           chown -R nodejs:nodejs "$APP_PATH"
           bash "$APP_PATH/deploy/prepare-production.sh" "$APP_PATH" nodejs
-          sudo -iu nodejs bash "$APP_PATH/deploy/build-and-restart.sh" "$APP_PATH"
+          # Passed positionally: sudo -i starts a login shell and resets the
+          # environment, so an exported variable would arrive empty and the
+          # release check would silently pass without checking anything.
+          sudo -iu nodejs bash "$APP_PATH/deploy/build-and-restart.sh" "$APP_PATH" "$EXPECTED_BUILD_COMMIT"
           # Purge nginx page cache as root so visitors are not stuck on pre-deploy HTML
           # that references deleted JS chunks (causes the stale "Обновляем страницу" screen).
           if [ -d /var/cache/nginx/steelprodukt ]; then
