@@ -179,7 +179,7 @@ jobs:
           ls -lh next-build.tar.gz
 
       - name: Upload the release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: next-build
           path: next-build.tar.gz
@@ -211,18 +211,26 @@ jobs:
           test -d app
 
       - name: Download the release
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: next-build
 
       - name: Unpack the release
         run: |
           set -euo pipefail
+          # Where download-artifact places files has changed across major
+          # versions, so the archive is located rather than assumed.
+          ARCHIVE="$(find . -maxdepth 3 -name next-build.tar.gz -type f | head -n 1)"
+          if [ -z "$ARCHIVE" ]; then
+            echo "The built release was not found in the downloaded artifact."
+            exit 1
+          fi
           mkdir -p next-candidate
-          tar -xzf next-build.tar.gz -C next-candidate
-          rm -f next-build.tar.gz
+          tar -xzf "$ARCHIVE" -C next-candidate
+          rm -f "$ARCHIVE"
           test -f next-candidate/required-server-files.json
           test -f next-candidate/server/middleware-manifest.json
+          test -f next-candidate/BUILD_COMMIT
 
       - name: Configure secure server access
         env:
