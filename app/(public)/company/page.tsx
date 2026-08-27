@@ -87,7 +87,7 @@ export default function CompanyPage() {
           </div>
 
           <div className="relative border border-white/12 bg-[#15191c] p-6 sm:p-7">
-            <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Единая ответственность</p>
+            <p className="text-xs font-bold uppercase tracking-[.16em] text-steel-orange">Единая ответственность</p>
             <p className="mt-5 text-lg font-semibold leading-snug">От исходных данных до промаркированной и упакованной партии.</p>
             <p className="mt-4 text-sm leading-relaxed text-white/60">«Сталь Продукт» объединяет инженерную подготовку, изготовление, контроль, комплектацию и отгрузку. В работу принимаем готовую КД, 3D-модель, эскиз или техническое задание.</p>
             <span className="absolute bottom-0 right-0 h-10 w-10 border-l border-t border-steel-orange/55" />
@@ -112,7 +112,7 @@ export default function CompanyPage() {
       <div className="container grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
         {metrics.map(([number, label]) => <article key={label} className="border-l border-white/10 px-5 py-2">
           <strong className="text-3xl text-steel-orange sm:text-4xl">{number}</strong>
-          <p className="mt-2 text-[10px] font-bold uppercase tracking-[.1em] text-white/58">{label}</p>
+          <p className="mt-2 text-xs font-bold uppercase tracking-[.1em] text-white/58">{label}</p>
         </article>)}
       </div>
     </section>

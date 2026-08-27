@@ -63,7 +63,7 @@ export default function IndustriesPage() {
 
           <div className="mt-12 border-y border-white/15 py-7 sm:flex sm:items-end sm:justify-between sm:gap-10">
             <div className="max-w-2xl">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-steel-orange">Матрица производственных возможностей</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-steel-orange">Матрица производственных возможностей</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Что можем изготовить для вашего объекта</h2>
               <p className="mt-4 text-sm leading-6 text-white/65">Для каждой сферы собрали перечень изделий по функциональным зонам: от фасада и инженерии до технических помещений, безопасности и благоустройства.</p>
             </div>
@@ -87,7 +87,7 @@ export default function IndustriesPage() {
                       className="object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-[#0c1013]/80 via-transparent to-transparent" />
-                    <span className="absolute left-5 top-5 border border-steel-orange/70 px-2 py-1 text-[10px] font-bold tracking-[.14em] text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="absolute left-5 top-5 border border-steel-orange/70 px-2 py-1 text-xs font-bold tracking-[.14em] text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
                   </div>
 
                   <div className="p-5 sm:p-6">
@@ -97,8 +97,8 @@ export default function IndustriesPage() {
                     </div>
 
                     <div className="mt-5 grid grid-cols-2 border-y border-white/10 py-4">
-                      <div className="border-r border-white/10 pr-3"><p className="text-xl font-semibold text-steel-orange">{industry.sections.length}</p><p className="mt-1 text-[10px] uppercase tracking-[.08em] text-white/50">разделов</p></div>
-                      <div className="pl-3"><p className="text-xl font-semibold text-steel-orange">{itemsCount}</p><p className="mt-1 text-[10px] uppercase tracking-[.08em] text-white/50">изделий</p></div>
+                      <div className="border-r border-white/10 pr-3"><p className="text-xl font-semibold text-steel-orange">{industry.sections.length}</p><p className="mt-1 text-xs uppercase tracking-[.08em] text-white/50">разделов</p></div>
+                      <div className="pl-3"><p className="text-xl font-semibold text-steel-orange">{itemsCount}</p><p className="mt-1 text-xs uppercase tracking-[.08em] text-white/50">изделий</p></div>
                     </div>
 
                     <details className="group mt-5" open={index === 0}>
@@ -111,7 +111,7 @@ export default function IndustriesPage() {
                           <section key={section.title} className="grid border-b border-white/10 last:border-b-0 md:grid-cols-[minmax(190px,30%)_1fr]">
                             <div className="flex items-start justify-between gap-3 border-b border-white/10 bg-white/[.025] px-4 py-4 md:border-b-0 md:border-r md:border-white/10">
                               <h3 className="text-sm font-semibold leading-5">{section.title}</h3>
-                              <span className="shrink-0 text-[10px] font-bold text-steel-orange">{String(sectionIndex + 1).padStart(2, "0")}</span>
+                              <span className="shrink-0 text-xs font-bold text-steel-orange">{String(sectionIndex + 1).padStart(2, "0")}</span>
                             </div>
                             <ul className="grid gap-x-5 gap-y-2 px-4 py-4 sm:grid-cols-2">
                               {section.items.map((item) => (

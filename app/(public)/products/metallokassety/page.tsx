@@ -72,7 +72,7 @@ export default function MetalCassetteCollectionPage() {
           <div>
             <p className="mb-3 text-xs leading-5 text-white/50">Ниже указаны типовые или доступные исполнения. Итоговые параметры конкретного заказа фиксируются по проекту, согласованному образцу и условиям эксплуатации до запуска в производство.</p>
             <dl className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-              {metalCassetteSpecs.slice(0, 4).map((spec) => <div key={spec.label} className="bg-[#0d1012] p-4"><dt className="text-[10px] font-bold uppercase tracking-[.12em] text-steel-orange">{spec.label}</dt><dd className="mt-2 text-xs leading-relaxed text-white/70">{spec.value}</dd></div>)}
+              {metalCassetteSpecs.slice(0, 4).map((spec) => <div key={spec.label} className="bg-[#0d1012] p-4"><dt className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">{spec.label}</dt><dd className="mt-2 text-xs leading-relaxed text-white/70">{spec.value}</dd></div>)}
             </dl>
           </div>
         </div>
@@ -84,7 +84,7 @@ export default function MetalCassetteCollectionPage() {
           <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Четыре серии металлокассет</h2>
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {series.map(([title, badge, text], index) => <article key={title} className="border border-white/10 bg-[#111519] p-5"><p className="text-2xl font-semibold text-steel-orange">0{index + 1}</p><h3 className="mt-5 text-lg font-semibold uppercase">{title}</h3><p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-white/45">{badge}</p><p className="mt-4 text-sm leading-relaxed text-white/60">{text}</p></article>)}
+          {series.map(([title, badge, text], index) => <article key={title} className="border border-white/10 bg-[#111519] p-5"><p className="text-2xl font-semibold text-steel-orange">0{index + 1}</p><h3 className="mt-5 text-lg font-semibold uppercase">{title}</h3><p className="mt-1 text-xs font-bold uppercase tracking-[.12em] text-white/45">{badge}</p><p className="mt-4 text-sm leading-relaxed text-white/60">{text}</p></article>)}
         </div>
 
         <div className="mt-16 flex flex-col justify-between gap-5 border-b border-white/12 pb-5 sm:flex-row sm:items-end">

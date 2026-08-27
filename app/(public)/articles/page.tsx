@@ -73,13 +73,13 @@ function ArticleCard({ article, compact = false }: { article: Article; compact?:
         <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/80 via-transparent to-transparent" />
       </div>
       <div className="flex min-w-0 flex-col p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-[.08em]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold uppercase tracking-[.08em]">
           <span className="text-steel-orange">{article.category}</span>
           <time dateTime={article.publishedAt} className="text-white/42">{formatDate(article.publishedAt)}</time>
         </div>
         <h3 className={`${compact ? "mt-3 text-lg" : "mt-4 text-xl"} font-semibold leading-tight`}>{article.title}</h3>
         <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/58">{article.lead}</p>
-        <Link href={`/articles/${article.slug}`} className="mt-auto pt-5 text-[11px] font-bold uppercase tracking-[.055em] text-steel-orange">
+        <Link href={`/articles/${article.slug}`} className="mt-auto whitespace-nowrap pt-5 text-xs font-bold uppercase tracking-[.055em] text-steel-orange">
           Читать материал&nbsp; →
         </Link>
       </div>
@@ -182,7 +182,7 @@ export default function ArticlesPage() {
               </p>
             </div>
             <div className="border-l-2 border-steel-orange bg-black/35 p-6 backdrop-blur-sm">
-              <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Редакционный принцип</p>
+              <p className="text-xs font-bold uppercase tracking-[.16em] text-steel-orange">Редакционный принцип</p>
               <p className="mt-3 text-sm leading-7 text-white/67">
                 Опираемся на инженерную логику, производственный опыт и первоисточники. Каждый материал должен помогать принять практическое решение.
               </p>
@@ -195,7 +195,7 @@ export default function ArticlesPage() {
             <aside className="journal-sidebar lg:sticky lg:top-6">
               <div className="border border-white/12 bg-[#0f1418]">
                 <div className="border-b border-white/10 px-5 py-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/42">Навигация по журналу</p>
+                  <p className="text-xs font-bold uppercase tracking-[.16em] text-white/42">Навигация по журналу</p>
                 </div>
                 <nav aria-label="Разделы инженерного журнала">
                   {navigation.map((item) => (
@@ -211,7 +211,7 @@ export default function ArticlesPage() {
               <div className="mt-4 border border-steel-orange/35 bg-[linear-gradient(135deg,rgba(234,91,12,.14),rgba(15,20,24,.98)_54%)] p-5">
                 <p className="text-sm font-semibold">Есть тема или инженерный вопрос?</p>
                 <p className="mt-2 text-xs leading-6 text-white/52">Предложите тему редакции или передайте задачу специалисту.</p>
-                <Link href="/contacts#contact-form" className="mt-4 inline-flex text-[10px] font-bold uppercase tracking-[.06em] text-steel-orange">
+                <Link href="/contacts#contact-form" className="mt-4 inline-flex text-xs font-bold uppercase tracking-[.06em] text-steel-orange">
                   Написать нам&nbsp; →
                 </Link>
               </div>
@@ -234,13 +234,13 @@ export default function ArticlesPage() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#080b0d] via-[#080b0d]/58 to-transparent" />
                       <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                        <div className="flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-[.09em]">
+                        <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-[.09em]">
                           <span className="text-steel-orange">Главный инженерный материал</span>
                           <time dateTime={featuredEngineeringArticle.publishedAt} className="text-white/55">{formatDate(featuredEngineeringArticle.publishedAt)}</time>
                         </div>
                         <h3 className="mt-4 max-w-3xl text-2xl font-semibold leading-tight sm:text-3xl">{featuredEngineeringArticle.title}</h3>
                         <p className="mt-4 max-w-2xl text-sm leading-7 text-white/66">{featuredEngineeringArticle.lead}</p>
-                        <Link href={`/articles/${featuredEngineeringArticle.slug}`} className="mt-6 inline-flex border border-steel-orange/65 px-4 py-3 text-[10px] font-bold uppercase tracking-[.06em] text-steel-orange transition hover:bg-steel-orange hover:text-white">
+                        <Link href={`/articles/${featuredEngineeringArticle.slug}`} className="mt-6 inline-flex border border-steel-orange/65 px-4 py-3 text-xs font-bold uppercase tracking-[.06em] text-steel-orange transition hover:bg-steel-orange hover:text-white">
                           Читать материал&nbsp; →
                         </Link>
                       </div>
@@ -267,7 +267,7 @@ export default function ArticlesPage() {
                     <p className="eyebrow">Календарь 2026–2027</p>
                     <h3 className="mt-3 text-xl font-semibold uppercase">Выставки фасадов России, Китая и Дубая</h3>
                     <p className="mt-3 text-sm leading-7 text-white/56">Даты, площадки, основные темы и официальные сайты профильных событий.</p>
-                    <span className="mt-5 text-[11px] font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                    <span className="mt-5 text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
                   </div>
                 </Link>
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -282,7 +282,7 @@ export default function ArticlesPage() {
                     <p className="eyebrow">Мировые технологии</p>
                     <h3 className="mt-3 text-xl font-semibold uppercase">Инженерная разведка для современного производства</h3>
                     <p className="mt-3 text-sm leading-7 text-white/56">Роботизированная гибка, умные линии, лазерная обработка и цифровое управление.</p>
-                    <span className="mt-5 text-[11px] font-bold uppercase text-steel-orange">Перейти в рубрику&nbsp; →</span>
+                    <span className="mt-5 text-xs font-bold uppercase text-steel-orange">Перейти в рубрику&nbsp; →</span>
                   </div>
                   <div className="relative min-h-56 overflow-hidden">
                     <img src="/images/web/cycle-bending.jpg" alt="Современная гибка листового металла" width={900} height={600} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover brightness-[1.16] transition duration-700 group-hover:scale-[1.035]" />
@@ -303,17 +303,17 @@ export default function ArticlesPage() {
                 <div className="mt-7 grid gap-4 xl:grid-cols-2">
                   <Link href="/articles/vystavki-metalloobrabotka-kitay-2026" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
                     <span className="text-4xl font-bold tabular-nums text-steel-orange">14</span>
-                    <p className="mt-5 text-[10px] font-bold uppercase tracking-[.12em] text-white/42">Китай · 2026–2027</p>
+                    <p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Китай · 2026–2027</p>
                     <h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Выставки металлообработки</h3>
                     <p className="mt-4 text-sm leading-7 text-white/56">Резка, гибка, станки, автоматизация и промышленная робототехника.</p>
-                    <span className="mt-6 inline-flex text-[11px] font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                    <span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
                   </Link>
                   <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
                     <span className="text-4xl font-bold tabular-nums text-steel-orange">16</span>
-                    <p className="mt-5 text-[10px] font-bold uppercase tracking-[.12em] text-white/42">Россия · Китай · Дубай</p>
+                    <p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Россия · Китай · Дубай</p>
                     <h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Фасады и архитектурные инновации</h3>
                     <p className="mt-4 text-sm leading-7 text-white/56">Фасадные системы, оболочка здания, стекло, панели, покрытия и проектирование.</p>
-                    <span className="mt-6 inline-flex text-[11px] font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                    <span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
                   </Link>
                 </div>
               </section>

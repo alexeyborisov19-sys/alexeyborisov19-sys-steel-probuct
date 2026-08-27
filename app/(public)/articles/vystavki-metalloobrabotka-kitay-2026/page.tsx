@@ -210,7 +210,7 @@ export default function ChinaExhibitions2026Page() {
                   <span className="font-mono text-2xl font-bold text-steel-orange">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[.12em] text-white/38">
+                  <span className="text-xs font-bold uppercase tracking-[.12em] text-white/38">
                     {event.city}
                   </span>
                 </div>
@@ -286,7 +286,7 @@ export default function ChinaExhibitions2026Page() {
                       </span>
                       <p className="mt-8 text-lg font-semibold leading-tight">{event.dateLabel}</p>
                       <p className="mt-3 text-sm text-white/48">{event.city}</p>
-                      <span className={`mt-6 inline-block border px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] ${status === "Предстоит" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-white/15 text-white/35"}`}>
+                      <span className={`mt-6 inline-block border px-2 py-1 text-xs font-bold uppercase tracking-[.12em] ${status === "Предстоит" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-white/15 text-white/35"}`}>
                         {status}
                       </span>
                     </div>
@@ -294,7 +294,7 @@ export default function ChinaExhibitions2026Page() {
                     <div className="p-6 sm:p-8">
                       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
                         <div>
-                          <span className={`inline-block border px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] ${priorityStyles[event.priority]}`}>
+                          <span className={`inline-block border px-2 py-1 text-xs font-bold uppercase tracking-[.12em] ${priorityStyles[event.priority]}`}>
                             {event.priority}
                           </span>
                           <h3 className="mt-4 text-2xl font-semibold leading-tight">{event.name}</h3>
@@ -315,7 +315,7 @@ export default function ChinaExhibitions2026Page() {
 
                       <div className="mt-7 flex flex-wrap gap-2">
                         {event.areas.map((area) => (
-                          <span key={area} className="border border-white/12 bg-white/[.025] px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-white/58">
+                          <span key={area} className="border border-white/12 bg-white/[.025] px-3 py-2 text-xs font-bold uppercase tracking-[.08em] text-white/58">
                             {area}
                           </span>
                         ))}
@@ -323,7 +323,7 @@ export default function ChinaExhibitions2026Page() {
 
                       <div className="mt-8 grid gap-8 xl:grid-cols-2">
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">
+                          <p className="text-xs font-bold uppercase tracking-[.15em] text-steel-orange">
                             Что будет представлено
                           </p>
                           <ul className="mt-4 space-y-3">
@@ -336,7 +336,7 @@ export default function ChinaExhibitions2026Page() {
                           </ul>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">
+                          <p className="text-xs font-bold uppercase tracking-[.15em] text-steel-orange">
                             Для кого
                           </p>
                           <ul className="mt-4 space-y-3">
@@ -351,7 +351,7 @@ export default function ChinaExhibitions2026Page() {
                       </div>
 
                       <div className="mt-8 border-l-2 border-steel-orange bg-[#0c1013] px-5 py-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/38">Практический смысл</p>
+                        <p className="text-xs font-bold uppercase tracking-[.14em] text-white/38">Практический смысл</p>
                         <p className="mt-2 text-sm font-medium leading-6 text-white/78">{event.verdict}</p>
                       </div>
                     </div>

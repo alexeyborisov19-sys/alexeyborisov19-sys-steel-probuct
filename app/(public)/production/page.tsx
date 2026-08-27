@@ -152,7 +152,7 @@ export default function ProductionPage() {
           ].map(([value, label]) => (
             <div key={label} className="border-l border-white/10 px-4">
               <b className="text-3xl text-steel-orange">{value}</b>
-              <p className="mt-1 text-[10px] uppercase text-white/55">
+              <p className="mt-1 text-xs uppercase text-white/55">
                 {label}
               </p>
             </div>
@@ -195,10 +195,10 @@ export default function ProductionPage() {
                     {String(index + 1).padStart(2, "0")}
                   </b>
                   <h3 className="mt-2 text-sm font-bold">{title}</h3>
-                  <p className="mt-3 text-[11px] leading-relaxed text-white/50">
+                  <p className="mt-3 text-[13px] leading-relaxed text-white/50">
                     {description}
                   </p>
-                  <span className="mt-4 block text-[10px] font-bold uppercase text-steel-orange">
+                  <span className="mt-4 block text-xs font-bold uppercase text-steel-orange">
                     Подробнее&nbsp; →
                   </span>
                 </div>
@@ -237,7 +237,7 @@ export default function ProductionPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                  <span className="text-[9px] font-bold uppercase tracking-[.18em] text-steel-orange">
+                  <span className="text-xs font-bold uppercase tracking-[.18em] text-steel-orange">
                     Реальный кадр
                   </span>
                   <h3 className="mt-2 text-lg font-semibold">{photo.title}</h3>
@@ -264,13 +264,13 @@ export default function ProductionPage() {
                     className="object-cover brightness-[1.04] contrast-[1.03] saturate-[.98] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.1]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
-                  <span className="absolute left-4 top-4 border border-steel-orange/60 bg-black/70 px-2 py-1 text-[8px] font-bold uppercase tracking-[.15em] text-steel-orange backdrop-blur-sm">
+                  <span className="absolute left-4 top-4 border border-steel-orange/60 bg-black/70 px-2 py-1 text-xs font-bold uppercase tracking-[.15em] text-steel-orange backdrop-blur-sm">
                     Производство
                   </span>
                 </div>
                 <div className="border-t border-white/10 p-5">
                   <h3 className="text-sm font-bold">{photo.title}</h3>
-                  <p className="mt-2 text-[11px] leading-relaxed text-white/55">
+                  <p className="mt-2 text-[13px] leading-relaxed text-white/55">
                     {photo.description}
                   </p>
                 </div>
@@ -293,7 +293,7 @@ export default function ProductionPage() {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <h3 className="mt-5 text-sm font-bold">{title}</h3>
-                <p className="mt-3 text-[11px] leading-relaxed text-white/55">{description}</p>
+                <p className="mt-3 text-[13px] leading-relaxed text-white/55">{description}</p>
               </article>
             ))}
           </div>

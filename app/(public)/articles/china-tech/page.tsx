@@ -90,12 +90,12 @@ export default function ChinaTechPage() {
                     className="h-full w-full object-cover brightness-[1.14] contrast-[1.03] transition duration-700 group-hover:scale-[1.035]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0b0f12] via-[#0b0f12]/15 to-transparent" />
-                  <span className="absolute left-5 top-5 border border-steel-orange/70 bg-black/70 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange backdrop-blur">
+                  <span className="absolute left-5 top-5 border border-steel-orange/70 bg-black/70 px-3 py-2 text-xs font-bold uppercase tracking-[.14em] text-steel-orange backdrop-blur">
                     Китай / редакционный обзор
                   </span>
                 </div>
                 <div className="p-6 sm:p-8">
-                  <p className="text-[10px] font-bold uppercase tracking-[.15em] text-white/42">
+                  <p className="text-xs font-bold uppercase tracking-[.15em] text-white/42">
                     {article.readingTime} · проверено по {article.sources?.length ?? 0} источникам
                   </p>
                   <h3 className="mt-4 max-w-3xl text-2xl font-semibold leading-tight">{article.title}</h3>
@@ -130,13 +130,13 @@ export default function ChinaTechPage() {
                   <span className="font-mono text-2xl font-bold text-steel-orange">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <span className="border border-white/15 px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-white/46">
+                  <span className="border border-white/15 px-2 py-1 text-xs font-bold uppercase tracking-[.12em] text-white/46">
                     {source.kind}
                   </span>
                 </div>
                 <h3 className="mt-8 text-xl font-semibold">{source.name}</h3>
                 <p className="mt-4 text-sm leading-7 text-white/58">{source.description}</p>
-                <p className="mt-5 text-[10px] font-bold uppercase tracking-[.12em] text-white/40">
+                <p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/40">
                   {source.focus}
                 </p>
                 <a

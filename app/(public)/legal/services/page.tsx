@@ -84,7 +84,7 @@ export default function ServicesPage() {
     <div className="mt-7 overflow-x-auto border-y border-white/10">
       <table className="w-full min-w-[760px] border-collapse text-left">
         <thead>
-          <tr className="border-b border-white/10 text-[10px] font-bold uppercase tracking-[.08em] text-white/45">
+          <tr className="border-b border-white/10 text-xs font-bold uppercase tracking-[.08em] text-white/45">
             <th className="px-3 py-4">Система</th>
             <th className="px-3 py-4">Статус</th>
             <th className="px-3 py-4">Данные</th>

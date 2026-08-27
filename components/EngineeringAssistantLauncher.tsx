@@ -38,8 +38,8 @@ function LauncherButton({ loading = false, onClick }: { loading?: boolean; onCli
       >
         <BrandMark />
         <span className="hidden min-w-[142px] whitespace-nowrap text-left sm:block">
-          <b className="block text-[10px] leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
-          <span className="mt-1 block text-[9px] leading-none text-white/45">
+          <b className="block text-xs leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
+          <span className="mt-1 block text-xs leading-none text-white/45">
             {loading ? "Загружаем помощника…" : "Задать технический вопрос"}
           </span>
         </span>

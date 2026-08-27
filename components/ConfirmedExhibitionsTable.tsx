@@ -21,7 +21,7 @@ export function ConfirmedExhibitionsTable({
               <span className="font-mono text-sm font-bold text-steel-orange">
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="border border-emerald-400/35 bg-emerald-400/[.08] px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-emerald-300">
+              <span className="border border-emerald-400/35 bg-emerald-400/[.08] px-2 py-1 text-xs font-bold uppercase tracking-[.12em] text-emerald-300">
                 Дата подтверждена
               </span>
             </div>
@@ -47,7 +47,7 @@ export function ConfirmedExhibitionsTable({
       <div className="hidden overflow-hidden border border-white/12 md:block">
         <table className="w-full border-collapse text-left">
           <thead className="bg-[#0b0f12]">
-            <tr className="text-[10px] uppercase tracking-[.12em] text-white/48">
+            <tr className="text-xs uppercase tracking-[.12em] text-white/48">
               <th className="w-[22%] border-r border-white/10 p-5">Выставка</th>
               <th className="w-[17%] border-r border-white/10 p-5 text-steel-orange">Даты</th>
               <th className="w-[22%] border-r border-white/10 p-5">Город и площадка</th>
@@ -68,7 +68,7 @@ export function ConfirmedExhibitionsTable({
                   <span className="font-mono text-sm font-bold leading-6 text-steel-orange">
                     {event.date}
                   </span>
-                  <span className="mt-3 block w-fit border border-emerald-400/30 bg-emerald-400/[.07] px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] text-emerald-300">
+                  <span className="mt-3 block w-fit border border-emerald-400/30 bg-emerald-400/[.07] px-2 py-1 text-xs font-bold uppercase tracking-[.1em] text-emerald-300">
                     Подтверждено
                   </span>
                 </td>

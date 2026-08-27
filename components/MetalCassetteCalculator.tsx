@@ -65,7 +65,7 @@ export function MetalCassetteCalculator() {
           </p>
 
           <div className="mt-7 border border-white/12 bg-[#0c1013] p-4 sm:p-5">
-            <label htmlFor="facade-area" className="text-[11px] font-bold uppercase tracking-[.12em] text-white/60">
+            <label htmlFor="facade-area" className="text-xs font-bold uppercase tracking-[.12em] text-white/60">
               Площадь фасада
             </label>
             <div className="mt-3 flex items-stretch">
@@ -89,7 +89,7 @@ export function MetalCassetteCalculator() {
           </div>
 
           <fieldset className="mt-6 min-w-0">
-            <legend className="text-[11px] font-bold uppercase tracking-[.12em] text-white/60">
+            <legend className="text-xs font-bold uppercase tracking-[.12em] text-white/60">
               Предполагаемая толщина металла
             </legend>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -109,7 +109,7 @@ export function MetalCassetteCalculator() {
                     }`}
                   >
                     <span className="block text-lg font-semibold">{thickness} мм</span>
-                    <span className={`mt-1 block text-[10px] font-bold uppercase tracking-[.08em] ${isSelected ? "text-white/75" : "text-white/40"}`}>
+                    <span className={`mt-1 block text-xs font-bold uppercase tracking-[.08em] ${isSelected ? "text-white/75" : "text-white/40"}`}>
                       Передадим в заявку
                     </span>
                   </button>
@@ -120,15 +120,15 @@ export function MetalCassetteCalculator() {
 
           <div className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-3">
             <div className="bg-[#0c1013] p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Кассета</p>
+              <p className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Кассета</p>
               <p className="mt-2 text-sm font-semibold">1170 × 545 мм</p>
             </div>
             <div className="bg-[#0c1013] p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Руст</p>
+              <p className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Руст</p>
               <p className="mt-2 text-sm font-semibold">20 × 20 мм</p>
             </div>
             <div className="bg-[#0c1013] p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Расчётный модуль</p>
+              <p className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Расчётный модуль</p>
               <p className="mt-2 text-sm font-semibold">1190 × 565 мм</p>
             </div>
           </div>
@@ -137,14 +137,14 @@ export function MetalCassetteCalculator() {
         <div className="flex min-w-0 flex-col bg-[radial-gradient(circle_at_100%_0%,rgba(224,86,36,.13),transparent_42%)] p-6 sm:p-8">
           <div className="flex items-center justify-between border-b border-white/12 pb-5">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[.14em] text-steel-orange">Результат</p>
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-steel-orange">Результат</p>
               <p className="mt-1 text-xs text-white/45">Ориентировочное количество</p>
             </div>
             <span className="flex h-12 w-12 items-center justify-center border border-steel-orange/50 text-2xl text-steel-orange">Σ</span>
           </div>
 
           <div className="mt-7">
-            <p className="text-[10px] font-bold uppercase tracking-[.12em] text-white/45">
+            <p className="text-xs font-bold uppercase tracking-[.12em] text-white/45">
               Металлокассеты
             </p>
             <p aria-live="polite" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
@@ -157,26 +157,26 @@ export function MetalCassetteCalculator() {
 
           <dl className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             <div className="bg-[#0d1114] p-4">
-              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Площадь для оценки</dt>
+              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Площадь для оценки</dt>
               <dd className="mt-2 text-2xl font-semibold text-steel-orange">
                 {result.area > 0 ? `${areaFormatter.format(result.area)} м²` : "—"}
               </dd>
             </div>
             <div className="bg-[#0d1114] p-4">
-              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Предполагаемая толщина</dt>
+              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Предполагаемая толщина</dt>
               <dd className="mt-2 text-2xl font-semibold">{selectedThickness} мм</dd>
             </div>
             <div className="bg-[#0d1114] p-4">
-              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Расчётный модуль</dt>
+              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Расчётный модуль</dt>
               <dd className="mt-2 text-lg font-semibold">1190 × 565 мм</dd>
             </div>
             <div className="bg-[#0d1114] p-4">
-              <dt className="text-[10px] font-bold uppercase tracking-[.1em] text-white/40">Коммерческая стоимость</dt>
+              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Коммерческая стоимость</dt>
               <dd className="mt-2 text-lg font-semibold">После проверки проекта</dd>
             </div>
           </dl>
 
-          <p className="mt-5 text-[11px] leading-5 text-white/38">
+          <p className="mt-5 text-[13px] leading-5 text-white/38">
             Расчёт количества носит предварительный характер. Коммерческая стоимость формируется после проверки раскладки, проёмов, углов, материала, покрытия, доборных элементов и объёма партии.
           </p>
 
@@ -186,7 +186,7 @@ export function MetalCassetteCalculator() {
           >
             Передать специалисту для расчёта&nbsp; →
           </Link>
-          <p className="mt-3 text-center text-[11px] leading-5 text-white/45">
+          <p className="mt-3 text-center text-[13px] leading-5 text-white/45">
             На следующем шаге можно прикрепить PDF, DXF, DWG, STEP, изображения и архивы.
           </p>
         </div>

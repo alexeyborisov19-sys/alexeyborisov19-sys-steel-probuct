@@ -146,7 +146,7 @@ export function ArticleCommercialLinks(props: ArticleCommercialLinksProps) {
               {item.title}
             </h3>
             <p className="mt-3 text-xs leading-6 text-white/52">{item.description}</p>
-            <span className="mt-5 inline-block text-[10px] font-bold uppercase text-steel-orange">
+            <span className="mt-5 inline-block text-xs font-bold uppercase text-steel-orange">
               Перейти&nbsp; →
             </span>
           </Link>

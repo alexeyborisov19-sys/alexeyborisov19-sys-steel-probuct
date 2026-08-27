@@ -131,7 +131,7 @@ export function CompanyVideo() {
           <p className="mt-5 text-sm leading-relaxed text-white/62 sm:text-base">Видео о команде, инженерной экспертизе и реальном производстве. Показываем, как компания решает задачи клиентов — от идеи до готового изделия.</p>
           <div className="mt-7 flex flex-wrap gap-3">
             <button type="button" onClick={(event) => openVideo(event.currentTarget)} className="clip-corner bg-steel-orange px-6 py-3 text-xs font-bold uppercase transition hover:bg-orange-600">Смотреть фильм&nbsp; →</button>
-            <span className="inline-flex items-center border border-white/15 px-4 py-3 text-[11px] uppercase tracking-[.12em] text-white/55">1:59 · 720p HD</span>
+            <span className="inline-flex items-center border border-white/15 px-4 py-3 text-xs uppercase tracking-[.12em] text-white/55">1:59 · 720p HD</span>
           </div>
         </div>
 
@@ -142,8 +142,8 @@ export function CompanyVideo() {
           <span className="absolute inset-0 bg-black/10 transition group-hover:bg-black/0" />
           <span className="absolute left-5 top-5 grid h-11 w-11 place-items-center border border-white/35 bg-black/45 text-sm text-steel-orange transition group-hover:border-steel-orange group-hover:bg-black/70">▶</span>
           <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/85 via-black/15 to-transparent px-5 pb-5 pt-16">
-            <span className="text-[10px] font-bold uppercase tracking-[.16em] text-white/75">«Сталь Продукт» — о компании</span>
-            <span className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">Смотреть</span>
+            <span className="text-xs font-bold uppercase tracking-[.16em] text-white/75">«Сталь Продукт» — о компании</span>
+            <span className="text-xs font-bold uppercase tracking-[.15em] text-steel-orange">Смотреть</span>
           </span>
         </button>
       </div>

@@ -24,14 +24,14 @@ a { color: inherit; text-decoration: none; }
 .legal-document th, .legal-document td { line-height: 1.45; }
 .legal-document__date { color: rgba(255,255,255,.46); font-size: .75rem; }
 .header-nav { min-width: 0; flex: 1 1 auto; justify-content: center; }
-.header-nav-link { position: relative; display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: 5px; padding: 0 clamp(7px, .72vw, 13px); border: 0; background: transparent; color: rgba(255,255,255,.78); font-family: inherit; font-size: clamp(9px, .61vw, 10px); font-weight: 700; letter-spacing: .012em; line-height: 1; text-align: center; text-transform: uppercase; white-space: nowrap; transition: color .22s ease, background-color .22s ease; }
-.header-nav-link:not(:last-child)::before { content: ""; position: absolute; right: 0; top: 31px; height: 14px; width: 1px; background: rgba(255,255,255,.1); }
+.header-nav-link { position: relative; display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: 5px; padding: 0 clamp(7px, .72vw, 13px); border: 0; background: transparent; color: rgba(255,255,255,.72); font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: .005em; line-height: 1; text-align: center; text-transform: uppercase; white-space: nowrap; transition: color .22s ease, background-color .22s ease; }
+.header-nav-link:not(:last-child)::before { content: ""; position: absolute; right: 0; top: 30px; height: 16px; width: 1px; background: rgba(255,255,255,.06); }
 .header-nav-link::after { content: ""; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: var(--orange); box-shadow: 0 0 12px rgba(234,91,12,.65); transform: translateX(-50%); transition: width .22s ease; }
 .header-nav-link:hover, .header-nav-link-active { color: #fff; background: rgba(255,255,255,.025); }
 .header-nav-link:hover::after, .header-nav-link-active::after { width: calc(100% - 26px); }
 .header-nav-link-active { color: var(--orange); }
-.header-nav-link b { color: var(--orange); font-size: 10px; font-weight: 700; }
-.header-phone { color: rgba(255,255,255,.9); font-size: 11px; letter-spacing: .01em; }
+.header-nav-link b { color: var(--orange); font-size: 11px; font-weight: 700; }
+.header-phone { color: rgba(255,255,255,.9); font-size: 13px; letter-spacing: .01em; }
 .header-mobile-nav > a { border-bottom: 1px solid rgba(255,255,255,.09); padding: .8rem 0; font-size: .78rem; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
 .header-mobile-nav > a:last-child { border-bottom: 0; padding: .8rem 1rem; }
 @media (min-width: 1280px) and (max-width: 1399px) {
@@ -120,36 +120,9 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 640px) { .container { width: min(100% - 32px, 1320px); } }
 
 /* Yandex rejects a page as unreadable on a phone when much of its copy sits
-   below 12px, and just under half of the home page did. The approved desktop
-   scale is deliberately left alone: this raises only the floor, and only at
-   phone widths, where the fine print is the part that stops being legible. */
+   below 12px. The markup no longer sets anything under 12px except the brand
+   descriptor beside the logo, which is a caption and stays at 10px on wider
+   screens; on a phone it comes back up to the floor with everything else. */
 @media (max-width: 767px) {
-  .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 12px; }
+  .text-\[10px\] { font-size: 12px; }
 }
-
-/* Typography pilot, scoped to the home page via .type-pilot. The header, the
-   brand lockup and the footer are shared components, so their sizes are raised
-   here rather than in the components themselves — every other page keeps the
-   sizes it has until this scale is approved. Floor is 12px, matching the phone
-   floor already enforced above. */
-.type-pilot .header-nav-link { font-size: 12px; letter-spacing: .005em; }
-.type-pilot .header-nav-link b { font-size: 11px; }
-.type-pilot .header-nav-link:not(:last-child)::before { top: 30px; height: 16px; }
-.type-pilot .header-phone { font-size: 13px; }
-
-/* Lightening the header without shrinking the navigation. At 1280px — the width
-   where the desktop nav first appears — the links already fill their track
-   exactly (751.9px of 751.8px available), so nothing here may add width:
-   dropping weight and muting colour buys the relief instead of tracking.
-   Contrast keeps a wide margin: white at 72% over the header is 9.96:1. */
-.type-pilot .header-nav-link { font-weight: 600; color: rgba(255,255,255,.72); }
-.type-pilot .header-nav-link:hover { color: #fff; }
-.type-pilot .header-nav-link-active,
-.type-pilot .header-nav-link-active:hover { color: var(--orange); }
-.type-pilot .header-nav-link:not(:last-child)::before { background: rgba(255,255,255,.06); }
-
-/* The descriptor beside the logo repeats the wordmark and the home page h1, so
-   it reads as a caption rather than as content and sits below the 12px floor by
-   intent. Below 768px the phone floor still wins. */
-.type-pilot .header-brand span { font-size: 10px; font-weight: 500; }
-@media (max-width: 767px) { .type-pilot .header-brand span { font-size: 12px; } }

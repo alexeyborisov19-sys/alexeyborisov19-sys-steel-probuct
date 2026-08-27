@@ -118,11 +118,11 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
               </div>
               <div className="border-l border-white/12 pl-5">
                 <b className="text-3xl text-steel-orange">{industry.sections.length}</b>
-                <p className="mt-1 text-[10px] uppercase tracking-[.08em] text-white/48">функциональных разделов</p>
+                <p className="mt-1 text-xs uppercase tracking-[.08em] text-white/48">функциональных разделов</p>
               </div>
               <div className="border-l border-white/12 pl-5">
                 <b className="text-3xl text-steel-orange">{itemCount}</b>
-                <p className="mt-1 text-[10px] uppercase tracking-[.08em] text-white/48">позиций в матрице</p>
+                <p className="mt-1 text-xs uppercase tracking-[.08em] text-white/48">позиций в матрице</p>
               </div>
             </div>
 

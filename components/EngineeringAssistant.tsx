@@ -285,9 +285,9 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
             <header className="relative flex items-center gap-3 border-b border-white/10 bg-[linear-gradient(105deg,rgba(234,91,12,.17),rgba(15,18,20,.96)_52%)] px-4 py-4">
               <EngineerBrandMark />
               <div className="min-w-0 flex-1">
-                <p className="whitespace-nowrap text-[10px] font-bold leading-none uppercase tracking-[.16em] text-steel-orange">ИИ-инженер</p>
+                <p className="whitespace-nowrap text-xs font-bold leading-none uppercase tracking-[.16em] text-steel-orange">ИИ-инженер</p>
                 <h2 className="mt-1 truncate text-sm font-semibold leading-none text-white">Помощник «Сталь Продукт»</h2>
-                <p className="mt-1 truncate text-[10px] leading-none text-white/45">Технологии · изделия · подготовка заявки</p>
+                <p className="mt-1 truncate text-xs leading-none text-white/45">Технологии · изделия · подготовка заявки</p>
               </div>
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
                 <button
@@ -315,7 +315,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
             {!leadFormOpen ? (
               <>
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                  <div className="mb-4 flex items-center gap-2 text-[9px] font-bold uppercase tracking-[.13em] text-white/35">
+                  <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[.13em] text-white/35">
                     <span className="h-px flex-1 bg-white/10" />
                     Техническое сопровождение
                     <span className="h-px flex-1 bg-white/10" />
@@ -358,7 +358,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                           key={suggestion}
                           type="button"
                           onClick={() => handleSuggestion(suggestion)}
-                          className="border border-white/15 bg-[#111519] px-3 py-2 text-left text-[10px] font-semibold leading-snug text-white/67 transition hover:border-steel-orange hover:text-white"
+                          className="border border-white/15 bg-[#111519] px-3 py-2 text-left text-xs font-semibold leading-snug text-white/67 transition hover:border-steel-orange hover:text-white"
                         >
                           {suggestion}&nbsp; →
                         </button>
@@ -389,7 +389,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       ↑
                     </button>
                   </div>
-                  <p className="mt-2 text-[9px] leading-4 text-white/35">
+                  <p className="mt-2 text-xs leading-4 text-white/35">
                     Не указывайте в диалоге контакты и персональные данные. Чертежи передавайте только через защищённую форму. Подробнее — в <Link href={legalLinks.services} className="text-white/55 hover:text-steel-orange">описании сервисов</Link>.
                   </p>
                   <button
@@ -398,7 +398,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       setLeadFormOpen(true);
                       trackLeadEvent("assistant_lead_form_opened", { assistant: "engineering" });
                     }}
-                    className="mt-2 w-full border border-steel-orange/45 px-4 py-3 text-[10px] font-bold uppercase tracking-[.08em] text-steel-orange transition hover:bg-steel-orange hover:text-white"
+                    className="mt-2 w-full border border-steel-orange/45 px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-steel-orange transition hover:bg-steel-orange hover:text-white"
                   >
                     Передать задачу инженеру&nbsp; →
                   </button>
@@ -409,12 +409,12 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                 <button
                   type="button"
                   onClick={() => setLeadFormOpen(false)}
-                  className="text-[10px] font-bold uppercase tracking-[.08em] text-white/50 transition hover:text-steel-orange"
+                  className="text-xs font-bold uppercase tracking-[.08em] text-white/50 transition hover:text-steel-orange"
                 >
                   ← Вернуться в диалог
                 </button>
                 <div className="mt-5 border-l-2 border-steel-orange pl-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">Передача инженеру</p>
+                  <p className="text-xs font-bold uppercase tracking-[.15em] text-steel-orange">Передача инженеру</p>
                   <h3 className="mt-2 text-xl font-semibold">Контакты и исходные данные</h3>
                   <p className="mt-2 text-xs leading-relaxed text-white/48">Диалог будет приложен к заявке как техническая сводка.</p>
                 </div>
@@ -430,7 +430,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                         setLeadFeedback(null);
                         setLeadFormOpen(false);
                       }}
-                      className="mt-5 border border-emerald-300/30 px-4 py-3 text-[10px] font-bold uppercase text-emerald-100"
+                      className="mt-5 border border-emerald-300/30 px-4 py-3 text-xs font-bold uppercase text-emerald-100"
                     >
                       Вернуться к помощнику
                     </button>
@@ -442,7 +442,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       <input name="website" tabIndex={-1} autoComplete="off" />
                     </label>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="text-[10px] font-bold uppercase tracking-[.06em] text-white/65">
+                      <label className="text-xs font-bold uppercase tracking-[.06em] text-white/65">
                         Имя *
                         <input
                           name="name"
@@ -451,7 +451,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                           className="mt-2 w-full border border-white/15 bg-black/20 p-3 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-steel-orange"
                         />
                       </label>
-                      <label className="text-[10px] font-bold uppercase tracking-[.06em] text-white/65">
+                      <label className="text-xs font-bold uppercase tracking-[.06em] text-white/65">
                         Телефон
                         <input
                           name="phone"
@@ -461,7 +461,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                           className="mt-2 w-full border border-white/15 bg-black/20 p-3 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-white/25 focus:border-steel-orange"
                         />
                       </label>
-                      <label className="text-[10px] font-bold uppercase tracking-[.06em] text-white/65">
+                      <label className="text-xs font-bold uppercase tracking-[.06em] text-white/65">
                         E-mail
                         <input
                           name="email"
@@ -470,7 +470,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                           className="mt-2 w-full border border-white/15 bg-black/20 p-3 text-sm font-normal normal-case tracking-normal text-white outline-none focus:border-steel-orange"
                         />
                       </label>
-                      <label className="text-[10px] font-bold uppercase tracking-[.06em] text-white/65">
+                      <label className="text-xs font-bold uppercase tracking-[.06em] text-white/65">
                         Компания
                         <input
                           name="company"
@@ -479,7 +479,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                         />
                       </label>
                     </div>
-                    <p className="border-l-2 border-steel-orange pl-3 text-[10px] leading-5 text-white/52">
+                    <p className="border-l-2 border-steel-orange pl-3 text-xs leading-5 text-white/52">
                       Телефон или e-mail — заполните хотя бы одно поле.
                     </p>
 
@@ -487,9 +487,9 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="text-xs font-semibold">Чертежи и спецификации</p>
-                          <p className="mt-1 text-[10px] leading-relaxed text-white/40">До 8 файлов, суммарно до 10 МБ.</p>
+                          <p className="mt-1 text-xs leading-relaxed text-white/40">До 8 файлов, суммарно до 10 МБ.</p>
                         </div>
-                        <label className="cursor-pointer border border-steel-orange/50 px-3 py-2 text-[9px] font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">
+                        <label className="cursor-pointer border border-steel-orange/50 px-3 py-2 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">
                           Добавить
                           <input type="file" multiple accept={acceptedFiles} onChange={handleLeadFiles} className="sr-only" />
                         </label>
@@ -497,7 +497,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       {files.length ? (
                         <ul className="mt-3 space-y-2 border-t border-white/10 pt-3">
                           {files.map((file, index) => (
-                            <li key={`${file.name}-${file.lastModified}`} className="flex items-center gap-2 text-[10px] text-white/60">
+                            <li key={`${file.name}-${file.lastModified}`} className="flex items-center gap-2 text-xs text-white/60">
                               <span className="min-w-0 flex-1 truncate">{file.name}</span>
                               <span className="shrink-0 text-white/35">{formatFileSize(file.size)}</span>
                               <button
@@ -514,7 +514,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       ) : null}
                     </div>
 
-                    <label className="flex cursor-pointer items-start gap-3 text-[10px] leading-relaxed text-white/55">
+                    <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-white/55">
                       <input
                         name="personalDataConsent"
                         value="yes"
@@ -537,14 +537,14 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       </p>
                     ) : null}
 
-                    <p className="text-[10px] leading-5 text-white/48">
+                    <p className="text-xs leading-5 text-white/48">
                       Подтвердим получение материалов в течение рабочего дня. Срок подготовки расчёта сообщим после проверки документации.
                     </p>
 
                     <button
                       type="submit"
                       disabled={submittingLead}
-                      className="clip-corner w-full bg-steel-orange px-5 py-4 text-[10px] font-bold uppercase tracking-[.08em] text-white transition hover:bg-orange-600 disabled:cursor-wait disabled:opacity-55"
+                      className="clip-corner w-full bg-steel-orange px-5 py-4 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-orange-600 disabled:cursor-wait disabled:opacity-55"
                     >
                       {submittingLead ? "Регистрируем заявку…" : "Передать инженеру →"}
                     </button>
@@ -567,8 +567,8 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
       >
         <EngineerBrandMark compact />
         <span className="hidden min-w-[142px] whitespace-nowrap text-left sm:block">
-          <b className="block text-[10px] leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
-          <span className="mt-1 block text-[9px] leading-none text-white/45">Задать технический вопрос</span>
+          <b className="block text-xs leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
+          <span className="mt-1 block text-xs leading-none text-white/45">Задать технический вопрос</span>
         </span>
       </motion.button>
     </div>

@@ -88,7 +88,7 @@ const homeFaq = [
 
 export default function Home() {
   return (
-    <div className="type-pilot">
+    <>
       <JsonLd
         data={[webPageSchema({
           name: "Сталь Продукт — инженерные решения из листового металла",
@@ -263,6 +263,6 @@ export default function Home() {
         <FaqSection items={homeFaq} title="Вопросы о производстве на заказ" />
       </main>
       <Footer />
-    </div>
+    </>
   );
 }

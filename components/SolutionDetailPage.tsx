@@ -25,7 +25,7 @@ export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
           <dl className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {seo.commercialFacts.map((fact) => (
               <div key={fact.label} className="border border-white/12 bg-[#111519] p-5">
-                <dt className="text-[10px] font-bold uppercase tracking-[.14em] text-white/45">{fact.label}</dt>
+                <dt className="text-xs font-bold uppercase tracking-[.14em] text-white/45">{fact.label}</dt>
                 <dd className="mt-3 text-xl font-semibold text-steel-orange">{fact.value}</dd>
                 <p className="mt-3 text-xs leading-5 text-white/55">{fact.note}</p>
               </div>
@@ -40,7 +40,7 @@ export function SolutionDetailPage({ solution }: { solution: SolutionDetail }) {
     <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
       <div className="container">
         <div className="max-w-3xl"><p className="eyebrow">Состав решения</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Изделия и задачи</h2><p className="mt-4 text-sm leading-relaxed text-white/60">Каждый пункт можно поставить отдельно или собрать в единое решение. Для наглядности подготовили собственные типовые схемы узлов: они показывают принцип изделия, точки крепления и параметры, которые уточняются под конкретный проект.</p></div>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{solution.items.map((item, index) => <article key={item.title} className="group flex min-h-64 overflow-hidden border border-white/12 bg-[#111519] transition hover:border-steel-orange"><div className="flex flex-1 flex-col"><SolutionItemVisual kind={item.visual} title={item.title} brighter={brightenIndustry} /><div className="flex flex-1 flex-col p-6"><span className="font-mono text-xl font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span><h3 className="mt-5 text-lg font-semibold uppercase leading-tight">{item.title}</h3><p className="mt-4 text-sm leading-relaxed text-white/62">{item.description}</p><div className="mt-auto border-t border-white/10 pt-4"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40">Где применяется</p><p className="mt-2 text-xs leading-relaxed text-white/75">{item.application}</p></div></div></div></article>)}</div>
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{solution.items.map((item, index) => <article key={item.title} className="group flex min-h-64 overflow-hidden border border-white/12 bg-[#111519] transition hover:border-steel-orange"><div className="flex flex-1 flex-col"><SolutionItemVisual kind={item.visual} title={item.title} brighter={brightenIndustry} /><div className="flex flex-1 flex-col p-6"><span className="font-mono text-xl font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span><h3 className="mt-5 text-lg font-semibold uppercase leading-tight">{item.title}</h3><p className="mt-4 text-sm leading-relaxed text-white/62">{item.description}</p><div className="mt-auto border-t border-white/10 pt-4"><p className="text-xs font-bold uppercase tracking-[.12em] text-white/40">Где применяется</p><p className="mt-2 text-xs leading-relaxed text-white/75">{item.application}</p></div></div></div></article>)}</div>
       </div>
     </section>
 
