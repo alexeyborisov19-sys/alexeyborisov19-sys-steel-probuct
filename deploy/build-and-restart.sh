@@ -167,12 +167,21 @@ pm2 save
 # Drop nginx page cache so visitors are not pinned to pre-deploy HTML that
 # references deleted JS chunks (that combination surfaces the global-error
 # "stale build" screen until the cache entry expires).
+# Runs as the nodejs user after promotion — use sudo when available, and never
+# fail the deploy if cache purge is denied (the app is already live).
 if command -v nginx >/dev/null 2>&1; then
-  rm -rf /var/cache/nginx/steelprodukt/*
-  if nginx -t >/dev/null 2>&1; then
-    nginx -s reload || true
+  if command -v sudo >/dev/null 2>&1; then
+    sudo rm -rf /var/cache/nginx/steelprodukt/* 2>/dev/null || true
+    if sudo nginx -t >/dev/null 2>&1; then
+      sudo nginx -s reload 2>/dev/null || true
+    fi
+  else
+    rm -rf /var/cache/nginx/steelprodukt/* 2>/dev/null || true
+    if nginx -t >/dev/null 2>&1; then
+      nginx -s reload 2>/dev/null || true
+    fi
   fi
-  echo "Nginx page cache purged for steelprodukt."
+  echo "Nginx page cache purge attempted for steelprodukt."
 fi
 
 # Tell search engines the release is live. This runs last and on purpose is
