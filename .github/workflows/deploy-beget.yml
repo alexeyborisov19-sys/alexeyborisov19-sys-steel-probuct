@@ -100,4 +100,13 @@ jobs:
           chown -R nodejs:nodejs "$APP_PATH"
           bash "$APP_PATH/deploy/prepare-production.sh" "$APP_PATH" nodejs
           sudo -iu nodejs bash "$APP_PATH/deploy/build-and-restart.sh" "$APP_PATH"
+          # Purge nginx page cache as root so visitors are not stuck on pre-deploy HTML
+          # that references deleted JS chunks (causes the stale "Обновляем страницу" screen).
+          if [ -d /var/cache/nginx/steelprodukt ]; then
+            rm -rf /var/cache/nginx/steelprodukt/*
+            echo "Nginx page cache purged (root)."
+          fi
+          if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
+            nginx -s reload || true
+          fi
           REMOTE
