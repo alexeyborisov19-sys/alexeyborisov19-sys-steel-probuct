@@ -33,8 +33,12 @@ function collectRenderedText(value: unknown): string[] {
   return collectRenderedText(value.props.children);
 }
 
-test("the public site no longer presents itself as a test version", () => {
-  assert.equal(siteMode.isTest, false);
+test("the public site shows the temporary test-mode status until documents are approved", () => {
+  assert.equal(siteMode.isTest, true);
+  assert.equal(
+    siteMode.label,
+    "Сайт работает в тестовом режиме до завершения согласования документов.",
+  );
 });
 
 test("the homepage hero restores equipment proof instead of laser envelope figures", () => {
