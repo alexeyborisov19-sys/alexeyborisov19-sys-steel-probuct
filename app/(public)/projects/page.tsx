@@ -55,6 +55,7 @@ const projects = [
 export default function ProjectsPage() {
   return (
     <PageLayout
+      className="type-pilot"
       path="/projects"
       eyebrow="Проектные сценарии"
       title="Решения для типовых объектов"
@@ -76,7 +77,7 @@ export default function ProjectsPage() {
                 Каждая карточка ведёт в соответствующее отраслевое решение с перечнем изделий, задач и исходных данных для расчёта.
               </p>
             </div>
-            <Link href="/industries" className="text-xs font-bold uppercase text-steel-orange transition hover:text-orange-400">
+            <Link href="/industries" className="text-[13px] font-bold uppercase text-steel-orange transition hover:text-orange-400">
               Все отрасли&nbsp; →
             </Link>
           </div>
@@ -94,11 +95,11 @@ export default function ProjectsPage() {
                   />
                 </div>
                 <div className="flex min-h-64 flex-col p-5">
-                  <p className="text-[10px] font-bold uppercase tracking-[.1em] text-white/45">Демонстрационный сценарий</p>
-                  <p className="mt-2 text-[10px] font-bold uppercase text-steel-orange">{project.category}</p>
+                  <p className="text-xs font-bold uppercase tracking-[.1em] text-white/45">Демонстрационный сценарий</p>
+                  <p className="mt-2 text-xs font-bold uppercase text-steel-orange">{project.category}</p>
                   <h3 className="mt-4 text-lg font-semibold">{project.title}</h3>
                   <p className="mt-4 text-sm leading-6 text-white/60">{project.description}</p>
-                  <Link href={project.href} className="mt-auto border-t border-white/10 pt-5 text-xs font-bold text-steel-orange transition group-hover:text-orange-400">
+                  <Link href={project.href} className="mt-auto border-t border-white/10 pt-5 text-[13px] font-bold text-steel-orange transition group-hover:text-orange-400">
                     Изучить отраслевое решение&nbsp; →
                   </Link>
                 </div>
@@ -113,7 +114,7 @@ export default function ProjectsPage() {
                 Передайте КД, чертёж, ведомость изделий или описание задачи. Проверим исходные данные и подготовим предметный расчёт без привязки к демонстрационным сценариям.
               </p>
             </div>
-            <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-7 py-4 text-xs font-bold uppercase">
+            <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-7 py-4 text-[13px] font-bold uppercase">
               Получить расчёт&nbsp; →
             </Link>
           </div>

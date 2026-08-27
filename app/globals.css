@@ -126,3 +126,14 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 767px) {
   .text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 12px; }
 }
+
+/* Typography pilot, scoped to the home page via .type-pilot. The header, the
+   brand lockup and the footer are shared components, so their sizes are raised
+   here rather than in the components themselves — every other page keeps the
+   sizes it has until this scale is approved. Floor is 12px, matching the phone
+   floor already enforced above. */
+.type-pilot .header-nav-link { font-size: 12px; letter-spacing: .005em; }
+.type-pilot .header-nav-link b { font-size: 12px; }
+.type-pilot .header-nav-link:not(:last-child)::before { top: 30px; height: 16px; }
+.type-pilot .header-brand span { font-size: 12px; }
+.type-pilot .header-phone { font-size: 13px; }
