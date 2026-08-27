@@ -4,7 +4,7 @@ import { InnerHero } from "./InnerHero";
 import { JsonLd } from "./JsonLd";
 import { breadcrumbSchema, webPageSchema, type Breadcrumb } from "@/lib/schema";
 
-type PageLayoutProps = { eyebrow: string; title: string; titleAccent?: string; description: string; image?: string; imageAlt?: string; imageBrightness?: boolean; path?: string; children: React.ReactNode };
+type PageLayoutProps = { className?: string; eyebrow: string; title: string; titleAccent?: string; description: string; image?: string; imageAlt?: string; imageBrightness?: boolean; path?: string; children: React.ReactNode };
 
 type SecondaryAction = { secondaryHref: string; secondaryLabel: string };
 
@@ -77,11 +77,11 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
   return undefined;
 }
 
-export function PageLayout({ children, path, ...hero }: PageLayoutProps) {
+export function PageLayout({ children, className, path, ...hero }: PageLayoutProps) {
   const name = [hero.title, hero.titleAccent].filter(Boolean).join(" ");
   const contextualAction = secondaryAction(path);
 
-  return <>
+  return <div className={className}>
     {path ? (
       <JsonLd
         data={[
@@ -93,5 +93,5 @@ export function PageLayout({ children, path, ...hero }: PageLayoutProps) {
     <Header />
     <main id="main-content" tabIndex={-1}><InnerHero {...hero} {...contextualAction} />{children}</main>
     <Footer />
-  </>;
+  </div>;
 }
