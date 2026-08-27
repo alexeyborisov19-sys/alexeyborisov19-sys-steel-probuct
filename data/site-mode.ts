@@ -1,4 +1,4 @@
 export const siteMode = {
-  isTest: false,
-  label: "Сайт работает в тестовом режиме",
+  isTest: true,
+  label: "Сайт работает в тестовом режиме до завершения согласования документов.",
 } as const;
