@@ -33,13 +33,22 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           <p className="mt-4 leading-relaxed text-white/65">
             Открываем актуальную версию сайта.
           </p>
-          <button
-            className="mt-7 bg-steel-orange px-5 py-3 text-xs font-bold uppercase text-white transition hover:bg-orange-600"
-            type="button"
-            onClick={hardNavigateHome}
-          >
-            Открыть сайт
-          </button>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button
+              className="bg-steel-orange px-5 py-3 text-xs font-bold uppercase text-white transition hover:bg-orange-600"
+              type="button"
+              onClick={hardNavigateHome}
+            >
+              Открыть сайт
+            </button>
+            <button
+              className="border border-white/25 px-5 py-3 text-xs font-bold uppercase text-white transition hover:border-white/50"
+              type="button"
+              onClick={() => reset()}
+            >
+              Повторить
+            </button>
+          </div>
         </main>
       </body>
     </html>
