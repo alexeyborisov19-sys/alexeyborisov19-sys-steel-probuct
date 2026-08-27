@@ -14,6 +14,7 @@ AUDIT_PID=""
 DEPLOY_LOCK="${STEELPRODUKT_DEPLOY_LOCK:-/tmp/steelprodukt-production-deploy.lock}"
 CANDIDATE_DIST=".next-candidate"
 PREVIOUS_DIST=".next-previous"
+STATIC_COMPAT_MINUTES="${STEELPRODUKT_STATIC_COMPAT_MINUTES:-1440}"
 
 # GitHub Actions cancels superseded workflow runs, but an SSH child can outlive
 # the runner cancellation briefly. Serialize work on the Beget host as well so
@@ -67,6 +68,21 @@ NEXT_DIST_DIR="$CANDIDATE_DIST" npm run build
 # TypeScript/Next may recreate incremental compiler metadata during validation/build.
 # It is not a production runtime artifact, so do not leave it on the server.
 rm -f "$APP_PATH/tsconfig.tsbuildinfo"
+
+# A browser tab opened before promotion can request an old lazy-loaded Next.js
+# chunk after the new release goes live. Preserve still-recent static assets from
+# the currently serving build inside the candidate so those requests continue to
+# resolve instead of falling into the global error boundary. Never overwrite a
+# freshly built asset with an older file, and cap retention to avoid unbounded
+# accumulation over many releases.
+if [ -d .next/static ]; then
+  mkdir -p "$CANDIDATE_DIST/static"
+  cp -a -n .next/static/. "$CANDIDATE_DIST/static/"
+  if [[ "$STATIC_COMPAT_MINUTES" =~ ^[0-9]+$ ]] && [ "$STATIC_COMPAT_MINUTES" -gt 0 ]; then
+    find "$CANDIDATE_DIST/static" -type f -mmin "+$STATIC_COMPAT_MINUTES" -delete
+    find "$CANDIDATE_DIST/static" -depth -type d -empty -delete
+  fi
+fi
 
 test -f "$CANDIDATE_DIST/required-server-files.json"
 test -f "$CANDIDATE_DIST/server/middleware-manifest.json"
