@@ -21,21 +21,21 @@ export function ExhibitionChoiceTable({ rows }: { rows: ExhibitionChoiceRow[] })
             </div>
             <dl className="mt-5 grid gap-4 border-t border-white/10 pt-5">
               <div>
-                <dt className="text-[9px] font-bold uppercase tracking-[.14em] text-steel-orange">
+                <dt className="text-xs font-bold uppercase tracking-[.14em] text-steel-orange">
                   Основной выбор
                 </dt>
                 <dd className="mt-2 text-sm font-semibold leading-6 text-white">{row.primary}</dd>
                 <dd className="mt-1 font-mono text-xs font-bold text-steel-orange">{row.primaryDate}</dd>
               </div>
               <div>
-                <dt className="text-[9px] font-bold uppercase tracking-[.14em] text-white/38">
+                <dt className="text-xs font-bold uppercase tracking-[.14em] text-white/38">
                   Дополнительно
                 </dt>
                 <dd className="mt-2 text-sm leading-6 text-white/64">{row.alternative}</dd>
                 <dd className="mt-1 font-mono text-xs font-bold text-white/48">{row.alternativeDate}</dd>
               </div>
               <div>
-                <dt className="text-[9px] font-bold uppercase tracking-[.14em] text-white/38">
+                <dt className="text-xs font-bold uppercase tracking-[.14em] text-white/38">
                   Что смотреть
                 </dt>
                 <dd className="mt-2 text-sm leading-6 text-white/64">{row.focus}</dd>
@@ -48,7 +48,7 @@ export function ExhibitionChoiceTable({ rows }: { rows: ExhibitionChoiceRow[] })
       <div className="hidden overflow-hidden border border-white/12 md:block">
         <table className="w-full border-collapse text-left">
           <thead className="bg-[#0b0f12]">
-            <tr className="text-[10px] uppercase tracking-[.12em] text-white/48">
+            <tr className="text-xs uppercase tracking-[.12em] text-white/48">
               <th className="w-[24%] border-r border-white/10 p-5">Что интересует</th>
               <th className="w-[20%] border-r border-white/10 p-5 text-steel-orange">Основной выбор</th>
               <th className="w-[20%] border-r border-white/10 p-5">Дополнительно</th>

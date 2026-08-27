@@ -92,7 +92,7 @@ export function Header() {
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 xl:flex">
         <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold 2xl:block">{siteConfig.telephoneDisplay}</a>
-        <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-4 py-3 text-[10px] font-bold uppercase tracking-wider transition hover:bg-orange-600">Получить расчёт</Link>
+        <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-orange-600">Получить расчёт</Link>
       </div>
       <button
         ref={mobileMenuButtonRef}

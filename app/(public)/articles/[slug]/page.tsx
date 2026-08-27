@@ -101,12 +101,12 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               </div>
 
               {article.series ? (
-                <p className="mt-8 text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">
+                <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-steel-orange">
                   {article.series}
                 </p>
               ) : null}
 
-              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-y border-white/10 py-4 text-[11px] uppercase tracking-[.06em] text-white/45">
+              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-y border-white/10 py-4 text-xs uppercase tracking-[.06em] text-white/45">
                 <span>
                   Опубликовано{" "}
                   <time dateTime={article.publishedAt} className="text-white/68">
@@ -182,7 +182,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                           <caption className="border-b border-white/12 px-5 py-4 text-left font-semibold text-white">
                             {section.table.caption}
                           </caption>
-                          <thead className="bg-white/[.04] text-[10px] uppercase tracking-[.1em] text-steel-orange">
+                          <thead className="bg-white/[.04] text-xs uppercase tracking-[.1em] text-steel-orange">
                             <tr>
                               {section.table.columns.map((column) => (
                                 <th key={column} scope="col" className="border-r border-white/10 px-4 py-3 last:border-r-0">
@@ -213,7 +213,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
                     {section.example ? (
                       <div className="mt-7 border border-white/12 bg-[#111519] p-5 sm:p-7">
-                        <p className="text-[10px] font-bold uppercase tracking-[.13em] text-steel-orange">Разбор ситуации</p>
+                        <p className="text-xs font-bold uppercase tracking-[.13em] text-steel-orange">Разбор ситуации</p>
                         <h3 className="mt-3 text-xl font-semibold text-white">{section.example.title}</h3>
                         <dl className="mt-5 grid gap-4 text-sm leading-7 sm:grid-cols-3">
                           <div><dt className="font-semibold text-white">Исходные данные</dt><dd className="mt-1 text-white/62">{section.example.situation}</dd></div>
@@ -243,19 +243,19 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                             </div>
                             <dl className="mt-6 grid gap-5">
                               <div>
-                                <dt className="text-[10px] font-bold uppercase tracking-[.13em] text-steel-orange">
+                                <dt className="text-xs font-bold uppercase tracking-[.13em] text-steel-orange">
                                   Краткое описание
                                 </dt>
                                 <dd className="mt-2 text-sm leading-7 text-white/66">{item.summary}</dd>
                               </div>
                               <div>
-                                <dt className="text-[10px] font-bold uppercase tracking-[.13em] text-steel-orange">
+                                <dt className="text-xs font-bold uppercase tracking-[.13em] text-steel-orange">
                                   Почему это важно
                                 </dt>
                                 <dd className="mt-2 text-sm leading-7 text-white/66">{item.importance}</dd>
                               </div>
                               <div>
-                                <dt className="text-[10px] font-bold uppercase tracking-[.13em] text-steel-orange">
+                                <dt className="text-xs font-bold uppercase tracking-[.13em] text-steel-orange">
                                   Возможные последствия
                                 </dt>
                                 <dd className="mt-2 text-sm leading-7 text-white/66">{item.consequences}</dd>
@@ -327,7 +327,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
             <aside className="h-fit border border-white/12 bg-[#111519] p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
               <nav aria-label="Содержание статьи">
-                <p className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">
+                <p className="text-xs font-bold uppercase tracking-[.15em] text-steel-orange">
                   Содержание
                 </p>
                 <ol className="mt-5 space-y-3">
@@ -348,7 +348,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               </nav>
 
               <div className="mt-7 border-t border-white/12 pt-7">
-                <p className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">
+                <p className="text-xs font-bold uppercase tracking-[.15em] text-steel-orange">
                   Чек-лист для запроса
                 </p>
                 <ul className="mt-5 space-y-3">
@@ -383,12 +383,12 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                     href={`/articles/${item.slug}`}
                     className="group flex min-h-44 flex-col border border-white/15 bg-[#111519] p-5 transition hover:border-steel-orange hover:bg-[#15191c]"
                   >
-                    <p className="text-[11px] font-bold uppercase text-white/45">{item.category}</p>
+                    <p className="text-xs font-bold uppercase text-white/45">{item.category}</p>
                     <h3 className="mt-3 text-base font-semibold leading-snug group-hover:text-steel-orange">
                       {item.title}
                     </h3>
                     <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-white/55">{item.lead}</p>
-                    <span className="mt-auto pt-4 text-[11px] font-bold uppercase text-steel-orange">
+                    <span className="mt-auto pt-4 text-xs font-bold uppercase text-steel-orange">
                       Читать&nbsp; →
                     </span>
                   </Link>

@@ -973,7 +973,7 @@ export function SolutionItemVisual({
           loading="lazy"
           decoding="async"
         />
-        <span className="absolute left-4 top-3 border border-white/15 bg-black/45 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.13em] text-white/75">
+        <span className="absolute left-4 top-3 border border-white/15 bg-black/45 px-2.5 py-1 text-xs font-bold uppercase tracking-[.13em] text-white/75">
           Визуал изделия
         </span>
         <span
@@ -1073,7 +1073,7 @@ export function SolutionItemVisual({
           СТАЛЬ ПРОДУКТ · ИНЖЕНЕРНЫЕ РЕШЕНИЯ ИЗ ЛИСТОВОГО МЕТАЛЛА
         </text>
       </svg>
-      <span className="absolute right-4 top-3 border border-white/15 bg-black/35 px-2 py-1 text-[9px] font-bold uppercase tracking-[.13em] text-white/55">
+      <span className="absolute right-4 top-3 border border-white/15 bg-black/35 px-2 py-1 text-xs font-bold uppercase tracking-[.13em] text-white/55">
         Типовой узел
       </span>
     </div>

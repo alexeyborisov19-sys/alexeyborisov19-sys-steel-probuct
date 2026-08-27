@@ -228,7 +228,7 @@ export function QuoteRequestForm() {
       <label className="mt-5 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/25 bg-[#111519] px-5 py-8 text-center transition hover:border-steel-orange hover:bg-[#15191c]">
         <span className="grid h-10 w-10 place-items-center border border-steel-orange/60 text-xl text-steel-orange">＋</span>
         <span className="mt-3 text-sm font-semibold text-white">Выбрать файлы</span>
-        <span className="mt-1 text-[11px] leading-relaxed text-white/45">PDF, DXF, DWG, STEP, изображения, Office-документы и архивы</span>
+        <span className="mt-1 text-[13px] leading-relaxed text-white/45">PDF, DXF, DWG, STEP, изображения, Office-документы и архивы</span>
         <input ref={fileInput} onChange={handleFiles} accept={acceptedFiles} className="sr-only" type="file" multiple />
       </label>
 
@@ -244,28 +244,28 @@ export function QuoteRequestForm() {
             <button type="button" onClick={() => removeFile(index)} className="shrink-0 text-lg leading-none text-white/45 transition hover:text-steel-orange" aria-label={`Удалить ${file.name}`}>×</button>
           </li>)}
         </ul>
-        <p className="mt-3 text-[11px] text-white/40">Общий размер: {formatSize(totalSize)} из 10 МБ</p>
+        <p className="mt-3 text-[13px] text-white/40">Общий размер: {formatSize(totalSize)} из 10 МБ</p>
       </div> : null}
     </div>
 
     {feedback ? <p role={feedback.type === "error" ? "alert" : "status"} className={`border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"}`}>{feedback.message}</p> : null}
 
     <div className="border-t border-white/10 pt-6">
-      <p className="mb-4 text-[11px] leading-relaxed text-white/48">
+      <p className="mb-4 text-[13px] leading-relaxed text-white/48">
         До отправки ознакомьтесь с <Link href={legalLinks.privacy} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">политикой обработки персональных данных</Link>. Согласие на обработку данных и необязательное согласие на рекламу оформляются отдельно.
       </p>
-      <label className="flex cursor-pointer items-start gap-3 text-[11px] leading-relaxed text-white/62">
+      <label className="flex cursor-pointer items-start gap-3 text-[13px] leading-relaxed text-white/62">
         <input name="personalDataConsent" value="yes" type="checkbox" required aria-required="true" className="mt-0.5 h-4 w-4 shrink-0 accent-[#EA5B0C]" />
         <span>Я даю отдельное <Link href={legalLinks.personalDataConsent} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">согласие на обработку персональных данных</Link> для рассмотрения заявки, связи со мной и подготовки расчёта. <b className="text-steel-orange">*</b></span>
       </label>
-      <label className="mt-4 flex cursor-pointer items-start gap-3 text-[11px] leading-relaxed text-white/48">
+      <label className="mt-4 flex cursor-pointer items-start gap-3 text-[13px] leading-relaxed text-white/48">
         <input name="marketingConsent" value="yes" type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[#EA5B0C]" />
         <span>Я отдельно соглашаюсь получать рекламные и информационные сообщения по e-mail, телефону и в указанных мной мессенджерах. Это необязательно и не влияет на расчёт. <Link href={legalLinks.marketingConsent} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">Условия и отзыв согласия</Link>.</span>
       </label>
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="max-w-xl">
           <p className="text-xs font-semibold leading-relaxed text-white/70">После отправки материалы поступят на инженерную и коммерческую проверку.</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-white/42">Срок подготовки расчёта сообщим после проверки документации. Поля со звёздочкой обязательны.</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-white/42">Срок подготовки расчёта сообщим после проверки документации. Поля со звёздочкой обязательны.</p>
         </div>
       <button disabled={isSending} type="submit" className="clip-corner shrink-0 bg-steel-orange px-8 py-4 text-xs font-bold uppercase transition hover:bg-orange-600 disabled:cursor-wait disabled:opacity-65">{isSending ? "Отправляем…" : "Получить расчёт →"}</button>
       </div>

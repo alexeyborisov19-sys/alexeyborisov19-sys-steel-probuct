@@ -46,7 +46,7 @@ export function ConversionActions() {
         {actions.map((action) => {
           const className = "group flex min-h-[220px] flex-col border border-white/12 bg-[#151719] p-5 transition hover:border-steel-orange hover:bg-[#191c1f]";
           const content = <>
-            <p className="text-[10px] font-bold uppercase tracking-[.13em] text-steel-orange">{action.eyebrow}</p>
+            <p className="text-xs font-bold uppercase tracking-[.13em] text-steel-orange">{action.eyebrow}</p>
             <h3 className="mt-4 text-lg font-semibold leading-tight">{action.title}</h3>
             <p className="mt-3 text-xs leading-relaxed text-white/58">{action.text}</p>
             <span className="mt-auto pt-6 text-xs font-bold uppercase text-steel-orange">{action.label}&nbsp; →</span>

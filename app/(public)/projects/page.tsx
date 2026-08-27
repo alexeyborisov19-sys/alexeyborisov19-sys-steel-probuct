@@ -55,7 +55,6 @@ const projects = [
 export default function ProjectsPage() {
   return (
     <PageLayout
-      className="type-pilot"
       path="/projects"
       eyebrow="Проектные сценарии"
       title="Решения для типовых объектов"
