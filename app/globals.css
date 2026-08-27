@@ -133,7 +133,23 @@ a { color: inherit; text-decoration: none; }
    sizes it has until this scale is approved. Floor is 12px, matching the phone
    floor already enforced above. */
 .type-pilot .header-nav-link { font-size: 12px; letter-spacing: .005em; }
-.type-pilot .header-nav-link b { font-size: 12px; }
+.type-pilot .header-nav-link b { font-size: 11px; }
 .type-pilot .header-nav-link:not(:last-child)::before { top: 30px; height: 16px; }
-.type-pilot .header-brand span { font-size: 12px; }
 .type-pilot .header-phone { font-size: 13px; }
+
+/* Lightening the header without shrinking the navigation. At 1280px — the width
+   where the desktop nav first appears — the links already fill their track
+   exactly (751.9px of 751.8px available), so nothing here may add width:
+   dropping weight and muting colour buys the relief instead of tracking.
+   Contrast keeps a wide margin: white at 72% over the header is 9.96:1. */
+.type-pilot .header-nav-link { font-weight: 600; color: rgba(255,255,255,.72); }
+.type-pilot .header-nav-link:hover { color: #fff; }
+.type-pilot .header-nav-link-active,
+.type-pilot .header-nav-link-active:hover { color: var(--orange); }
+.type-pilot .header-nav-link:not(:last-child)::before { background: rgba(255,255,255,.06); }
+
+/* The descriptor beside the logo repeats the wordmark and the home page h1, so
+   it reads as a caption rather than as content and sits below the 12px floor by
+   intent. Below 768px the phone floor still wins. */
+.type-pilot .header-brand span { font-size: 10px; font-weight: 500; }
+@media (max-width: 767px) { .type-pilot .header-brand span { font-size: 12px; } }
