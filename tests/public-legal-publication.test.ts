@@ -41,12 +41,13 @@ test("published services page reflects the deployed but disabled internal founda
 test("public legal version identifiers match their displayed dates", async () => {
   const legal = await readFile(join(root, "lib/legal.ts"), "utf8");
 
-  for (const key of ["privacy", "services"]) {
-    assert.match(legal, new RegExp(`${key}: "2026-08-13"`));
+  for (const key of ["privacy", "personalDataConsent", "cookies", "services"]) {
+    assert.match(legal, new RegExp(`${key}: "2026-08-27"`));
   }
   assert.match(legal, /personalDataConsent: "2026-08-27"/);
 
-  assert.match(legal, /privacy: "13 августа 2026 года"/);
+  assert.match(legal, /privacy: "27 августа 2026 года"/);
   assert.match(legal, /personalDataConsent: "27 августа 2026 года"/);
-  assert.match(legal, /services: "13 августа 2026 года"/);
+  assert.match(legal, /cookies: "27 августа 2026 года"/);
+  assert.match(legal, /services: "27 августа 2026 года"/);
 });

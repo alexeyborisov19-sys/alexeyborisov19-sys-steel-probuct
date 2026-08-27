@@ -35,6 +35,36 @@ test("public consent evidence period matches the configured 1095-day audit perio
   assert.match(regulation, /до трёх лет с даты фиксации согласия/);
 });
 
+test("public consent states how the data subject is identified", async () => {
+  const consent = await readFile(
+    join(root, "app/(public)/legal/personal-data-consent/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(consent, /Сведения о субъекте персональных данных и порядок идентификации/);
+  assert.match(consent, /имени, указанного в форме, и хотя бы одного контактного реквизита/);
+  assert.match(consent, /не является удостоверением личности по документу/);
+});
+
+test("public legal texts describe analytics hosts and keep them consent-gated", async () => {
+  const [privacy, consent, cookies, services, nextConfig] = await Promise.all([
+    readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/personal-data-consent/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/cookies/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/services/page.tsx"), "utf8"),
+    readFile(join(root, "next.config.ts"), "utf8"),
+  ]);
+
+  for (const document of [privacy, consent, cookies, services]) {
+    assert.match(document, /mc\.yandex\.ru/);
+    assert.match(document, /mc\.yandex\.com/);
+  }
+
+  assert.match(privacy, /только после отдельного согласия на аналитику/);
+  assert.match(consent, /не распространяется на аналитические cookies/);
+  assert.doesNotMatch(nextConfig, /images\.unsplash\.com/);
+});
+
 test("public legal drafts describe the internal interface as disabled", async () => {
   const [privacy, services, approvalPackage] = await Promise.all([
     readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
