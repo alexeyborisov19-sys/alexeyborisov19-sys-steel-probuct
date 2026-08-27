@@ -4,12 +4,12 @@ import test from "node:test";
 
 const globalErrorPath = new URL("../app/global-error.tsx", import.meta.url);
 
-test("global error hard-navigates for stale client bundles", async () => {
+test("global error hard-navigates home for stale client bundles", async () => {
   const source = await readFile(globalErrorPath, "utf8");
 
   assert.match(source, /location\.replace/);
   assert.match(source, /ChunkLoadError/);
-  assert.match(source, /sessionStorage/);
-  assert.match(source, /hardNavigateFresh/);
+  assert.match(source, /hardNavigateHome/);
+  assert.match(source, /onClick=\{\(\) => reset\(\)\}/);
   assert.ok(!source.includes("window.location.reload()"), "must not use cache-prone reload()");
 });
