@@ -88,7 +88,7 @@ const homeFaq = [
 
 export default function Home() {
   return (
-    <>
+    <div className="type-pilot">
       <JsonLd
         data={[webPageSchema({
           name: "Сталь Продукт — инженерные решения из листового металла",
@@ -131,10 +131,10 @@ export default function Home() {
                     <h3 className="mt-3 text-sm font-bold uppercase leading-tight">
                       {solution.shortTitle}
                     </h3>
-                    <p className="mt-3 text-[11px] leading-relaxed text-white/55">
+                    <p className="mt-3 text-[13px] leading-relaxed text-white/55">
                       {solution.text}
                     </p>
-                    <span className="mt-5 block text-[10px] font-bold uppercase text-steel-orange">
+                    <span className="mt-5 block text-xs font-bold uppercase text-steel-orange">
                       Перейти к решениям&nbsp; →
                     </span>
                   </Link>
@@ -170,8 +170,8 @@ export default function Home() {
                   <span className="text-2xl text-steel-orange">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <h3 className="mt-5 text-xs font-bold uppercase">{title}</h3>
-                  <p className="mt-3 text-[11px] leading-relaxed text-white/55">
+                  <h3 className="mt-5 text-sm font-bold uppercase">{title}</h3>
+                  <p className="mt-3 text-[13px] leading-relaxed text-white/55">
                     {text}
                   </p>
                 </article>
@@ -190,7 +190,7 @@ export default function Home() {
               </h2>
               <Link
                 href="/projects"
-                className="text-xs font-bold uppercase text-steel-orange"
+                className="text-[13px] font-bold uppercase text-steel-orange"
               >
                 Смотреть проектные сценарии&nbsp; →
               </Link>
@@ -213,8 +213,8 @@ export default function Home() {
                     />
                   </div>
                   <div className="p-4">
-                    <h3 className="text-xs font-bold">{project.title}</h3>
-                    <p className="mt-1 text-[10px] text-white/50">Типовой состав решения и исходные данные</p>
+                    <h3 className="text-sm font-bold">{project.title}</h3>
+                    <p className="mt-1 text-xs text-white/50">Типовой состав решения и исходные данные</p>
                     <span className="mt-4 block text-xs text-steel-orange">
                       →
                     </span>
@@ -232,12 +232,12 @@ export default function Home() {
                 <br />
                 ваш проект?
               </h2>
-              <p className="mt-3 text-xs text-white/55">
+              <p className="mt-3 text-[13px] text-white/55">
                 Передайте чертёж и параметры партии. Проверим технологичность,
                 уточним маршрут, срок и стоимость.
               </p>
               <Link
-                className="mt-5 inline-block bg-steel-orange px-5 py-3 text-xs font-bold uppercase"
+                className="mt-5 inline-block bg-steel-orange px-5 py-3 text-[13px] font-bold uppercase"
                 href="/contacts#contact-form"
               >
                 Получить расчёт&nbsp; →
@@ -253,7 +253,7 @@ export default function Home() {
             ].map(([value, label]) => (
               <div key={label} className="border-l border-white/10 pl-5">
                 <b className="text-3xl text-steel-orange">{value}</b>
-                <p className="mt-1 text-[10px] uppercase leading-relaxed text-white/50">
+                <p className="mt-1 text-xs uppercase leading-relaxed text-white/50">
                   {label}
                 </p>
               </div>
@@ -263,6 +263,6 @@ export default function Home() {
         <FaqSection items={homeFaq} title="Вопросы о производстве на заказ" />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }
