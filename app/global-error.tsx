@@ -7,9 +7,31 @@ type GlobalErrorProps = {
   reset: () => void;
 };
 
-export default function GlobalError({ error, reset }: GlobalErrorProps) {
+const staleBuildPattern = /ChunkLoadError|Loading chunk|Failed to load chunk|dynamically imported module|CSS_CHUNK_LOAD_FAILED/i;
+const staleBuildReloadKey = "steelprodukt:stale-build-reload";
+const staleBuildReloadCooldownMs = 30_000;
+
+function forceDocumentReload() {
+  window.location.reload();
+}
+
+export default function GlobalError({ error }: GlobalErrorProps) {
   useEffect(() => {
     console.error("SteelProdukt client error", error);
+
+    const signature = `${error.name} ${error.message}`;
+    if (!staleBuildPattern.test(signature)) return;
+
+    try {
+      const lastReloadAt = Number(window.sessionStorage.getItem(staleBuildReloadKey) ?? "0");
+      const now = Date.now();
+      if (Number.isFinite(lastReloadAt) && now - lastReloadAt < staleBuildReloadCooldownMs) return;
+      window.sessionStorage.setItem(staleBuildReloadKey, String(now));
+    } catch {
+      // Reload still works when sessionStorage is unavailable; only the loop guard is skipped.
+    }
+
+    forceDocumentReload();
   }, [error]);
 
   return (
@@ -24,7 +46,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           <button
             className="mt-7 bg-steel-orange px-5 py-3 text-xs font-bold uppercase text-white transition hover:bg-orange-600"
             type="button"
-            onClick={reset}
+            onClick={forceDocumentReload}
           >
             Обновить сайт
           </button>
