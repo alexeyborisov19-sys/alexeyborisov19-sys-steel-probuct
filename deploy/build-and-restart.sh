@@ -43,6 +43,10 @@ npm ci --no-audit --no-fund
 # Only generated route types can become stale after App Router paths change;
 # they are safe to regenerate and are not required by the running application.
 rm -rf .next/types .next/dev/types
+# Leftover candidate/previous trees from an interrupted deploy must not be
+# linted (generated JS triggers thousands of eslint errors). Remove them before
+# validation; the live .next directory stays untouched until promotion.
+rm -rf "$CANDIDATE_DIST" "$PREVIOUS_DIST"
 npm run env:check
 npm run lint
 npm run typecheck

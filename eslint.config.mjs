@@ -11,6 +11,8 @@ export default defineConfig([
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   globalIgnores([
     ".next/**",
+    ".next-candidate/**",
+    ".next-previous/**",
     "node_modules/**",
     "output/**",
     "public/**",
