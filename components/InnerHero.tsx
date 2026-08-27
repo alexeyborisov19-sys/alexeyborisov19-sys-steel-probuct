@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { siteMode } from "@/data/site-mode";
+import { innerHeroOffset } from "@/data/site-mode";
 
 type InnerHeroProps = {
   eyebrow: string;
@@ -25,9 +25,7 @@ export function InnerHero({
   secondaryHref = "/projects",
   secondaryLabel = "Все проекты",
 }: InnerHeroProps) {
-  const spacing = siteMode.isTest ? "min-h-[648px] pt-[116px]" : "min-h-[620px] pt-[88px]";
-
-  return <section className={`relative isolate overflow-hidden ${spacing}`}>
+  return <section className={`relative isolate overflow-hidden ${innerHeroOffset}`}>
     {/* A backdrop carries no meaning and stays hidden from assistive tech; a photo
         that actually depicts the subject gets described and can be found in image
         search. The caller decides which of the two it is passing. */}
