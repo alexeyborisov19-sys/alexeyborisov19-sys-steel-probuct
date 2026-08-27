@@ -8,7 +8,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline' https://mc.yandex.ru",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://images.unsplash.com https://mc.yandex.ru https://mc.yandex.com",
+  "img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com",
   "font-src 'self' data:",
   "media-src 'self'",
   "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com",
@@ -40,7 +40,6 @@ const stablePublicAssetCache = "public, max-age=86400, stale-while-revalidate=60
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  images: { remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }] },
   async redirects() {
     return [
       // Transport/canonical host redirects stay in Next config. Legacy content
