@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { siteMode } from "@/data/site-mode";
 import { siteConfig } from "@/lib/site";
 import { Brand } from "./Brand";
 import { MegaMenu } from "./MegaMenu";
@@ -72,36 +71,6 @@ export function Header() {
     >
       Перейти к содержимому
     </a>
-    {siteMode.isTest ? (
-      <div
-        role="status"
-        data-site-status="test-mode"
-        style={{
-          position: "relative",
-          zIndex: 2,
-          display: "flex",
-          flexShrink: 0,
-          width: "100%",
-          height: 32,
-          minHeight: 32,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "visible",
-          background: "#ea5b0c",
-          padding: "0 16px",
-          color: "#000",
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: ".12em",
-          lineHeight: 1.2,
-          textAlign: "center",
-          textTransform: "uppercase",
-          whiteSpace: "normal",
-        }}
-      >
-        {siteMode.label}
-      </div>
-    ) : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
       <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
       <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch xl:flex">
