@@ -25,7 +25,7 @@ export function StepUpForm({ csrfToken }: { csrfToken: string }) {
       <label htmlFor="step-up-password" className="block text-xs font-semibold">Повторное подтверждение текущего пароля</label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input id="step-up-password" name="password" type="password" autoComplete="current-password" required className="min-w-0 flex-1 border border-white/15 bg-black/25 px-4 py-3 outline-none focus:border-[#ea5b0c]" />
-        <button disabled={pending} className="bg-[#ea5b0c] px-5 py-3 text-xs font-bold uppercase disabled:opacity-50">{pending ? "Проверка…" : "Подтвердить"}</button>
+        <button disabled={pending} className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase disabled:opacity-50">{pending ? "Проверка…" : "Подтвердить"}</button>
       </div>
       {status ? <p role="alert" className="text-xs text-red-200">{status}</p> : null}
     </form>
@@ -61,7 +61,7 @@ export function LeadSearchPanel({ csrfToken, contactEnabled, textEnabled }: { cs
         </select>
         <input name="value" required maxLength={160} placeholder="Значение для поиска" className="border border-white/15 bg-black/25 px-4 py-3 text-sm outline-none focus:border-[#ea5b0c]" />
         <input name="legalBasis" required minLength={8} maxLength={240} placeholder="Основание доступа (не менее 8 символов)" className="border border-white/15 bg-black/25 px-4 py-3 text-sm outline-none focus:border-[#ea5b0c]" />
-        <button disabled={pending || (!contactEnabled && !textEnabled)} className="bg-[#ea5b0c] px-5 py-3 text-xs font-bold uppercase disabled:opacity-50">{pending ? "Поиск…" : "Найти"}</button>
+        <button disabled={pending || (!contactEnabled && !textEnabled)} className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase disabled:opacity-50">{pending ? "Поиск…" : "Найти"}</button>
       </form>
       {status ? <p className="text-xs text-white/55">{status}</p> : null}
       {items.length ? <div className="grid gap-2">{items.map((item) => (
@@ -110,7 +110,7 @@ export function LeadWorkflowPanel({ csrfToken, requestId, currentStatus, manager
     <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); void act(`/api/internal/personal-data/leads/${encodeURIComponent(requestId)}/workflow`, { status: String(data.get("status")) }); }}>
       <select name="status" defaultValue={currentStatus} className="flex-1 border border-white/15 bg-[#0b0e10] px-3 py-3 text-sm">
         {["NEW", "IN_PROGRESS", "NEEDS_CLARIFICATION", "PROPOSAL_SENT", "CONTRACT", "CLOSED"].map((status) => <option key={status}>{status}</option>)}
-      </select><button className="bg-[#ea5b0c] px-5 py-3 text-xs font-bold uppercase">Изменить статус</button>
+      </select><button className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase">Изменить статус</button>
     </form>
     {canAssign ? <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); void act(`/api/internal/personal-data/leads/${encodeURIComponent(requestId)}/assign`, { userId: String(data.get("userId") || "") || null }); }}>
       <select name="userId" className="flex-1 border border-white/15 bg-[#0b0e10] px-3 py-3 text-sm"><option value="">Не назначен</option>{managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.display_name}</option>)}</select>

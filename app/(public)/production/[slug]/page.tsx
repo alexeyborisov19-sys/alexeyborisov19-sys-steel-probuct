@@ -122,7 +122,7 @@ export default async function ProductionServicePage({
               </ul>
               <Link
                 href="/contacts#contact-form"
-                className="clip-corner mt-7 inline-flex bg-steel-orange px-6 py-4 text-xs font-bold uppercase"
+                className="clip-corner mt-7 inline-flex bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase"
               >
                 Передать документацию&nbsp; →
               </Link>

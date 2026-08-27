@@ -19,7 +19,7 @@ import { faqSchema, itemListSchema } from "@/lib/schema";
 export const metadata: Metadata = createPageMetadata({
   title: "Производство полного цикла изделий из листового металла",
   description:
-    `Инженерно-конструкторский центр и собственная производственная база: ${productionEquipment.laserComplexes} лазерных комплекса, ${productionEquipment.pressBrakes} листогибочных комплекса, панельгиб, ${productionEquipment.weldingStations} сварочных поста и ${productionEquipment.powderCoatingBooths} камеры порошковой окраски. От КД до готовой партии.`,
+    `Инженерно-конструкторский центр и своё производство: ${productionEquipment.laserComplexes} лазерных и ${productionEquipment.pressBrakes} листогибочных комплекса, панельгиб, ${productionEquipment.weldingStations} сварочных поста, ${productionEquipment.powderCoatingBooths} камеры окраски. От КД до партии.`,
   path: "/production",
   image: "/images/real-production/workshop-team.jpg",
   keywords: semanticKeywords.production,
@@ -306,7 +306,7 @@ export default function ProductionPage() {
             </div>
             <Link
               href="/contacts#contact-form"
-              className="bg-steel-orange px-7 py-4 text-xs font-bold uppercase"
+              className="bg-steel-orange-deep px-7 py-4 text-xs font-bold uppercase"
             >
               Получить расчёт&nbsp; →
             </Link>

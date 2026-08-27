@@ -56,7 +56,7 @@ export function LoginForm() {
         <input id="pd-password" name="password" type="password" autoComplete="current-password" required maxLength={256} className="mt-2 w-full border border-white/15 bg-black/25 px-4 py-3 outline-none focus:border-[#ea5b0c]" />
       </div>
       {error ? <p role="alert" className="border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">{error}</p> : null}
-      <button disabled={pending || !preAuthToken} className="w-full bg-[#ea5b0c] px-4 py-3 text-xs font-bold uppercase disabled:opacity-50">
+      <button disabled={pending || !preAuthToken} className="w-full bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase disabled:opacity-50">
         {pending ? "Проверка…" : "Войти"}
       </button>
     </form>

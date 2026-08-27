@@ -80,7 +80,7 @@ export function CookieConsent() {
     <p className="mt-2 text-xs leading-relaxed text-white/60">Сайт использует только необходимые технические данные до вашего выбора. Яндекс Метрика загружается исключительно после отдельного согласия. Выбор можно изменить в подвале сайта. Подробнее — в <Link className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.cookies}>политике cookies</Link> и <Link className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={() => choose(false)} className="border border-white/25 px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white/80 transition hover:border-steel-orange hover:text-steel-orange">Продолжить без аналитики</button>
-      <button type="button" onClick={() => choose(true)} className="clip-corner bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-orange-600">Разрешить аналитику</button>
+      <button type="button" onClick={() => choose(true)} className="clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper">Разрешить аналитику</button>
     </div>
   </aside>;
 }

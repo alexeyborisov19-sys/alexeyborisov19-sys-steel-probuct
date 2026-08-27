@@ -240,7 +240,7 @@ export default function ArticlesPage() {
                         </div>
                         <h3 className="mt-4 max-w-3xl text-2xl font-semibold leading-tight sm:text-3xl">{featuredEngineeringArticle.title}</h3>
                         <p className="mt-4 max-w-2xl text-sm leading-7 text-white/66">{featuredEngineeringArticle.lead}</p>
-                        <Link href={`/articles/${featuredEngineeringArticle.slug}`} className="mt-6 inline-flex border border-steel-orange/65 px-4 py-3 text-xs font-bold uppercase tracking-[.06em] text-steel-orange transition hover:bg-steel-orange hover:text-white">
+                        <Link href={`/articles/${featuredEngineeringArticle.slug}`} className="mt-6 inline-flex border border-steel-orange/65 px-4 py-3 text-xs font-bold uppercase tracking-[.06em] text-steel-orange transition hover:bg-steel-orange-deep hover:text-white">
                           Читать материал&nbsp; →
                         </Link>
                       </div>

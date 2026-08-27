@@ -171,7 +171,7 @@ export default function CompanyPage() {
           <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Есть чертёж, идея или нестандартная задача?</h2>
           <p className="mt-3 text-sm leading-relaxed text-white/62">Отправьте исходные данные. Инженер проверит технологичность и определит состав операций, необходимые уточнения и данные для расчёта.</p>
         </div>
-        <Link href="/contacts#contact-form" className="clip-corner shrink-0 bg-steel-orange px-7 py-4 text-center text-xs font-bold uppercase transition hover:bg-orange-600">Получить расчёт&nbsp; →</Link>
+        <Link href="/contacts#contact-form" className="clip-corner shrink-0 bg-steel-orange-deep px-7 py-4 text-center text-xs font-bold uppercase transition hover:bg-steel-orange-deeper">Получить расчёт&nbsp; →</Link>
       </div>
     </section>
     <FaqSection items={companyFaq} title="Вопросы о компании и производстве" />

@@ -130,7 +130,7 @@ export function CompanyVideo() {
           <h2 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">Познакомьтесь со «Сталь Продукт»</h2>
           <p className="mt-5 text-sm leading-relaxed text-white/62 sm:text-base">Видео о команде, инженерной экспертизе и реальном производстве. Показываем, как компания решает задачи клиентов — от идеи до готового изделия.</p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <button type="button" onClick={(event) => openVideo(event.currentTarget)} className="clip-corner bg-steel-orange px-6 py-3 text-xs font-bold uppercase transition hover:bg-orange-600">Смотреть фильм&nbsp; →</button>
+            <button type="button" onClick={(event) => openVideo(event.currentTarget)} className="clip-corner bg-steel-orange-deep px-6 py-3 text-xs font-bold uppercase transition hover:bg-steel-orange-deeper">Смотреть фильм&nbsp; →</button>
             <span className="inline-flex items-center border border-white/15 px-4 py-3 text-xs uppercase tracking-[.12em] text-white/55">1:59 · 720p HD</span>
           </div>
         </div>

@@ -35,7 +35,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <button
-              className="bg-steel-orange px-5 py-3 text-xs font-bold uppercase text-white transition hover:bg-orange-600"
+              className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase text-white transition hover:bg-steel-orange-deeper"
               type="button"
               onClick={hardNavigateHome}
             >

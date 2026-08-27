@@ -10,7 +10,7 @@ import { absoluteUrl, siteConfig } from "@/lib/site";
 const path = "/calculator-metallokassety";
 const title = "Калькулятор металлокассет — расчёт количества по площади";
 const description =
-  "Онлайн-калькулятор металлокассет 1170×545 мм с рустом 20 мм. Укажите площадь фасада и получите ориентировочное количество кассет для дальнейшей проверки по проекту.";
+  "Онлайн-калькулятор металлокассет 1170×545 мм с рустом 20 мм. Укажите площадь фасада и получите ориентировочное количество кассет для проверки по проекту.";
 
 export const metadata: Metadata = createPageMetadata({
   title,
@@ -179,7 +179,7 @@ export default function MetalCassetteCalculatorPage() {
                 <Link href="/products/metallokassety" className="border border-white/25 px-5 py-4 text-xs font-bold uppercase transition hover:border-steel-orange">
                   Каталог кассет&nbsp; →
                 </Link>
-                <Link href="/contacts#contact-form" className="clip-corner bg-steel-orange px-6 py-4 text-xs font-bold uppercase">
+                <Link href="/contacts#contact-form" className="clip-corner bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase">
                   Получить расчёт&nbsp; →
                 </Link>
               </div>

@@ -67,7 +67,7 @@ export function Header() {
         event.preventDefault();
         skipToContent();
       }}
-      className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:bg-steel-orange focus:px-4 focus:py-3 focus:text-xs focus:font-bold focus:uppercase focus:text-white"
+      className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:bg-steel-orange-deep focus:px-4 focus:py-3 focus:text-xs focus:font-bold focus:uppercase focus:text-white"
     >
       Перейти к содержимому
     </a>
@@ -92,13 +92,13 @@ export function Header() {
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 xl:flex">
         <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold 2xl:block">{siteConfig.telephoneDisplay}</a>
-        <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-orange-600">Получить расчёт</Link>
+        <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Получить расчёт</Link>
       </div>
       <button
         ref={mobileMenuButtonRef}
         type="button"
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="ml-auto grid h-10 w-10 shrink-0 place-items-center border border-white/30 xl:hidden"
+        className="ml-auto grid h-11 w-11 shrink-0 place-items-center border border-white/30 xl:hidden"
         aria-label={mobileOpen ? "Закрыть меню" : "Открыть меню"}
         aria-expanded={mobileOpen}
         aria-controls="mobile-navigation"
@@ -112,7 +112,7 @@ export function Header() {
         return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
       })}
       <a href={`tel:${siteConfig.telephone}`} className="text-steel-orange">{siteConfig.telephoneDisplay}</a>
-      <Link href="/contacts#contact-form" className="mt-2 bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase">Получить расчёт</Link>
+      <Link href="/contacts#contact-form" className="mt-2 bg-steel-orange-deep px-4 py-3 text-center text-xs font-bold uppercase">Получить расчёт</Link>
     </nav>}
   </header>;
 }

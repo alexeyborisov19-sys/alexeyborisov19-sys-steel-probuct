@@ -151,7 +151,7 @@ export function MegaMenu({ onClose }: { onClose: () => void }) {
           <Link
             onClick={onClose}
             href="/contacts#contact-form"
-            className="clip-corner whitespace-nowrap bg-steel-orange px-8 py-4 text-sm font-bold"
+            className="clip-corner whitespace-nowrap bg-steel-orange-deep px-8 py-4 text-sm font-bold"
           >
             Получить расчёт&nbsp; →
           </Link>

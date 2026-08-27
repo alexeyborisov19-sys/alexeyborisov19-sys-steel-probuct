@@ -113,7 +113,7 @@ export default function ProjectsPage() {
                 Передайте КД, чертёж, ведомость изделий или описание задачи. Проверим исходные данные и подготовим предметный расчёт без привязки к демонстрационным сценариям.
               </p>
             </div>
-            <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-7 py-4 text-[13px] font-bold uppercase">
+            <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-7 py-4 text-[13px] font-bold uppercase">
               Получить расчёт&nbsp; →
             </Link>
           </div>

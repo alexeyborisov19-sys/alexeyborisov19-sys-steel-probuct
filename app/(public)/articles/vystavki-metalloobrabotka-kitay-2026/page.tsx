@@ -374,7 +374,7 @@ export default function ChinaExhibitions2026Page() {
               предметное сравнение оборудования.
             </p>
           </div>
-          <Link href="/contacts#contact-form" className="clip-corner bg-steel-orange px-7 py-4 text-center text-xs font-bold uppercase">
+          <Link href="/contacts#contact-form" className="clip-corner bg-steel-orange-deep px-7 py-4 text-center text-xs font-bold uppercase">
             Обсудить производственную задачу&nbsp; →
           </Link>
         </div>

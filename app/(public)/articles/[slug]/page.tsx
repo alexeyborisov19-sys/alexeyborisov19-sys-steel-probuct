@@ -363,7 +363,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
               <Link
                 href="/contacts#contact-form"
-                className="clip-corner mt-7 block bg-steel-orange px-5 py-4 text-center text-xs font-bold uppercase transition hover:bg-orange-600"
+                className="clip-corner mt-7 block bg-steel-orange-deep px-5 py-4 text-center text-xs font-bold uppercase transition hover:bg-steel-orange-deeper"
               >
                 Получить расчёт&nbsp; →
               </Link>

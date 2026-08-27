@@ -33,7 +33,7 @@ export function PasswordChangeForm({ csrfToken }: { csrfToken: string }) {
       </div>)}
       <p className="text-xs leading-relaxed text-white/45">Не менее 14 символов: строчные и заглавные буквы, цифра и специальный символ.</p>
       {message ? <p role="alert" className="text-xs text-red-200">{message}</p> : null}
-      <button disabled={pending} className="bg-[#ea5b0c] px-5 py-3 text-xs font-bold uppercase disabled:opacity-50">{pending ? "Сохранение…" : "Изменить пароль"}</button>
+      <button disabled={pending} className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase disabled:opacity-50">{pending ? "Сохранение…" : "Изменить пароль"}</button>
     </form>
   );
 }

@@ -79,6 +79,6 @@ export function SecureMutationForm({
       {field.help ? <span className="mt-1 block text-[10px] leading-relaxed text-white/40">{field.help}</span> : null}
     </label>)}
     {message ? <p role="alert" className="text-xs text-red-200 md:col-span-2">{message}</p> : null}
-    <button disabled={pending} className="bg-[#ea5b0c] px-5 py-3 text-xs font-bold uppercase disabled:opacity-50 md:col-span-2">{pending ? "Выполняется…" : submitLabel}</button>
+    <button disabled={pending} className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase disabled:opacity-50 md:col-span-2">{pending ? "Выполняется…" : submitLabel}</button>
   </form>;
 }
