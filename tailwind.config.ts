@@ -4,7 +4,7 @@ export default {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
-      colors: { steel: { black: "#101112", graphite: "#3E454B", orange: "#EA5B0C", mist: "#CBD0D3" } },
+      colors: { steel: { black: "#101112", graphite: "#3E454B", orange: "#EA5B0C", "orange-deep": "#C64D09", "orange-deeper": "#A83F07", mist: "#CBD0D3" } },
       boxShadow: { glow: "0 18px 50px rgba(234, 91, 12, .22)" },
     },
   },

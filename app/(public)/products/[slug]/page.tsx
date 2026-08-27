@@ -71,7 +71,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <p className="mt-6 text-base leading-relaxed text-white/66">{product.description}</p>
             <div className="mt-8 border-l-2 border-steel-orange bg-black/20 p-5"><p className="text-sm font-semibold leading-relaxed">{product.advantage}</p></div>
             <div className="mt-8"><p className="text-xs font-bold uppercase tracking-[.14em] text-white/45">Где применяется</p><ul className="mt-4 grid gap-3 sm:grid-cols-2">{product.applications.map((application) => <li key={application} className="border-b border-white/10 pb-3 text-sm text-white/78"><span className="mr-2 text-steel-orange">•</span>{application}</li>)}</ul></div>
-            <Link href="/contacts#contact-form" className="clip-corner mt-9 inline-block bg-steel-orange px-7 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
+            <Link href="/contacts#contact-form" className="clip-corner mt-9 inline-block bg-steel-orange-deep px-7 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
           </div>
           <figure className="overflow-hidden border border-white/12 bg-[#f4f4f1] p-4 sm:p-6">
             <Image src={product.technicalImage} alt={`Технический чертёж изделия «${product.title}»`} width={800} height={550} priority sizes="(max-width: 1279px) 100vw, 48vw" className="h-auto w-full" />
@@ -123,6 +123,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </div>
     </section>}
     <section className="bg-[#0c1013] py-14 sm:py-20"><div className="container"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="eyebrow">Следующий шаг</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Нужны смежные элементы?</h2></div><Link href="/products" className="text-xs font-bold uppercase text-steel-orange">Вся продукция&nbsp; →</Link></div><div className="mt-8 grid gap-4 md:grid-cols-3">{related.map((relatedProduct) => <ProductCard key={relatedProduct.slug} product={relatedProduct} />)}</div></div></section>
-    <section className="border-t border-white/10 bg-[#17191a] py-10"><div className="container flex flex-col justify-between gap-6 md:flex-row md:items-center"><div><p className="eyebrow">Расчёт под объект</p><h2 className="mt-2 text-2xl font-semibold uppercase">Пришлите чертёж или спецификацию</h2><p className="mt-3 text-sm text-white/58">Подберём исполнение, подготовим расчёт и согласуем технические детали.</p></div><Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-8 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link></div></section>
+    <section className="border-t border-white/10 bg-[#17191a] py-10"><div className="container flex flex-col justify-between gap-6 md:flex-row md:items-center"><div><p className="eyebrow">Расчёт под объект</p><h2 className="mt-2 text-2xl font-semibold uppercase">Пришлите чертёж или спецификацию</h2><p className="mt-3 text-sm text-white/58">Подберём исполнение, подготовим расчёт и согласуем технические детали.</p></div><Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-8 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link></div></section>
   </main><Footer /></>;
 }

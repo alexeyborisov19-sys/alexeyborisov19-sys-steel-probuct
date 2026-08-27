@@ -29,7 +29,7 @@ export function CreateUserForm({ csrfToken }: { csrfToken: string }) {
     <label className="text-xs">Роль<select name="role" className="mt-2 w-full border border-white/15 bg-[#0b0e10] px-4 py-3"><option>MANAGER</option><option>AUDITOR</option><option>PERSONAL_DATA_OFFICER</option><option>ADMIN</option></select></label>
     <label className="text-xs">Временный пароль<input name="temporaryPassword" type="password" required autoComplete="new-password" maxLength={256} className="mt-2 w-full border border-white/15 bg-black/25 px-4 py-3" /></label>
     {message ? <p role="alert" className="text-xs text-red-200 md:col-span-2">{message}</p> : null}
-    <button disabled={pending} className="bg-[#ea5b0c] px-5 py-3 text-xs font-bold uppercase disabled:opacity-50 md:col-span-2">{pending ? "Создание…" : "Создать пользователя"}</button>
+    <button disabled={pending} className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase disabled:opacity-50 md:col-span-2">{pending ? "Создание…" : "Создать пользователя"}</button>
   </form>;
 }
 

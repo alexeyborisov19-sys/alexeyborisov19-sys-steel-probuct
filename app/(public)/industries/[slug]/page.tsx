@@ -162,7 +162,7 @@ export default async function IndustryPage({ params }: IndustryPageProps) {
                 <p className="text-xl font-semibold">Нужен состав поставки под конкретный объект?</p>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">Пришлите чертёж, спецификацию или описание задачи. Проверим исходные данные и определим следующий шаг.</p>
               </div>
-              <Link href="/contacts#contact-form" className="clip-corner shrink-0 bg-steel-orange px-7 py-4 text-center text-xs font-bold uppercase">
+              <Link href="/contacts#contact-form" className="clip-corner shrink-0 bg-steel-orange-deep px-7 py-4 text-center text-xs font-bold uppercase">
                 Передать документацию&nbsp; →
               </Link>
             </div>

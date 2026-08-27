@@ -553,7 +553,7 @@ export default function FacadeExhibitions2026Page() {
             href="/contacts#contact-form"
             eventName="exhibition_quote_click"
             params={{ location: "facade_exhibition_calendar", intent: "facade_project" }}
-            className="clip-corner bg-steel-orange px-7 py-4 text-center text-xs font-bold uppercase"
+            className="clip-corner bg-steel-orange-deep px-7 py-4 text-center text-xs font-bold uppercase"
           >
             Обсудить фасадную задачу&nbsp; →
           </TrackedPromotionLink>

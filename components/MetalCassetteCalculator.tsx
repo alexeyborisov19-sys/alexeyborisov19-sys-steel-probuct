@@ -182,7 +182,7 @@ export function MetalCassetteCalculator() {
 
           <Link
             href={specialistHref}
-            className="clip-corner mt-7 inline-flex max-w-full justify-center break-words bg-steel-orange px-7 py-4 text-center text-sm font-bold uppercase leading-snug transition hover:bg-orange-600"
+            className="clip-corner mt-7 inline-flex max-w-full justify-center break-words bg-steel-orange-deep px-7 py-4 text-center text-sm font-bold uppercase leading-snug transition hover:bg-steel-orange-deeper"
           >
             Передать специалисту для расчёта&nbsp; →
           </Link>

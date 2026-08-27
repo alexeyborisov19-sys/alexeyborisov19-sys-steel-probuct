@@ -383,7 +383,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       type="button"
                       disabled={!input.trim() || loading}
                       onClick={() => void sendQuestion(input)}
-                      className="grid h-10 w-10 shrink-0 place-items-center bg-steel-orange text-lg font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-35"
+                      className="grid h-11 w-11 shrink-0 place-items-center bg-steel-orange-deep text-lg font-bold text-white transition hover:bg-steel-orange-deeper disabled:cursor-not-allowed disabled:opacity-35"
                       aria-label="Отправить вопрос"
                     >
                       ↑
@@ -398,7 +398,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       setLeadFormOpen(true);
                       trackLeadEvent("assistant_lead_form_opened", { assistant: "engineering" });
                     }}
-                    className="mt-2 w-full border border-steel-orange/45 px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-steel-orange transition hover:bg-steel-orange hover:text-white"
+                    className="mt-2 w-full border border-steel-orange/45 px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-steel-orange transition hover:bg-steel-orange-deep hover:text-white"
                   >
                     Передать задачу инженеру&nbsp; →
                   </button>
@@ -489,7 +489,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                           <p className="text-xs font-semibold">Чертежи и спецификации</p>
                           <p className="mt-1 text-xs leading-relaxed text-white/40">До 8 файлов, суммарно до 10 МБ.</p>
                         </div>
-                        <label className="cursor-pointer border border-steel-orange/50 px-3 py-2 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">
+                        <label className="cursor-pointer border border-steel-orange/50 px-3 py-2 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange-deep hover:text-white">
                           Добавить
                           <input type="file" multiple accept={acceptedFiles} onChange={handleLeadFiles} className="sr-only" />
                         </label>
@@ -544,7 +544,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                     <button
                       type="submit"
                       disabled={submittingLead}
-                      className="clip-corner w-full bg-steel-orange px-5 py-4 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-orange-600 disabled:cursor-wait disabled:opacity-55"
+                      className="clip-corner w-full bg-steel-orange-deep px-5 py-4 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper disabled:cursor-wait disabled:opacity-55"
                     >
                       {submittingLead ? "Регистрируем заявку…" : "Передать инженеру →"}
                     </button>

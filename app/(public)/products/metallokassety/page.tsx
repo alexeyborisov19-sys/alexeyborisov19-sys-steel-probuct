@@ -64,9 +64,9 @@ export default function MetalCassetteCollectionPage() {
             <h2 className="mt-3 max-w-xl text-2xl font-semibold uppercase leading-tight sm:text-3xl">Подберите серию под архитектуру и способ монтажа</h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/62">В печатном каталоге собраны технические листы всех четырёх серий, доборные и фасонные элементы, сценарии применения и данные для подбора. Текст переработан для быстрой работы менеджера с проектом заказчика.</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="clip-corner bg-steel-orange px-5 py-3 text-xs font-bold uppercase">Скачать каталог PDF&nbsp; ↗</a>
+              <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="clip-corner bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase">Скачать каталог PDF&nbsp; ↗</a>
               <Link href="/contacts#contact-form" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Получить расчёт&nbsp; →</Link>
-              <Link href="/calculator-metallokassety" className="border border-steel-orange/50 px-5 py-3 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange hover:text-white">Калькулятор металлокассет&nbsp; →</Link>
+              <Link href="/calculator-metallokassety" className="border border-steel-orange/50 px-5 py-3 text-xs font-bold uppercase text-steel-orange transition hover:bg-steel-orange-deep hover:text-white">Калькулятор металлокассет&nbsp; →</Link>
             </div>
           </div>
           <div>
@@ -99,7 +99,7 @@ export default function MetalCassetteCollectionPage() {
     <section className="border-t border-white/10 bg-[#17191a] py-10">
       <div className="container flex flex-col justify-between gap-6 md:flex-row md:items-center">
         <div><p className="eyebrow">Расчёт под объект</p><h2 className="mt-2 text-2xl font-semibold uppercase">Нужна помощь с подбором?</h2><p className="mt-3 text-sm text-white/58">Пришлите чертежи или спецификацию. Подберём серию, размеры, покрытие и цвет по RAL.</p></div>
-        <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange px-8 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
+        <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-8 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
       </div>
     </section>
     </PageLayout>

@@ -53,7 +53,7 @@ export default function IndustriesPage() {
       <section className="bg-[#0c1013] py-14 sm:py-20">
         <div className="container">
           <div className="flex flex-wrap gap-3">
-            <Link href="/contacts#contact-form" className="bg-steel-orange px-5 py-3 text-xs font-bold uppercase">
+            <Link href="/contacts#contact-form" className="bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase">
               Получить расчёт&nbsp; →
             </Link>
             <Link href="/production" className="border border-white/30 px-5 py-3 text-xs font-bold uppercase">
@@ -136,7 +136,7 @@ export default function IndustriesPage() {
 
           <div className="mt-8 border border-steel-orange/40 bg-gradient-to-r from-steel-orange/15 to-transparent px-5 py-6 sm:flex sm:items-center sm:justify-between sm:gap-8 sm:px-7">
             <div><p className="text-xl font-semibold">Не нашли нужную позицию?</p><p className="mt-1 text-sm leading-6 text-white/65">Разработаем и изготовим решение по вашему чертежу, спецификации или техническому заданию.</p></div>
-            <Link href="/contacts#contact-form" className="mt-5 inline-block shrink-0 bg-steel-orange px-6 py-4 text-xs font-bold uppercase sm:mt-0">Обсудить проект&nbsp; →</Link>
+            <Link href="/contacts#contact-form" className="mt-5 inline-block shrink-0 bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase sm:mt-0">Обсудить проект&nbsp; →</Link>
           </div>
         </div>
       </section>

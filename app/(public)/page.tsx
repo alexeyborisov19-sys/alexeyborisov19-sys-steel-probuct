@@ -237,7 +237,7 @@ export default function Home() {
                 уточним маршрут, срок и стоимость.
               </p>
               <Link
-                className="mt-5 inline-block bg-steel-orange px-5 py-3 text-[13px] font-bold uppercase"
+                className="mt-5 inline-block bg-steel-orange-deep px-5 py-3 text-[13px] font-bold uppercase"
                 href="/contacts#contact-form"
               >
                 Получить расчёт&nbsp; →
