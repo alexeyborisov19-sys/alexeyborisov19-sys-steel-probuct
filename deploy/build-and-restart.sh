@@ -164,6 +164,17 @@ fi
 
 pm2 save
 
+# Drop nginx page cache so visitors are not pinned to pre-deploy HTML that
+# references deleted JS chunks (that combination surfaces the global-error
+# "stale build" screen until the cache entry expires).
+if command -v nginx >/dev/null 2>&1; then
+  rm -rf /var/cache/nginx/steelprodukt/*
+  if nginx -t >/dev/null 2>&1; then
+    nginx -s reload || true
+  fi
+  echo "Nginx page cache purged for steelprodukt."
+fi
+
 # Tell search engines the release is live. This runs last and on purpose is
 # best-effort: the site is already serving by now, so a refused or throttled
 # notification is worth reporting but must never turn a good deploy into a failed one.
