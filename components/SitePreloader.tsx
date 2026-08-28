@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-const INTRO_DURATION = 1200;
+const INTRO_DURATION = 1700;
 const EXIT_DURATION = 420;
 
 export function SitePreloader() {
