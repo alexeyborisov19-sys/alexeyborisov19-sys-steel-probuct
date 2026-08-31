@@ -2,6 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
+import {
+  customerMaterialSummary,
+  laserCuttingCapabilities,
+  productionEquipment,
+  productionLeadTimeSummary,
+} from "@/data/manufacturing-facts";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -106,7 +112,61 @@ export default function ProjectsPage() {
             ))}
           </div>
 
-          <div className="mt-10 flex flex-col justify-between gap-5 border border-white/15 bg-[#14181b] p-6 sm:flex-row sm:items-center">
+          <div className="mt-10 border border-white/15 bg-[#14181b] p-6">
+            <p className="eyebrow">Что стоит за сценариями</p>
+            <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Собственное производство под любой из этих объектов</h2>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-white/60">
+              Сценарии выше различаются составом изделий, но выполняются на одном производственном контуре. Ниже — его подтверждённые параметры, чтобы состав поставки можно было оценить до обращения.
+            </p>
+
+            <div className="mt-7 grid gap-px border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["Лазерный раскрой", `${laserCuttingCapabilities.material}, ${laserCuttingCapabilities.thicknessRange}`, `${productionEquipment.laserComplexes} комплекса, стол ${laserCuttingCapabilities.tableWorkingArea}`],
+                ["Гибка", `${productionEquipment.pressBrakes} листогибочных комплекса`, `и ${productionEquipment.panelBenders} панельгиб`],
+                ["Сварка и сборка", `${productionEquipment.weldingStations} сварочных поста`, "слесарно-доводочные операции"],
+                ["Покрытие", `${productionEquipment.powderCoatingBooths} камеры порошковой окраски`, `дробеструйная камера, лазерная очистка`],
+              ].map(([label, value, note]) => (
+                <div key={label} className="bg-[#14181b] p-5">
+                  <p className="text-xs font-bold uppercase tracking-[.1em] text-steel-orange">{label}</p>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-white/85">{value}</p>
+                  <p className="mt-1 text-xs leading-5 text-white/50">{note}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-7 grid gap-6 lg:grid-cols-3">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-[.1em] text-white/85">Сроки</h3>
+                <p className="mt-3 text-sm leading-6 text-white/60">{productionLeadTimeSummary}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-[.1em] text-white/85">Материал</h3>
+                <p className="mt-3 text-sm leading-6 text-white/60">{customerMaterialSummary}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-[.1em] text-white/85">Границы работ</h3>
+                <p className="mt-3 text-sm leading-6 text-white/60">
+                  Изготавливаем и поставляем изделия с комплектом крепежа. Монтаж на объекте не выполняем. Требования по прочности, огнестойкости и ветровой нагрузке определяет проектная документация объекта, а не отдельное изделие.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-7 border-t border-white/10 pt-6">
+              <h3 className="text-sm font-bold uppercase tracking-[.1em] text-white/85">Что нужно для расчёта</h3>
+              <ul className="mt-3 grid gap-2 text-sm leading-6 text-white/60 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  "Чертёж, КД или DXF",
+                  "Марка и толщина металла",
+                  "Количество и требуемая партия",
+                  "Требования к покрытию и срокам",
+                ].map((item) => (
+                  <li key={item} className="border-l border-steel-orange/50 pl-3">{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col justify-between gap-5 border border-white/15 bg-[#14181b] p-6 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-xl font-semibold">Есть рабочий проект или спецификация?</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">

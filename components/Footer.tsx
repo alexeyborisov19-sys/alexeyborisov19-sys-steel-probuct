@@ -43,7 +43,6 @@ export function Footer() {
       <div className="grid gap-9 lg:grid-cols-[1.35fr_repeat(4,1fr)_1.1fr]">
         <div>
           <Brand />
-          <p className="mt-4 max-w-[180px] text-xs leading-relaxed text-white/50">Инженерные решения<br />из листового металла</p>
         </div>
         {columns.map(([title, links]) => <div key={title}>
           <p className="text-xs font-bold uppercase text-white">{title}</p>

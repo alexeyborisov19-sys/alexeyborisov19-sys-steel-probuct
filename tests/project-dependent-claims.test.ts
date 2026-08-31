@@ -40,3 +40,23 @@ test("industry pages defer safety and strength requirements to project documenta
   assert.match(industry, /требования по безопасности из проектной документации/);
   assert.match(industry, /геометрию, кромки, крепления и возможность локальной замены элементов по требованиям проектной документации/);
 });
+
+test("the projects hub states its work boundary alongside the capability facts", async () => {
+  // The page now carries production capability figures, which is exactly the
+  // context where a reader infers more than is offered: that the supplier also
+  // installs, and that a part carries the performance of the assembly. Both
+  // limits have to travel with the figures, on the same page.
+  const projects = await readFile(new URL("../app/(public)/projects/page.tsx", import.meta.url), "utf8");
+
+  assert.match(projects, /Монтаж на объекте не выполняем/);
+  assert.match(projects, /определяет проектная документация объекта, а не отдельное изделие/);
+
+  // The figures themselves come from the confirmed-facts module rather than
+  // being retyped here, so a corrected machine count cannot leave a stale
+  // number on this page.
+  assert.match(projects, /from "@\/data\/manufacturing-facts"/);
+  for (const bound of ["productionEquipment", "laserCuttingCapabilities", "productionLeadTimeSummary", "customerMaterialSummary"]) {
+    assert.ok(projects.includes(bound), `projects page should read ${bound} from the confirmed facts`);
+  }
+  assert.doesNotMatch(projects, /7–14 дней|1500 × 3000|0,5–40 мм/);
+});
