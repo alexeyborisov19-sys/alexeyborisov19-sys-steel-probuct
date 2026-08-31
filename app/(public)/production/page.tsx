@@ -17,7 +17,7 @@ import { createPageMetadata } from "@/lib/seo";
 import { faqSchema, itemListSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Производство полного цикла изделий из листового металла",
+  title: "Производство изделий из листового металла",
   description:
     `Инженерно-конструкторский центр и своё производство: ${productionEquipment.laserComplexes} лазерных и ${productionEquipment.pressBrakes} листогибочных комплекса, панельгиб, ${productionEquipment.weldingStations} сварочных поста, ${productionEquipment.powderCoatingBooths} камеры окраски. От КД до партии.`,
   path: "/production",

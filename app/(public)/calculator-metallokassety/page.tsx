@@ -8,7 +8,7 @@ import { createPageMetadata } from "@/lib/seo";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
 const path = "/calculator-metallokassety";
-const title = "Калькулятор металлокассет — расчёт количества по площади";
+const title = "Калькулятор металлокассет: расчёт по площади";
 const description =
   "Онлайн-калькулятор металлокассет 1170×545 мм с рустом 20 мм. Укажите площадь фасада и получите ориентировочное количество кассет для проверки по проекту.";
 

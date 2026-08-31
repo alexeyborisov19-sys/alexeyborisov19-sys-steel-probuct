@@ -65,7 +65,13 @@ test("cassette calculator estimates quantity without publishing unverified price
   assert.match(calculator, /Ориентировочное количество/);
   assert.match(calculator, /После проверки проекта/);
   assert.match(calculator, /quantity: String\(result\.quantity\)/);
-  assert.match(page, /Калькулятор металлокассет — расчёт количества по площади/);
+  // The title names the calculator and what it measures. Its exact phrasing is
+  // free to change for the SERP — pinning the whole string here made a title
+  // trim look like a broken price guarantee — but it must never start
+  // promising a cost.
+  const pageTitle = /^const title = "([^"]+)";/m.exec(page)?.[1] ?? "";
+  assert.match(pageTitle, /^Калькулятор металлокассет/);
+  assert.doesNotMatch(pageTitle, /цен|стоимост|₽/i);
   assert.match(page, /Почему калькулятор не показывает цену/);
 });
 
