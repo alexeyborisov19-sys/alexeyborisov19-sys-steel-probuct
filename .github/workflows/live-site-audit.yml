@@ -137,3 +137,48 @@ jobs:
             printf '  %-24s ' "$p"
             curl -sS -o /dev/null --max-time 25 -w 'HTTP %{http_code}  ->  %{redirect_url}\n' "$BASE$p"
           done
+
+      # The compliance register in LEGAL_COMPLIANCE_RU.md lists these as items to
+      # verify from outside the server, and names an external curl as the
+      # evidence it wants. Read-only: nothing is sent, only status codes read.
+      - name: Compliance checks the register asks for
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          BASE=https://www.steelprodukt.ru
+          IP="$(dig +short www.steelprodukt.ru A | head -1)"
+          echo "=============== ПЕРИМЕТР ==============="
+          echo "--- Node.js на порту 3000 должен быть закрыт снаружи ---"
+          printf '  %s:3000 -> ' "$IP"
+          if curl -sS -o /dev/null --max-time 8 "http://$IP:3000/robots.txt"; then
+            echo "ОТВЕЧАЕТ — порт открыт наружу, блокер из регистра НЕ закрыт"
+          else
+            echo "не отвечает (соединение не установлено) — как и требует регистр"
+          fi
+
+          echo "--- контур персональных данных должен отдавать 404 ---"
+          for p in /internal/personal-data /internal/personal-data/login /api/internal/personal-data; do
+            printf '  %-40s ' "$p"
+            curl -sS -o /dev/null --max-time 20 -w 'HTTP %{http_code}\n' "$BASE$p"
+          done
+
+          echo "--- заголовки контура ПД ---"
+          curl -sSI --max-time 20 "$BASE/internal/personal-data" \
+            | grep -iE '^(HTTP/|cache-control|x-robots-tag|referrer-policy|x-frame-options)' | sed 's/^/  /'
+
+          echo "--- /api/ должен быть закрыт от индексации ---"
+          printf '  X-Robots-Tag на /api/quote-request: '
+          curl -sSI --max-time 20 "$BASE/api/quote-request" | grep -i 'x-robots-tag' | sed 's/^ *//' || echo "нет заголовка"
+
+          echo
+          echo "=============== ОПУБЛИКОВАННЫЕ ДОКУМЕНТЫ ==============="
+          for p in /legal/privacy /legal/personal-data-consent /legal/marketing-consent /legal/cookies /legal/services /legal/terms /legal/requisites; do
+            printf '  %-34s ' "$p"
+            curl -sS -o /dev/null --max-time 20 -w 'HTTP %{http_code}\n' "$BASE$p"
+          done
+
+          echo
+          echo "--- версия и дата в политике, как их видит посетитель ---"
+          curl -fsS --max-time 20 "$BASE/legal/privacy" \
+            | grep -oE 'Реда[^<]{0,80}|Версия[^<]{0,60}' | head -3 | sed 's/^/  /'
