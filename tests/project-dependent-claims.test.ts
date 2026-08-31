@@ -60,3 +60,27 @@ test("the projects hub states its work boundary alongside the capability facts",
   }
   assert.doesNotMatch(projects, /7–14 дней|1500 × 3000|0,5–40 мм/);
 });
+
+test("the qualifications a reader needs are rendered, not merely present in the data", async () => {
+  // The fire and montage rows exist because unqualified versions of those claims
+  // had to be withdrawn. Asserting them in data/products.ts alone proved only
+  // that the sentences were written: the cassette landing rendered
+  // metalCassetteSpecs.slice(0, 4), which cut exactly those two rows, so the
+  // page passed the guard while showing thickness and colour and no limits.
+  const [data, landing, detail] = await Promise.all([
+    readFile(new URL("../data/products.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/(public)/products/metallokassety/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/(public)/products/[slug]/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  const specs = data.slice(data.indexOf("export const metalCassetteSpecs"));
+  const labels = (specs.slice(0, specs.indexOf("];")).match(/label: "([^"]+)"/g) ?? []).length;
+  assert.ok(labels >= 6, `expected the full spec list, found ${labels} rows`);
+  assert.ok(specs.includes("Пожарные требования") && specs.includes("Монтаж"));
+
+  // Neither page may show a prefix of the list.
+  assert.match(landing, /metalCassetteSpecs\.map\(/);
+  assert.doesNotMatch(landing, /metalCassetteSpecs\.slice\(/);
+  assert.match(detail, /product\.specs\.map\(/);
+  assert.doesNotMatch(detail, /product\.specs\.slice\(/);
+});

@@ -72,7 +72,7 @@ export default function MetalCassetteCollectionPage() {
           <div>
             <p className="mb-3 text-xs leading-5 text-white/50">Ниже указаны типовые или доступные исполнения. Итоговые параметры конкретного заказа фиксируются по проекту, согласованному образцу и условиям эксплуатации до запуска в производство.</p>
             <dl className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-              {metalCassetteSpecs.slice(0, 4).map((spec) => <div key={spec.label} className="bg-[#0d1012] p-4"><dt className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">{spec.label}</dt><dd className="mt-2 text-xs leading-relaxed text-white/70">{spec.value}</dd></div>)}
+              {metalCassetteSpecs.map((spec) => <div key={spec.label} className="bg-[#0d1012] p-4"><dt className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">{spec.label}</dt><dd className="mt-2 text-xs leading-relaxed text-white/70">{spec.value}</dd></div>)}
             </dl>
           </div>
         </div>
