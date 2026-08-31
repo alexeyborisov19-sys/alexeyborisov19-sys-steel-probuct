@@ -200,7 +200,9 @@ jobs:
             echo "  --- $p ---"
             echo "    <form>:                       $(printf '%s' "$HTML" | grep -o '<form' | wc -l)"
             echo "    checkbox personalDataConsent: $(printf '%s' "$HTML" | grep -o 'name="personalDataConsent"' | wc -l)"
-            echo "    required у него:              $(printf '%s' "$HTML" | grep -o 'name="personalDataConsent"[^>]*required' | wc -l)"
+            # React does not preserve JSX attribute order, so match the whole tag
+            # rather than assuming required follows name.
+            echo "    required у него:              $(printf '%s' "$HTML" | grep -o '<input[^>]*personalDataConsent[^>]*>' | grep -c 'required')"
             echo "    ссылка /legal/privacy:                $(printf '%s' "$HTML" | grep -o '/legal/privacy' | wc -l)"
             echo "    ссылка /legal/personal-data-consent:  $(printf '%s' "$HTML" | grep -o '/legal/personal-data-consent' | wc -l)"
             echo "    ссылка /legal/marketing-consent:      $(printf '%s' "$HTML" | grep -o '/legal/marketing-consent' | wc -l)"
