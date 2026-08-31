@@ -20,7 +20,8 @@ jobs:
       - name: Resolve the host and locate the server
         shell: bash
         run: |
-          set -uo pipefail
+          set +e
+          set -o pipefail
           HOST=www.steelprodukt.ru
           APEX=steelprodukt.ru
           echo "=============== ЛОКАЦИЯ ==============="
@@ -35,8 +36,13 @@ jobs:
             # RIPEstat is a public, key-less registry lookup: country of the
             # allocation and the announcing network.
             curl -fsS --max-time 20 "https://stat.ripe.net/data/prefix-overview/data.json?resource=$IP" \
-              | jq -r '"  страна размещения: \(.data.resource // "?") -> " +
-                       ((.data.asns // []) | map("AS\(.asn) \(.holder)") | join(", "))' || echo "  RIPEstat недоступен"
+              | jq -r '"  префикс: \(.data.resource // "?")",
+                       "  сеть:    " + ((.data.asns // []) | map("AS\(.asn) \(.holder)") | join(", "))' \
+              || echo "  RIPEstat недоступен"
+            # Country of the address allocation, straight from the registry stats.
+            curl -fsS --max-time 20 "https://stat.ripe.net/data/rir-stats-country/data.json?resource=$IP" \
+              | jq -r '"  страна по реестру: " + ((.data.located_resources // []) | map(.location) | join(", "))' \
+              || echo "  страна по реестру: недоступно"
             curl -fsS --max-time 20 "https://stat.ripe.net/data/geoloc/data.json?resource=$IP" \
               | jq -r '.data.locations[]? | "  гео: \(.country) \(.city // "")"' || true
           fi
@@ -44,7 +50,8 @@ jobs:
       - name: Transport, canonical host and redirects
         shell: bash
         run: |
-          set -uo pipefail
+          set +e
+          set -o pipefail
           echo "=============== ТРАНСПОРТ И РЕДИРЕКТЫ ==============="
           probe() {
             printf '  %-46s ' "$1"
@@ -63,7 +70,8 @@ jobs:
       - name: Indexing signals
         shell: bash
         run: |
-          set -uo pipefail
+          set +e
+          set -o pipefail
           BASE=https://www.steelprodukt.ru
           echo "=============== ИНДЕКСАЦИЯ ==============="
           echo "--- robots.txt ---"
@@ -88,7 +96,8 @@ jobs:
       - name: Page-level SEO on key URLs
         shell: bash
         run: |
-          set -uo pipefail
+          set +e
+          set -o pipefail
           BASE=https://www.steelprodukt.ru
           echo "=============== СТРАНИЦЫ ==============="
           for p in / /products /production /contacts /articles /projects /solutions /company /industries; do
@@ -100,7 +109,7 @@ jobs:
             ROBOTS="$(printf '%s' "$HTML" | grep -o '<meta name="robots" content="[^"]*"' | head -1 | sed 's/.*content="//;s/"$//')"
             DESCLEN="$(printf '%s' "$HTML" | grep -o '<meta name="description" content="[^"]*"' | head -1 | sed 's/.*content="//;s/"$//' | wc -c)"
             LANG="$(printf '%s' "$HTML" | grep -o '<html lang="[^"]*"' | head -1 | sed 's/.*lang="//;s/"$//')"
-            BANNER="$(printf '%s' "$HTML" | grep -c 'data-site-status="test-mode"')"
+            BANNER="$(printf '%s' "$HTML" | grep -c 'data-site-status="test-mode"' || true)"
             echo "  $CODE  $p"
             echo "        title:     $TITLE"
             echo "        canonical: ${CANON:-НЕТ}"
@@ -110,7 +119,8 @@ jobs:
       - name: Russian-market and legacy signals
         shell: bash
         run: |
-          set -uo pipefail
+          set +e
+          set -o pipefail
           BASE=https://www.steelprodukt.ru
           echo "=============== РУНЕТ-СИГНАЛЫ ==============="
           HTML="$(curl -fsS --max-time 30 "$BASE/" || true)"
