@@ -16,12 +16,18 @@ test("products hub includes every commercial landing in its structured catalog a
   assert.match(source, /\.\.\.commercialProductLandings\.map/);
   assert.match(source, /items: catalogStructuredItems/);
 
-  for (const landing of commercialProductLandings) {
-    assert.ok(
-      source.includes(`/products/${landing.slug}`),
-      `${landing.slug}: commercial landing must remain directly linked from /products`,
-    );
-  }
+  // The visible list is built from the registry, so every landing is linked by
+  // construction. This used to look for each slug as a literal in the source,
+  // which passed only while the hub repeated the registry by hand — the exact
+  // arrangement that would let a fifth landing be indexed and structured while
+  // staying invisible on the hub meant to lead to it.
+  assert.match(source, /const commercialDirections = commercialProductLandings\.map/);
+  assert.match(source, /href: `\/products\/\$\{landing\.slug\}`/);
+  assert.ok(commercialProductLandings.length > 0, "the registry must not be empty");
+
+  // A hand-written link list must not creep back in beside the derived one.
+  const hardCoded = source.match(/href: "\/products\/[a-z-]+"/g) ?? [];
+  assert.deepEqual(hardCoded, [], `hub must not hard-code landing links: ${hardCoded.join(", ")}`);
 });
 
 test("main sitemap derives every commercial product landing from the canonical registry", () => {

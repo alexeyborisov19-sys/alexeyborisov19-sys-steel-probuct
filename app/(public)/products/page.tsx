@@ -17,12 +17,15 @@ export const metadata: Metadata = createPageMetadata({
   keywords: ["фасадные металлокассеты", "кассетный вентилируемый фасад", "доборные элементы", "отливы", "парапетные крышки", "купить металлокассеты", "фасадные изделия по RAL"],
 });
 
-const commercialDirections = [
-  { href: "/products/korziny-dlya-konditsionerov", title: "Корзины для кондиционеров", text: "Фасадные корзины и экраны по размерам оборудования и проекта." },
-  { href: "/products/ventilyacionnye-reshetki", title: "Вентиляционные решётки", text: "Металлические фасадные и технические решётки по размерам проёма." },
-  { href: "/products/metallicheskie-korpusa", title: "Металлические корпуса", text: "Корпуса, шкафы и кожухи по КД — от прототипа до серии." },
-  { href: "/products/zakladnye-detali", title: "Закладные детали", text: "Пластины и сварные узлы по КМ, КМД и рабочим чертежам." },
-];
+// Derived from the landing data rather than repeated here: this list used to be
+// a hand-written copy of the same four entries, so a fifth landing page would
+// have been reachable by search and by the structured data below while staying
+// invisible on the hub that is supposed to lead to it.
+const commercialDirections = commercialProductLandings.map((landing) => ({
+  href: `/products/${landing.slug}`,
+  title: landing.title,
+  text: landing.description,
+}));
 
 const catalogStructuredItems = [
   ...products.map((product) => ({

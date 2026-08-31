@@ -66,7 +66,7 @@ export default function SolutionsPage() {
                 {solution.text}
               </p>
               <ul className="mt-5 border-t border-white/10">
-                {solution.items.slice(0, 5).map((item) => (
+                {solution.items.map((item) => (
                   <li key={item} className="border-b border-white/10 text-sm">
                     <Link
                       href={solution.href}
@@ -96,6 +96,31 @@ export default function SolutionsPage() {
               )}
             </article>
           ))}
+        </div>
+      </section>
+      <section className="border-t border-white/10 bg-[#101112] py-12 sm:py-14">
+        <div className="container grid gap-8 lg:grid-cols-3">
+          <div>
+            <p className="eyebrow">Что входит в поставку</p>
+            <h2 className="mt-3 text-2xl font-semibold uppercase">Изделие и крепёж</h2>
+            <p className="mt-4 text-sm leading-7 text-white/60">
+              Изготавливаем изделия и комплектуем их крепежом под выбранный узел. <b className="text-white/85">Монтаж на объекте не выполняем</b> — работы на площадке ведёт подрядчик заказчика.
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">Кто задаёт параметры</p>
+            <h2 className="mt-3 text-2xl font-semibold uppercase">Проектная документация</h2>
+            <p className="mt-4 text-sm leading-7 text-white/60">
+              Нагрузки, огнестойкость, ветровые и температурные требования определяет документация объекта и применяемой фасадной системы, а не отдельное изделие. Мы изготавливаем по согласованным параметрам.
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">С чего начать</p>
+            <h2 className="mt-3 text-2xl font-semibold uppercase">Исходные данные</h2>
+            <p className="mt-4 text-sm leading-7 text-white/60">
+              Для расчёта нужны раскладка или чертёж, марка и толщина металла, количество, требования к покрытию и сроку. По ним готовим предметный ответ, а не ориентировочную вилку.
+            </p>
+          </div>
         </div>
       </section>
       <FaqSection items={faqItems} title="Вопросы об инженерных решениях" />
