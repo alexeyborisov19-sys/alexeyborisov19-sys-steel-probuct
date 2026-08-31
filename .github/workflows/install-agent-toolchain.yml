@@ -1,0 +1,397 @@
+name: Install agent toolchain
+
+# One installer in place of four. The separate install-*.yml workflows each
+# self-triggered on their own file and each pushed its own commit, so a change
+# touching more than one of them raced on the same branch: concurrent pushes
+# collide, and AGENTS.md could land before the skills it names existed. They
+# also disagreed on Node (20 vs 22, while this project requires >=22.13) and
+# fetched wshobson/agents twice at the same pinned commit.
+#
+# This runs the same installs once, in dependency order, from a single fetch of
+# each pinned source, and lands one commit. Manual only: it writes to the branch
+# it runs on, so it must never fire on its own.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: install-agent-toolchain
+  cancel-in-progress: false
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # One fetch per source. Every ref stays pinned to the exact commit the
+      # separate installers used, so the installed content does not change.
+      - name: Fetch pinned sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/superpowers /tmp/wshobson-agents /tmp/marketingskills
+
+          git clone --filter=blob:none https://github.com/obra/superpowers.git /tmp/superpowers
+          git -C /tmp/superpowers checkout b36e0829c6d0140e93cfef2ca599b1b07d4a7797
+
+          git clone --filter=blob:none https://github.com/wshobson/agents.git /tmp/wshobson-agents
+          git -C /tmp/wshobson-agents checkout d82998e7df393c671ede2387a8435075f0b633f5
+
+          git clone --no-checkout https://github.com/coreyhaines31/marketingskills.git /tmp/marketingskills
+          git -C /tmp/marketingskills checkout becd60ee9df07f7d595c26e092253ba49f7a9ffc
+
+      - name: Install UI UX Pro Max skill for Codex
+        run: npx --yes ui-ux-pro-max-cli@2.15.0 init --ai codex
+
+      - name: Install marketing and SEO skills
+        run: |
+          mkdir -p .agents/skills
+          cp -R /tmp/marketingskills/skills/. .agents/skills/
+
+      - name: Install Superpowers skills for Codex
+        run: |
+          mkdir -p .agents/skills
+          for skill in /tmp/superpowers/skills/*; do
+            [ -d "$skill" ] || continue
+            name="$(basename "$skill")"
+            rm -rf ".agents/skills/$name"
+            cp -R "$skill" ".agents/skills/$name"
+          done
+          mkdir -p .agents/vendor/superpowers
+          cp /tmp/superpowers/.codex-plugin/plugin.json .agents/vendor/superpowers/plugin.json
+          printf '%s\n' 'obra/superpowers' 'commit: b36e0829c6d0140e93cfef2ca599b1b07d4a7797' > .agents/vendor/superpowers/SOURCE.txt
+
+      - name: Install docs architect skill
+        run: |
+          mkdir -p .agents/skills/docs-architect
+          cp /tmp/wshobson-agents/plugins/code-documentation/agents/docs-architect.md .agents/skills/docs-architect/SKILL.md
+          mkdir -p .agents/vendor/docs-architect
+          printf '%s\n' 'wshobson/agents' 'agent: plugins/code-documentation/agents/docs-architect.md' 'commit: d82998e7df393c671ede2387a8435075f0b633f5' > .agents/vendor/docs-architect/SOURCE.txt
+
+      - name: Add website development router
+        run: |
+          mkdir -p .agents/skills/website-development
+          cat > .agents/skills/website-development/SKILL.md <<'EOF'
+          ---
+          name: website-development
+          description: End-to-end website engineering for production websites. Use when building, changing, refactoring, debugging, testing, or shipping website pages, components, navigation, forms, interactions, integrations, responsive behavior, accessibility, performance, or frontend architecture. Coordinates Superpowers development workflows with the installed UI/UX and SEO skills.
+          ---
+
+          # Website Development
+
+          Act as the lead engineer for a production website. Build maintainable, fast, accessible, search-friendly code rather than disposable demos.
+
+          ## Required workflow
+
+          1. Inspect the existing project structure, framework, conventions, and deployment path before changing code.
+          2. Use the relevant Superpowers skills for brainstorming, planning, implementation, debugging, testing, review, and verification.
+          3. Use `ui-ux-pro-max` for design-system, layout, typography, responsive, accessibility, and interaction decisions when visual work is involved.
+          4. Preserve the existing brand and component language unless the task explicitly requests a redesign.
+          5. Use the installed SEO/marketing skills when changes affect metadata, semantic structure, internal linking, schema, landing pages, conversion, or search visibility.
+          6. Verify the finished work before claiming completion.
+
+          ## Engineering quality floor
+
+          - Semantic HTML and clear content hierarchy.
+          - Responsive behavior at mobile, tablet, laptop, and wide desktop widths.
+          - Keyboard access, visible focus, meaningful labels, and reduced-motion handling.
+          - Avoid layout shift, unnecessary client JavaScript, oversized dependencies, and render-blocking assets.
+          - Reuse components and tokens; do not duplicate styles without a reason.
+          - Keep URLs, metadata, canonical behavior, redirects, sitemap behavior, and structured data intact unless intentionally changed.
+          - Treat forms, analytics, consent, tracking, and external integrations as production systems with failure states.
+          - Add or update tests where they materially protect behavior.
+          - Never replace working production behavior with a visual mock unless explicitly requested.
+
+          ## Output behavior
+
+          When implementing, prefer concrete code changes over long explanations. Report what changed, what was verified, and any remaining risk or dependency.
+          EOF
+
+      - name: Add manufacturing technical writer
+        run: |
+          mkdir -p .agents/skills/manufacturing-technical-writer
+          cat > .agents/skills/manufacturing-technical-writer/SKILL.md <<'EOF'
+          ---
+          name: manufacturing-technical-writer
+          description: Technical and manufacturing writing for industrial products and production processes. Use for technical descriptions, specifications, datasheets, product passports, manuals, work instructions, process descriptions, quality-control documents, tender technical responses, commercial-proposal technical sections, manufacturing website copy, and engineering explanations.
+          ---
+
+          # Manufacturing Technical Writer
+
+          Write as an industrial technical writer working with engineers, technologists, production managers, procurement teams, operators, and B2B customers. Prioritize technical accuracy, traceability, clarity, and useful structure over promotional language.
+
+          Use `docs-architect` as the documentation-architecture baseline when a document is long, complex, or needs a formal hierarchy.
+
+          ## Non-negotiable factual discipline
+
+          - Never invent dimensions, tolerances, material grades, coating thicknesses, loads, capacities, process parameters, certifications, test results, standards, GOST/ISO/EN references, warranty terms, production times, or equipment capabilities.
+          - Separate supplied facts from assumptions and recommendations.
+          - If a technical value is missing, mark it as `to be confirmed` or phrase the text so the missing value is not fabricated.
+          - Cite standards only when they are provided or verified from a reliable current source.
+          - Preserve units exactly when source data is authoritative; otherwise normalize to SI and keep units consistent.
+          - Check numerical consistency across tables, headings, drawings, and prose.
+
+          ## Writing style
+
+          - Precise Russian technical prose by default when the user's material is Russian; use the requested language otherwise.
+          - Prefer short declarative sentences, explicit subjects, and active voice where practical.
+          - Use one term consistently for one component or operation.
+          - Avoid vague claims such as “high quality”, “innovative”, “unique”, or “reliable” unless supported by a measurable fact.
+          - Explain cause and effect: what the operation does, why it is required, what parameter controls the result, and what can go wrong.
+          - Distinguish requirement, recommendation, option, limitation, and measured result.
+
+          ## Recommended structures
+
+          For a product or assembly:
+          1. Purpose and application
+          2. Construction and components
+          3. Materials and finishes
+          4. Key technical parameters
+          5. Manufacturing process
+          6. Interfaces, mounting, or connection requirements
+          7. Quality control and acceptance
+          8. Packaging, transport, storage, and maintenance when relevant
+          9. Limitations and options
+
+          For a manufacturing process:
+          1. Input material and prerequisites
+          2. Equipment and tooling
+          3. Operation sequence
+          4. Critical parameters and tolerances
+          5. In-process inspection
+          6. Acceptance criteria
+          7. Typical defects, causes, and corrective actions
+          8. Safety and handling notes when supported by source information
+
+          For a technical commercial text:
+          - State the customer's problem first.
+          - Describe the engineering solution and production route.
+          - Quantify only verified capabilities.
+          - Explain manufacturability, repeatability, inspection, logistics, and options where relevant.
+          - Keep sales language subordinate to engineering evidence.
+
+          ## Audience modes
+
+          Adapt depth without changing facts:
+          - Engineer/technologist: parameters, interfaces, tolerances, process logic, failure modes.
+          - Procurement/tender: scope, compliance, deliverables, options, exclusions, acceptance.
+          - Customer/site visitor: application, construction, benefits explained through technical facts.
+          - Operator/production: ordered actions, checks, stop conditions, safety-critical notes.
+
+          ## Final quality check
+
+          Before finalizing, verify terminology, units, numbers, cross-references, unsupported claims, missing assumptions, and whether a competent engineer could reproduce or evaluate the described product/process from the text.
+          EOF
+
+      - name: Install pinned Ruflo and Playwright MCP
+        run: npm install --save-dev --save-exact ruflo@3.38.19 @playwright/mcp@0.0.79
+
+      - name: Initialize Ruflo project scaffold
+        run: npx -y ruflo@3.38.19 init --yes
+
+      - name: Install QA reviewer skills
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Same files and same pinned commit as before, taken from the clone
+          # made above rather than fetched again over the network.
+          install_agent() {
+            mkdir -p ".agents/skills/$2"
+            cp "/tmp/wshobson-agents/plugins/$1" ".agents/skills/$2/SKILL.md"
+          }
+          install_agent comprehensive-review/agents/code-reviewer.md code-reviewer
+          install_agent observability-monitoring/agents/performance-engineer.md performance-engineer
+          install_agent ui-design/agents/accessibility-expert.md accessibility-expert
+          install_agent comprehensive-review/agents/security-auditor.md security-auditor
+          install_agent codebase-cleanup/agents/test-automator.md test-automator
+
+      - name: Add site director and quality gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .agents/skills/site-director .agents/skills/site-quality-gate .codex scripts
+
+          cat > .agents/skills/site-director/SKILL.md <<'EOF'
+          ---
+          name: site-director
+          description: Orchestrates website work across engineering, manufacturing content, SEO, UX/UI, implementation, browser QA, performance, accessibility, security, and final code review. Use for any substantial page creation, redesign, conversion improvement, or site-wide change.
+          ---
+
+          # Site Director
+
+          Coordinate substantial website work as one pipeline rather than independent edits.
+
+          ## Required sequence
+          1. Inspect the existing implementation and relevant project context.
+          2. For product/manufacturing claims, use `manufacturing-technical-writer` first. Never invent standards, dimensions, tolerances, materials, loads, certifications, machine capabilities, or performance values.
+          3. For discoverability and conversion structure, use the installed SEO/marketing skills, including `seo-audit`/`ai-seo` when relevant.
+          4. For visual direction and UX, use `ui-ux-pro-max` before implementation when the task changes layout, hierarchy, typography, interaction, or responsive behavior.
+          5. Use `website-development` and the Superpowers workflow for implementation planning, code changes, tests, debugging, and verification.
+          6. Run the `site-quality-gate` before declaring the work complete.
+
+          ## Orchestration
+          If Ruflo MCP tools are available, use Ruflo to coordinate independent research/review tasks in parallel, but keep one clear implementation owner. Do not parallel-edit the same files without isolation.
+
+          ## Decision rule
+          A page is not complete because it builds. It is complete only when product facts, SEO intent, visual hierarchy, responsive behavior, browser behavior, performance risk, accessibility, security, and code quality have all been checked to the extent relevant to the change.
+          EOF
+
+          cat > .agents/skills/site-quality-gate/SKILL.md <<'EOF'
+          ---
+          name: site-quality-gate
+          description: Final acceptance gate for website changes. Uses browser verification, tests, performance, accessibility, security, and code review before completion claims.
+          ---
+
+          # Site Quality Gate
+
+          Apply this after implementation and before saying a website task is finished.
+
+          ## Gate order
+          1. Build/type/lint/test: run the project's relevant checks and fix failures.
+          2. Browser QA: when Playwright MCP is available, open the changed pages and verify the real rendered result, navigation, controls, forms, responsive behavior, overflow, broken assets, console-visible failures, and obvious regressions. Check desktop and mobile-sized viewports for UI work.
+          3. Functional testing: use `test-automator` for missing high-value tests and regression coverage.
+          4. Performance: use `performance-engineer` to identify avoidable bundle, rendering, image, animation, loading, and Core Web Vitals risks introduced by the change.
+          5. Accessibility: use `accessibility-expert` for keyboard, focus, semantics, contrast, labels, reduced motion, and WCAG-relevant issues.
+          6. Security: use `security-auditor` for changes touching forms, user input, APIs, authentication, headers, dependencies, or external integrations.
+          7. Final review: use `code-reviewer` to check correctness, maintainability, regressions, and production readiness.
+
+          ## Completion standard
+          Never claim success from code inspection alone when browser verification is available. Report any gate that could not be run and why. Critical failures block completion.
+          EOF
+
+          cat > .codex/mcp-config.example.toml <<'EOF'
+          # Fallback reference for ~/.codex/config.toml.
+          # The setup script registers these with `codex mcp add` automatically.
+
+          [mcp_servers.playwright]
+          command = "npx"
+          args = ["@playwright/mcp@0.0.79"]
+
+          [mcp_servers.ruflo]
+          command = "npx"
+          args = ["-y", "ruflo@3.38.19", "mcp", "start"]
+          EOF
+
+          cat > scripts/setup-codex-tools.mjs <<'EOF'
+          import { spawnSync } from 'node:child_process';
+
+          const isWindows = process.platform === 'win32';
+          const exe = (name) => isWindows ? `${name}.cmd` : name;
+
+          function run(command, args, { allowFailure = false } = {}) {
+            console.log(`\n> ${command} ${args.join(' ')}`);
+            const result = spawnSync(exe(command), args, {
+              stdio: 'inherit',
+              cwd: process.cwd(),
+              shell: false,
+            });
+            if (result.error) {
+              if (allowFailure) {
+                console.warn(`Skipped: ${result.error.message}`);
+                return false;
+              }
+              throw result.error;
+            }
+            if (result.status !== 0) {
+              if (allowFailure) return false;
+              process.exit(result.status ?? 1);
+            }
+            return true;
+          }
+
+          console.log('Setting up Steel Produkt Codex tools...');
+
+          run('npx', ['-y', 'ruflo@3.38.19', 'init', '--yes']);
+
+          // Refresh MCP registrations so pinned versions are used.
+          run('codex', ['mcp', 'remove', 'playwright'], { allowFailure: true });
+          run('codex', ['mcp', 'add', 'playwright', 'npx', '@playwright/mcp@0.0.79']);
+
+          run('codex', ['mcp', 'remove', 'ruflo'], { allowFailure: true });
+          run('codex', ['mcp', 'add', 'ruflo', '--', 'npx', '-y', 'ruflo@3.38.19', 'mcp', 'start']);
+
+          // Doctor can report optional-provider warnings; do not undo a successful MCP setup for those.
+          run('npx', ['-y', 'ruflo@3.38.19', 'doctor'], { allowFailure: true });
+
+          console.log('\nDone. Restart Codex or start a new session so MCP servers and project instructions are reloaded.');
+          EOF
+
+          npm pkg set "scripts.codex:tools:setup=node scripts/setup-codex-tools.mjs"
+          npm pkg set "scripts.ruflo:init=npx -y ruflo@3.38.19 init --yes"
+          npm pkg set "scripts.ruflo:doctor=npx -y ruflo@3.38.19 doctor"
+
+      - name: Add Codex team instructions
+        shell: bash
+        run: |
+          cat > AGENTS.md <<'EOF'
+          # Steel Produkt — Codex Agent Team
+
+          For substantial website tasks, treat the installed skills and MCP tools as one coordinated team.
+
+          ## Lead workflow
+          - Start with `.agents/skills/site-director/SKILL.md` for page creation, redesigns, conversion work, or site-wide changes.
+          - Use Ruflo MCP for orchestration when available.
+          - Use Superpowers / `website-development` as the implementation workflow.
+
+          ## Specialists
+          - Product/manufacturing truth: `manufacturing-technical-writer`, supported by `docs-architect`.
+          - SEO/growth: installed marketing skills (`seo-audit`, `ai-seo`, programmatic SEO, schema, content/CRO skills as relevant).
+          - UI/UX: `ui-ux-pro-max`.
+          - Engineering: Superpowers skills plus `website-development`.
+
+          ## Mandatory final gate for meaningful UI/site changes
+          Use `site-quality-gate` and, when available, Playwright MCP for real browser verification. Then apply `test-automator`, `performance-engineer`, `accessibility-expert`, `security-auditor` when relevant, and finish with `code-reviewer`.
+
+          ## Non-negotiable factual rule
+          Never invent technical product data, standards, tolerances, dimensions, materials, ratings, certifications, or manufacturing capabilities. If source evidence is missing, mark the claim as needing confirmation instead of filling the gap.
+          EOF
+
+      - name: Keep safe Ruflo scaffold files only
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Never commit runtime databases, caches, logs, secrets, or session state generated by Ruflo.
+          find .claude .claude-flow -type f \( -name '*.db' -o -name '*.sqlite*' -o -name '*.log' -o -name '*.lock' \) -delete 2>/dev/null || true
+
+      # One commit for the whole toolchain. Four workflows pushing separately
+      # is what made concurrent runs collide.
+      - name: Commit the installed toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .agents .codex AGENTS.md package.json package-lock.json scripts/setup-codex-tools.mjs
+
+          for p in CLAUDE.md .mcp.json .claude .claude-flow; do
+            if [ -e "$p" ]; then
+              if [ -d "$p" ]; then
+                find "$p" -type f \( \
+                  -name '*.md' -o -name '*.json' -o -name '*.toml' -o -name '*.yaml' -o -name '*.yml' -o \
+                  -name '*.js' -o -name '*.mjs' -o -name '*.ts' -o -name '*.sh' -o -name '*.txt' \
+                \) -print0 | xargs -0 -r git add -f
+              else
+                git add -f "$p"
+              fi
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "Toolchain already installed; nothing to commit."
+          else
+            git commit -m "chore: install the Codex agent toolchain"
+            git push
+          fi
