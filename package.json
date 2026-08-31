@@ -28,7 +28,8 @@
     "pd:create-admin": "node --import tsx scripts/pd-create-admin.ts",
     "codex:tools:setup": "node scripts/setup-codex-tools.mjs",
     "ruflo:init": "npx -y ruflo@3.38.19 init --yes",
-    "ruflo:doctor": "npx -y ruflo@3.38.19 doctor"
+    "ruflo:doctor": "npx -y ruflo@3.38.19 doctor",
+    "pd:journal": "node --import tsx scripts/pd-regulator-journal.ts"
   },
   "dependencies": {
     "framer-motion": "^12.43.0",
