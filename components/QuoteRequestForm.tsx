@@ -251,9 +251,6 @@ export function QuoteRequestForm() {
     {feedback ? <p role={feedback.type === "error" ? "alert" : "status"} className={`border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"}`}>{feedback.message}</p> : null}
 
     <div className="border-t border-white/10 pt-6">
-      <p className="mb-4 text-[13px] leading-relaxed text-white/48">
-        До отправки ознакомьтесь с <Link href={legalLinks.privacy} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">политикой обработки персональных данных</Link>. Согласие на обработку данных и необязательное согласие на рекламу оформляются отдельно.
-      </p>
       <label className="flex cursor-pointer items-start gap-3 text-[13px] leading-relaxed text-white/62">
         <input name="personalDataConsent" value="yes" type="checkbox" required aria-required="true" className="mt-0.5 h-4 w-4 shrink-0 accent-[#EA5B0C]" />
         <span>Я даю отдельное <Link href={legalLinks.personalDataConsent} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">согласие на обработку персональных данных</Link> для рассмотрения заявки, связи со мной и подготовки расчёта. <b className="text-steel-orange">*</b></span>
@@ -262,6 +259,9 @@ export function QuoteRequestForm() {
         <input name="marketingConsent" value="yes" type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[#EA5B0C]" />
         <span>Я отдельно соглашаюсь получать рекламные и информационные сообщения по e-mail, телефону и в указанных мной мессенджерах. Это необязательно и не влияет на расчёт. <Link href={legalLinks.marketingConsent} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">Условия и отзыв согласия</Link>.</span>
       </label>
+      <p className="mt-4 text-[13px] leading-relaxed text-white/48">
+        Согласие на обработку данных и необязательное согласие на рекламу оформляются отдельными документами. С <Link href={legalLinks.privacy} target="_blank" className="text-steel-orange underline-offset-2 hover:underline">политикой обработки персональных данных</Link> можно ознакомиться до отправки.
+      </p>
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="max-w-xl">
           <p className="text-xs font-semibold leading-relaxed text-white/70">После отправки материалы поступят на инженерную и коммерческую проверку.</p>
