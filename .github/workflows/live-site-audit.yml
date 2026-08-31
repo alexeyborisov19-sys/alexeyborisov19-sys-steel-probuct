@@ -182,3 +182,26 @@ jobs:
           echo "--- версия и дата в политике, как их видит посетитель ---"
           curl -fsS --max-time 20 "$BASE/legal/privacy" \
             | grep -oE 'Реда[^<]{0,80}|Версия[^<]{0,60}' | head -3 | sed 's/^/  /'
+
+      # A third-party 152-ФЗ scanner reported that a form links only to the
+      # privacy policy, which since 01.09.2025 (ФЗ-156 of 24.06.2025, art. 9)
+      # is a violation on its own: the consent has to be a separate document.
+      # This dumps what a crawler actually receives, so the claim is checkable.
+      - name: Consent links a crawler sees in the forms
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          BASE=https://www.steelprodukt.ru
+          echo "=============== СОГЛАСИЯ В ФОРМАХ ==============="
+          for p in /contacts / /products /production; do
+            HTML="$(curl -fsS --max-time 30 "$BASE$p" || true)"
+            [ -z "$HTML" ] && { echo "  $p — тело не получено"; continue; }
+            echo "  --- $p ---"
+            echo "    <form>:                       $(printf '%s' "$HTML" | grep -o '<form' | wc -l)"
+            echo "    checkbox personalDataConsent: $(printf '%s' "$HTML" | grep -o 'name="personalDataConsent"' | wc -l)"
+            echo "    required у него:              $(printf '%s' "$HTML" | grep -o 'name="personalDataConsent"[^>]*required' | wc -l)"
+            echo "    ссылка /legal/privacy:                $(printf '%s' "$HTML" | grep -o '/legal/privacy' | wc -l)"
+            echo "    ссылка /legal/personal-data-consent:  $(printf '%s' "$HTML" | grep -o '/legal/personal-data-consent' | wc -l)"
+            echo "    ссылка /legal/marketing-consent:      $(printf '%s' "$HTML" | grep -o '/legal/marketing-consent' | wc -l)"
+          done
