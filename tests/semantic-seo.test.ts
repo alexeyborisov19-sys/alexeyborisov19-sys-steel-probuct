@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import { getArticleCommercialLinks } from "@/components/ArticleCommercialLinks";
 import { buildKnowledgeFallback, steelProductAssistantSystemPrompt } from "@/data/assistant-knowledge";
@@ -167,4 +169,44 @@ test("high-risk engineering topics state their limits instead of promising unive
   assert.ok(tolerances.sources?.some((source) => source.url.includes("iso.org/standard/7748")));
   assert.match(`${thickness.lead} ${thickness.editorNote}`, /не .*универсаль|без ложных универсальных/i);
   assert.ok(thickness.sections.some((section) => /матрица/i.test(section.title) && section.table));
+});
+test("static page titles stay inside what a search result shows", () => {
+  // A title past roughly 60 characters is cut mid-phrase in the SERP, so the
+  // part that persuades is the part that disappears. Articles carry their own
+  // (looser) rule above; this covers the pages whose title is a literal in the
+  // page module — the ones a person edits by hand and can lengthen without
+  // noticing.
+  const suffix = " | Сталь Продукт";
+  const files = readdirSync("app", { recursive: true, encoding: "utf8" })
+    .filter((name) => name.endsWith(".tsx"))
+    .map((name) => join("app", name));
+
+  const titles: Array<{ title: string; file: string }> = [];
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    if (!source.includes("createPageMetadata")) continue;
+    const call = /createPageMetadata\(\{([\s\S]*?)\n\}\)/.exec(source);
+    if (!call) continue;
+
+    const inline = /title:\s*"([^"]+)"/.exec(call[1]);
+    // Pages that pass a bare `title` shorthand declare it as a const above.
+    const referenced = /^\s*title,\s*$/m.test(call[1])
+      ? /^const title = "([^"]+)";/m.exec(source)
+      : null;
+    const title = inline?.[1] ?? referenced?.[1];
+    if (title) titles.push({ title, file });
+  }
+
+  // Detail routes build their title in generateMetadata, so they are not
+  // literals and are not covered here. If this ever reads zero the scan has
+  // broken and the rule below would pass without checking anything.
+  assert.ok(titles.length >= 20, `ожидались заголовки страниц, найдено ${titles.length}`);
+
+  for (const { title, file } of titles) {
+    const rendered = `${title}${suffix}`;
+    assert.ok(
+      rendered.length <= 60,
+      `${file}: title ${rendered.length} символов — «${rendered}»`,
+    );
+  }
 });
