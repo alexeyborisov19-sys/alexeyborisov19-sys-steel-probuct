@@ -207,3 +207,57 @@ jobs:
             echo "    ссылка /legal/personal-data-consent:  $(printf '%s' "$HTML" | grep -o '/legal/personal-data-consent' | wc -l)"
             echo "    ссылка /legal/marketing-consent:      $(printf '%s' "$HTML" | grep -o '/legal/marketing-consent' | wc -l)"
           done
+
+      # A third-party crawler reported ~95 words on an article the local build
+      # renders with ~1000, and a similar gap on the homepage. Either the live
+      # server truncates the body, or that crawler counts differently. This
+      # measures what the server actually returns, with the same rule used on
+      # the build: text inside <main>, scripts and tags stripped.
+      - name: How much text the server actually returns
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          BASE=https://www.steelprodukt.ru
+          cat > /tmp/count.py <<'PY'
+          import re, sys
+          h = sys.stdin.read()
+          raw = len(h)
+          h = re.sub(r'<script\b.*?</script>', ' ', h, flags=re.S | re.I)
+          h = re.sub(r'<style\b.*?</style>', ' ', h, flags=re.S | re.I)
+          m = re.search(r'<main\b.*?</main>', h, flags=re.S | re.I)
+          scope = 'main' if m else 'body'
+          h = m.group(0) if m else h
+          h = re.sub(r'<[^>]{0,400}?>', ' ', h, flags=re.S)
+          words = [t for t in h.split()
+                   if re.fullmatch(r"[А-Яа-яЁёA-Za-z][А-Яа-яЁёA-Za-z\-']*", t)]
+          print(f"{raw} {len(words)} {scope}")
+          PY
+
+          echo "=============== ОБЪЁМ ОТВЕТА ==============="
+          printf '  %-52s %10s %8s %6s\n' URL байт слов область
+          for p in /articles/avtomatizaciya-gibki-claas-2026 \
+                   /articles/trumpf-mate-instrument-dlya-listovogo-metalla-2026 \
+                   /articles/china-tech /articles / /products /projects; do
+            OUT="$(curl -fsS --max-time 40 "$BASE$p" | python3 /tmp/count.py)" || OUT="— — —"
+            printf '  %-52s %10s %8s %6s\n' "$p" $OUT
+          done
+
+          echo
+          echo "--- та же статья глазами роботов ---"
+          A=/articles/avtomatizaciya-gibki-claas-2026
+          for UA in "Mozilla/5.0" \
+                    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" \
+                    "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)"; do
+            OUT="$(curl -fsS --max-time 40 -A "$UA" "$BASE$A" | python3 /tmp/count.py)" || OUT="— — —"
+            printf '  %-46s байт %s слов %s (%s)\n' "$(printf '%s' "$UA" | cut -c1-44)" $OUT
+          done
+
+          echo
+          echo "--- как отдаётся: длина, кодировка, кэш ---"
+          curl -sSI --max-time 30 "$BASE$A" \
+            | grep -iE '^(HTTP/|content-length|transfer-encoding|content-encoding|x-cache-status|vary)' \
+            | sed 's/^/  /'
+          echo "  --- обход кэша (?_cb) ---"
+          curl -sSI --max-time 30 "$BASE$A?_cb=$RANDOM" \
+            | grep -iE '^(HTTP/|content-length|x-cache-status)' | sed 's/^/  /'
