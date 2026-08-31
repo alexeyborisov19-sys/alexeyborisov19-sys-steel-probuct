@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site";
+import { siteMode } from "@/data/site-mode";
 import { Brand } from "./Brand";
 import { MegaMenu } from "./MegaMenu";
 
@@ -71,6 +72,17 @@ export function Header() {
     >
       Перейти к содержимому
     </a>
+    {siteMode.isTest ? (
+      <div
+        role="status"
+        data-site-status="test-mode"
+        // min-height rather than a fixed height: the notice wraps to two lines on
+        // narrow screens, and a fixed 28px strip clipped it there.
+        className="flex min-h-[28px] items-center justify-center bg-steel-orange px-4 py-1 text-center text-[10px] font-bold uppercase leading-tight tracking-[.14em] text-black sm:text-[11px]"
+      >
+        {siteMode.label}
+      </div>
+    ) : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
       <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
       <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch xl:flex">

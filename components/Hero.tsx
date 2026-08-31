@@ -1,12 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { productionEquipment } from "@/data/manufacturing-facts";
-import { siteMode } from "@/data/site-mode";
+import { heroOffset } from "@/data/site-mode";
 
 export function Hero() {
-  const spacing = siteMode.isTest ? "min-h-[638px] pt-[100px]" : "min-h-[610px] pt-[72px]";
-
-  return <section className={`relative isolate overflow-hidden bg-steel-black ${spacing}`}>
+  return <section className={`relative isolate overflow-hidden bg-steel-black ${heroOffset}`}>
     <Image
       src="/images/web/hero-main.webp"
       alt=""

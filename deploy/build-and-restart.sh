@@ -177,9 +177,38 @@ wait_for_production() {
   return 1
 }
 
+# Between deleting the old worker and starting the new one nothing answers on
+# port 3000. GitHub Actions cancels superseded runs (cancel-in-progress), which
+# kills this SSH child at an arbitrary point, so an interrupted promotion used to
+# leave production with no process behind nginx until someone noticed. Restore a
+# serving build and worker before giving up on any signal.
+promotion_in_progress=false
+
+restore_service_on_abort() {
+  trap - INT TERM HUP
+  if [ "$promotion_in_progress" = true ]; then
+    echo "Promotion interrupted; restoring a serving build."
+    if [ ! -d .next ]; then
+      if [ -d "$CANDIDATE_DIST" ]; then
+        mv "$CANDIDATE_DIST" .next || true
+      elif [ -d "$PREVIOUS_DIST" ]; then
+        mv "$PREVIOUS_DIST" .next || true
+      fi
+    fi
+    if [ -d .next ]; then
+      pm2 start ecosystem.config.cjs --env production --update-env || true
+      wait_for_production || true
+    fi
+  fi
+  exit 1
+}
+
+trap restore_service_on_abort INT TERM HUP
+
 # The candidate has passed build + startup + SEO audit. Only now stop the old
 # worker, swap build directories, and start the new worker. The interruption is
 # limited to the short process restart instead of the full Next.js build window.
+promotion_in_progress=true
 if [ "$RUNNING_INSTANCES" -gt 0 ]; then
   pm2 delete "$APP_NAME" || true
 fi
@@ -203,6 +232,11 @@ else
   fi
   exit 1
 fi
+
+# The new worker is live and audited. Everything below is best-effort follow-up
+# work that cannot take the site down, so the abort guard is no longer needed.
+promotion_in_progress=false
+trap - INT TERM HUP
 
 pm2 save
 
