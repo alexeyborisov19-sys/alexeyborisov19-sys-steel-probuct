@@ -1,0 +1,129 @@
+name: Live site audit
+
+# Read-only probe of the published site, run from a GitHub runner because it can
+# reach the public internet directly. Answers two questions: is the site served
+# from Russia, and are its indexing signals intact. Writes nothing and needs no
+# secrets — it only fetches public URLs.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/live-site-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve the host and locate the server
+        shell: bash
+        run: |
+          set -uo pipefail
+          HOST=www.steelprodukt.ru
+          APEX=steelprodukt.ru
+          echo "=============== ЛОКАЦИЯ ==============="
+          for h in "$APEX" "$HOST"; do
+            echo "--- $h ---"
+            dig +short "$h" A | sed 's/^/  A: /'
+          done
+          IP="$(dig +short "$HOST" A | head -1)"
+          echo
+          echo "IP: ${IP:-не разрешился}"
+          if [ -n "$IP" ]; then
+            # RIPEstat is a public, key-less registry lookup: country of the
+            # allocation and the announcing network.
+            curl -fsS --max-time 20 "https://stat.ripe.net/data/prefix-overview/data.json?resource=$IP" \
+              | jq -r '"  страна размещения: \(.data.resource // "?") -> " +
+                       ((.data.asns // []) | map("AS\(.asn) \(.holder)") | join(", "))' || echo "  RIPEstat недоступен"
+            curl -fsS --max-time 20 "https://stat.ripe.net/data/geoloc/data.json?resource=$IP" \
+              | jq -r '.data.locations[]? | "  гео: \(.country) \(.city // "")"' || true
+          fi
+
+      - name: Transport, canonical host and redirects
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo "=============== ТРАНСПОРТ И РЕДИРЕКТЫ ==============="
+          probe() {
+            printf '  %-46s ' "$1"
+            curl -sS -o /dev/null --max-time 25 \
+              -w 'HTTP %{http_code}  ->  %{redirect_url}\n' "$1" || echo "ОШИБКА"
+          }
+          probe "http://steelprodukt.ru/"
+          probe "http://www.steelprodukt.ru/"
+          probe "https://steelprodukt.ru/"
+          probe "https://www.steelprodukt.ru/"
+          echo
+          echo "--- сертификат ---"
+          echo | openssl s_client -servername www.steelprodukt.ru -connect www.steelprodukt.ru:443 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -dates 2>/dev/null | sed 's/^/  /' || echo "  не удалось прочитать"
+
+      - name: Indexing signals
+        shell: bash
+        run: |
+          set -uo pipefail
+          BASE=https://www.steelprodukt.ru
+          echo "=============== ИНДЕКСАЦИЯ ==============="
+          echo "--- robots.txt ---"
+          curl -fsS --max-time 25 "$BASE/robots.txt" | sed 's/^/  /' || echo "  НЕДОСТУПЕН"
+          echo
+          echo "--- sitemap.xml ---"
+          SM="$(curl -fsS --max-time 30 "$BASE/sitemap.xml" || true)"
+          if [ -n "$SM" ]; then
+            echo "  URL всего:              $(printf '%s' "$SM" | grep -c '<loc>')"
+            echo "  на https://www:         $(printf '%s' "$SM" | grep -c '<loc>https://www\.steelprodukt\.ru')"
+            echo "  вне канонического хоста: $(printf '%s' "$SM" | grep '<loc>' | grep -vc 'https://www\.steelprodukt\.ru')"
+          else
+            echo "  НЕДОСТУПЕН"
+          fi
+          echo
+          echo "--- IndexNow ключ ---"
+          printf '  '; curl -sS -o /dev/null --max-time 20 -w 'HTTP %{http_code}\n' "$BASE/indexnow-key.txt"
+          echo
+          echo "--- заголовки главной ---"
+          curl -sSI --max-time 25 "$BASE/" | grep -iE '^(HTTP/|content-type|cache-control|x-robots-tag|x-cache-status|content-security-policy|strict-transport)' | sed 's/^/  /'
+
+      - name: Page-level SEO on key URLs
+        shell: bash
+        run: |
+          set -uo pipefail
+          BASE=https://www.steelprodukt.ru
+          echo "=============== СТРАНИЦЫ ==============="
+          for p in / /products /production /contacts /articles /projects /solutions /company /industries; do
+            HTML="$(curl -fsS --max-time 30 "$BASE$p" || true)"
+            CODE="$(curl -sS -o /dev/null --max-time 25 -w '%{http_code}' "$BASE$p")"
+            if [ -z "$HTML" ]; then echo "  $CODE  $p  — тело не получено"; continue; fi
+            TITLE="$(printf '%s' "$HTML" | grep -o '<title>[^<]*</title>' | head -1 | sed 's/<[^>]*>//g' | cut -c1-58)"
+            CANON="$(printf '%s' "$HTML" | grep -o 'rel="canonical" href="[^"]*"' | head -1 | sed 's/.*href="//;s/"$//')"
+            ROBOTS="$(printf '%s' "$HTML" | grep -o '<meta name="robots" content="[^"]*"' | head -1 | sed 's/.*content="//;s/"$//')"
+            DESCLEN="$(printf '%s' "$HTML" | grep -o '<meta name="description" content="[^"]*"' | head -1 | sed 's/.*content="//;s/"$//' | wc -c)"
+            LANG="$(printf '%s' "$HTML" | grep -o '<html lang="[^"]*"' | head -1 | sed 's/.*lang="//;s/"$//')"
+            BANNER="$(printf '%s' "$HTML" | grep -c 'data-site-status="test-mode"')"
+            echo "  $CODE  $p"
+            echo "        title:     $TITLE"
+            echo "        canonical: ${CANON:-НЕТ}"
+            echo "        robots:    ${ROBOTS:-нет тега}   lang: ${LANG:-?}   description: ${DESCLEN} симв.   плашка: $BANNER"
+          done
+
+      - name: Russian-market and legacy signals
+        shell: bash
+        run: |
+          set -uo pipefail
+          BASE=https://www.steelprodukt.ru
+          echo "=============== РУНЕТ-СИГНАЛЫ ==============="
+          HTML="$(curl -fsS --max-time 30 "$BASE/" || true)"
+          echo "  yandex-verification: $(printf '%s' "$HTML" | grep -c 'name="yandex-verification"') шт."
+          echo "  google-site-verification: $(printf '%s' "$HTML" | grep -c 'name="google-site-verification"') шт."
+          echo "  Метрика (mc.yandex.ru):   $(printf '%s' "$HTML" | grep -c 'mc\.yandex\.ru')"
+          echo "  og:locale:                $(printf '%s' "$HTML" | grep -o 'property="og:locale" content="[^"]*"' | sed 's/.*content="//;s/"$//')"
+          echo "  addressCountry в разметке: $(printf '%s' "$HTML" | grep -o '"addressCountry":"[^"]*"' | head -1)"
+          echo "  addressLocality:           $(printf '%s' "$HTML" | grep -o '"addressLocality":"[^"]*"' | head -1)"
+          echo "  telephone:                 $(printf '%s' "$HTML" | grep -o '"telephone":"[^"]*"' | head -1)"
+          echo
+          echo "--- страницы старого сайта (должны быть 301/410) ---"
+          for p in /galery /lityo-stali-foto /chugunnoe-lityo /opisanieprodukcii /vozmozhnosti /vnutri; do
+            printf '  %-24s ' "$p"
+            curl -sS -o /dev/null --max-time 25 -w 'HTTP %{http_code}  ->  %{redirect_url}\n' "$BASE$p"
+          done
