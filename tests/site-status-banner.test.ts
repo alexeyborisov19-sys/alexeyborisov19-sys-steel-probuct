@@ -9,10 +9,15 @@ const innerHeroPath = new URL("../components/InnerHero.tsx", import.meta.url);
 const publicLayoutPath = new URL("../app/(public)/layout.tsx", import.meta.url);
 const siteModePath = new URL("../data/site-mode.ts", import.meta.url);
 
-test("the header renders the test-mode banner while the flag is on", async () => {
+// These assertions deliberately do not pin siteMode.isTest to a value. An
+// earlier pair of guards did — one demanded the flag be on, another demanded the
+// header never mention it — and together they locked the site into the broken
+// combination where the banner was gone but every hero still reserved its space.
+// What matters is that the banner and that space always agree.
+
+test("the header keeps the banner wired to the flag", async () => {
   const header = await readFile(headerPath, "utf8");
 
-  assert.equal(siteMode.isTest, true);
   assert.match(header, /siteMode\.isTest \?/);
   assert.match(header, /data-site-status="test-mode"/);
   assert.match(header, /\{siteMode\.label\}/);
@@ -63,10 +68,17 @@ test("hero offsets and the banner move together on one switch", async () => {
   assert.match(innerHero, /\$\{innerHeroOffset\}/);
   assert.doesNotMatch(hero, /siteMode\.isTest/);
   assert.doesNotMatch(innerHero, /siteMode\.isTest/);
+});
 
-  // Test mode adds the banner, so it must also reserve more room than normal.
-  assert.equal(heroOffset, "min-h-[638px] pt-[100px]");
-  assert.equal(innerHeroOffset, "min-h-[648px] pt-[116px]");
+test("the offset in force matches the state of the flag", () => {
+  // Whichever way the flag is set, the reserved space has to follow it: extra
+  // room only while the banner is actually rendered, none once it is off.
+  const withBanner = { hero: "min-h-[638px] pt-[100px]", inner: "min-h-[648px] pt-[116px]" };
+  const withoutBanner = { hero: "min-h-[610px] pt-[72px]", inner: "min-h-[620px] pt-[88px]" };
+  const expected = siteMode.isTest ? withBanner : withoutBanner;
+
+  assert.equal(heroOffset, expected.hero);
+  assert.equal(innerHeroOffset, expected.inner);
 });
 
 test("Tailwind scans every file that declares the banner's layout classes", async () => {

@@ -4,7 +4,6 @@ import * as React from "react";
 import Home, { metadata as homeMetadata } from "@/app/(public)/page";
 import sitemap from "@/app/sitemap";
 import { Hero } from "@/components/Hero";
-import { siteMode } from "@/data/site-mode";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
@@ -32,14 +31,6 @@ function collectRenderedText(value: unknown): string[] {
   if (!React.isValidElement<{ children?: unknown }>(value)) return [];
   return collectRenderedText(value.props.children);
 }
-
-test("the public site shows the temporary test-mode status until documents are approved", () => {
-  assert.equal(siteMode.isTest, true);
-  assert.equal(
-    siteMode.label,
-    "Сайт работает в тестовом режиме до завершения согласования документов.",
-  );
-});
 
 test("the homepage hero restores equipment proof instead of laser envelope figures", () => {
   const heroText = collectRenderedText(Hero()).join(" ");
