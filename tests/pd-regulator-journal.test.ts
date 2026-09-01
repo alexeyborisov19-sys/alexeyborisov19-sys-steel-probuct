@@ -201,7 +201,7 @@ test("the journal records who prepared it and on what basis", async () => {
   }
 });
 
-test("the journal states its own limits in the words the policy uses", () => {
+test("the journal states its own limits without exposing internal implementation", () => {
   // A regulator reading the journal must not mistake it for a subject export.
   const notice = buildJournal({
     generatedAt: "2026-09-01T09:00:00.000Z",
@@ -221,25 +221,23 @@ test("the journal states its own limits in the words the policy uses", () => {
   assert.match(notice, /хранятся в виде хешей/);
   assert.match(notice, /отдельной выборочной выгрузкой/);
 
-  // The policy promises exactly that selectivity, and the hashed storage of
-  // consent evidence is what the consent document publishes.
+  // The policy promises selectivity. The public services page describes the
+  // subject-rights process without publishing implementation flags or storage internals.
   assert.match(privacyPage, /Официальная выгрузка формируется выборочно/);
+  assert.match(servicesPage, /Запросы о доступе к персональным данным, их уточнении, блокировании, прекращении обработки, отзыве согласия и уничтожении/);
+  assert.match(servicesPage, /Уничтожение персональных данных оформляется и подтверждается/);
+  assert.doesNotMatch(servicesPage, /PD_ADMIN_ENABLED|SQLite|HMAC/);
 
-  // "Сервисы обработки данных" reserves the term «официальная выгрузка» for the
-  // closed module's subject-data package, and states that none are performed
-  // while PD_ADMIN_ENABLED=false. The journal must not read as evidence that
-  // the module was switched on, so it disclaims that in the same terms.
-  assert.match(servicesPage, /реальные официальные выгрузки и удаления не выполняются/);
-  assert.match(servicesPage, /не предоставляет государственному органу прямой доступ/);
   assert.match(notice, /не является такой выгрузкой/);
   assert.match(notice, /закрытый служебный интерфейс остаётся выключенным/);
   assert.match(notice, /постоянные публичные ссылки и автоматическая отправка не используются/);
 });
 
-test("the journal reports the state of the closed module rather than assuming it", async () => {
-  // The register row is only true while the interface is actually off, so the
-  // journal reads the flag instead of restating the published sentence.
+test("the journal reports the internal module state from configuration", async () => {
+  // The regulator journal may inspect the operational flag internally, while
+  // the public website must not publish that implementation detail.
   assert.match(journalScript, /PD_ADMIN_ENABLED === "true" \? "включён" : "выключен \(404\)"/);
+  assert.doesNotMatch(servicesPage, /PD_ADMIN_ENABLED/);
 
   // Storage locations are reported from the same environment variables the
   // deploy script sets, so the journal describes the server it runs on.
@@ -251,9 +249,9 @@ test("the journal reports the state of the closed module rather than assuming it
     assert.ok(deployScript.includes(variable), `${variable} is not set at deploy time`);
   }
 
-  // Services register: первичная база ... вне публичного каталога. The journal
-  // lands beside them, under the same private root.
-  assert.match(servicesPage, /вне публичного каталога на сервере в Российской Федерации/);
+  // The public disclosure states Russian localization, while the operational
+  // deployment and regulator journal retain the exact private storage paths.
+  assert.match(servicesPage, /с использованием баз данных, находящихся на территории Российской Федерации/);
   const deployRoot = /\/var\/lib\/steelprodukt\//;
   assert.match(deployScript, deployRoot);
 });

@@ -55,17 +55,18 @@ test("public legal texts describe analytics hosts and keep them consent-gated", 
     readFile(join(root, "next.config.ts"), "utf8"),
   ]);
 
-  for (const document of [privacy, consent, cookies, services]) {
+  for (const document of [privacy, consent, cookies]) {
     assert.match(document, /mc\.yandex\.ru/);
     assert.match(document, /mc\.yandex\.com/);
   }
 
   assert.match(privacy, /только после отдельного согласия на аналитику/);
   assert.match(consent, /не распространяется на аналитические cookies/);
+  assert.match(services, /Необязательная веб-аналитика активируется только после отдельного выбора пользователя/);
   assert.doesNotMatch(nextConfig, /images\.unsplash\.com/);
 });
 
-test("public legal drafts describe the internal interface as disabled", async () => {
+test("public services disclosure does not expose internal administration details", async () => {
   const [privacy, services, approvalPackage] = await Promise.all([
     readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
     readFile(join(root, "app/(public)/legal/services/page.tsx"), "utf8"),
@@ -73,7 +74,8 @@ test("public legal drafts describe the internal interface as disabled", async ()
   ]);
 
   assert.match(privacy, /Административный интерфейс выключен/);
-  assert.match(services, /PD_ADMIN_ENABLED=false/);
+  assert.match(services, /не публикует сведения, которые могут раскрывать внутреннюю архитектуру/);
+  assert.doesNotMatch(services, /PD_ADMIN_ENABLED|SQLite|HMAC/);
   assert.match(approvalPackage, /internal-база развёрнута, но `PD_ADMIN_ENABLED=false`/);
 });
 
