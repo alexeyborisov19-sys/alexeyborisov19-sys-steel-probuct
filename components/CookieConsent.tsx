@@ -69,8 +69,16 @@ export function CookieConsent() {
   }, []);
 
   function choose(analytics: boolean) {
+    const previousChoice = readChoice();
     saveChoice(analytics);
     setVisible(false);
+
+    // If analytics was already loaded during this page session, unmounting the
+    // Script component cannot undo JavaScript that the vendor tag has executed.
+    // Reload after a withdrawal so the next document starts without the tag.
+    if (previousChoice?.analytics === true && analytics === false) {
+      window.location.reload();
+    }
   }
 
   if (!visible) return null;
