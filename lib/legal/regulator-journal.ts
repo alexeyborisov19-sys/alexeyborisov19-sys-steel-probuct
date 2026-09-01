@@ -5,19 +5,12 @@ import { legalDocumentDisplayDates, legalDocumentVersions, legalLinks, legalOper
 import { siteConfig } from "@/lib/site";
 
 /**
- * A journal the operator assembles on demand for a supervisory request.
+ * Supervisory journal assembled only for a concrete official request.
  *
- * It is deliberately not an endpoint. The personal-data interface stays closed
- * (PD_ADMIN_ENABLED=false answers 404 before any handler), and enabling it is
- * gated on register items that are organisational rather than technical. This
- * reads the storage directories directly instead, so it works while that
- * interface is off, needs no network and no database.
- *
- * It also never copies personal data. Consent evidence is already stored as
- * hashes; lead records are read only for their non-identifying fields, so a
- * journal that circulates by e-mail cannot itself become a disclosure. Subject
- * data, when a request demands it specifically, belongs in the selective
- * official export, which records who approved it.
+ * The module reads private storage directly but deliberately exports only
+ * aggregated, non-identifying information. Server paths, filesystem modes,
+ * feature flags, antivirus configuration and other implementation details are
+ * never included in the generated regulator-facing payload.
  */
 
 export type StorageSurvey = {
@@ -57,12 +50,41 @@ export type LeadSummary = {
   malformed: number;
 };
 
+export type JournalInput = {
+  generatedAt: string;
+  requestNumber: string | null;
+  requestDate: string | null;
+  authority: string | null;
+  preparedBy: string | null;
+  storage: StorageSurvey[];
+  consents: ConsentSummary;
+  leads: LeadSummary;
+};
+
 function assertPrivateTarget(path: string) {
   const publicRoot = resolve(process.cwd(), "public");
   const fromPublic = relative(publicRoot, path);
   if (fromPublic === "" || (!fromPublic.startsWith(`..${sep}`) && fromPublic !== "..")) {
     throw new Error("Journal must not be written inside public/");
   }
+}
+
+function requireText(value: string | null, label: string) {
+  const cleaned = value?.trim();
+  if (!cleaned) throw new Error(`Не указан обязательный реквизит: ${label}`);
+  return cleaned;
+}
+
+function assertRequestMetadata(input: JournalInput) {
+  const authority = requireText(input.authority, "орган, направивший запрос");
+  const requestNumber = requireText(input.requestNumber, "номер запроса");
+  const requestDate = requireText(input.requestDate, "дата запроса");
+  const preparedBy = requireText(input.preparedBy, "ФИО подготовившего выгрузку");
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(requestDate) || Number.isNaN(Date.parse(`${requestDate}T00:00:00Z`))) {
+    throw new Error("Дата запроса должна быть указана в формате YYYY-MM-DD");
+  }
+  return { authority, requestNumber, requestDate, preparedBy };
 }
 
 function bump(counter: Record<string, number>, key: string) {
@@ -190,27 +212,20 @@ export async function summariseLeads(path: string, now = new Date()): Promise<Le
   return summary;
 }
 
-export type JournalInput = {
-  generatedAt: string;
-  requestNumber: string | null;
-  requestDate: string | null;
-  authority: string | null;
-  preparedBy: string | null;
-  storage: StorageSurvey[];
-  consents: ConsentSummary;
-  leads: LeadSummary;
-  environment: Record<string, string>;
-};
-
 export function buildJournal(input: JournalInput) {
+  const request = assertRequestMetadata(input);
+  const publicStorage = input.storage.map(({ label, present, files, oldest, newest, unreadable }) => ({
+    label, present, files, oldest, newest, unreadable,
+  }));
+
   const payload = {
     document: "Журнал сведений об обработке персональных данных",
     generated_at: input.generatedAt,
     request: {
-      authority: input.authority,
-      number: input.requestNumber,
-      date: input.requestDate,
-      prepared_by: input.preparedBy,
+      authority: request.authority,
+      number: request.requestNumber,
+      date: request.requestDate,
+      prepared_by: request.preparedBy,
     },
     operator: {
       name: legalOperator.name,
@@ -232,16 +247,13 @@ export function buildJournal(input: JournalInput) {
         displayed_date: legalDocumentDisplayDates[key as keyof typeof legalDocumentDisplayDates] ?? null,
         url: `${siteConfig.url}${legalLinks[key as keyof typeof legalLinks] ?? ""}`,
       })),
-    storage: input.storage,
+    storage_summary: publicStorage,
     consent_evidence: input.consents,
     requests_register: input.leads,
-    environment: input.environment,
-    notice: "Журнал не содержит персональных данных. Доказательства согласия хранятся в виде хешей; "
-      + "записи обращений учтены по неидентифицирующим полям. Выдача сведений о конкретном субъекте "
-      + "оформляется отдельной выборочной выгрузкой с указанием основания и утверждающего сотрудника. "
-      + "Настоящий журнал не является такой выгрузкой: закрытый служебный интерфейс остаётся "
-      + "выключенным, состав журнала проверяет и передаёт уполномоченный сотрудник по официальному "
-      + "каналу, постоянные публичные ссылки и автоматическая отправка не используются.",
+    notice: "Журнал содержит только агрегированные сведения и не содержит персональных данных субъектов. "
+      + "Доказательства согласия учитываются без раскрытия идентификаторов субъектов. Сведения о конкретном "
+      + "субъекте формируются отдельно и только в объёме, необходимом для исполнения законного запроса. "
+      + "Перед передачей документ проверяется уполномоченным сотрудником и направляется только по официальному каналу.",
   };
   const canonical = JSON.stringify(payload, null, 2);
   return { payload, canonical, sha256: createHash("sha256").update(canonical).digest("hex") };
