@@ -27,29 +27,27 @@ test("published legal pages use the configured consent audit period", async () =
   assert.match(consent, /не более трёх лет с даты его фиксации/);
 });
 
-test("published services page reflects the deployed but disabled internal foundation", async () => {
-  const [privacy, services] = await Promise.all([
-    readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
-    readFile(join(root, "app/(public)/legal/services/page.tsx"), "utf8"),
-  ]);
+test("published services page describes controls without exposing internal implementation", async () => {
+  const services = await readFile(join(root, "app/(public)/legal/services/page.tsx"), "utf8");
 
-  assert.match(privacy, /Административный интерфейс выключен/);
-  assert.match(services, /PD_ADMIN_ENABLED=false/);
-  assert.match(services, /реальные официальные выгрузки и удаления не выполняются/);
+  assert.match(services, /организационные и технические меры защиты персональных данных/);
+  assert.match(services, /Уничтожение персональных данных оформляется и подтверждается/);
+  assert.match(services, /не публикует сведения, которые могут раскрывать внутреннюю архитектуру/);
+  assert.doesNotMatch(services, /PD_ADMIN_ENABLED|SQLite|HMAC/);
 });
 
 test("public legal version identifiers match their displayed dates", async () => {
   const legal = await readFile(join(root, "lib/legal.ts"), "utf8");
 
-  for (const key of ["privacy", "personalDataConsent", "cookies", "services"]) {
+  for (const key of ["privacy", "personalDataConsent", "cookies"]) {
     assert.match(legal, new RegExp(`${key}: "2026-08-27"`));
   }
-  assert.match(legal, /personalDataConsent: "2026-08-27"/);
+  assert.match(legal, /services: "2026-09-01"/);
 
   assert.match(legal, /privacy: "27 августа 2026 года"/);
   assert.match(legal, /personalDataConsent: "27 августа 2026 года"/);
   assert.match(legal, /cookies: "27 августа 2026 года"/);
-  assert.match(legal, /services: "27 августа 2026 года"/);
+  assert.match(legal, /services: "1 сентября 2026 года"/);
 });
 
 test("every public form leads with the separate consent document", async () => {
