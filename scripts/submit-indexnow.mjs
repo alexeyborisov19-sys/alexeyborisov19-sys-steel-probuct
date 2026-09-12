@@ -1,8 +1,8 @@
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.steelprodukt.ru").replace(/\/$/, "");
 const keyLocation = `${siteUrl}/indexnow-key.txt`;
 const requestedPaths = process.argv.slice(2).filter((path) => path !== "--");
-const endpoint = process.env.INDEXNOW_ENDPOINT || "https://yandex.com/indexnow";
-const maxAttempts = 3;
+const endpoint = process.env.INDEXNOW_ENDPOINT || "https://api.indexnow.org/indexnow";
+const maxAttempts = 4;
 const retryDelayMs = 3000;
 const minimumSitemapPriority = 0.85;
 const maximumBatchSize = 10_000;
@@ -16,34 +16,45 @@ function decodeXmlText(value) {
     .replaceAll("&apos;", "'");
 }
 
-async function loadPublishedKey() {
-  const response = await fetch(keyLocation, {
-    headers: { "User-Agent": "SteelProdukt-IndexNow/1.0" },
-  });
+async function delay(attempt) {
+  await new Promise((resolve) => setTimeout(resolve, attempt * retryDelayMs));
+}
 
-  if (!response.ok) {
-    throw new Error(`Could not load published IndexNow key: HTTP ${response.status}`);
+async function loadTextWithRetry(url, label) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "SteelProdukt-IndexNow/1.1" },
+        cache: "no-store",
+      });
+      if (response.ok) return await response.text();
+      lastError = new Error(`${label}: HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < maxAttempts) {
+      console.warn(`${label} is not ready yet; retry ${attempt}/${maxAttempts}.`);
+      await delay(attempt);
+    }
   }
 
-  const key = (await response.text()).trim();
+  throw lastError;
+}
+
+async function loadPublishedKey() {
+  const key = (await loadTextWithRetry(keyLocation, "Could not load published IndexNow key")).trim();
   if (!/^[a-zA-Z0-9-]{8,128}$/.test(key)) {
     throw new Error("Published IndexNow key has an invalid format");
   }
-
   return key;
 }
 
 async function discoverPriorityUrls() {
   const sitemapUrl = `${siteUrl}/sitemap.xml`;
-  const response = await fetch(sitemapUrl, {
-    headers: { "User-Agent": "SteelProdukt-IndexNow/1.0" },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Could not load sitemap.xml for IndexNow: HTTP ${response.status}`);
-  }
-
-  const xml = await response.text();
+  const xml = await loadTextWithRetry(sitemapUrl, "Could not load sitemap.xml for IndexNow");
   const expectedHost = new URL(siteUrl).host;
   const urls = [];
 
@@ -66,6 +77,9 @@ async function discoverPriorityUrls() {
 
   return [...new Set([
     ...urls,
+    `${siteUrl}/llms.txt`,
+    `${siteUrl}/llms-full.txt`,
+    `${siteUrl}/robots.txt`,
     sitemapUrl,
     `${siteUrl}/sitemap-images.xml`,
   ])];
@@ -80,17 +94,11 @@ if (urlList.length > maximumBatchSize) {
   throw new Error(`IndexNow batch has ${urlList.length} URLs; maximum is ${maximumBatchSize}`);
 }
 
-// The connection to the endpoint gets dropped often enough that a single try
-// loses the notification without anyone noticing. A refused or reset connection
-// submits nothing, so retrying it is safe; so is a 5xx or a 429. A 4xx describes
-// a request that will not become valid on its own and is reported immediately.
 async function submit(body) {
   let lastError;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    if (attempt > 1) {
-      await new Promise((resolve) => setTimeout(resolve, (attempt - 1) * retryDelayMs));
-    }
+    if (attempt > 1) await delay(attempt - 1);
 
     let response;
     try {
@@ -123,4 +131,4 @@ await submit(JSON.stringify({
   urlList,
 }));
 
-console.log(`IndexNow accepted ${urlList.length} URL(s) for ${new URL(siteUrl).host}.`);
+console.log(`IndexNow accepted ${urlList.length} URL(s) for ${new URL(siteUrl).host} via ${endpoint}.`);
