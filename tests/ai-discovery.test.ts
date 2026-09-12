@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 function source(path: string) {
@@ -11,6 +11,7 @@ test("AI discovery endpoints use the manufacturing source of truth", () => {
   const compact = source("app/llms.txt/route.ts");
   const full = source("app/llms-full.txt/route.ts");
 
+  assert.equal(existsSync("public/llms.txt"), false, "public/llms.txt must not shadow the generated /llms.txt route");
   assert.match(facts, /floorArea: "2 000\+ м²"/);
   assert.match(facts, /specialists: "70\+"/);
   assert.match(facts, /annualMetalCassetteOutput: "около 60 000 м²\/год"/);
