@@ -12,6 +12,7 @@ export type MetalCassetteEstimateInput = {
   wallWidthMm?: number;
   wallHeightMm?: number;
   openingsM2?: number;
+  pricePerM2?: number;
 };
 
 export type MetalCassetteEstimate = {
@@ -21,6 +22,7 @@ export type MetalCassetteEstimate = {
   rows: number | null;
   moduleWidthMm: number;
   moduleHeightMm: number;
+  defaultRateRubM2: number;
   approximateRateRubM2: number;
   approximateTotalRub: number;
 };
@@ -62,14 +64,15 @@ function nonNegative(value: number | undefined) {
   return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : 0;
 }
 
-function budgetRate(type: MetalCassetteType, thickness: MetalCassetteThickness) {
+export function getDefaultMetalCassetteRate(
+  type: MetalCassetteType,
+  thickness: MetalCassetteThickness,
+) {
   const openRate = OPEN_RATE_RUB_M2[thickness];
   return type === "closed" ? roundMoney(openRate * CLOSED_TYPE_RATE_FACTOR) : openRate;
 }
 
 function moduleFor(type: MetalCassetteType) {
-  // Open type: visible rust is between neighbouring cassettes, therefore the
-  // standard architectural pitch is face + rust in both directions.
   if (type === "open") {
     return {
       widthMm: STANDARD.faceWidthMm + STANDARD.rustMm,
@@ -77,9 +80,6 @@ function moduleFor(type: MetalCassetteType) {
     };
   }
 
-  // Closed type: the horizontal joint is formed by the lock. The row pitch is
-  // the working height; adding a second 20 mm rust vertically would count the
-  // lock zone twice. The transverse pitch still includes the visible joint.
   return {
     widthMm: STANDARD.faceWidthMm + STANDARD.rustMm,
     heightMm: STANDARD.faceHeightMm,
@@ -87,8 +87,8 @@ function moduleFor(type: MetalCassetteType) {
 }
 
 function quantityByArea(areaM2: number, type: MetalCassetteType) {
-  const module = moduleFor(type);
-  const moduleAreaM2 = (module.widthMm * module.heightMm) / 1_000_000;
+  const pitch = moduleFor(type);
+  const moduleAreaM2 = (pitch.widthMm * pitch.heightMm) / 1_000_000;
   return Math.max(0, Math.ceil(areaM2 / moduleAreaM2));
 }
 
@@ -109,8 +109,9 @@ function gridByWall(widthMm: number, heightMm: number, type: MetalCassetteType) 
 }
 
 export function estimateMetalCassettes(input: MetalCassetteEstimateInput): MetalCassetteEstimate {
-  const module = moduleFor(input.type);
-  const rate = budgetRate(input.type, input.thickness);
+  const pitch = moduleFor(input.type);
+  const defaultRate = getDefaultMetalCassetteRate(input.type, input.thickness);
+  const rate = positive(input.pricePerM2, defaultRate);
 
   if (input.mode === "wall") {
     const widthMm = positive(input.wallWidthMm);
@@ -121,9 +122,6 @@ export function estimateMetalCassettes(input: MetalCassetteEstimateInput): Metal
     const { columns, rows } = gridByWall(widthMm, heightMm, input.type);
     const grossQuantity = columns * rows;
 
-    // Position and dimensions of openings are unknown in a simple public form.
-    // Scale the gross grid only as a preliminary estimate; exact cutting around
-    // openings is checked from the facade layout/project.
     const quantity = grossAreaM2 > 0 && netAreaM2 > 0
       ? Math.max(1, Math.ceil(grossQuantity * (netAreaM2 / grossAreaM2)))
       : 0;
@@ -133,8 +131,9 @@ export function estimateMetalCassettes(input: MetalCassetteEstimateInput): Metal
       quantity,
       columns,
       rows,
-      moduleWidthMm: module.widthMm,
-      moduleHeightMm: module.heightMm,
+      moduleWidthMm: pitch.widthMm,
+      moduleHeightMm: pitch.heightMm,
+      defaultRateRubM2: defaultRate,
       approximateRateRubM2: rate,
       approximateTotalRub: roundMoney(netAreaM2 * rate),
     };
@@ -146,8 +145,9 @@ export function estimateMetalCassettes(input: MetalCassetteEstimateInput): Metal
     quantity: quantityByArea(netAreaM2, input.type),
     columns: null,
     rows: null,
-    moduleWidthMm: module.widthMm,
-    moduleHeightMm: module.heightMm,
+    moduleWidthMm: pitch.widthMm,
+    moduleHeightMm: pitch.heightMm,
+    defaultRateRubM2: defaultRate,
     approximateRateRubM2: rate,
     approximateTotalRub: roundMoney(netAreaM2 * rate),
   };
