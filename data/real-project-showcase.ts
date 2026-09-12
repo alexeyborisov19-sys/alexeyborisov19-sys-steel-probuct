@@ -53,25 +53,13 @@ const galleries: Record<string, ProjectPhoto[]> = {
       credit: "ЦИАН — карточка апарт-комплекса «Юнити»",
       sourceUrl: "https://zhk-apart-kompleks-yuniti-smolensk-i.cian.ru/",
     },
-    {
-      src: "https://rabochy-put.ru/upload/iblock/581/fu5i2et853zq6us8taframclledl419q/IMG_5244.jpg",
-      alt: "Жилой квартал «Боровая Парк» — реализованный проект «Юнити Девелопмент»",
-      credit: "«Рабочий путь» — материал о «Боровая Парк»",
-      sourceUrl: "https://www.rabochy-put.ru/news/204890-borovaya-park-v-smolenske-kogda-gorod-i-priroda-stanovyatsya-sosedyami.html",
-    },
   ],
   "metrum-group": [
     {
       src: "https://images.cdn-cian.ru/images/po-ul-25-sentyabrya-smolensk-jk-2005676224-7.jpg",
-      alt: "Жилой проект «Метрум Груп» на улице 25 Сентября в Смоленске",
+      alt: "Жилой проект «Метрум Груп» в Смоленске",
       credit: "ЦИАН — карточка жилого проекта",
       sourceUrl: "https://zhk-po-ul-25-sentyabrya-smolensk-i.cian.ru/",
-    },
-    {
-      src: "https://www.atlant-complex.ru/upload/iblock/ee2/r1knd6xw4922mpycbe3y6uc2l7mg3iom.jpeg",
-      alt: "Готовый корпус жилого комплекса «Атлант» в Смоленске",
-      credit: "Официальный сайт ЖК «Атлант»",
-      sourceUrl: "https://www.atlant-complex.ru/novosti/5-litera-zhilogo-kompleksa-atlant-polnostyu-gotova/",
     },
   ],
   vostokstroy: [
@@ -91,14 +79,14 @@ const galleries: Record<string, ProjectPhoto[]> = {
   "smolenskaya-oblastnaya-klinicheskaya-bolnitsa": [
     {
       src: "https://smolgazeta.ru/fc-web/fc-files/2026/01/166012.jpg",
-      alt: "Смоленская областная клиническая больница и строительство нового приёмного отделения в январе 2026 года",
-      credit: "«Смоленская газета», фото пресс-материалов региона",
+      alt: "Смоленская областная клиническая больница — строительство нового модульного приёмного отделения в январе 2026 года",
+      credit: "«Смоленская газета», пресс-материалы губернатора Смоленской области",
       sourceUrl: "https://smolgazeta.ru/medic/134686-v-smolenskoy-oblastnoy-klinicheskoy.html",
     },
     {
       src: "https://smolgazeta.ru/fc-web/fc-files/2026/01/166013.jpg",
-      alt: "Территория Смоленской областной клинической больницы во время обновления в 2026 году",
-      credit: "«Смоленская газета», фото пресс-материалов региона",
+      alt: "Работы на территории Смоленской областной клинической больницы в январе 2026 года",
+      credit: "«Смоленская газета», пресс-материалы губернатора Смоленской области",
       sourceUrl: "https://smolgazeta.ru/medic/134686-v-smolenskoy-oblastnoy-klinicheskoy.html",
     },
   ],
@@ -119,14 +107,14 @@ const galleries: Record<string, ProjectPhoto[]> = {
   "onkologicheskiy-dispanser": [
     {
       src: "https://smolgazeta.ru/fc-web/fc-files/2026/02/166941.jpg",
-      alt: "Новый Смоленский областной онкологический диспансер после открытия в 2026 году",
-      credit: "«Смоленская газета»",
+      alt: "Новый Смоленский областной онкологический диспансер после открытия в феврале 2026 года",
+      credit: "«Смоленская газета», фото из пресс-материалов губернатора Смоленской области",
       sourceUrl: "https://smolgazeta.ru/medic/135334-v-smolenske-oficialno-otkryli-oblastnoy.html",
     },
     {
       src: "https://smolgazeta.ru/fc-web/fc-files/2026/02/166940.jpg",
       alt: "Смоленский областной онкологический диспансер в день официального открытия",
-      credit: "«Смоленская газета», фото пресс-материалов региона",
+      credit: "«Смоленская газета», фото из пресс-материалов губернатора Смоленской области",
       sourceUrl: "https://smolgazeta.ru/medic/135334-v-smolenske-oficialno-otkryli-oblastnoy.html",
     },
   ],
@@ -138,20 +126,71 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru/",
     },
   ],
+  "smolenskiy-meditsinskiy-kolledzh": [],
   "feniks-pechersk": [
     {
-      src: "https://static.mk.ru/upload/entities/2026/07/17/03/articles/detailPicture/d3/96/9a/4b/e673b06bc81f6b5e798062f0d56217f9.jpg",
+      src: "https://smoldaily.ru/wp-content/uploads/2026/07/img_2508.jpg",
       alt: "Строительство техношколы «Феникс» в Печерске летом 2026 года",
-      credit: "«МК в Смоленске», фото пресс-материалов Правительства Смоленской области",
+      credit: "SmolDaily, пресс-материалы объекта",
+      sourceUrl: "https://smoldaily.ru/v-pecherske-stroitsya-tehnoshkola-feniks-robototehnika-3d-pechat-i-ii-dlya-726-uchenikov",
+    },
+    {
+      src: "https://smoldaily.ru/wp-content/uploads/2026/07/img_2509.jpg",
+      alt: "Техношкола «Феникс» в Печерске — строительная готовность летом 2026 года",
+      credit: "SmolDaily, пресс-материалы объекта",
+      sourceUrl: "https://smoldaily.ru/v-pecherske-stroitsya-tehnoshkola-feniks-robototehnika-3d-pechat-i-ii-dlya-726-uchenikov",
+    },
+    {
+      src: "https://smoldaily.ru/wp-content/uploads/2026/07/img_2510.jpg",
+      alt: "Фасадная часть строящейся техношколы «Феникс» в Печерске",
+      credit: "SmolDaily, пресс-материалы объекта",
+      sourceUrl: "https://smoldaily.ru/v-pecherske-stroitsya-tehnoshkola-feniks-robototehnika-3d-pechat-i-ii-dlya-726-uchenikov",
+    },
+    {
+      src: "https://static.mk.ru/upload/entities/2026/07/17/03/articles/detailPicture/d3/96/9a/4b/e673b06bc81f6b5e798062f0d56217f9.jpg",
+      alt: "Строительство техношколы «Феникс» в Печерске в июле 2026 года",
+      credit: "«МК в Смоленске», фото из пресс-материалов губернатора Смоленской области",
       sourceUrl: "https://www.mk-smolensk.ru/social/2026/07/16/v-smolenskom-okruge-stroitsya-novaya-tekhnoshkola-feniks.html",
     },
   ],
-  "smolenskiy-meditsinskiy-kolledzh": [],
   "stodolishchenskaya-shkola": [],
 };
 
-export const realProjectsShowcase: ShowcaseProject[] = realProjects.map((project) => {
-  const photos = galleries[project.slug] ?? [];
+const obninskProject: RealProject = {
+  slug: "kb-8-fmba-obninsk",
+  title: "Клиническая больница № 8 ФМБА России",
+  city: "Обнинск, Калужская область",
+  category: "medical",
+  categoryLabel: "Медицина",
+  partner: "ФГБУЗ КБ № 8 ФМБА России",
+  image: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/avv.jpg",
+  imageAlt: "Клиническая больница № 8 ФМБА России в Обнинске",
+  imageCredit: "Фото: Администрация города Обнинска / пресс-служба губернатора Калужской области",
+  imageSourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
+  supply: ["металлические изделия по проектной документации"],
+  description: "Медицинский объект в Обнинске идентифицирован по официальным источникам как ФГБУЗ «Клиническая больница № 8 ФМБА России». Центральная детская поликлиника входит в структуру КБ № 8. Официальные материалы больницы также подтверждают ремонт фасадов зданий в 2025 году.",
+  sourceUrl: "https://kb8-fmba.ru/contacts",
+  sourceLabel: "ФГБУЗ КБ № 8 ФМБА России",
+  featured: true,
+};
+
+const obninskPhotos: ProjectPhoto[] = [
+  {
+    src: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/avv.jpg",
+    alt: "Клиническая больница № 8 ФМБА России в Обнинске во время визита губернатора в августе 2025 года",
+    credit: "Администрация города Обнинска / пресс-служба губернатора Калужской области",
+    sourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
+  },
+  {
+    src: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/photo_2025_08_28_18_07_11.jpg",
+    alt: "КБ № 8 ФМБА России в Обнинске — материалы официального визита августа 2025 года",
+    credit: "Администрация города Обнинска / пресс-служба губернатора Калужской области",
+    sourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
+  },
+];
+
+export const realProjectsShowcase: ShowcaseProject[] = [...realProjects, obninskProject].map((project) => {
+  const photos = project.slug === obninskProject.slug ? obninskPhotos : galleries[project.slug] ?? [];
   const fallback: ProjectPhoto = {
     src: project.image,
     alt: project.imageAlt,
