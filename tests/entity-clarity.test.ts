@@ -1,15 +1,33 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 function source(path: string) {
   return readFileSync(path, "utf8");
 }
 
+function publicSourceFiles(root: string): string[] {
+  const allowedExtensions = /\.(?:ts|tsx|js|jsx|mjs|json|txt|md|xml)$/i;
+  const files: string[] = [];
+
+  for (const entry of readdirSync(root)) {
+    const path = join(root, entry);
+    if (statSync(path).isDirectory()) {
+      files.push(...publicSourceFiles(path));
+    } else if (allowedExtensions.test(entry)) {
+      files.push(path);
+    }
+  }
+
+  return files;
+}
+
 test("brand and legal operator are separate structured-data entities", () => {
   const entities = source("lib/entity-schema.ts");
   const references = source("data/entity-references.ts");
   const layout = source("app/(public)/layout.tsx");
+  const schemas = source("lib/schema.ts");
 
   assert.match(entities, /"@type": "Brand"/);
   assert.match(entities, /`\$\{siteConfig\.url\}\/\#brand`/);
@@ -24,6 +42,10 @@ test("brand and legal operator are separate structured-data entities", () => {
   assert.match(layout, /brandEntitySchema\(\)/);
   assert.match(layout, /legalOperatorEntitySchema\(\)/);
   assert.doesNotMatch(layout, /organizationSchema\(\)/);
+
+  const canonicalBrandReference = /brand: \{ "@id": `\$\{siteConfig\.url\}\/\#brand` \}/g;
+  assert.equal((schemas.match(canonicalBrandReference) ?? []).length, 3);
+  assert.doesNotMatch(schemas, /brand: \{ "@type": "Brand", name: siteConfig\.name \}/);
 });
 
 test("verified production facts page is sourced from manufacturing-facts and discoverable", () => {
@@ -66,4 +88,13 @@ test("verified production facts page is sourced from manufacturing-facts and dis
   assert.match(sitemap, /"\/company\/facts"/);
   assert.match(sitemap, /path === "\/company\/facts"/);
   assert.match(footer, /"Факты о производстве": "\/company\/facts"/);
+});
+
+test("public site sources never reference the unrelated laser67.ru domain", () => {
+  const roots = ["app", "components", "data", "lib"];
+  const matches = roots
+    .flatMap(publicSourceFiles)
+    .filter((path) => /laser67\.ru/i.test(source(path)));
+
+  assert.deepEqual(matches, []);
 });
