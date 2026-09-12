@@ -236,7 +236,7 @@ export function productSchema(product: Product): JsonLd {
     category: product.category,
     image: absoluteUrl(product.technicalImage),
     url: absoluteUrl(`/products/${product.slug}`),
-    brand: { "@type": "Brand", name: siteConfig.name },
+    brand: { "@id": `${siteConfig.url}/#brand` },
     manufacturer: { "@id": `${siteConfig.url}/#organization` },
     additionalProperty: product.specs?.map((spec) => ({
       "@type": "PropertyValue",
@@ -267,7 +267,7 @@ export function productGroupSchema({
     name,
     description,
     category: "Фасадные металлокассеты",
-    brand: { "@type": "Brand", name: siteConfig.name },
+    brand: { "@id": `${siteConfig.url}/#brand` },
     manufacturer: { "@id": `${siteConfig.url}/#organization` },
     variesBy: ["https://schema.org/pattern"],
     hasVariant: products.map((product) => ({
@@ -278,7 +278,7 @@ export function productGroupSchema({
       url: absoluteUrl(`/products/${product.slug}`),
       image: absoluteUrl(product.technicalImage),
       category: product.category,
-      brand: { "@type": "Brand", name: siteConfig.name },
+      brand: { "@id": `${siteConfig.url}/#brand` },
       manufacturer: { "@id": `${siteConfig.url}/#organization` },
       inProductGroupWithID: groupId,
     })),
