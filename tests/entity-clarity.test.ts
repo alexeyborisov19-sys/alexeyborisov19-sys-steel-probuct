@@ -31,12 +31,16 @@ test("brand and legal operator are separate structured-data entities", () => {
 
   assert.match(entities, /"@type": "Brand"/);
   assert.match(entities, /`\$\{siteConfig\.url\}\/\#brand`/);
+  assert.match(entities, /sameAs: brandSameAs/);
   assert.match(entities, /name: legalOperator\.name/);
   assert.match(entities, /alternateName: legalOperator\.shortName/);
   assert.match(entities, /brand: \{ "@id": `\$\{siteConfig\.url\}\/\#brand` \}/);
   assert.match(entities, /sameAs: legalOperatorSameAs/);
   assert.match(entities, /propertyID: "ИНН"/);
   assert.match(entities, /propertyID: "ОГРН"/);
+  assert.match(references, /brandOfficialProfiles/);
+  assert.match(references, /m\.avito\.ru\/brands\/i221455062\/all\?sellerId=4aeb5aa7821314bb4d85d50311963002/);
+  assert.match(references, /scope: "brand-official"/);
   assert.match(references, /companies\.rbc\.ru\/id\/1156733014657-ooo-energoalyans/);
   assert.match(references, /spark-interfax\.ru\/smolenskaya-oblast-smolensk\/ooo-energoalyans-inn-6732110789-ogrn-1156733014657/);
   assert.match(layout, /brandEntitySchema\(\)/);
@@ -68,6 +72,8 @@ test("verified production facts page is sourced from manufacturing-facts and dis
   }
 
   assert.match(page, /бренд\/товарный знак, не юридическое лицо/);
+  assert.match(page, /brandOfficialProfiles/);
+  assert.match(page, /Официальные страницы бренда/);
   assert.match(page, /legalOperator\.inn/);
   assert.match(page, /legalOperator\.ogrn/);
   assert.match(page, /legalOperatorExternalReferences/);
@@ -82,7 +88,11 @@ test("verified production facts page is sourced from manufacturing-facts and dis
   assert.match(entities, /citation: legalOperatorExternalReferences\.map/);
 
   assert.match(compact, /\/company\/facts/);
+  assert.match(compact, /brandOfficialProfiles/);
+  assert.match(compact, /Официальные профили бренда/);
   assert.match(full, /\/company\/facts/);
+  assert.match(full, /brandOfficialProfiles/);
+  assert.match(full, /## Официальные профили бренда/);
   assert.match(full, /legalOperatorExternalReferences/);
   assert.match(full, /Независимая идентификация юридического оператора/);
   assert.match(sitemap, /"\/company\/facts"/);
