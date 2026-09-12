@@ -4,7 +4,7 @@ import { realProjectsShowcase } from "../data/real-project-showcase";
 import { upcomingIndustryEvents } from "../data/upcoming-industry-events";
 
 test("verified project showcase includes correctly identified Obninsk medical project and strengthened galleries", () => {
-  const obninsk = realProjectsShowcase.find((project) => project.slug === "kb-8-fmba-obninsk");
+  const obninsk = realProjectsShowcase.find((project) => project.slug === "mrrc-tsyba-obninsk");
   const solovinaya = realProjectsShowcase.find((project) => project.slug === "solovinaya-roshcha");
   const klovskiy = realProjectsShowcase.find((project) => project.slug === "klovskiy");
   const unity = realProjectsShowcase.find((project) => project.slug === "unity-development");
@@ -14,9 +14,10 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   const feniks = realProjectsShowcase.find((project) => project.slug === "feniks-pechersk");
 
   assert.ok(obninsk);
-  assert.equal(obninsk.title, "Соматический детский стационар КБ № 8 ФМБА России");
+  assert.equal(obninsk.title, "МРНЦ им. А. Ф. Цыба");
   assert.equal(obninsk.city, "Обнинск, Калужская область");
-  assert.match(obninsk.description, /0337100018825000349/);
+  assert.ok(obninsk.supply.some((item) => item.includes("металлокассеты")));
+  assert.match(obninsk.description, /поставка продолжается/i);
   assert.ok(obninsk.photos.length >= 2);
   assert.ok(solovinaya && solovinaya.photos.length >= 3);
   assert.ok(klovskiy && klovskiy.photos.length >= 2);
@@ -25,7 +26,7 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   assert.ok(odkb && odkb.photos.length >= 4);
   assert.ok(oncology && oncology.photos.length >= 2);
   assert.ok(feniks && feniks.photos.length >= 4);
-  assert.equal(realProjectsShowcase.some((project) => project.slug === "mrrc-tsyba-obninsk"), false);
+  assert.equal(realProjectsShowcase.some((project) => project.slug === "kb-8-fmba-obninsk"), false);
 });
 
 test("upcoming industry events stay chronological, dated and linked to official sites", () => {
