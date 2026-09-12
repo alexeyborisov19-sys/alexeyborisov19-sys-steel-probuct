@@ -138,10 +138,10 @@ const galleries: Record<string, ProjectPhoto[]> = {
   ],
   "litsey-solovinaya-roshcha": [
     {
-      src: "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru/netcat_files/23/241/photo1711107010.jpg",
-      alt: "Главный вход Многопрофильного лицея в Смоленске",
-      credit: "Официальный сайт Многопрофильного лицея",
-      sourceUrl: "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru/",
+      src: "https://static.tildacdn.com/tild6434-6265-4335-a661-393165383762/image.png",
+      alt: "Многопрофильный лицей в микрорайоне «Соловьиная роща» в Смоленске",
+      credit: "АО СЗ «Ваш дом»",
+      sourceUrl: "https://zao-vash-dom.ru/news/tpost/3pdd77zkf1-mnogoprofilnii-litsei-v-solovinoi-rosche",
     },
   ],
   "smolenskiy-meditsinskiy-kolledzh": [],
