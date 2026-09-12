@@ -7,19 +7,22 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   const obninsk = realProjectsShowcase.find((project) => project.slug === "kb-8-fmba-obninsk");
   const solovinaya = realProjectsShowcase.find((project) => project.slug === "solovinaya-roshcha");
   const klovskiy = realProjectsShowcase.find((project) => project.slug === "klovskiy");
+  const unity = realProjectsShowcase.find((project) => project.slug === "unity-development");
   const regionalHospital = realProjectsShowcase.find((project) => project.slug === "smolenskaya-oblastnaya-klinicheskaya-bolnitsa");
   const odkb = realProjectsShowcase.find((project) => project.slug === "odkb-novyy-korpus");
   const oncology = realProjectsShowcase.find((project) => project.slug === "onkologicheskiy-dispanser");
   const feniks = realProjectsShowcase.find((project) => project.slug === "feniks-pechersk");
 
   assert.ok(obninsk);
-  assert.equal(obninsk.title, "Клиническая больница № 8 ФМБА России");
+  assert.equal(obninsk.title, "Соматический детский стационар КБ № 8 ФМБА России");
   assert.equal(obninsk.city, "Обнинск, Калужская область");
+  assert.match(obninsk.description, /0337100018825000349/);
   assert.ok(obninsk.photos.length >= 2);
   assert.ok(solovinaya && solovinaya.photos.length >= 3);
   assert.ok(klovskiy && klovskiy.photos.length >= 2);
+  assert.ok(unity && unity.photos.length >= 2);
   assert.ok(regionalHospital && regionalHospital.photos.length >= 2);
-  assert.ok(odkb && odkb.photos.length >= 2);
+  assert.ok(odkb && odkb.photos.length >= 4);
   assert.ok(oncology && oncology.photos.length >= 2);
   assert.ok(feniks && feniks.photos.length >= 4);
   assert.equal(realProjectsShowcase.some((project) => project.slug === "mrrc-tsyba-obninsk"), false);
@@ -34,18 +37,23 @@ test("upcoming industry events stay chronological, dated and linked to official 
       "100+ TechnoBuild",
       "Weldex",
       "ExpoCoating Moscow",
+      "MosBuild Summit",
       "FENESTRATION BAU China",
       "Металл-Экспо",
       "Big 5 Global",
       "DMP Greater Bay Area Industrial Expo",
+      "RosBuild",
+      "MosBuild",
+      "Металлообработка",
+      "АРХ Москва",
     ],
   );
 
-  assert.equal(upcomingIndustryEvents.length, 9);
+  assert.equal(upcomingIndustryEvents.length, 14);
 
   for (const event of upcomingIndustryEvents) {
-    assert.match(event.startDate, /^2026-/);
-    assert.match(event.endDate, /^2026-/);
+    assert.match(event.startDate, /^20(?:26|27)-/);
+    assert.match(event.endDate, /^20(?:26|27)-/);
     assert.ok(event.endDate >= event.startDate);
     assert.match(event.url, /^https:\/\//);
   }
