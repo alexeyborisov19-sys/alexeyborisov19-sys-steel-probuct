@@ -8,7 +8,7 @@ import test from "node:test";
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const publishedIndexNowKey = "abcdef1234567890";
 
-test("IndexNow derives commercial URLs from sitemap priority and uses the published verification key", async () => {
+test("IndexNow derives commercial and AI-discovery URLs from sitemap priority and uses the published verification key", async () => {
   let submittedBody: { host: string; key: string; keyLocation: string; urlList: string[] } | undefined;
 
   const server = createServer(async (request, response) => {
@@ -75,7 +75,10 @@ test("IndexNow derives commercial URLs from sitemap priority and uses the publis
       [...submittedBody.urlList].sort(),
       [
         `${baseUrl}/`,
+        `${baseUrl}/llms-full.txt`,
+        `${baseUrl}/llms.txt`,
         `${baseUrl}/products/registry-product`,
+        `${baseUrl}/robots.txt`,
         `${baseUrl}/sitemap-images.xml`,
         `${baseUrl}/sitemap.xml`,
       ].sort(),
