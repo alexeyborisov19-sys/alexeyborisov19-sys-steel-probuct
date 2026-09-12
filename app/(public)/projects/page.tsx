@@ -1,9 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
-import { projectCategoryLabels, realProjects, type RealProjectCategory } from "@/data/real-projects";
+import { ProjectPhotoGallery } from "@/components/ProjectPhotoGallery";
+import { projectCategoryLabels, type RealProjectCategory } from "@/data/real-projects";
+import { realProjectsShowcase as realProjects } from "@/data/real-project-showcase";
 import { absoluteUrl } from "@/lib/site";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -19,6 +20,7 @@ export const metadata: Metadata = createPageMetadata({
     "металлоизделия для больниц",
     "металлоизделия для школ",
     "поставка металлокассет",
+    "металлокассеты Обнинск",
   ],
 });
 
@@ -35,6 +37,7 @@ const portfolioSchema = {
       "@type": "CreativeWork",
       name: project.title,
       description: project.description,
+      image: project.photos.map((photo) => photo.src),
       url: project.href ? absoluteUrl(project.href) : project.sourceUrl,
     },
   })),
@@ -67,24 +70,13 @@ export default function ProjectsPage() {
                 </p>
               </div>
               <div className="border-l-2 border-steel-orange bg-black/20 p-5 text-sm leading-7 text-white/58">
-                <b className="text-white">Границы утверждений.</b> Состав поставок на этой странице основан на подтверждённой информации компании. Ссылки на официальные ресурсы подтверждают название и контекст объекта. Мы не утверждаем, что конкретный видимый элемент на иллюстрации изготовлен нами, если такая привязка отдельно не подтверждена. Параметры и требования к готовой системе определяет проектная документация объекта, а не отдельное изделие. Монтаж на объекте не выполняем.
+                <b className="text-white">Границы утверждений.</b> Состав поставок на этой странице основан на подтверждённой информации компании. Ссылки на официальные и отраслевые источники подтверждают название и контекст объекта. Мы не утверждаем, что конкретный видимый элемент на фотографии изготовлен нами, если такая привязка отдельно не подтверждена. Монтаж на объекте не выполняем.
               </div>
             </div>
 
             <section className="mt-12 overflow-hidden border border-steel-orange/45 bg-[#111519]">
               <div className="grid lg:grid-cols-[1.05fr_.95fr]">
-                <div className="relative min-h-72 overflow-hidden bg-[#172026] lg:min-h-[430px]">
-                  <Image
-                    src={solovinaya.image}
-                    alt={solovinaya.imageAlt}
-                    fill
-                    priority
-                    sizes="(max-width: 1023px) 100vw, 55vw"
-                    className="object-cover brightness-[.82] contrast-[1.05]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/85 via-transparent to-transparent" />
-                  <span className="absolute bottom-4 left-4 border border-white/20 bg-black/55 px-3 py-2 text-[11px] uppercase tracking-[.08em] text-white/65">Иллюстрация категории жилой застройки</span>
-                </div>
+                <ProjectPhotoGallery photos={solovinaya.photos} tall />
                 <div className="flex flex-col p-6 sm:p-8">
                   <p className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">Ключевой кластер проектов</p>
                   <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">{solovinaya.title}</h2>
@@ -110,16 +102,12 @@ export default function ProjectsPage() {
                       <p className="eyebrow">Реальные объекты</p>
                       <h2 className="mt-2 text-2xl font-semibold uppercase sm:text-3xl">{projectCategoryLabels[category]}</h2>
                     </div>
-                    <p className="max-w-xl text-sm leading-6 text-white/48">В карточке указан подтверждённый состав поставки и официальный источник об объекте или девелопере.</p>
+                    <p className="max-w-xl text-sm leading-6 text-white/48">В карточке указан подтверждённый состав поставки и источник об объекте. Если в открытых источниках найдено несколько достоверных фотографий, они собраны в галерею.</p>
                   </div>
                   <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {projects.map((project) => (
                       <article key={project.slug} className="group flex h-full flex-col overflow-hidden border border-white/12 bg-[#111519] transition hover:border-steel-orange/60">
-                        <div className="relative aspect-[16/9] overflow-hidden bg-[#172026]">
-                          <Image src={project.image} alt={project.imageAlt} fill sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw" className="object-cover brightness-[.9] transition duration-500 group-hover:scale-[1.025]" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#101519]/70 via-transparent to-transparent" />
-                          <span className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[.08em] text-white/55">Иллюстрация отрасли</span>
-                        </div>
+                        <ProjectPhotoGallery photos={project.photos} />
                         <div className="flex flex-1 flex-col p-5">
                           <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[.08em]">
                             <span className="text-steel-orange">{project.categoryLabel}</span><span className="text-white/35">·</span><span className="text-white/45">{project.city}</span>
@@ -142,6 +130,15 @@ export default function ProjectsPage() {
                 </section>
               );
             })}
+
+            <section className="mt-16 overflow-hidden border border-steel-orange/35 bg-[linear-gradient(120deg,rgba(224,86,36,.13),rgba(17,21,25,.98)_48%)] p-6 sm:p-8">
+              <p className="eyebrow">Портфолио продолжает расти</p>
+              <h2 className="mt-3 max-w-4xl text-2xl font-semibold uppercase leading-tight sm:text-3xl">Это далеко не полный перечень объектов, прошедших через наше производство</h2>
+              <p className="mt-5 max-w-4xl text-sm leading-7 text-white/62">
+                За годы работы изделия «Сталь Продукт» поставлялись на значительно большее число жилых, медицинских, образовательных, промышленных и общественных объектов. Мы постепенно поднимаем архивы, сверяем названия зданий, фотографии и фактический состав каждой поставки — и будем расширять этот раздел только теми проектами, которые можем корректно идентифицировать и подтвердить.
+              </p>
+              <p className="mt-3 max-w-4xl text-xs leading-6 text-white/42">Так портфолио остаётся не рекламным перечнем без доказательств, а живым архивом реальных производственных поставок.</p>
+            </section>
 
             <section className="mt-16 border-y border-white/12 py-9">
               <p className="eyebrow">Номенклатура объектов</p>
