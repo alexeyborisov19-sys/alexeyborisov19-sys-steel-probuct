@@ -6,6 +6,12 @@ const projectImageHosts = [
   "https://static.mk.ru",
   "https://images.cdn-cian.ru",
   "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru",
+  "https://www.rabochy-put.ru",
+  "https://vostokstroy67.ru",
+  "https://smoldaily.ru",
+  "https://vestnikstroy.ru",
+  "https://sdelanounas.ru",
+  "https://www.atlant-complex.ru",
 ];
 
 const contentSecurityPolicy = [
@@ -55,6 +61,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "static.mk.ru" },
       { protocol: "https", hostname: "images.cdn-cian.ru" },
       { protocol: "https", hostname: "lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru" },
+      { protocol: "https", hostname: "smoldaily.ru" },
+      { protocol: "https", hostname: "vestnikstroy.ru" },
     ],
   },
   async redirects() {
