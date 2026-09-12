@@ -129,17 +129,19 @@ test("sample reconstruction does not claim material grade identification without
   assert.match(productionServices, /Марку материала принимаем по документации заказчика или подтверждаем отдельной идентификацией до запуска/);
 });
 
-test("project scenarios expose real destinations instead of mock controls", async () => {
+test("projects page presents confirmed portfolio without claiming installation or generic demo cases", async () => {
   const projectsPage = await readFile(projectsPagePath, "utf8");
 
   assert.match(projectsPage, /import Image from "next\/image"/);
   assert.doesNotMatch(projectsPage, /<img\b/);
+  assert.match(projectsPage, /Реализованные объекты и поставки/);
+  assert.match(projectsPage, /Соловьиная роща/);
+  assert.match(projectsPage, /Медицина/);
+  assert.match(projectsPage, /Образование/);
+  assert.match(projectsPage, /\/projects\/solovinaya-roshcha/);
+  assert.match(projectsPage, /Монтаж на объектах не выполняем/);
+  assert.doesNotMatch(projectsPage, /Демонстрационный сценарий/);
   assert.doesNotMatch(projectsPage, /<select\b|<input\b|Показать ещё|href="#project-detail"/);
-  assert.match(projectsPage, /\/industries\/zhilye-kompleksy/);
-  assert.match(projectsPage, /\/industries\/proizvodstvennye-predpriyatiya/);
-  assert.match(projectsPage, /\/industries\/cod-i-tehnologicheskaya-infrastruktura/);
-  assert.match(projectsPage, /\/industries\/agropromyshlennyj-kompleks/);
-  assert.match(projectsPage, /Демонстрационный сценарий/);
 });
 
 test("solution production photos use responsive Next Image delivery", async () => {
