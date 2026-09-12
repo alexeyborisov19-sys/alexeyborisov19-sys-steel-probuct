@@ -3,12 +3,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
+import { ProjectPhotoGallery } from "@/components/ProjectPhotoGallery";
 import { realProjects } from "@/data/real-projects";
+import { projectShowcaseBySlug } from "@/data/real-project-showcase";
 import { createPageMetadata } from "@/lib/seo";
 import { absoluteUrl } from "@/lib/site";
 
 const path = "/projects/solovinaya-roshcha";
-const project = realProjects.find((item) => item.slug === "solovinaya-roshcha")!;
+const project = projectShowcaseBySlug["solovinaya-roshcha"];
 const lyceum = realProjects.find((item) => item.slug === "litsey-solovinaya-roshcha")!;
 
 export const metadata: Metadata = createPageMetadata({
@@ -37,7 +39,7 @@ const caseSchema = {
   "@type": "Article",
   headline: "Соловьиная роща: многолетняя работа с крупным микрорайоном",
   url: absoluteUrl(path),
-  image: project.image,
+  image: project.photos.map((photo) => photo.src),
   datePublished: "2026-09-12",
   dateModified: "2026-09-12",
   about: ["металлокассеты", "кронштейны", "металлические корпуса", "жилое строительство"],
@@ -59,11 +61,7 @@ export default function SolovinayaRoshchaProjectPage() {
           <div className="container max-w-6xl">
             <section className="overflow-hidden border border-steel-orange/40 bg-[#111519]">
               <div className="grid lg:grid-cols-[1.15fr_.85fr]">
-                <div className="relative min-h-80 bg-[#172026] lg:min-h-[520px]">
-                  <Image src={project.image} alt={project.imageAlt} fill priority sizes="(max-width:1023px) 100vw, 58vw" className="object-cover brightness-[.9]" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/80 via-transparent to-transparent" />
-                  <span className="absolute bottom-4 left-4 bg-black/65 px-3 py-2 text-[10px] uppercase tracking-[.06em] text-white/68">{project.imageCredit}</span>
-                </div>
+                <ProjectPhotoGallery photos={project.photos} tall />
                 <div className="flex flex-col p-6 sm:p-8">
                   <p className="eyebrow">Масштаб сотрудничества</p>
                   <h2 className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">От отдельных партий к системной работе по микрорайону</h2>
