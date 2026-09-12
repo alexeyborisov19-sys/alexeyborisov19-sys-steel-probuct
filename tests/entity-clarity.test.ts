@@ -98,6 +98,8 @@ test("verified production facts page is sourced from manufacturing-facts and dis
   assert.match(sitemap, /"\/company\/facts"/);
   assert.match(sitemap, /path === "\/company\/facts"/);
   assert.match(footer, /"Факты о производстве": "\/company\/facts"/);
+  assert.match(footer, /brandOfficialProfiles/);
+  assert.match(footer, /официальный профиль/);
 });
 
 test("public site sources never reference the unrelated laser67.ru domain", () => {
