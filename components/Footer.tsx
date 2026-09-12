@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { brandOfficialProfiles } from "@/data/entity-references";
 import { legalLinks, legalOperator } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 import { Brand } from "./Brand";
@@ -56,6 +57,17 @@ export function Footer() {
           <a className="mt-4 block text-lg font-semibold leading-tight text-white transition hover:text-steel-orange" href={`tel:${siteConfig.telephone}`}>{siteConfig.telephoneDisplay}</a>
           <a className="mt-3 block text-base font-medium text-white/75 transition hover:text-steel-orange" href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
           <a className="mt-2 block text-sm text-white/65 transition hover:text-steel-orange" href={siteConfig.url} target="_blank" rel="noreferrer">{siteConfig.hostDisplay} ↗</a>
+          {brandOfficialProfiles.map((profile) => (
+            <a
+              key={profile.url}
+              className="mt-2 block text-sm text-white/65 transition hover:text-steel-orange"
+              href={profile.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {profile.name} — официальный профиль ↗
+            </a>
+          ))}
           <p className="mt-4 text-sm leading-relaxed text-white/65"><span className="font-medium text-white/45">Производство:</span><br />{siteConfig.productionAddress.line1},<br />{siteConfig.productionAddress.line2}</p>
         </div>
       </div>
