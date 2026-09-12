@@ -135,8 +135,8 @@ test("projects page presents confirmed portfolio without claiming installation o
   assert.match(projectsPage, /import Image from "next\/image"/);
   assert.doesNotMatch(projectsPage, /<img\b/);
   assert.match(projectsPage, /Реализованные объекты и поставки/);
-  assert.match(projectsPage, /Медицина/);
-  assert.match(projectsPage, /Образование/);
+  assert.match(projectsPage, /const categories: RealProjectCategory\[\] = \["residential", "medical", "education"\]/);
+  assert.match(projectsPage, /projectCategoryLabels\[category\]/);
   assert.match(projectsPage, /\/projects\/solovinaya-roshcha/);
   assert.match(projectsPage, /Монтаж на объекте не выполняем/);
   assert.doesNotMatch(projectsPage, /Демонстрационный сценарий/);
