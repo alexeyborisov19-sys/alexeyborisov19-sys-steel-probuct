@@ -53,6 +53,12 @@ const galleries: Record<string, ProjectPhoto[]> = {
       credit: "ЦИАН — карточка апарт-комплекса «Юнити»",
       sourceUrl: "https://zhk-apart-kompleks-yuniti-smolensk-i.cian.ru/",
     },
+    {
+      src: "https://www.rabochy-put.ru/upload/iblock/581/fu5i2et853zq6us8taframclledl419q/IMG_5244.jpg",
+      alt: "Жилой квартал «Боровая Парк» — один из проектов «Юнити Девелопмент» в Смоленске",
+      credit: "«Рабочий путь» — материал о «Боровая Парк»",
+      sourceUrl: "https://www.rabochy-put.ru/news/204890-borovaya-park-v-smolenske-kogda-gorod-i-priroda-stanovyatsya-sosedyami.html",
+    },
   ],
   "metrum-group": [
     {
@@ -101,6 +107,18 @@ const galleries: Record<string, ProjectPhoto[]> = {
       src: "https://smolgazeta.ru/fc-web/fc-files/2026/03/167633.jpg",
       alt: "Монтаж фасадных элементов нового хирургического корпуса детской областной больницы",
       credit: "«Смоленская газета»",
+      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
+    },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/03/167635.jpg",
+      alt: "Новый корпус Смоленской областной детской клинической больницы — ход строительства в марте 2026 года",
+      credit: "«Смоленская газета», пресс-материалы объекта",
+      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
+    },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/03/167634.jpg",
+      alt: "Фасад нового корпуса Смоленской областной детской клинической больницы — март 2026 года",
+      credit: "«Смоленская газета», пресс-материалы объекта",
       sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
     },
   ],
@@ -158,26 +176,26 @@ const galleries: Record<string, ProjectPhoto[]> = {
 
 const obninskProject: RealProject = {
   slug: "kb-8-fmba-obninsk",
-  title: "Клиническая больница № 8 ФМБА России",
+  title: "Соматический детский стационар КБ № 8 ФМБА России",
   city: "Обнинск, Калужская область",
   category: "medical",
   categoryLabel: "Медицина",
   partner: "ФГБУЗ КБ № 8 ФМБА России",
   image: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/avv.jpg",
-  imageAlt: "Клиническая больница № 8 ФМБА России в Обнинске",
+  imageAlt: "Медицинский комплекс КБ № 8 ФМБА России в Обнинске во время официального визита 2025 года",
   imageCredit: "Фото: Администрация города Обнинска / пресс-служба губернатора Калужской области",
   imageSourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
   supply: ["металлические изделия по проектной документации"],
-  description: "Медицинский объект в Обнинске идентифицирован по официальным источникам как ФГБУЗ «Клиническая больница № 8 ФМБА России». Центральная детская поликлиника входит в структуру КБ № 8. Официальные материалы больницы также подтверждают ремонт фасадов зданий в 2025 году.",
-  sourceUrl: "https://kb8-fmba.ru/contacts",
-  sourceLabel: "ФГБУЗ КБ № 8 ФМБА России",
+  description: "Объект, ранее фигурировавший в рабочем списке как «Обнинская ОДКБ», после повторной проверки идентифицирован как Соматический детский стационар ФГБУЗ КБ № 8 ФМБА России по адресу просп. Ленина, 85, корп. 2. Закупка № 0337100018825000349 от 31.10.2025 прямо относится к текущему ремонту фасада этого здания. Фотографии показывают комплекс КБ № 8 во время официального визита 2025 года и не используются как доказательство конкретного поставленного элемента.",
+  sourceUrl: "https://kb8-fmba.ru/hospital",
+  sourceLabel: "Официальный сайт КБ № 8 ФМБА России",
   featured: true,
 };
 
 const obninskPhotos: ProjectPhoto[] = [
   {
     src: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/avv.jpg",
-    alt: "Клиническая больница № 8 ФМБА России в Обнинске во время визита губернатора в августе 2025 года",
+    alt: "Медицинский комплекс КБ № 8 ФМБА России в Обнинске во время официального визита в августе 2025 года",
     credit: "Администрация города Обнинска / пресс-служба губернатора Калужской области",
     sourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
   },
