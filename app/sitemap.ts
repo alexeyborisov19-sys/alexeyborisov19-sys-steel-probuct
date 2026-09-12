@@ -26,7 +26,7 @@ const commercialProductPagesModifiedAt = new Date("2026-08-25T14:58:46.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
-const exhibitionCalendarsModifiedAt = new Date("2026-07-29T00:00:00.000Z");
+const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
   "/": new Date("2026-08-26T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
