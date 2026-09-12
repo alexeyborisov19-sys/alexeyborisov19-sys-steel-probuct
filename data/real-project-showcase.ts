@@ -175,35 +175,35 @@ const galleries: Record<string, ProjectPhoto[]> = {
 };
 
 const obninskProject: RealProject = {
-  slug: "kb-8-fmba-obninsk",
-  title: "Соматический детский стационар КБ № 8 ФМБА России",
+  slug: "mrrc-tsyba-obninsk",
+  title: "МРНЦ им. А. Ф. Цыба",
   city: "Обнинск, Калужская область",
   category: "medical",
   categoryLabel: "Медицина",
-  partner: "ФГБУЗ КБ № 8 ФМБА России",
-  image: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/avv.jpg",
-  imageAlt: "Медицинский комплекс КБ № 8 ФМБА России в Обнинске во время официального визита 2025 года",
-  imageCredit: "Фото: Администрация города Обнинска / пресс-служба губернатора Калужской области",
-  imageSourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
+  partner: "МРНЦ им. А. Ф. Цыба — филиал ФГБУ «НМИЦ радиологии» Минздрава России",
+  image: "https://vestnikstroy.ru/upload/iblock/af3/qwjf6j6ttixu368xe86x1wg8bz6dqzmz.jpeg",
+  imageAlt: "Здание клиники МРНЦ им. А. Ф. Цыба в Обнинске",
+  imageCredit: "Фото: «Вестник строительного комплекса»",
+  imageSourceUrl: "https://vestnikstroy.ru/articles/aktualno/v-obninske-zavershilos-blagoustroystvo-territorii-meditsinskogo-tsentra-imeni-a-f-tsyba-/",
   supply: ["металлокассеты — поставка продолжается", "изделия по проектной документации"],
-  description: "Объект, ранее фигурировавший в рабочем списке как «Обнинская ОДКБ», после повторной проверки идентифицирован как Соматический детский стационар ФГБУЗ КБ № 8 ФМБА России по адресу просп. Ленина, 85, корп. 2. Закупка № 0337100018825000349 от 31.10.2025 прямо относится к текущему ремонту фасада этого здания. «Сталь Продукт» производит и поставляет металлокассеты для объекта; поставка продолжается в настоящее время. Монтаж не выполняем. Фотографии показывают комплекс КБ № 8 во время официального визита 2025 года и не используются как доказательство конкретного поставленного элемента.",
-  sourceUrl: "https://kb8-fmba.ru/hospital",
-  sourceLabel: "Официальный сайт КБ № 8 ФМБА России",
+  description: "Объект в Обнинске — Медицинский радиологический научный центр имени А. Ф. Цыба. «Сталь Продукт» производит и поставляет металлокассеты для объекта; поставка продолжается в настоящее время. Монтаж не выполняем. Официальный сайт НМИЦ радиологии подтверждает МРНЦ им. А. Ф. Цыба по адресу: Обнинск, ул. Королёва, 4. Публичные фотографии используются для идентификации объекта и не привязываются к конкретной поставленной партии без отдельного подтверждения.",
+  sourceUrl: "https://new.nmicr.ru/mrrc/",
+  sourceLabel: "Официальный сайт НМИЦ радиологии",
   featured: true,
 };
 
 const obninskPhotos: ProjectPhoto[] = [
   {
-    src: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/avv.jpg",
-    alt: "Медицинский комплекс КБ № 8 ФМБА России в Обнинске во время официального визита в августе 2025 года",
-    credit: "Администрация города Обнинска / пресс-служба губернатора Калужской области",
-    sourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
+    src: "https://vestnikstroy.ru/upload/iblock/af3/qwjf6j6ttixu368xe86x1wg8bz6dqzmz.jpeg",
+    alt: "Здание клиники МРНЦ им. А. Ф. Цыба в Обнинске после реконструкции",
+    credit: "«Вестник строительного комплекса»",
+    sourceUrl: "https://vestnikstroy.ru/articles/aktualno/v-obninske-zavershilos-blagoustroystvo-territorii-meditsinskogo-tsentra-imeni-a-f-tsyba-/",
   },
   {
-    src: "https://www.admobninsk.ru/netcat_files/multifile/1809/33806/photo_2025_08_28_18_07_11.jpg",
-    alt: "КБ № 8 ФМБА России в Обнинске — материалы официального визита августа 2025 года",
-    credit: "Администрация города Обнинска / пресс-служба губернатора Калужской области",
-    sourceUrl: "https://www.admobninsk.ru/news/2025/08/29/news_33806.html",
+    src: "https://sdelanounas.ru/uploads/3/0/3021772793354_orig.jpeg",
+    alt: "Клинический корпус МРНЦ им. А. Ф. Цыба в Обнинске",
+    credit: "«Сделано у нас»",
+    sourceUrl: "https://sdelanounas.ru/blogs/174421/",
   },
 ];
 
