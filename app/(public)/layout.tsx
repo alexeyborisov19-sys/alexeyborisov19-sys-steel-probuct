@@ -4,7 +4,8 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { EngineeringAssistantLauncher } from "@/components/EngineeringAssistantLauncher";
 import { JsonLd } from "@/components/JsonLd";
 import { SitePreloader } from "@/components/SitePreloader";
-import { organizationSchema, websiteSchema } from "@/lib/schema";
+import { brandEntitySchema, legalOperatorEntitySchema } from "@/lib/entity-schema";
+import { websiteSchema } from "@/lib/schema";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -67,7 +68,7 @@ export const viewport: Viewport = {
 export default function PublicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      <JsonLd data={[organizationSchema(), websiteSchema()]} />
+      <JsonLd data={[brandEntitySchema(), legalOperatorEntitySchema(), websiteSchema()]} />
       <Analytics />
       <SitePreloader />
       {children}

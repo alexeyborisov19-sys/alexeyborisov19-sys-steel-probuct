@@ -30,6 +30,7 @@ const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
   "/": new Date("2026-08-26T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
+  "/company/facts": new Date("2026-09-12T00:00:00.000Z"),
   "/contacts": new Date("2026-08-25T17:32:36.000Z"),
   "/production": new Date("2026-08-25T21:24:08.000Z"),
   "/solutions": new Date("2026-08-20T00:00:00.000Z"),
@@ -78,6 +79,7 @@ const commercialHubs = new Set([
 
 function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
   if (path === "/") return 1;
+  if (path === "/company" || path === "/company/facts") return 0.9;
   if (commercialHubs.has(path)) return 0.9;
   if (path === "/calculator-metallokassety" || path === "/contacts") return 0.9;
   if (path.startsWith("/projects/")) return 0.85;
@@ -91,7 +93,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
-    "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety",
+    "/", "/company", "/company/facts", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety",
     "/products/metallokassety", "/products/dobornye-elementy",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];

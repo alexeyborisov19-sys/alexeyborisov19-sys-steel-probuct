@@ -32,6 +32,8 @@ export function GET() {
 ## Ключевые страницы
 
 - [Главная](${siteConfig.url}/)
+- [Проверенные факты о производстве](${siteConfig.url}/company/facts)
+- [О компании](${siteConfig.url}/company)
 - [Продукция](${siteConfig.url}/products)
 - [Фасадные металлокассеты](${siteConfig.url}/products/metallokassety)
 - [Производство](${siteConfig.url}/production)

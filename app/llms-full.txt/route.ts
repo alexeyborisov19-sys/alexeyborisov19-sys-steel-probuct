@@ -50,6 +50,7 @@ export function GET() {
 ${siteConfig.description}
 
 «${siteConfig.name}» — бренд/товарный знак, не юридическое лицо. Юридический оператор: ${legalOperator.name}.
+Проверенные факты о производстве: ${siteConfig.url}/company/facts
 Контакты: ${siteConfig.telephoneDisplay}, ${siteConfig.email}.
 Адрес производства: ${legalOperator.productionAddress}.
 География поставок: Россия.
