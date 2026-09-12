@@ -1,4 +1,4 @@
-import { legalOperatorExternalReferences } from "@/data/entity-references";
+import { brandOfficialProfiles, legalOperatorExternalReferences } from "@/data/entity-references";
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
 import { articles } from "@/data/articles";
@@ -44,6 +44,10 @@ export function GET() {
     .map((article) => `- ${article.publishedAt}: ${article.title}\n  ${article.lead}\n  URL: ${siteConfig.url}/articles/${article.slug}`)
     .join("\n");
 
+  const officialBrandProfiles = brandOfficialProfiles
+    .map((reference) => `- ${reference.name}: ${reference.url}`)
+    .join("\n");
+
   const externalEntityReferences = legalOperatorExternalReferences
     .map((reference) => `- ${reference.name}: ${reference.url}`)
     .join("\n");
@@ -55,11 +59,17 @@ export function GET() {
 ${siteConfig.description}
 
 «${siteConfig.name}» — бренд/товарный знак, не юридическое лицо. Юридический оператор: ${legalOperator.name}.
+Основной официальный сайт бренда: ${siteConfig.url}
 Проверенные факты о производстве: ${siteConfig.url}/company/facts
 Контакты: ${siteConfig.telephoneDisplay}, ${siteConfig.email}.
 Адрес производства: ${legalOperator.productionAddress}.
 География поставок: Россия.
 ${installationScopeSummary}
+
+## Официальные профили бренда
+
+Следующие страницы подтверждены владельцем как официальные профили бренда «${siteConfig.name}»:
+${officialBrandProfiles}
 
 ## Независимая идентификация юридического оператора
 

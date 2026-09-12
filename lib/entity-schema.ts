@@ -1,4 +1,8 @@
-import { legalOperatorExternalReferences, legalOperatorSameAs } from "@/data/entity-references";
+import {
+  brandSameAs,
+  legalOperatorExternalReferences,
+  legalOperatorSameAs,
+} from "@/data/entity-references";
 import { organizationSchema, type JsonLd } from "./schema";
 import { legalOperator } from "./legal";
 import { absoluteUrl, siteConfig } from "./site";
@@ -12,6 +16,7 @@ export function brandEntitySchema(): JsonLd {
     url: siteConfig.url,
     logo: absoluteUrl(siteConfig.logo),
     description: siteConfig.description,
+    sameAs: brandSameAs,
     mainEntityOfPage: { "@id": `${absoluteUrl("/company/facts")}#webpage` },
   };
 }
