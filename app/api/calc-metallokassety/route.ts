@@ -41,6 +41,11 @@ export async function POST(request: Request) {
     thickness: payload.thickness,
   };
 
+  const customPrice = asNumber(payload.pricePerM2);
+  if (Number.isFinite(customPrice) && customPrice > 0 && customPrice < 1_000_000) {
+    input.pricePerM2 = customPrice;
+  }
+
   if (mode === "area") {
     input.areaM2 = asNumber(payload.areaM2);
   } else {
@@ -53,6 +58,7 @@ export async function POST(request: Request) {
   const publicEstimate = {
     netAreaM2: estimate.netAreaM2,
     quantity: estimate.quantity,
+    defaultRateRubM2: estimate.defaultRateRubM2,
     approximateRateRubM2: estimate.approximateRateRubM2,
     approximateTotalRub: estimate.approximateTotalRub,
   };
