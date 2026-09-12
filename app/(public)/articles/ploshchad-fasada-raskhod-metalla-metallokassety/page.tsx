@@ -6,7 +6,7 @@ import { articleSchema, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const path = "/articles/ploshchad-fasada-raskhod-metalla-metallokassety";
-const title = "Расход металла на фасаде: русты и замки металлокассет";
+const title = "Расход металла на фасаде: русты и замки";
 const description = "Почему площадь фасада не равна расходу металла: русты, крайние кассеты, замковый стык закрытого типа, проёмы и правильный предварительный расчёт.";
 
 export const metadata: Metadata = createPageMetadata({
