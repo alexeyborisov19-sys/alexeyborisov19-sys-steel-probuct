@@ -14,8 +14,8 @@ import {
 } from "@/data/manufacturing-facts";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "О компании — производство полного цикла",
-  description: `Сталь Продукт: производство по КД, лазерная резка чёрной стали ${laserCuttingCapabilities.thicknessRange}, гибка, сварка, окраска и поставка по России.`,
+  title: "О бренде и производстве",
+  description: `«Сталь Продукт» — производственный бренд: производство по КД, лазерная резка чёрной стали ${laserCuttingCapabilities.thicknessRange}, гибка, сварка, окраска и поставка по России.`,
   path: "/company",
   keywords: ["производство металлоизделий", "завод металлоизделий", "листовой металл", "Смоленск"],
 });
@@ -59,7 +59,7 @@ const productionCapabilities = [
 ];
 
 const companyFaq = [
-  { question: "Где находится производство?", answer: "Производственная площадка «Сталь Продукт» находится в Смоленске. Заказы комплектуем для поставки в Москву, Московскую область, ЦФО и другие регионы России." },
+  { question: "Где находится производство?", answer: "Производственная площадка, на которой выпускается продукция под брендом «Сталь Продукт», находится в Смоленске. Заказы комплектуем для поставки в Москву, Московскую область, ЦФО и другие регионы России." },
   { question: "Какие операции выполняются на собственной площадке?", answer: `Производственный маршрут включает инженерно-конструкторскую подготовку, ${productionEquipment.laserComplexes} лазерных комплекса, ${productionEquipment.pressBrakes} листогибочных комплекса и ${productionEquipment.panelBenders} панельгиб, слесарно-доводочные операции, ${productionEquipment.weldingStations} сварочных поста, сборочное производство, дробеструйную и лазерную очистку, ${productionEquipment.powderCoatingBooths} камеры порошковой окраски, контроль качества, комплектацию и упаковку.` },
   { question: "Работаете как контрактный производитель?", answer: "Да. Можем выпускать изделия по документации заказчика, сопровождать опытный образец и организовать повторяемое серийное производство, включая OEM-проекты." },
   { question: "Какой ориентировочный срок изготовления?", answer: productionLeadTimeSummary },
@@ -69,9 +69,9 @@ const companyFaq = [
 export default function CompanyPage() {
   return <><JsonLd data={faqSchema(companyFaq)} /><PageLayout
     path="/company"
-    eyebrow="Компания"
+    eyebrow="Бренд и производство"
     title="Сталь Продукт — инженерные решения из листового металла"
-    description="Инженерно-производственная компания полного цикла. Проектируем, производим и поставляем металлоизделия для строительства, промышленности и инженерной инфраструктуры."
+    description="Под брендом «Сталь Продукт» проектируем, производим и поставляем металлоизделия для строительства, промышленности и инженерной инфраструктуры."
   >
     <CompanyVideo />
 
@@ -81,7 +81,7 @@ export default function CompanyPage() {
         <span className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 border border-white/10" />
         <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,.92fr)] lg:items-start">
           <div className="border-l-2 border-steel-orange pl-5 sm:pl-7">
-            <p className="eyebrow">О компании</p>
+            <p className="eyebrow">О бренде и производстве</p>
             <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-[1.08] sm:text-4xl lg:text-5xl">Связываем конструкторскую документацию с реальным производственным маршрутом</h2>
             <p className="mt-6 max-w-2xl text-sm leading-relaxed text-white/62 sm:text-base">До запуска проверяем материал, раскрой, гибы, соединения, покрытие и контрольные размеры. Это позволяет согласовать не отдельную операцию, а изготовление готовой детали или сборочной единицы.</p>
           </div>
@@ -174,6 +174,6 @@ export default function CompanyPage() {
         <Link href="/contacts#contact-form" className="clip-corner shrink-0 bg-steel-orange-deep px-7 py-4 text-center text-xs font-bold uppercase transition hover:bg-steel-orange-deeper">Получить расчёт&nbsp; →</Link>
       </div>
     </section>
-    <FaqSection items={companyFaq} title="Вопросы о компании и производстве" />
+    <FaqSection items={companyFaq} title="Вопросы о бренде и производстве" />
   </PageLayout></>;
 }
