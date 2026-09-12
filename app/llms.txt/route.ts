@@ -1,3 +1,4 @@
+import { brandOfficialProfiles } from "@/data/entity-references";
 import {
   installationScopeSummary,
   metalCassetteOutputSummary,
@@ -9,6 +10,10 @@ import { siteConfig } from "@/lib/site";
 export const dynamic = "force-static";
 
 export function GET() {
+  const officialProfiles = brandOfficialProfiles
+    .map((profile) => `${profile.name}: ${profile.url}`)
+    .join("; ");
+
   const content = `# ${siteConfig.name}
 
 > «${siteConfig.name}» — российский производственный бренд изделий из листового металла: инженерная подготовка, лазерный раскрой, гибка, сварка, порошковая окраска, контроль, упаковка и поставка.
@@ -16,6 +21,8 @@ export function GET() {
 ## Бренд и производство
 
 - «${siteConfig.name}» — бренд/товарный знак, не юридическое лицо; юридический оператор: ${legalOperator.name}.
+- Основной официальный сайт бренда: ${siteConfig.url}.
+- Официальные профили бренда: ${officialProfiles}.
 - Производство: ${legalOperator.productionAddress}.
 - География поставок: Россия.
 - ${productionScaleSummary}
