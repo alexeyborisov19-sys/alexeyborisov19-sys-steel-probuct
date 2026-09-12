@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+const projectImageHosts = [
+  "https://static.tildacdn.com",
+  "https://smolgazeta.ru",
+  "https://static.mk.ru",
+  "https://images.cdn-cian.ru",
+  "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru",
+];
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -8,7 +16,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline' https://mc.yandex.ru",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com",
+  `img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com ${projectImageHosts.join(" ")}`,
   "font-src 'self' data:",
   "media-src 'self'",
   "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com",
@@ -40,6 +48,15 @@ const stablePublicAssetCache = "public, max-age=86400, stale-while-revalidate=60
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "static.tildacdn.com" },
+      { protocol: "https", hostname: "smolgazeta.ru" },
+      { protocol: "https", hostname: "static.mk.ru" },
+      { protocol: "https", hostname: "images.cdn-cian.ru" },
+      { protocol: "https", hostname: "lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru" },
+    ],
+  },
   async redirects() {
     return [
       // Transport/canonical host redirects stay in Next config. Legacy content
