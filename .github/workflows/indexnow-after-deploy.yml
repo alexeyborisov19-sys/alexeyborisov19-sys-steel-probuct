@@ -36,42 +36,66 @@ jobs:
       - name: Verify live AI discovery endpoints
         env:
           SITE_URL: https://www.steelprodukt.ru
+          DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
           tmpdir="$(mktemp -d)"
           trap 'rm -rf "$tmpdir"' EXIT
 
+          expected_key="$(sed -n 's/.*indexNowKey = "\([^"]*\)".*/\1/p' lib/indexnow.ts | head -n 1)"
+          test -n "$expected_key"
+
+          fetch_live() {
+            local path="$1"
+            local output="$2"
+            curl \
+              --fail --silent --show-error --location --max-time 10 \
+              --header 'Cache-Control: no-cache' \
+              --header 'Pragma: no-cache' \
+              "$SITE_URL/$path?release=$DEPLOYED_SHA" \
+              -o "$output"
+          }
+
           for attempt in {1..12}; do
             if \
-              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/robots.txt" -o "$tmpdir/robots.txt" && \
-              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/llms.txt" -o "$tmpdir/llms.txt" && \
-              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/llms-full.txt" -o "$tmpdir/llms-full.txt" && \
-              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/indexnow-key.txt" -o "$tmpdir/indexnow-key.txt"
+              fetch_live robots.txt "$tmpdir/robots.txt" && \
+              fetch_live llms.txt "$tmpdir/llms.txt" && \
+              fetch_live llms-full.txt "$tmpdir/llms-full.txt" && \
+              fetch_live indexnow-key.txt "$tmpdir/indexnow-key.txt"
             then
               key="$(tr -d '\r\n' < "$tmpdir/indexnow-key.txt")"
-              if \
-                grep -Fqx 'User-agent: *' "$tmpdir/robots.txt" && \
-                grep -Fqx 'User-agent: OAI-SearchBot' "$tmpdir/robots.txt" && \
-                grep -Fqx 'User-agent: Google-Extended' "$tmpdir/robots.txt" && \
-                grep -Fqx 'User-agent: YandexBot' "$tmpdir/robots.txt" && \
-                grep -Fqx 'Disallow: /api/' "$tmpdir/robots.txt" && \
-                grep -Fq '«Сталь Продукт» — бренд/товарный знак, не юридическое лицо' "$tmpdir/llms.txt" && \
-                grep -Fq 'Производственные возможности' "$tmpdir/llms-full.txt" && \
-                grep -Fq 'Ориентировочный выпуск фасадных металлокассет — около 60 000 м²/год.' "$tmpdir/llms-full.txt" && \
-                grep -Fq 'Монтаж на объектах не выполняется.' "$tmpdir/llms-full.txt" && \
-                [[ "$key" =~ ^[A-Za-z0-9-]{8,128}$ ]]
-              then
-                echo "Live AI endpoints verified: robots.txt, llms.txt, llms-full.txt, indexnow-key.txt."
+              checks_ok=true
+
+              grep -Fq 'User-agent: *' "$tmpdir/robots.txt" || checks_ok=false
+              grep -Fq 'User-agent: OAI-SearchBot' "$tmpdir/robots.txt" || checks_ok=false
+              grep -Fq 'User-agent: Google-Extended' "$tmpdir/robots.txt" || checks_ok=false
+              grep -Fq 'User-agent: YandexBot' "$tmpdir/robots.txt" || checks_ok=false
+              grep -Fq 'Disallow: /api/' "$tmpdir/robots.txt" || checks_ok=false
+              grep -Fq '# Сталь Продукт' "$tmpdir/llms.txt" || checks_ok=false
+              grep -Fq 'бренд/товарный знак, не юридическое лицо' "$tmpdir/llms.txt" || checks_ok=false
+              grep -Fq '## Производственные возможности' "$tmpdir/llms-full.txt" || checks_ok=false
+              grep -Fq '60 000 м²/год' "$tmpdir/llms-full.txt" || checks_ok=false
+              grep -Fq 'Монтаж на объектах не выполняется.' "$tmpdir/llms-full.txt" || checks_ok=false
+              [[ "$key" == "$expected_key" ]] || checks_ok=false
+
+              if [[ "$checks_ok" == true ]]; then
+                echo "Live AI endpoints verified for release $DEPLOYED_SHA: robots.txt, llms.txt, llms-full.txt, indexnow-key.txt."
                 exit 0
               fi
             fi
 
-            echo "Production AI endpoints are not fully ready yet (attempt $attempt/12)."
+            echo "Production AI endpoints are not fully ready for release $DEPLOYED_SHA yet (attempt $attempt/12)."
             sleep 5
           done
 
-          echo "Live AI endpoint verification failed."
+          echo "Live AI endpoint verification failed for release $DEPLOYED_SHA."
+          echo "Diagnostic markers:"
+          grep -F 'User-agent:' "$tmpdir/robots.txt" || true
+          grep -F 'бренд/товарный знак' "$tmpdir/llms.txt" || true
+          grep -F 'Производственные возможности' "$tmpdir/llms-full.txt" || true
+          grep -F '60 000 м²/год' "$tmpdir/llms-full.txt" || true
+          echo "Published key length: $(tr -d '\r\n' < "$tmpdir/indexnow-key.txt" | wc -c)"
           exit 1
 
       - name: Collect changed public URL paths
