@@ -2,6 +2,7 @@ import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { InnerHero } from "./InnerHero";
 import { JsonLd } from "./JsonLd";
+import { MetalCassetteProjectsProof } from "./MetalCassetteProjectsProof";
 import { breadcrumbSchema, webPageSchema, type Breadcrumb } from "@/lib/schema";
 
 type PageLayoutProps = { eyebrow: string; title: string; titleAccent?: string; description: string; image?: string; imageAlt?: string; imageBrightness?: boolean; path?: string; children: React.ReactNode };
@@ -12,6 +13,7 @@ const parentSections = [
   { prefix: "/production/", name: "Производство", path: "/production" },
   { prefix: "/solutions/", name: "Решения", path: "/solutions" },
   { prefix: "/industries/", name: "Решения для объектов", path: "/industries" },
+  { prefix: "/projects/", name: "Проекты", path: "/projects" },
   { prefix: "/products/", name: "Продукция", path: "/products" },
   { prefix: "/articles/", name: "Инженерный журнал", path: "/articles" },
   { prefix: "/legal/", name: "Правовая информация", path: "/legal/privacy" },
@@ -70,6 +72,9 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
   if (path === "/projects") {
     return { secondaryHref: "/industries", secondaryLabel: "Решения для объектов" };
   }
+  if (path.startsWith("/projects/")) {
+    return { secondaryHref: "/projects", secondaryLabel: "Все проекты" };
+  }
   if (path === "/company" || path === "/contacts") {
     return { secondaryHref: "/production", secondaryLabel: "Производство" };
   }
@@ -91,7 +96,11 @@ export function PageLayout({ children, path, ...hero }: PageLayoutProps) {
       />
     ) : null}
     <Header />
-    <main id="main-content" tabIndex={-1}><InnerHero {...hero} {...contextualAction} />{children}</main>
+    <main id="main-content" tabIndex={-1}>
+      <InnerHero {...hero} {...contextualAction} />
+      {children}
+      {path === "/products/metallokassety" ? <MetalCassetteProjectsProof /> : null}
+    </main>
     <Footer />
   </>;
 }
