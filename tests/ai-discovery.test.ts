@@ -38,8 +38,8 @@ test("AI discovery endpoints use the manufacturing source of truth", () => {
 test("robots explicitly permits major search and AI crawlers without opening private routes", () => {
   const robots = source("app/robots.txt/route.ts");
 
+  assert.match(robots, /User-agent: \*/);
   for (const crawler of [
-    "Googlebot",
     "bingbot",
     "YandexBot",
     "OAI-SearchBot",
