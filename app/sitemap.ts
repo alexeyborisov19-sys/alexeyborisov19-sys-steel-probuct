@@ -34,12 +34,14 @@ const staticModifiedAt: Record<string, Date> = {
   "/production": new Date("2026-08-25T21:24:08.000Z"),
   "/solutions": new Date("2026-08-20T00:00:00.000Z"),
   "/industries": new Date("2026-08-20T14:44:10.000Z"),
-  "/projects": new Date("2026-08-25T12:06:42.000Z"),
+  "/projects": new Date("2026-09-12T00:00:00.000Z"),
+  "/projects/solovinaya-roshcha": new Date("2026-09-12T00:00:00.000Z"),
   "/products": new Date("2026-08-25T15:45:53.000Z"),
   "/articles": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
   "/articles/ploshchad-fasada-raskhod-metalla-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/uzly-fasada-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
+  "/articles/metall-dlya-goroda-proekty-stal-produkt": new Date("2026-09-12T00:00:00.000Z"),
   "/calculator-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/products/metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
@@ -68,6 +70,7 @@ const commercialHubs = new Set([
   "/production",
   "/solutions",
   "/industries",
+  "/projects",
   "/products",
   "/products/metallokassety",
   "/products/dobornye-elementy",
@@ -77,6 +80,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
   if (path === "/") return 1;
   if (commercialHubs.has(path)) return 0.9;
   if (path === "/calculator-metallokassety" || path === "/contacts") return 0.9;
+  if (path.startsWith("/projects/")) return 0.85;
   if (path.startsWith("/production/") || path.startsWith("/solutions/") || path.startsWith("/industries/") || path.startsWith("/products/")) return 0.85;
   if (path === "/articles") return 0.85;
   if (isExhibitionCalendar || path === "/articles/china-tech") return 0.8;
@@ -87,7 +91,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
-    "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/calculator-metallokassety",
+    "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety",
     "/products/metallokassety", "/products/dobornye-elementy",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];

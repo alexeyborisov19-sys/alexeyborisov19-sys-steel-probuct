@@ -1,0 +1,195 @@
+export type RealProjectCategory = "residential" | "medical" | "education";
+
+export type RealProject = {
+  slug: string;
+  title: string;
+  city: string;
+  category: RealProjectCategory;
+  categoryLabel: string;
+  partner?: string;
+  image: string;
+  imageAlt: string;
+  supply: string[];
+  description: string;
+  sourceUrl: string;
+  sourceLabel: string;
+  href?: string;
+  featured?: boolean;
+};
+
+export const realProjects: RealProject[] = [
+  {
+    slug: "solovinaya-roshcha",
+    title: "Микрорайон «Соловьиная роща» и «Новый квартал»",
+    city: "Смоленск",
+    category: "residential",
+    categoryLabel: "Жилая застройка",
+    partner: "АО СЗ «Ваш дом»",
+    image: "/images/industries/residential.jpg",
+    imageAlt: "Иллюстрация жилой застройки — категория проекта «Соловьиная роща»",
+    supply: ["металлокассеты", "кронштейны", "металлические корпуса и ящики", "изделия по проектной документации"],
+    description: "Многолетнее направление поставок для крупного жилого микрорайона. В разные периоды изделия поставлялись для нескольких объектов застройки и связанной инфраструктуры.",
+    sourceUrl: "https://zao-vash-dom.ru/",
+    sourceLabel: "Официальный сайт застройщика",
+    href: "/projects/solovinaya-roshcha",
+    featured: true,
+  },
+  {
+    slug: "klovskiy",
+    title: "ЖК «Кловский»",
+    city: "Смоленск",
+    category: "residential",
+    categoryLabel: "Жилая застройка",
+    image: "/images/industries/residential.jpg",
+    imageAlt: "Иллюстрация жилой застройки — категория проекта ЖК «Кловский»",
+    supply: ["металлокассеты", "кронштейны", "металлические ящики и корпуса", "другие изделия по спецификациям объектов"],
+    description: "Поставки изделий из листового металла в рамках сотрудничества с жилым девелоперским проектом.",
+    sourceUrl: "https://xn----dtbkkfcbbh4a8a.xn--p1ai/",
+    sourceLabel: "Официальный сайт проекта",
+  },
+  {
+    slug: "unity-development",
+    title: "Проекты «Юнити Девелопмент»",
+    city: "Смоленск",
+    category: "residential",
+    categoryLabel: "Жилая застройка",
+    partner: "Юнити Девелопмент",
+    image: "/images/industries/residential.jpg",
+    imageAlt: "Иллюстрация жилой застройки — проекты «Юнити Девелопмент»",
+    supply: ["металлокассеты", "кронштейны", "металлические ящики и корпуса", "изделия из листового металла"],
+    description: "Серийные и проектные поставки для объектов жилой и коммерческой застройки девелопера.",
+    sourceUrl: "https://unity-groups.ru/",
+    sourceLabel: "Официальный сайт девелопера",
+  },
+  {
+    slug: "metrum-group",
+    title: "Проекты «Метрум Груп»",
+    city: "Смоленск",
+    category: "residential",
+    categoryLabel: "Жилая застройка",
+    partner: "Метрум Груп",
+    image: "/images/industries/residential.jpg",
+    imageAlt: "Иллюстрация жилой застройки — проекты «Метрум Груп»",
+    supply: ["металлокассеты", "кронштейны", "корпусные изделия", "изделия по проектным спецификациям"],
+    description: "Поставки листовых металлоизделий для девелоперских проектов, в том числе объектов с современными фасадными решениями.",
+    sourceUrl: "https://metrumgroup.ru/projects",
+    sourceLabel: "Официальный сайт девелопера",
+  },
+  {
+    slug: "vostokstroy",
+    title: "Проекты «ВостокСтрой»",
+    city: "Смоленск",
+    category: "residential",
+    categoryLabel: "Жилая застройка",
+    partner: "ВостокСтрой",
+    image: "/images/industries/residential.jpg",
+    imageAlt: "Иллюстрация жилой застройки — проекты «ВостокСтрой»",
+    supply: ["металлокассеты", "кронштейны", "металлические ящики и корпуса", "нестандартные изделия"],
+    description: "Поставки металлических элементов для жилых объектов с сочетанием фасадных и инженерных решений.",
+    sourceUrl: "https://vostokstroy67.ru/novyj-dom-chernyakhovskogo-23",
+    sourceLabel: "Официальный сайт застройщика",
+  },
+  {
+    slug: "smolenskaya-oblastnaya-klinicheskaya-bolnitsa",
+    title: "Смоленская областная клиническая больница",
+    city: "Смоленск",
+    category: "medical",
+    categoryLabel: "Медицина",
+    image: "/images/industries/medical.jpg",
+    imageAlt: "Иллюстрация медицинского объекта — категория Смоленской областной клинической больницы",
+    supply: ["металлические изделия по проектной документации"],
+    description: "Поставка металлических изделий для областного медицинского комплекса. Конкретный состав партий определялся проектной документацией объекта.",
+    sourceUrl: "https://www.admin-smolensk.ru/novosti/news/vrio-gubernatora-vasilij-anohin-oznakomilsya-s-rabotoj-oblastnyh-uchrezhdenij-zdravoohraneniya/",
+    sourceLabel: "Правительство Смоленской области",
+  },
+  {
+    slug: "odkb-novyy-korpus",
+    title: "Новый корпус Смоленской областной детской клинической больницы",
+    city: "Смоленск",
+    category: "medical",
+    categoryLabel: "Медицина",
+    image: "/images/industries/medical.jpg",
+    imageAlt: "Иллюстрация медицинского объекта — новый корпус Смоленской ОДКБ",
+    supply: ["металлические изделия", "фасадные элементы"],
+    description: "Поставка металлических изделий для нового лечебного корпуса. В публичных материалах объекта отдельно отражён этап устройства фасада.",
+    sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
+    sourceLabel: "Управление капитального строительства Смоленской области",
+    featured: true,
+  },
+  {
+    slug: "onkologicheskiy-dispanser",
+    title: "Смоленский областной онкологический диспансер",
+    city: "Смоленск",
+    category: "medical",
+    categoryLabel: "Медицина",
+    image: "/images/industries/medical.jpg",
+    imageAlt: "Иллюстрация медицинского объекта — Смоленский областной онкологический диспансер",
+    supply: ["металлокассеты", "вентиляционные решётки", "другие металлические изделия"],
+    description: "Комплексная поставка нескольких групп изделий из листового металла для крупного нового медицинского объекта.",
+    sourceUrl: "https://www.admin-smolensk.ru/realizaciya-proektov/v-smolenske-otkrylsya-novyj-sovremennyj-onkologicheskij-dispanser/",
+    sourceLabel: "Правительство Смоленской области",
+    featured: true,
+  },
+  {
+    slug: "litsey-solovinaya-roshcha",
+    title: "Многопрофильный лицей в «Соловьиной роще»",
+    city: "Смоленск",
+    category: "education",
+    categoryLabel: "Образование",
+    image: "/images/industries/educational.jpg",
+    imageAlt: "Иллюстрация образовательного объекта — лицей в «Соловьиной роще»",
+    supply: ["металлические изделия по проекту"],
+    description: "Образовательная инфраструктура крупного микрорайона — отдельное направление поставок в рамках работы с объектами «Соловьиной рощи».",
+    sourceUrl: "https://zao-vash-dom.ru/news/tpost/3pdd77zkf1-mnogoprofilnii-litsei-v-solovinoi-rosche",
+    sourceLabel: "АО СЗ «Ваш дом»",
+    href: "/projects/solovinaya-roshcha",
+  },
+  {
+    slug: "smolenskiy-meditsinskiy-kolledzh",
+    title: "Смоленский базовый медицинский колледж имени К. С. Константиновой",
+    city: "Смоленск",
+    category: "education",
+    categoryLabel: "Образование",
+    image: "/images/industries/educational.jpg",
+    imageAlt: "Иллюстрация образовательного объекта — Смоленский медицинский колледж",
+    supply: ["металлокассеты"],
+    description: "Поставка фасадных металлокассет для проекта капитального ремонта учебного корпуса.",
+    sourceUrl: "https://goszakupki.admin-smolensk.ru/portal/Show/order?link=11029176",
+    sourceLabel: "Портал закупок Смоленской области",
+  },
+  {
+    slug: "feniks-pechersk",
+    title: "Техношкола «Феникс» в Печерске",
+    city: "с. Печерск, Смоленская область",
+    category: "education",
+    categoryLabel: "Образование",
+    image: "/images/industries/educational.jpg",
+    imageAlt: "Иллюстрация образовательного объекта — техношкола «Феникс» в Печерске",
+    supply: ["металлические изделия по проектной документации"],
+    description: "Поставка изделий для строящегося образовательного центра. В официальных материалах 2026 года отдельно отмечено устройство вентилируемого фасада.",
+    sourceUrl: "https://minstroy67.admin-smolensk.ru/news/novaya-tehnoshkola-feniks-v-pecherske-gotovnost-55/",
+    sourceLabel: "Министерство архитектуры и строительства Смоленской области",
+    featured: true,
+  },
+  {
+    slug: "stodolishchenskaya-shkola",
+    title: "Стодолищенская средняя школа",
+    city: "п. Стодолище, Смоленская область",
+    category: "education",
+    categoryLabel: "Образование",
+    image: "/images/industries/educational.jpg",
+    imageAlt: "Иллюстрация образовательного объекта — Стодолищенская средняя школа",
+    supply: ["металлокассеты"],
+    description: "Поставка металлокассет для объекта капитального ремонта фасада школы.",
+    sourceUrl: "https://pochinok.admin-smolensk.ru/news/na-kontrole-remont-stodolischenskoj-srednej-shkoly/",
+    sourceLabel: "Администрация Починковского муниципального округа",
+  },
+];
+
+export const projectCategoryLabels: Record<RealProjectCategory, string> = {
+  residential: "Жилая застройка",
+  medical: "Медицина",
+  education: "Образование",
+};
+
+export const featuredRealProjects = realProjects.filter((project) => project.featured);
