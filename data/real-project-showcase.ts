@@ -53,13 +53,25 @@ const galleries: Record<string, ProjectPhoto[]> = {
       credit: "ЦИАН — карточка апарт-комплекса «Юнити»",
       sourceUrl: "https://zhk-apart-kompleks-yuniti-smolensk-i.cian.ru/",
     },
+    {
+      src: "https://rabochy-put.ru/upload/iblock/581/fu5i2et853zq6us8taframclledl419q/IMG_5244.jpg",
+      alt: "Жилой квартал «Боровая Парк» — реализованный проект «Юнити Девелопмент»",
+      credit: "«Рабочий путь» — материал о «Боровая Парк»",
+      sourceUrl: "https://www.rabochy-put.ru/news/204890-borovaya-park-v-smolenske-kogda-gorod-i-priroda-stanovyatsya-sosedyami.html",
+    },
   ],
   "metrum-group": [
     {
       src: "https://images.cdn-cian.ru/images/po-ul-25-sentyabrya-smolensk-jk-2005676224-7.jpg",
-      alt: "Жилой проект «Метрум Груп» в Смоленске",
+      alt: "Жилой проект «Метрум Груп» на улице 25 Сентября в Смоленске",
       credit: "ЦИАН — карточка жилого проекта",
       sourceUrl: "https://zhk-po-ul-25-sentyabrya-smolensk-i.cian.ru/",
+    },
+    {
+      src: "https://www.atlant-complex.ru/upload/iblock/ee2/r1knd6xw4922mpycbe3y6uc2l7mg3iom.jpeg",
+      alt: "Готовый корпус жилого комплекса «Атлант» в Смоленске",
+      credit: "Официальный сайт ЖК «Атлант»",
+      sourceUrl: "https://www.atlant-complex.ru/novosti/5-litera-zhilogo-kompleksa-atlant-polnostyu-gotova/",
     },
   ],
   vostokstroy: [
@@ -78,10 +90,16 @@ const galleries: Record<string, ProjectPhoto[]> = {
   ],
   "smolenskaya-oblastnaya-klinicheskaya-bolnitsa": [
     {
-      src: "https://www.myhospitalnow.com/hospitals/storage/hospital_profile/Capture-1777833257_1743750877.PNG",
-      alt: "Смоленская областная клиническая больница",
-      credit: "MyHospitalNow — справочная карточка учреждения",
-      sourceUrl: "https://www.myhospitalnow.com/hospitals/smolenskaya-oblastnaya-klinicheskaya-bol%27nitsa",
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/01/166012.jpg",
+      alt: "Смоленская областная клиническая больница и строительство нового приёмного отделения в январе 2026 года",
+      credit: "«Смоленская газета», фото пресс-материалов региона",
+      sourceUrl: "https://smolgazeta.ru/medic/134686-v-smolenskoy-oblastnoy-klinicheskoy.html",
+    },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/01/166013.jpg",
+      alt: "Территория Смоленской областной клинической больницы во время обновления в 2026 году",
+      credit: "«Смоленская газета», фото пресс-материалов региона",
+      sourceUrl: "https://smolgazeta.ru/medic/134686-v-smolenskoy-oblastnoy-klinicheskoy.html",
     },
   ],
   "odkb-novyy-korpus": [
@@ -105,6 +123,12 @@ const galleries: Record<string, ProjectPhoto[]> = {
       credit: "«Смоленская газета»",
       sourceUrl: "https://smolgazeta.ru/medic/135334-v-smolenske-oficialno-otkryli-oblastnoy.html",
     },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/02/166940.jpg",
+      alt: "Смоленский областной онкологический диспансер в день официального открытия",
+      credit: "«Смоленская газета», фото пресс-материалов региона",
+      sourceUrl: "https://smolgazeta.ru/medic/135334-v-smolenske-oficialno-otkryli-oblastnoy.html",
+    },
   ],
   "litsey-solovinaya-roshcha": [
     {
@@ -114,44 +138,20 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru/",
     },
   ],
+  "feniks-pechersk": [
+    {
+      src: "https://static.mk.ru/upload/entities/2026/07/17/03/articles/detailPicture/d3/96/9a/4b/e673b06bc81f6b5e798062f0d56217f9.jpg",
+      alt: "Строительство техношколы «Феникс» в Печерске летом 2026 года",
+      credit: "«МК в Смоленске», фото пресс-материалов Правительства Смоленской области",
+      sourceUrl: "https://www.mk-smolensk.ru/social/2026/07/16/v-smolenskom-okruge-stroitsya-novaya-tekhnoshkola-feniks.html",
+    },
+  ],
   "smolenskiy-meditsinskiy-kolledzh": [],
-  "feniks-pechersk": [],
   "stodolishchenskaya-shkola": [],
 };
 
-const obninskProject: RealProject = {
-  slug: "mrrc-tsyba-obninsk",
-  title: "МРНЦ им. А. Ф. Цыба — реконструированный клинический корпус",
-  city: "Обнинск, Калужская область",
-  category: "medical",
-  categoryLabel: "Медицина",
-  partner: "МРНЦ им. А. Ф. Цыба — филиал НМИЦ радиологии Минздрава России",
-  image: "/images/industries/medical.jpg",
-  imageAlt: "Медицинский радиологический научный центр имени А. Ф. Цыба в Обнинске",
-  supply: ["металлические изделия по проектной документации"],
-  description: "Поставка металлических изделий для медицинского объекта в Обнинске. В портфолио объект идентифицирован как реконструированный клинический корпус МРНЦ им. А. Ф. Цыба; Минстрой России подтвердил завершение реконструкции комплекса площадью свыше 7,5 тыс. м² в конце 2023 года.",
-  sourceUrl: "https://minstroyrf.gov.ru/press/v-obninske-zavershena-rekonstruktsiya-kliniki-meditsinskogo-radiologicheskogo-nauchnogo-tsentra-imen/",
-  sourceLabel: "Минстрой России",
-  featured: true,
-};
-
-const obninskPhotos: ProjectPhoto[] = [
-  {
-    src: "https://vestnikstroy.ru/upload/iblock/af3/qwjf6j6ttixu368xe86x1wg8bz6dqzmz.jpeg",
-    alt: "Реконструированный корпус МРНЦ им. А. Ф. Цыба в Обнинске после благоустройства",
-    credit: "«Вестник строительного комплекса»",
-    sourceUrl: "https://vestnikstroy.ru/articles/aktualno/v-obninske-zavershilos-blagoustroystvo-territorii-meditsinskogo-tsentra-imeni-a-f-tsyba-/",
-  },
-  {
-    src: "https://sdelanounas.ru/uploads/3/0/3021772793354_orig.jpeg",
-    alt: "Новый клинический корпус центра имени А. Ф. Цыба в Обнинске",
-    credit: "«Сделано у нас»",
-    sourceUrl: "https://sdelanounas.ru/blogs/174421/",
-  },
-];
-
-export const realProjectsShowcase: ShowcaseProject[] = [...realProjects, obninskProject].map((project) => {
-  const photos = project.slug === obninskProject.slug ? obninskPhotos : galleries[project.slug] ?? [];
+export const realProjectsShowcase: ShowcaseProject[] = realProjects.map((project) => {
+  const photos = galleries[project.slug] ?? [];
   const fallback: ProjectPhoto = {
     src: project.image,
     alt: project.imageAlt,
