@@ -50,7 +50,14 @@ export async function POST(request: Request) {
   }
 
   const estimate = estimateMetalCassettes(input);
-  return NextResponse.json(estimate, {
+  const publicEstimate = {
+    netAreaM2: estimate.netAreaM2,
+    quantity: estimate.quantity,
+    approximateRateRubM2: estimate.approximateRateRubM2,
+    approximateTotalRub: estimate.approximateTotalRub,
+  };
+
+  return NextResponse.json(publicEstimate, {
     headers: { "Cache-Control": "no-store" },
   });
 }

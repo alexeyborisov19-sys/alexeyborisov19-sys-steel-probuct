@@ -10,10 +10,6 @@ type Thickness = "0.65" | "0.7" | "1.0" | "1.2";
 type Estimate = {
   netAreaM2: number;
   quantity: number;
-  columns: number | null;
-  rows: number | null;
-  moduleWidthMm: number;
-  moduleHeightMm: number;
   approximateRateRubM2: number;
   approximateTotalRub: number;
 };
@@ -68,7 +64,7 @@ export function MetalCassetteCalculator() {
         const data = (await response.json()) as Estimate;
         setResult(data);
         setStatus("ready");
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted) return;
         setResult(null);
         setStatus("error");
@@ -107,7 +103,7 @@ export function MetalCassetteCalculator() {
           <div>
             <h2 className="text-2xl font-semibold uppercase leading-tight sm:text-3xl">Калькулятор металлокассет</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/60">
-              Два уровня оценки: быстрый расчёт по площади или более точный — по габаритам стены. Производственные развёртки, DXF и технологические параметры не публикуются.
+              Выберите быстрый расчёт по площади или более точную оценку по габаритам стены. Производственные развёртки, DXF и технологические параметры в публичный расчёт не входят.
             </p>
           </div>
           <div className="grid grid-cols-2 border border-white/12 bg-[#0c1013] p-1">
@@ -145,7 +141,7 @@ export function MetalCassetteCalculator() {
                 <input id="facade-area" inputMode="decimal" value={area} onChange={(event) => setArea(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-xl font-semibold outline-none focus:border-steel-orange" aria-describedby="area-help" />
                 <span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 bg-white/[.035] text-sm font-bold text-steel-orange">м²</span>
               </div>
-              <p id="area-help" className="mt-2 text-xs leading-5 text-white/40">Для быстрой оценки используется типовой модуль. Точная раскладка зависит от геометрии стен и проёмов.</p>
+              <p id="area-help" className="mt-2 text-xs leading-5 text-white/40">Быстрая оценка для первого бюджета. Точная раскладка зависит от геометрии стен и проёмов.</p>
             </div>
           ) : (
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -160,7 +156,7 @@ export function MetalCassetteCalculator() {
               <div className="sm:col-span-2">
                 <label htmlFor="wall-openings" className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Площадь окон и дверей <span className="font-normal normal-case tracking-normal text-white/35">необязательно</span></label>
                 <div className="mt-3 flex"><input id="wall-openings" inputMode="decimal" value={openings} onChange={(event) => setOpenings(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" /><span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 text-xs text-white/50">м²</span></div>
-                <p className="mt-2 text-xs leading-5 text-white/40">Положение проёмов в простой форме неизвестно, поэтому их влияние на количество оценивается предварительно. Точный раскрой проверяется по фасадной раскладке.</p>
+                <p className="mt-2 text-xs leading-5 text-white/40">Положение проёмов влияет на реальную подрезку, поэтому по одной их площади результат остаётся предварительным.</p>
               </div>
             </div>
           )}
@@ -176,9 +172,9 @@ export function MetalCassetteCalculator() {
           </fieldset>
 
           <div className="mt-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-3">
-            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Типовой размер</p><p className="mt-2 text-sm font-semibold">1170 × 545 мм</p></div>
-            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Межкассетный шов</p><p className="mt-2 text-sm font-semibold">20 мм</p></div>
-            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Расчёт</p><p className="mt-2 text-sm font-semibold">{type === "open" ? "с учётом рустов" : "с учётом замкового шага"}</p></div>
+            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Типовой формат</p><p className="mt-2 text-sm font-semibold">1170 × 545 мм</p></div>
+            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Конструкция</p><p className="mt-2 text-sm font-semibold">{type === "open" ? "открытый шов" : "замковый стык"}</p></div>
+            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Статус</p><p className="mt-2 text-sm font-semibold">предварительный расчёт</p></div>
           </div>
         </div>
 
@@ -193,17 +189,16 @@ export function MetalCassetteCalculator() {
             <p aria-live="polite" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
               {status === "loading" ? "…" : result && result.approximateTotalRub > 0 ? `≈ ${money.format(result.approximateTotalRub)} ₽` : "—"}
             </p>
-            <p className="mt-3 text-xs leading-5 text-white/45">Предварительная оценка. Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа.</p>
+            <p className="mt-3 text-xs leading-5 text-white/45">Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа.</p>
           </div>
 
           <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Площадь облицовки</dt><dd className="mt-2 text-xl font-semibold text-steel-orange">{result ? `${decimal.format(result.netAreaM2)} м²` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Количество кассет</dt><dd className="mt-2 text-xl font-semibold">{result && result.quantity > 0 ? `≈ ${money.format(result.quantity)} шт.` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Ориентир за м²</dt><dd className="mt-2 text-lg font-semibold">{result ? `≈ ${money.format(result.approximateRateRubM2)} ₽` : "—"}</dd></div>
-            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Расчётный шаг</dt><dd className="mt-2 text-lg font-semibold">{result ? `${result.moduleWidthMm} × ${result.moduleHeightMm} мм` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Толщина</dt><dd className="mt-2 text-lg font-semibold">{thickness.replace(".", ",")} мм</dd></div>
           </dl>
 
-          {mode === "wall" && result?.columns && result?.rows ? <p className="mt-4 text-xs leading-5 text-white/45">По габариту стены: {result.columns} кассет по ширине × {result.rows} рядов до корректировки на площадь проёмов.</p> : null}
           {status === "error" ? <p className="mt-4 text-sm text-red-300">Не удалось обновить расчёт. Проверьте введённые значения.</p> : null}
 
           <div className="mt-auto pt-7">
