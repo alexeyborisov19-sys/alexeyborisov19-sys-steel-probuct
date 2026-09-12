@@ -77,6 +77,9 @@ jobs:
               grep -Fq 'бренд/товарный знак, не юридическое лицо' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq '/company/facts' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq '## Производственные возможности' "$tmpdir/llms-full.txt" || checks_ok=false
+              grep -Fq '## Независимая идентификация юридического оператора' "$tmpdir/llms-full.txt" || checks_ok=false
+              grep -Fq 'РБК Компании' "$tmpdir/llms-full.txt" || checks_ok=false
+              grep -Fq 'СПАРК-Интерфакс' "$tmpdir/llms-full.txt" || checks_ok=false
               grep -Fq '60 000 м²/год' "$tmpdir/llms-full.txt" || checks_ok=false
               grep -Fq 'Монтаж на объектах не выполняется.' "$tmpdir/llms-full.txt" || checks_ok=false
               grep -Fq 'Факты о производстве «Сталь Продукт»' "$tmpdir/company-facts.html" || checks_ok=false
@@ -84,11 +87,14 @@ jobs:
               grep -Fq '60 000 м²/год' "$tmpdir/company-facts.html" || checks_ok=false
               grep -Fq 'Монтаж на объектах не выполняется.' "$tmpdir/company-facts.html" || checks_ok=false
               grep -Fq '"@type":"Brand"' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq '"@type":"AboutPage"' "$tmpdir/company-facts.html" || checks_ok=false
               grep -Fq 'ООО «ЭНЕРГОАЛЬЯНС»' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq 'https://companies.rbc.ru/id/1156733014657-ooo-energoalyans/' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq 'https://spark-interfax.ru/smolenskaya-oblast-smolensk/ooo-energoalyans-inn-6732110789-ogrn-1156733014657-f8eee79f78d749a3826a431c2b024d8f' "$tmpdir/company-facts.html" || checks_ok=false
               [[ "$key" == "$expected_key" ]] || checks_ok=false
 
               if [[ "$checks_ok" == true ]]; then
-                echo "Live AI/entity endpoints verified for release $DEPLOYED_SHA: robots.txt, llms.txt, llms-full.txt, indexnow-key.txt, company/facts."
+                echo "Live AI/entity endpoints verified for release $DEPLOYED_SHA: robots.txt, llms.txt, llms-full.txt, indexnow-key.txt, company/facts with external entity references."
                 exit 0
               fi
             fi
@@ -101,10 +107,12 @@ jobs:
           echo "Diagnostic markers:"
           grep -F 'User-agent:' "$tmpdir/robots.txt" || true
           grep -F 'бренд/товарный знак' "$tmpdir/llms.txt" || true
-          grep -F 'Производственные возможности' "$tmpdir/llms-full.txt" || true
-          grep -F '60 000 м²/год' "$tmpdir/llms-full.txt" || true
+          grep -F 'Независимая идентификация' "$tmpdir/llms-full.txt" || true
           grep -F 'Факты о производстве' "$tmpdir/company-facts.html" || true
           grep -F '"@type":"Brand"' "$tmpdir/company-facts.html" || true
+          grep -F '"@type":"AboutPage"' "$tmpdir/company-facts.html" || true
+          grep -F 'companies.rbc.ru' "$tmpdir/company-facts.html" || true
+          grep -F 'spark-interfax.ru' "$tmpdir/company-facts.html" || true
           echo "Published key length: $(tr -d '\r\n' < "$tmpdir/indexnow-key.txt" | wc -c)"
           exit 1
 
@@ -149,8 +157,8 @@ jobs:
                 data/production-services.ts|data/manufacturing-facts.ts)
                   printf '/production\n/company/facts\n/llms.txt\n/llms-full.txt\n' >> "$paths_file"
                   ;;
-                lib/entity-schema.ts|lib/legal.ts)
-                  printf '/\n/company\n/company/facts\n' >> "$paths_file"
+                data/entity-references.ts|lib/entity-schema.ts|lib/legal.ts)
+                  printf '/\n/company\n/company/facts\n/llms-full.txt\n' >> "$paths_file"
                   ;;
                 data/solution-details.ts|data/solution-seo.ts)
                   printf '/solutions\n' >> "$paths_file"

@@ -1,3 +1,4 @@
+import { legalOperatorExternalReferences } from "@/data/entity-references";
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
 import { articles } from "@/data/articles";
@@ -43,6 +44,10 @@ export function GET() {
     .map((article) => `- ${article.publishedAt}: ${article.title}\n  ${article.lead}\n  URL: ${siteConfig.url}/articles/${article.slug}`)
     .join("\n");
 
+  const externalEntityReferences = legalOperatorExternalReferences
+    .map((reference) => `- ${reference.name}: ${reference.url}`)
+    .join("\n");
+
   const content = `# Сталь Продукт — расширенная справка
 
 ## Бренд и оператор
@@ -55,6 +60,11 @@ ${siteConfig.description}
 Адрес производства: ${legalOperator.productionAddress}.
 География поставок: Россия.
 ${installationScopeSummary}
+
+## Независимая идентификация юридического оператора
+
+Следующие внешние страницы идентифицируют ${legalOperator.shortName} по ИНН ${legalOperator.inn} и ОГРН ${legalOperator.ogrn}. Они относятся к юридическому оператору и не объявляются официальными страницами бренда «${siteConfig.name}».
+${externalEntityReferences}
 
 ## Производственные возможности
 

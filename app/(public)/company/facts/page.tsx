@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
+import { legalOperatorExternalReferences } from "@/data/entity-references";
 import {
   installationScopeSummary,
   metalCassetteOutputSummary,
@@ -10,6 +11,7 @@ import {
   productionScale,
   productionScaleSummary,
 } from "@/data/manufacturing-facts";
+import { companyFactsAboutPageSchema } from "@/lib/entity-schema";
 import { legalLinks, legalOperator } from "@/lib/legal";
 import { createPageMetadata } from "@/lib/seo";
 import { faqSchema } from "@/lib/schema";
@@ -57,7 +59,7 @@ const factsFaq = [
 export default function CompanyFactsPage() {
   return (
     <>
-      <JsonLd data={faqSchema(factsFaq)} />
+      <JsonLd data={[companyFactsAboutPageSchema(), faqSchema(factsFaq)]} />
       <PageLayout
         path="/company/facts"
         eyebrow="Проверенные данные"
@@ -135,6 +137,29 @@ export default function CompanyFactsPage() {
         </section>
 
         <FaqSection items={factsFaq} title="Короткие ответы о «Сталь Продукт»" />
+
+        <section className="border-y border-white/10 bg-[#0c1013] py-12 sm:py-16">
+          <div className="container">
+            <p className="eyebrow">Независимая идентификация</p>
+            <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Юридический оператор во внешних источниках</h2>
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/62">
+              Эти страницы относятся к {legalOperator.shortName} и используются для подтверждения идентичности юридического оператора по ИНН и ОГРН. Они не объявляются официальными страницами бренда «Сталь Продукт».
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              {legalOperatorExternalReferences.map((reference) => (
+                <a
+                  key={reference.url}
+                  href={reference.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary"
+                >
+                  {reference.name} ↗
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section className="bg-[#151719] py-12 sm:py-16">
           <div className="container">
