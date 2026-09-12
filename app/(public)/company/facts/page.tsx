@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
-import { legalOperatorExternalReferences } from "@/data/entity-references";
+import { brandOfficialProfiles, legalOperatorExternalReferences } from "@/data/entity-references";
 import {
   installationScopeSummary,
   metalCassetteOutputSummary,
@@ -138,7 +138,30 @@ export default function CompanyFactsPage() {
 
         <FaqSection items={factsFaq} title="Короткие ответы о «Сталь Продукт»" />
 
-        <section className="border-y border-white/10 bg-[#0c1013] py-12 sm:py-16">
+        <section className="border-y border-white/10 bg-[#151719] py-12 sm:py-16">
+          <div className="container">
+            <p className="eyebrow">Официальные профили</p>
+            <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Официальные страницы бренда «Сталь Продукт»</h2>
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/62">
+              Основной официальный сайт бренда — steelprodukt.ru. Дополнительные профили ниже подтверждены владельцем как официальные страницы бренда.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              {brandOfficialProfiles.map((profile) => (
+                <a
+                  key={profile.url}
+                  href={profile.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary"
+                >
+                  {profile.name} ↗
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-white/10 bg-[#0c1013] py-12 sm:py-16">
           <div className="container">
             <p className="eyebrow">Независимая идентификация</p>
             <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Юридический оператор во внешних источниках</h2>
