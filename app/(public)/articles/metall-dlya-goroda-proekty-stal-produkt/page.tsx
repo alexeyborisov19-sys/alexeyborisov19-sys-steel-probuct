@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
-import { realProjects, type RealProject, type RealProjectCategory } from "@/data/real-projects";
+import { type RealProject, type RealProjectCategory } from "@/data/real-projects";
+import { realProjectsShowcase as realProjects } from "@/data/real-project-showcase";
 import { articleSchema, breadcrumbSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -19,6 +20,8 @@ export const metadata: Metadata = createPageMetadata({
   keywords: [
     "объекты Сталь Продукт",
     "металлокассеты Смоленск объекты",
+    "металлокассеты Обнинск",
+    "МРНЦ Цыба металлокассеты",
     "металлоизделия для больниц",
     "металлоизделия для школ",
     "металлоизделия для застройщиков",
@@ -38,6 +41,7 @@ const selectedSlugs = [
   "smolenskaya-oblastnaya-klinicheskaya-bolnitsa",
   "odkb-novyy-korpus",
   "onkologicheskiy-dispanser",
+  "mrrc-tsyba-obninsk",
   "litsey-solovinaya-roshcha",
   "smolenskiy-meditsinskiy-kolledzh",
   "feniks-pechersk",
@@ -156,7 +160,7 @@ export default function MetalForCityArticle() {
             {(["medical", "education", "residential"] as RealProjectCategory[]).map((category, index) => {
               const projects = selectedProjects.filter((project) => project.category === category && project.slug !== "solovinaya-roshcha");
               const intro = category === "medical"
-                ? "Медицинские объекты показывают, как в одной поставке сходятся фасадные и инженерные изделия. Для нового онкодиспансера подтверждена поставка металлокассет, вентиляционных решёток и других металлических изделий; для нового корпуса ОДКБ — металлических изделий и фасадных элементов."
+                ? "Медицинские объекты показывают, как в одной поставке сходятся фасадные и инженерные изделия. Для нового онкодиспансера подтверждена поставка металлокассет, вентиляционных решёток и других металлических изделий; для нового корпуса ОДКБ — металлических изделий и фасадных элементов. В Обнинске для МРНЦ им. А. Ф. Цыба продолжается поставка металлокассет."
                 : category === "education"
                   ? "В образовательном направлении есть и новое строительство, и капитальный ремонт: лицей в «Соловьиной роще», техношкола «Феникс» в Печерске, медицинский колледж и Стодолищенская школа."
                   : "Помимо «Ваш дом», портфолио включает работу с проектами «Кловский», «Юнити Девелопмент», «Метрум Груп» и «ВостокСтрой». Состав конкретной партии всегда определяется документацией отдельного объекта.";
