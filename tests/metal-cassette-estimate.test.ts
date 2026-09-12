@@ -11,6 +11,7 @@ test("open cassette area estimate preserves the recovered public 0.7 rate", () =
   });
 
   assert.equal(result.quantity, 149);
+  assert.equal(result.defaultRateRubM2, 1764);
   assert.equal(result.approximateRateRubM2, 1764);
   assert.equal(result.approximateTotalRub, 176400);
   assert.equal(result.moduleWidthMm, 1190);
@@ -26,6 +27,7 @@ test("closed cassette estimate uses the lock row pitch rather than adding a seco
   });
 
   assert.equal(result.quantity, 155);
+  assert.equal(result.defaultRateRubM2, 2023);
   assert.equal(result.approximateRateRubM2, 2023);
   assert.equal(result.moduleWidthMm, 1190);
   assert.equal(result.moduleHeightMm, 545);
@@ -74,6 +76,21 @@ test("openings reduce only the preliminary net-area estimate", () => {
 
   assert.equal(result.netAreaM2, 64);
   assert.equal(result.quantity, 108);
+  assert.equal(result.defaultRateRubM2, 1730);
   assert.equal(result.approximateRateRubM2, 1730);
   assert.equal(result.approximateTotalRub, 110720);
+});
+
+test("a manually edited rate replaces the default only for the current estimate", () => {
+  const result = estimateMetalCassettes({
+    mode: "area",
+    type: "open",
+    thickness: "0.7",
+    areaM2: 100,
+    pricePerM2: 1900,
+  });
+
+  assert.equal(result.defaultRateRubM2, 1764);
+  assert.equal(result.approximateRateRubM2, 1900);
+  assert.equal(result.approximateTotalRub, 190000);
 });

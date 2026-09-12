@@ -10,6 +10,7 @@ type Thickness = "0.65" | "0.7" | "1.0" | "1.2";
 type Estimate = {
   netAreaM2: number;
   quantity: number;
+  defaultRateRubM2: number;
   approximateRateRubM2: number;
   approximateTotalRub: number;
 };
@@ -21,11 +22,20 @@ const thicknesses: Array<{ value: Thickness; label: string }> = [
   { value: "1.2", label: "1,2" },
 ];
 
+const defaultRates: Record<CassetteType, Record<Thickness, number>> = {
+  open: { "0.65": 1730, "0.7": 1764, "1.0": 2074, "1.2": 2300 },
+  closed: { "0.65": 1984, "0.7": 2023, "1.0": 2378, "1.2": 2637 },
+};
+
 const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
 function numeric(value: string) {
   return Number(value.trim().replace(/\s+/g, "").replace(",", "."));
+}
+
+function defaultRate(type: CassetteType, thickness: Thickness) {
+  return defaultRates[type][thickness];
 }
 
 export function MetalCassetteCalculator() {
@@ -36,8 +46,23 @@ export function MetalCassetteCalculator() {
   const [wallWidth, setWallWidth] = useState("12000");
   const [wallHeight, setWallHeight] = useState("6000");
   const [openings, setOpenings] = useState("0");
+  const [pricePerM2, setPricePerM2] = useState(String(defaultRate("open", "0.7")));
   const [result, setResult] = useState<Estimate | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  function selectType(nextType: CassetteType) {
+    setType(nextType);
+    setPricePerM2(String(defaultRate(nextType, thickness)));
+  }
+
+  function selectThickness(nextThickness: Thickness) {
+    setThickness(nextThickness);
+    setPricePerM2(String(defaultRate(type, nextThickness)));
+  }
+
+  function resetPrice() {
+    setPricePerM2(String(defaultRate(type, thickness)));
+  }
 
   const payload = useMemo(() => ({
     mode,
@@ -47,7 +72,8 @@ export function MetalCassetteCalculator() {
     wallWidthMm: numeric(wallWidth),
     wallHeightMm: numeric(wallHeight),
     openingsM2: numeric(openings),
-  }), [mode, type, thickness, area, wallWidth, wallHeight, openings]);
+    pricePerM2: numeric(pricePerM2),
+  }), [mode, type, thickness, area, wallWidth, wallHeight, openings, pricePerM2]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,6 +113,7 @@ export function MetalCassetteCalculator() {
           thickness,
           area: String(result.netAreaM2),
           quantity: String(result.quantity),
+          rate: String(result.approximateRateRubM2),
           estimate: String(result.approximateTotalRub),
         },
         hash: "contact-form",
@@ -94,6 +121,8 @@ export function MetalCassetteCalculator() {
     : "/contacts#contact-form";
 
   const typeName = type === "open" ? "Открытая" : "Закрытая";
+  const baseRate = defaultRate(type, thickness);
+  const isCustomPrice = numeric(pricePerM2) !== baseRate;
 
   return (
     <section id="calculator-metallokasset" className="mt-12 scroll-mt-24 overflow-hidden border border-steel-orange/35 bg-[#101417] sm:mt-16">
@@ -103,16 +132,12 @@ export function MetalCassetteCalculator() {
           <div>
             <h2 className="text-2xl font-semibold uppercase leading-tight sm:text-3xl">Калькулятор металлокассет</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/60">
-              Выберите быстрый расчёт по площади или более точную оценку по габаритам стены. Производственные развёртки, DXF и технологические параметры в публичный расчёт не входят.
+              Выберите быстрый расчёт по площади или более точную оценку по габаритам стены. Базовые цены подставляются автоматически и при необходимости редактируются вручную.
             </p>
           </div>
           <div className="grid grid-cols-2 border border-white/12 bg-[#0c1013] p-1">
-            <button type="button" onClick={() => setMode("area")} aria-pressed={mode === "area"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "area" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>
-              По площади
-            </button>
-            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>
-              По стене
-            </button>
+            <button type="button" onClick={() => setMode("area")} aria-pressed={mode === "area"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "area" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>По площади</button>
+            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>По стене</button>
           </div>
         </div>
       </div>
@@ -125,7 +150,7 @@ export function MetalCassetteCalculator() {
               {(["open", "closed"] as const).map((value) => {
                 const selected = type === value;
                 return (
-                  <button key={value} type="button" aria-pressed={selected} onClick={() => setType(value)} className={`min-h-16 border px-4 py-3 text-left transition ${selected ? "border-steel-orange bg-steel-orange/12" : "border-white/12 bg-[#0c1013] hover:border-steel-orange/60"}`}>
+                  <button key={value} type="button" aria-pressed={selected} onClick={() => selectType(value)} className={`min-h-16 border px-4 py-3 text-left transition ${selected ? "border-steel-orange bg-steel-orange/12" : "border-white/12 bg-[#0c1013] hover:border-steel-orange/60"}`}>
                     <span className="block text-sm font-semibold">{value === "open" ? "Открытая" : "Закрытая"}</span>
                     <span className="mt-1 block text-xs leading-5 text-white/45">{value === "open" ? "видимый крепёж · открытый шов" : "скрытый крепёж · замковый стык"}</span>
                   </button>
@@ -166,10 +191,22 @@ export function MetalCassetteCalculator() {
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {thicknesses.map((item) => {
                 const selected = thickness === item.value;
-                return <button key={item.value} type="button" aria-pressed={selected} onClick={() => setThickness(item.value)} className={`min-h-12 border px-3 text-sm font-semibold transition ${selected ? "border-steel-orange bg-steel-orange text-white" : "border-white/12 bg-[#0c1013] text-white/68 hover:border-steel-orange/60"}`}>{item.label} мм</button>;
+                return <button key={item.value} type="button" aria-pressed={selected} onClick={() => selectThickness(item.value)} className={`min-h-12 border px-3 text-sm font-semibold transition ${selected ? "border-steel-orange bg-steel-orange text-white" : "border-white/12 bg-[#0c1013] text-white/68 hover:border-steel-orange/60"}`}>{item.label} мм</button>;
               })}
             </div>
           </fieldset>
+
+          <div className="mt-6">
+            <div className="flex items-end justify-between gap-4">
+              <label htmlFor="price-per-m2" className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Цена за 1 м²</label>
+              {isCustomPrice ? <button type="button" onClick={resetPrice} className="text-[11px] font-bold uppercase text-steel-orange hover:text-white">Сбросить к базовой</button> : <span className="text-[11px] text-white/35">базовая цена</span>}
+            </div>
+            <div className="mt-3 flex">
+              <input id="price-per-m2" inputMode="decimal" value={pricePerM2} onChange={(event) => setPricePerM2(event.target.value)} className="min-w-0 flex-1 border border-steel-orange/45 bg-[#0c1013] px-4 py-4 text-xl font-semibold outline-none focus:border-steel-orange" />
+              <span className="flex min-w-24 items-center justify-center border-y border-r border-steel-orange/45 bg-steel-orange/10 text-sm font-bold text-steel-orange">₽ / м²</span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-white/40">По умолчанию подставляется базовая ставка для выбранного типа и толщины. Поле можно изменить для конкретного расчёта.</p>
+          </div>
 
           <div className="mt-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-3">
             <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Типовой формат</p><p className="mt-2 text-sm font-semibold">1170 × 545 мм</p></div>
@@ -195,7 +232,7 @@ export function MetalCassetteCalculator() {
           <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Площадь облицовки</dt><dd className="mt-2 text-xl font-semibold text-steel-orange">{result ? `${decimal.format(result.netAreaM2)} м²` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Количество кассет</dt><dd className="mt-2 text-xl font-semibold">{result && result.quantity > 0 ? `≈ ${money.format(result.quantity)} шт.` : "—"}</dd></div>
-            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Ориентир за м²</dt><dd className="mt-2 text-lg font-semibold">{result ? `≈ ${money.format(result.approximateRateRubM2)} ₽` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Принятая цена</dt><dd className="mt-2 text-lg font-semibold">{result ? `≈ ${money.format(result.approximateRateRubM2)} ₽/м²` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Толщина</dt><dd className="mt-2 text-lg font-semibold">{thickness.replace(".", ",")} мм</dd></div>
           </dl>
 
