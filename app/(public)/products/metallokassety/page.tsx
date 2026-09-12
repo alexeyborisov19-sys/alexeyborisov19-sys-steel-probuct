@@ -11,7 +11,7 @@ import { faqSchema, productGroupSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Фасадные металлокассеты от производителя | Сталь Продукт",
+  title: "Фасадные металлокассеты от производителя",
   description: "Фасадные металлокассеты открытого и закрытого типа от производителя. Расчёт количества и ориентировочной цены онлайн, изготовление по размерам, RAL и проектной документации.",
   path: "/products/metallokassety",
   keywords: [
