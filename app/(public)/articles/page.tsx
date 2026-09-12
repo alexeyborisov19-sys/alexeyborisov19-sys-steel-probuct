@@ -32,6 +32,23 @@ const navigation = [
   { id: "events", marker: "04", title: "Выставки и события" },
 ] as const;
 
+const facadePracticeArticles = [
+  {
+    path: "/articles/ploshchad-fasada-raskhod-metalla-metallokassety",
+    title: "Почему площадь фасада не равна площади металла",
+    lead: "Русты, замки, крайние кассеты и проёмы меняют количество изделий и фактический расход. Разбираем, почему простое деление площади даёт ложную точность.",
+    label: "Расчёт · Металлокассеты",
+    date: "2026-09-12",
+  },
+  {
+    path: "/articles/uzly-fasada-metallokassety",
+    title: "Узлы важнее рядовой кассеты",
+    lead: "Окна, наружные и внутренние углы, парапет, цоколь, деформационные швы и водоотведение: что проверить до запуска металла в серию.",
+    label: "Узлы · Металлокассеты",
+    date: "2026-09-12",
+  },
+] as const;
+
 const sectionCopy: Record<ArticleDirection, { number: string; eyebrow: string; title: string; description: string }> = {
   facades: {
     number: "02",
@@ -128,14 +145,24 @@ export default function ArticlesPage() {
     description: "Инженерная практика, технологии металлообработки, фасадные инновации и отраслевые события.",
     url: absoluteUrl("/articles"),
     inLanguage: "ru",
-    hasPart: articles.map((article) => ({
-      "@type": "Article",
-      headline: article.title,
-      url: absoluteUrl(`/articles/${article.slug}`),
-      datePublished: article.publishedAt,
-      dateModified: article.modifiedAt,
-      articleSection: article.category,
-    })),
+    hasPart: [
+      ...articles.map((article) => ({
+        "@type": "Article",
+        headline: article.title,
+        url: absoluteUrl(`/articles/${article.slug}`),
+        datePublished: article.publishedAt,
+        dateModified: article.modifiedAt,
+        articleSection: article.category,
+      })),
+      ...facadePracticeArticles.map((article) => ({
+        "@type": "Article",
+        headline: article.title,
+        url: absoluteUrl(article.path),
+        datePublished: article.date,
+        dateModified: article.date,
+        articleSection: "Фасадная практика",
+      })),
+    ],
   };
 
   return (
@@ -259,7 +286,20 @@ export default function ArticlesPage() {
 
               <section id="facades" className="scroll-mt-24 border-t border-white/10 py-14 sm:py-16">
                 <SectionHeading {...sectionCopy.facades} />
-                <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-feature-link group mt-7 grid overflow-hidden border border-steel-orange/35 bg-[#101519] md:grid-cols-[280px_minmax(0,1fr)]">
+                <div className="mt-7 grid gap-4 xl:grid-cols-2">
+                  {facadePracticeArticles.map((article) => (
+                    <Link key={article.path} href={article.path} className="group flex h-full flex-col border border-steel-orange/35 bg-[linear-gradient(145deg,rgba(224,86,36,.12),rgba(16,21,25,.98)_45%)] p-6 transition hover:border-steel-orange sm:p-7">
+                      <div className="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-[.08em]">
+                        <span className="text-steel-orange">{article.label}</span>
+                        <time dateTime={article.date} className="text-white/42">{formatDate(article.date)}</time>
+                      </div>
+                      <h3 className="mt-5 text-xl font-semibold uppercase leading-tight sm:text-2xl">{article.title}</h3>
+                      <p className="mt-4 text-sm leading-7 text-white/58">{article.lead}</p>
+                      <span className="mt-auto pt-6 text-xs font-bold uppercase text-steel-orange">Читать материал&nbsp; →</span>
+                    </Link>
+                  ))}
+                </div>
+                <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-feature-link group mt-5 grid overflow-hidden border border-steel-orange/35 bg-[#101519] md:grid-cols-[280px_minmax(0,1fr)]">
                   <div className="relative min-h-56 overflow-hidden">
                     <img src="/images/industries/business-center.jpg" alt="Фасадные выставки России, Китая и Дубая" width={900} height={600} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover brightness-[1.12] transition duration-700 group-hover:scale-[1.035]" />
                   </div>
@@ -317,7 +357,6 @@ export default function ArticlesPage() {
                   </Link>
                 </div>
               </section>
-
             </div>
           </div>
         </section>
