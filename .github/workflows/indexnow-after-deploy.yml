@@ -33,20 +33,45 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Wait for the AI discovery file from the release
+      - name: Verify live AI discovery endpoints
         env:
           SITE_URL: https://www.steelprodukt.ru
+        shell: bash
         run: |
           set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+
           for attempt in {1..12}; do
-            if curl --fail --silent --show-error --max-time 10 "$SITE_URL/llms.txt" | grep -q "Сталь Продукт"; then
-              echo "Production release is serving llms.txt."
-              exit 0
+            if \
+              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/robots.txt" -o "$tmpdir/robots.txt" && \
+              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/llms.txt" -o "$tmpdir/llms.txt" && \
+              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/llms-full.txt" -o "$tmpdir/llms-full.txt" && \
+              curl --fail --silent --show-error --location --max-time 10 "$SITE_URL/indexnow-key.txt" -o "$tmpdir/indexnow-key.txt"
+            then
+              key="$(tr -d '\r\n' < "$tmpdir/indexnow-key.txt")"
+              if \
+                grep -Fqx 'User-agent: *' "$tmpdir/robots.txt" && \
+                grep -Fqx 'User-agent: OAI-SearchBot' "$tmpdir/robots.txt" && \
+                grep -Fqx 'User-agent: Google-Extended' "$tmpdir/robots.txt" && \
+                grep -Fqx 'User-agent: YandexBot' "$tmpdir/robots.txt" && \
+                grep -Fqx 'Disallow: /api/' "$tmpdir/robots.txt" && \
+                grep -Fq '«Сталь Продукт» — бренд/товарный знак, не юридическое лицо' "$tmpdir/llms.txt" && \
+                grep -Fq 'Производственные возможности' "$tmpdir/llms-full.txt" && \
+                grep -Fq 'Ориентировочный выпуск фасадных металлокассет — около 60 000 м²/год.' "$tmpdir/llms-full.txt" && \
+                grep -Fq 'Монтаж на объектах не выполняется.' "$tmpdir/llms-full.txt" && \
+                [[ "$key" =~ ^[A-Za-z0-9-]{8,128}$ ]]
+              then
+                echo "Live AI endpoints verified: robots.txt, llms.txt, llms-full.txt, indexnow-key.txt."
+                exit 0
+              fi
             fi
-            echo "Production is not readable yet (attempt $attempt/12)."
+
+            echo "Production AI endpoints are not fully ready yet (attempt $attempt/12)."
             sleep 5
           done
-          echo "The production release did not become readable in time."
+
+          echo "Live AI endpoint verification failed."
           exit 1
 
       - name: Collect changed public URL paths
