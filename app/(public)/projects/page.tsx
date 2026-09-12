@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
@@ -70,7 +71,23 @@ export default function ProjectsPage() {
                 </p>
               </div>
               <div className="border-l-2 border-steel-orange bg-black/20 p-5 text-sm leading-7 text-white/58">
-                <b className="text-white">Границы утверждений.</b> Состав поставок на этой странице основан на подтверждённой информации компании. Ссылки на официальные и отраслевые источники подтверждают название и контекст объекта. Мы не утверждаем, что конкретный видимый элемент на фотографии изготовлен нами, если такая привязка отдельно не подтверждена. Монтаж на объекте не выполняем.
+                <b className="text-white">Границы утверждений.</b> Состав поставок на этой странице основан на подтверждённой информации компании. Ссылки на официальные и отраслевые источники подтверждают название и контекст объекта. Мы не утверждаем, что конкретный видимый элемент на фотографии изготовлен нами, если такая привязка отдельно не подтверждена. Монтаж на объекте не выполняем. Работу фасадной системы, требования к креплению, пожарной безопасности и другим системным характеристикам определяет проектная документация объекта, а не отдельное изделие.
+              </div>
+            </div>
+
+            <div className="mt-5 grid overflow-hidden border border-white/10 bg-[#0f1418] sm:grid-cols-[240px_minmax(0,1fr)]">
+              <div className="relative min-h-44">
+                <Image
+                  src="/images/industries/residential.jpg"
+                  alt="Архитектурные и фасадные решения для строительных объектов"
+                  fill
+                  sizes="(max-width: 639px) 100vw, 240px"
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex flex-col justify-center p-5 sm:p-6">
+                <p className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">Производство под объект</p>
+                <p className="mt-2 max-w-3xl text-sm leading-7 text-white/58">Фотографии ниже показывают сами объекты и архитектурный контекст. Производственная привязка подтверждается нашей историей поставок; конкретные свойства готовой системы задаются проектом.</p>
               </div>
             </div>
 
