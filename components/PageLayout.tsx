@@ -2,6 +2,7 @@ import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { InnerHero } from "./InnerHero";
 import { JsonLd } from "./JsonLd";
+import { MetalCassetteAnnualOutput } from "./MetalCassetteAnnualOutput";
 import { MetalCassetteProjectsProof } from "./MetalCassetteProjectsProof";
 import { breadcrumbSchema, webPageSchema, type Breadcrumb } from "@/lib/schema";
 
@@ -98,6 +99,13 @@ export function PageLayout({ children, path, ...hero }: PageLayoutProps) {
     <Header />
     <main id="main-content" tabIndex={-1}>
       <InnerHero {...hero} {...contextualAction} />
+      {path === "/projects" ? (
+        <section className="border-b border-white/10 bg-[#0a0e11] py-10 sm:py-12">
+          <div className="container">
+            <MetalCassetteAnnualOutput />
+          </div>
+        </section>
+      ) : null}
       {children}
       {path === "/products/metallokassety" ? <MetalCassetteProjectsProof /> : null}
     </main>
