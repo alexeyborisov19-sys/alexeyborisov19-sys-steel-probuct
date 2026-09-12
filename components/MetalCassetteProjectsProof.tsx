@@ -23,21 +23,22 @@ export function MetalCassetteProjectsProof() {
             <article key={project.slug} className="group flex h-full flex-col overflow-hidden border border-white/12 bg-[#111519] transition hover:border-steel-orange/65">
               <div className="relative aspect-[16/10] overflow-hidden bg-[#172026]">
                 <Image src={project.image} alt={project.imageAlt} fill sizes="(max-width:767px) 100vw, (max-width:1279px) 50vw, 25vw" className="object-cover brightness-[.88] transition duration-500 group-hover:scale-[1.025]" />
-                <span className="absolute bottom-3 left-3 bg-black/60 px-2 py-1 text-[9px] uppercase tracking-[.08em] text-white/55">Иллюстрация отрасли</span>
+                <span className="absolute bottom-3 left-3 max-w-[90%] bg-black/65 px-2 py-1 text-[9px] uppercase tracking-[.06em] text-white/65">{project.imageCredit ?? "Отраслевая иллюстрация"}</span>
               </div>
               <div className="flex flex-1 flex-col p-5">
                 <p className="text-xs font-bold uppercase tracking-[.08em] text-steel-orange">{project.categoryLabel}</p>
                 <h3 className="mt-3 text-base font-semibold leading-tight">{project.title}</h3>
                 <p className="mt-4 text-sm leading-6 text-white/58">{project.supply.join(" · ")}</p>
-                <div className="mt-auto pt-5">
+                <div className="mt-auto flex flex-wrap gap-4 pt-5">
                   {project.href ? <Link href={project.href} className="text-xs font-bold uppercase text-steel-orange">Кейс&nbsp; →</Link> : <Link href="/projects" className="text-xs font-bold uppercase text-steel-orange">В портфолио&nbsp; →</Link>}
+                  {project.imageSourceUrl ? <a href={project.imageSourceUrl} target="_blank" rel="noreferrer" className="text-[10px] font-bold uppercase text-white/40 hover:text-white">Источник фото&nbsp; ↗</a> : null}
                 </div>
               </div>
             </article>
           ))}
         </div>
 
-        <p className="mt-5 text-xs leading-6 text-white/40">Иллюстрации показывают тип объекта и не выдаются за фотографии конкретной поставки. Подробный состав работ по каждому объекту указан в портфолио.</p>
+        <p className="mt-5 text-xs leading-6 text-white/40">Фотографии идентифицируют объект или проект. Состав поставки указан по подтверждённой информации компании; видимый на фотографии конкретный элемент не приписывается производству «Сталь Продукт» без отдельного подтверждения.</p>
       </div>
     </section>
   );

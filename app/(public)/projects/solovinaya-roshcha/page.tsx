@@ -3,16 +3,19 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
+import { realProjects } from "@/data/real-projects";
 import { createPageMetadata } from "@/lib/seo";
 import { absoluteUrl } from "@/lib/site";
 
 const path = "/projects/solovinaya-roshcha";
+const project = realProjects.find((item) => item.slug === "solovinaya-roshcha")!;
+const lyceum = realProjects.find((item) => item.slug === "litsey-solovinaya-roshcha")!;
 
 export const metadata: Metadata = createPageMetadata({
   title: "Соловьиная роща — поставки металлоизделий",
   description: "Многолетняя работа с объектами микрорайона «Соловьиная роща» в Смоленске: металлокассеты, кронштейны, металлические корпуса, ящики и изделия по проектной документации.",
   path,
-  image: "/images/industries/residential.jpg",
+  image: project.image,
   keywords: [
     "Соловьиная роща Смоленск металлокассеты",
     "Сталь Продукт Соловьиная роща",
@@ -22,18 +25,19 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 const houses = [
-  "ул. Александра Степанова, 12",
-  "ул. Александра Степанова, 14",
-  "ул. Александра Степанова, 4",
-  "ул. Александра Степанова, 6",
-  "ул. Александра Степанова, 6, стр. 1",
-];
+  ["Александра Степанова, 12", "дом сдан"],
+  ["Александра Степанова, 14", "дом сдан"],
+  ["Александра Степанова, 4", "строительство"],
+  ["Александра Степанова, 6", "очередь проекта"],
+  ["Александра Степанова, 6, стр. 1", "очередь проекта"],
+] as const;
 
 const caseSchema = {
   "@context": "https://schema.org",
   "@type": "Article",
   headline: "Соловьиная роща: многолетняя работа с крупным микрорайоном",
   url: absoluteUrl(path),
+  image: project.image,
   datePublished: "2026-09-12",
   dateModified: "2026-09-12",
   about: ["металлокассеты", "кронштейны", "металлические корпуса", "жилое строительство"],
@@ -48,52 +52,61 @@ export default function SolovinayaRoshchaProjectPage() {
         eyebrow="Кейс · Жилая застройка"
         title="Соловьиная роща: многолетняя работа с крупным микрорайоном"
         description="Не один дом, а развивающийся кластер жилых и общественных объектов. В разные периоды для проектов микрорайона под брендом «Сталь Продукт» поставлялись металлокассеты, кронштейны, корпуса, ящики и другие изделия из листового металла."
-        image="/images/industries/residential.jpg"
-        imageAlt="Иллюстрация жилой застройки — кейс микрорайона «Соловьиная роща»"
+        image={project.image}
+        imageAlt={project.imageAlt}
       >
         <article className="bg-[#0c1013] py-14 sm:py-20">
           <div className="container max-w-6xl">
-            <div className="grid gap-8 lg:grid-cols-[1.15fr_.85fr] lg:items-start">
-              <div>
-                <p className="eyebrow">Масштаб сотрудничества</p>
-                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">От отдельных партий к системной работе по объектам микрорайона</h2>
-                <p className="mt-5 text-base leading-8 text-white/68">«Соловьиная роща» — один из наиболее значимых кластеров в портфолио поставок. Это длительная работа не с одной фасадной плоскостью, а с несколькими жилыми объектами и социальной инфраструктурой развивающегося микрорайона.</p>
-                <p className="mt-5 text-base leading-8 text-white/68">В разные периоды для проектов микрорайона поставлялись металлокассеты, кронштейны, металлические корпуса и ящики, а также другие изделия по рабочей документации. Мы сознательно не приписываем одинаковый состав поставки каждому из перечисленных домов: конкретная номенклатура определялась документацией отдельного заказа.</p>
+            <section className="overflow-hidden border border-steel-orange/40 bg-[#111519]">
+              <div className="grid lg:grid-cols-[1.15fr_.85fr]">
+                <div className="relative min-h-80 bg-[#172026] lg:min-h-[520px]">
+                  <Image src={project.image} alt={project.imageAlt} fill priority sizes="(max-width:1023px) 100vw, 58vw" className="object-cover brightness-[.9]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/80 via-transparent to-transparent" />
+                  <span className="absolute bottom-4 left-4 bg-black/65 px-3 py-2 text-[10px] uppercase tracking-[.06em] text-white/68">{project.imageCredit}</span>
+                </div>
+                <div className="flex flex-col p-6 sm:p-8">
+                  <p className="eyebrow">Масштаб сотрудничества</p>
+                  <h2 className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">От отдельных партий к системной работе по микрорайону</h2>
+                  <p className="mt-5 text-base leading-8 text-white/68">«Соловьиная роща» — один из наиболее значимых кластеров в портфолио поставок. Это длительная работа не с одной фасадной плоскостью, а с несколькими жилыми объектами и социальной инфраструктурой развивающегося микрорайона.</p>
+                  <p className="mt-5 text-sm leading-7 text-white/55">В разные периоды для проектов поставлялись металлокассеты, кронштейны, металлические корпуса и ящики, а также другие изделия по рабочей документации. Конкретная номенклатура определялась отдельными заказами и не переносится автоматически на каждый дом.</p>
+                  <div className="mt-auto pt-7">
+                    <p className="text-xs font-bold uppercase tracking-[.12em] text-white/38">Партнёр / застройщик</p>
+                    <p className="mt-2 text-lg font-semibold">АО СЗ «Ваш дом»</p>
+                    <a href="https://zao-vash-dom.ru/" target="_blank" rel="noreferrer" className="mt-4 inline-flex text-xs font-bold uppercase text-steel-orange">Официальный сайт&nbsp; ↗</a>
+                  </div>
+                </div>
               </div>
-              <div className="border border-steel-orange/35 bg-[#111519] p-6">
-                <p className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">Партнёр / застройщик</p>
-                <p className="mt-3 text-xl font-semibold">АО СЗ «Ваш дом»</p>
-                <p className="mt-4 text-sm leading-7 text-white/58">Официальные материалы застройщика описывают «Соловьиную рощу» как крупный развивающийся микрорайон и показывают несколько очередей «Нового квартала».</p>
-                <a href="https://zao-vash-dom.ru/" target="_blank" rel="noreferrer" className="mt-5 inline-flex text-xs font-bold uppercase text-steel-orange">Официальный сайт&nbsp; ↗</a>
-              </div>
-            </div>
+            </section>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                ["78 га", "территория проекта по данным застройщика"],
-                ["27 га", "площадь парковой зоны по данным застройщика"],
-                ["Несколько очередей", "жилые дома и общественная инфраструктура"],
+                ["78 га", "территория микрорайона по данным застройщика"],
+                ["27 га", "парк «Соловьиная роща»"],
+                [">260 тыс. м²", "жилья введено в 2020–2025 годах по данным застройщика"],
+                ["несколько очередей", "жилые дома и социальная инфраструктура"],
               ].map(([value, label]) => (
                 <div key={value} className="border border-white/12 bg-[#111519] p-5">
-                  <p className="text-3xl font-semibold text-steel-orange">{value}</p>
+                  <p className="text-2xl font-semibold text-steel-orange">{value}</p>
                   <p className="mt-2 text-sm leading-6 text-white/52">{label}</p>
                 </div>
               ))}
             </div>
 
-            <section className="mt-14 grid gap-6 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
-              <div className="relative aspect-[4/3] overflow-hidden border border-white/12 bg-[#172026]">
-                <Image src="/images/industries/residential.jpg" alt="Иллюстрация категории жилой застройки для кейса «Соловьиная роща»" fill sizes="(max-width: 1023px) 100vw, 45vw" className="object-cover brightness-[.85]" />
-                <span className="absolute bottom-3 left-3 border border-white/15 bg-black/60 px-3 py-2 text-[10px] uppercase tracking-[.08em] text-white/60">Иллюстрация категории — не фотография конкретной поставки</span>
-              </div>
+            <section className="mt-14 grid gap-7 lg:grid-cols-[.9fr_1.1fr] lg:items-start">
               <div>
                 <p className="font-mono text-sm font-bold text-steel-orange">01</p>
-                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Жилые очереди «Нового квартала»</h2>
-                <p className="mt-5 text-base leading-8 text-white/68">На официальном сайте застройщика представлены уже сданные и строящиеся дома по улице Александра Степанова. Для производственного партнёра такой масштаб означает повторяемые серии, большое количество типоразмеров и необходимость устойчиво работать с изменениями между очередями.</p>
-                <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                  {houses.map((house) => <div key={house} className="border-l border-steel-orange/55 pl-3 text-sm leading-6 text-white/58">{house}</div>)}
-                </div>
-                <p className="mt-5 text-xs leading-6 text-white/42">Перечень выше показывает масштаб текущей застройки по официальному сайту. Он не означает одинаковую поставку «Сталь Продукт» на каждый адрес.</p>
+                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Много домов — одна длинная производственная история</h2>
+                <p className="mt-5 text-base leading-8 text-white/68">Официальный сайт «Ваш дом» показывает несколько действующих очередей «Нового квартала». Для производственного партнёра такой масштаб означает повторяемые серии, большое количество типоразмеров и необходимость воспроизводить решения спустя месяцы и годы.</p>
+                <p className="mt-5 text-base leading-8 text-white/68">Это принципиально отличается от разовой детали: документация должна оставаться понятной, геометрия — воспроизводимой, а маркировка и комплектование — устойчивыми при переходе между очередями.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {houses.map(([house, status]) => (
+                  <div key={house} className="border border-white/10 bg-[#111519] p-4">
+                    <p className="text-sm font-semibold">ул. {house}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[.08em] text-white/38">{status}</p>
+                  </div>
+                ))}
+                <p className="sm:col-span-2 mt-2 text-xs leading-6 text-white/40">Перечень показывает масштаб текущей застройки по официальному сайту. Он не означает одинаковую поставку «Сталь Продукт» на каждый адрес.</p>
               </div>
             </section>
 
@@ -106,24 +119,31 @@ export default function SolovinayaRoshchaProjectPage() {
                   ["Кронштейны", "Гнутые и сварные позиции по рабочим чертежам."],
                   ["Корпуса и ящики", "Изделия для инженерного оборудования и систем объекта."],
                   ["Нестандартные изделия", "Детали из листового металла по спецификациям конкретных заказов."],
-                ].map(([title, text]) => (
-                  <div key={title} className="bg-[#111519] p-5">
-                    <h3 className="font-semibold text-steel-orange">{title}</h3>
+                ].map(([heading, text]) => (
+                  <div key={heading} className="bg-[#111519] p-5">
+                    <h3 className="font-semibold text-steel-orange">{heading}</h3>
                     <p className="mt-2 text-sm leading-6 text-white/55">{text}</p>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="mt-14 grid gap-6 border-y border-white/12 py-9 lg:grid-cols-[1fr_.9fr]">
-              <div>
-                <p className="font-mono text-sm font-bold text-steel-orange">03</p>
-                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Лицей — инфраструктура того же микрорайона</h2>
-                <p className="mt-5 text-base leading-8 text-white/68">Работа с «Соловьиной рощей» не ограничивается жилыми домами. В микрорайоне создан многопрофильный лицей, а для образовательного объекта также поставлялись металлические изделия по проекту. Это важная часть кейса: производство поддерживает не отдельную категорию здания, а разную инфраструктуру одной территории.</p>
-                <a href="https://zao-vash-dom.ru/news/tpost/3pdd77zkf1-mnogoprofilnii-litsei-v-solovinoi-rosche" target="_blank" rel="noreferrer" className="mt-5 inline-flex text-xs font-bold uppercase text-steel-orange">Материал застройщика о лицее&nbsp; ↗</a>
-              </div>
-              <div className="relative min-h-72 overflow-hidden border border-white/12 bg-[#172026]">
-                <Image src="/images/industries/educational.jpg" alt="Иллюстрация образовательного объекта — лицей в «Соловьиной роще»" fill sizes="(max-width: 1023px) 100vw, 45vw" className="object-cover brightness-[.9]" />
+            <section className="mt-14 overflow-hidden border-y border-white/12 py-10">
+              <div className="grid gap-7 lg:grid-cols-[1fr_.9fr] lg:items-center">
+                <div>
+                  <p className="font-mono text-sm font-bold text-steel-orange">03</p>
+                  <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Многопрофильный лицей — инфраструктура того же микрорайона</h2>
+                  <p className="mt-5 text-base leading-8 text-white/68">Работа с «Соловьиной рощей» не ограничивается жилыми домами. В микрорайоне работает многопрофильный лицей на 1100 учащихся; для образовательного объекта также поставлялись металлические изделия по проекту.</p>
+                  <p className="mt-5 text-base leading-8 text-white/68">Это важная часть кейса: один производственный контур поддерживает разные типы объектов на территории — жилые здания и социальную инфраструктуру.</p>
+                  <div className="mt-5 flex flex-wrap gap-4">
+                    <a href={lyceum.sourceUrl} target="_blank" rel="noreferrer" className="text-xs font-bold uppercase text-steel-orange">Материал об объекте&nbsp; ↗</a>
+                    {lyceum.imageSourceUrl ? <a href={lyceum.imageSourceUrl} target="_blank" rel="noreferrer" className="text-xs font-bold uppercase text-white/45">Источник фото&nbsp; ↗</a> : null}
+                  </div>
+                </div>
+                <div className="relative min-h-80 overflow-hidden border border-white/12 bg-[#172026]">
+                  <Image src={lyceum.image} alt={lyceum.imageAlt} fill sizes="(max-width:1023px) 100vw, 45vw" className="object-cover brightness-[.92]" />
+                  <span className="absolute bottom-3 left-3 bg-black/65 px-3 py-2 text-[10px] uppercase tracking-[.06em] text-white/65">{lyceum.imageCredit}</span>
+                </div>
               </div>
             </section>
 
@@ -135,9 +155,9 @@ export default function SolovinayaRoshchaProjectPage() {
                   ["Повторяемость", "Серийные позиции должны сохранять геометрию от первой детали до последней партии."],
                   ["Много типоразмеров", "Рядовые изделия соседствуют с угловыми, крайними и инженерными позициями."],
                   ["Долгий горизонт", "Новые очереди требуют воспроизводимости решений и понятной работы с документацией спустя время."],
-                ].map(([title, text]) => (
-                  <div key={title} className="border border-white/12 bg-[#111519] p-5">
-                    <h3 className="font-semibold">{title}</h3>
+                ].map(([heading, text]) => (
+                  <div key={heading} className="border border-white/12 bg-[#111519] p-5">
+                    <h3 className="font-semibold">{heading}</h3>
                     <p className="mt-3 text-sm leading-6 text-white/55">{text}</p>
                   </div>
                 ))}
@@ -146,7 +166,7 @@ export default function SolovinayaRoshchaProjectPage() {
 
             <div className="mt-14 flex flex-col justify-between gap-5 border border-steel-orange/35 bg-gradient-to-r from-steel-orange/12 to-transparent p-6 sm:flex-row sm:items-center sm:p-8">
               <div>
-                <h2 className="text-xl font-semibold uppercase">Посмотреть другие реальные объекты</h2>
+                <h2 className="text-xl font-semibold uppercase">Другие реальные объекты</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">Медицинские, образовательные и жилые проекты собраны в общем портфолио поставок.</p>
               </div>
               <div className="flex flex-wrap gap-3">
