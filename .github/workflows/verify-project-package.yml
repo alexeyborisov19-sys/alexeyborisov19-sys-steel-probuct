@@ -1,0 +1,85 @@
+name: Verify project package
+
+on:
+  push:
+    branches:
+      - feat/project-galleries-exhibitions-obninsk-sep12
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-project-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint · typecheck · tests · build · SEO audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+      NEXT_PUBLIC_YM_COUNTER_ID: "111263638"
+      NEXT_PUBLIC_YM_WEBVISOR: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: SEO audit
+        env:
+          NODE_ENV: production
+          SEO_AUDIT_BASE_URL: http://127.0.0.1:3011
+        run: |
+          set -euo pipefail
+          npm run start -- -H 127.0.0.1 -p 3011 > /tmp/steelprodukt-seo-audit-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent --show-error http://127.0.0.1:3011/robots.txt > /dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat /tmp/steelprodukt-seo-audit-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            cat /tmp/steelprodukt-seo-audit-server.log
+            echo "Built Next.js server did not become ready on 127.0.0.1:3011."
+            exit 1
+          fi
+
+          npm run seo:audit

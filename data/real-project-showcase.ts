@@ -53,6 +53,12 @@ const galleries: Record<string, ProjectPhoto[]> = {
       credit: "ЦИАН — карточка апарт-комплекса «Юнити»",
       sourceUrl: "https://zhk-apart-kompleks-yuniti-smolensk-i.cian.ru/",
     },
+    {
+      src: "https://www.rabochy-put.ru/upload/iblock/581/fu5i2et853zq6us8taframclledl419q/IMG_5244.jpg",
+      alt: "Жилой квартал «Боровая Парк» — один из проектов «Юнити Девелопмент» в Смоленске",
+      credit: "«Рабочий путь» — материал о «Боровая Парк»",
+      sourceUrl: "https://www.rabochy-put.ru/news/204890-borovaya-park-v-smolenske-kogda-gorod-i-priroda-stanovyatsya-sosedyami.html",
+    },
   ],
   "metrum-group": [
     {
@@ -78,10 +84,16 @@ const galleries: Record<string, ProjectPhoto[]> = {
   ],
   "smolenskaya-oblastnaya-klinicheskaya-bolnitsa": [
     {
-      src: "https://www.myhospitalnow.com/hospitals/storage/hospital_profile/Capture-1777833257_1743750877.PNG",
-      alt: "Смоленская областная клиническая больница",
-      credit: "MyHospitalNow — справочная карточка учреждения",
-      sourceUrl: "https://www.myhospitalnow.com/hospitals/smolenskaya-oblastnaya-klinicheskaya-bol%27nitsa",
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/01/166012.jpg",
+      alt: "Смоленская областная клиническая больница — строительство нового модульного приёмного отделения в январе 2026 года",
+      credit: "«Смоленская газета», пресс-материалы губернатора Смоленской области",
+      sourceUrl: "https://smolgazeta.ru/medic/134686-v-smolenskoy-oblastnoy-klinicheskoy.html",
+    },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/01/166013.jpg",
+      alt: "Работы на территории Смоленской областной клинической больницы в январе 2026 года",
+      credit: "«Смоленская газета», пресс-материалы губернатора Смоленской области",
+      sourceUrl: "https://smolgazeta.ru/medic/134686-v-smolenskoy-oblastnoy-klinicheskoy.html",
     },
   ],
   "odkb-novyy-korpus": [
@@ -97,54 +109,99 @@ const galleries: Record<string, ProjectPhoto[]> = {
       credit: "«Смоленская газета»",
       sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
     },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/03/167635.jpg",
+      alt: "Новый корпус Смоленской областной детской клинической больницы — ход строительства в марте 2026 года",
+      credit: "«Смоленская газета», пресс-материалы объекта",
+      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
+    },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/03/167634.jpg",
+      alt: "Фасад нового корпуса Смоленской областной детской клинической больницы — март 2026 года",
+      credit: "«Смоленская газета», пресс-материалы объекта",
+      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
+    },
   ],
   "onkologicheskiy-dispanser": [
     {
       src: "https://smolgazeta.ru/fc-web/fc-files/2026/02/166941.jpg",
-      alt: "Новый Смоленский областной онкологический диспансер после открытия в 2026 году",
-      credit: "«Смоленская газета»",
+      alt: "Новый Смоленский областной онкологический диспансер после открытия в феврале 2026 года",
+      credit: "«Смоленская газета», фото из пресс-материалов губернатора Смоленской области",
+      sourceUrl: "https://smolgazeta.ru/medic/135334-v-smolenske-oficialno-otkryli-oblastnoy.html",
+    },
+    {
+      src: "https://smolgazeta.ru/fc-web/fc-files/2026/02/166940.jpg",
+      alt: "Смоленский областной онкологический диспансер в день официального открытия",
+      credit: "«Смоленская газета», фото из пресс-материалов губернатора Смоленской области",
       sourceUrl: "https://smolgazeta.ru/medic/135334-v-smolenske-oficialno-otkryli-oblastnoy.html",
     },
   ],
   "litsey-solovinaya-roshcha": [
     {
-      src: "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru/netcat_files/23/241/photo1711107010.jpg",
-      alt: "Главный вход Многопрофильного лицея в Смоленске",
-      credit: "Официальный сайт Многопрофильного лицея",
-      sourceUrl: "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru/",
+      src: "https://static.tildacdn.com/tild6434-6265-4335-a661-393165383762/image.png",
+      alt: "Многопрофильный лицей в микрорайоне «Соловьиная роща» в Смоленске",
+      credit: "АО СЗ «Ваш дом»",
+      sourceUrl: "https://zao-vash-dom.ru/news/tpost/3pdd77zkf1-mnogoprofilnii-litsei-v-solovinoi-rosche",
     },
   ],
   "smolenskiy-meditsinskiy-kolledzh": [],
-  "feniks-pechersk": [],
+  "feniks-pechersk": [
+    {
+      src: "https://smoldaily.ru/wp-content/uploads/2026/07/img_2508.jpg",
+      alt: "Строительство техношколы «Феникс» в Печерске летом 2026 года",
+      credit: "SmolDaily, пресс-материалы объекта",
+      sourceUrl: "https://smoldaily.ru/v-pecherske-stroitsya-tehnoshkola-feniks-robototehnika-3d-pechat-i-ii-dlya-726-uchenikov",
+    },
+    {
+      src: "https://smoldaily.ru/wp-content/uploads/2026/07/img_2509.jpg",
+      alt: "Техношкола «Феникс» в Печерске — строительная готовность летом 2026 года",
+      credit: "SmolDaily, пресс-материалы объекта",
+      sourceUrl: "https://smoldaily.ru/v-pecherske-stroitsya-tehnoshkola-feniks-robototehnika-3d-pechat-i-ii-dlya-726-uchenikov",
+    },
+    {
+      src: "https://smoldaily.ru/wp-content/uploads/2026/07/img_2510.jpg",
+      alt: "Фасадная часть строящейся техношколы «Феникс» в Печерске",
+      credit: "SmolDaily, пресс-материалы объекта",
+      sourceUrl: "https://smoldaily.ru/v-pecherske-stroitsya-tehnoshkola-feniks-robototehnika-3d-pechat-i-ii-dlya-726-uchenikov",
+    },
+    {
+      src: "https://static.mk.ru/upload/entities/2026/07/17/03/articles/detailPicture/d3/96/9a/4b/e673b06bc81f6b5e798062f0d56217f9.jpg",
+      alt: "Строительство техношколы «Феникс» в Печерске в июле 2026 года",
+      credit: "«МК в Смоленске», фото из пресс-материалов губернатора Смоленской области",
+      sourceUrl: "https://www.mk-smolensk.ru/social/2026/07/16/v-smolenskom-okruge-stroitsya-novaya-tekhnoshkola-feniks.html",
+    },
+  ],
   "stodolishchenskaya-shkola": [],
 };
 
 const obninskProject: RealProject = {
   slug: "mrrc-tsyba-obninsk",
-  title: "МРНЦ им. А. Ф. Цыба — реконструированный клинический корпус",
+  title: "МРНЦ им. А. Ф. Цыба",
   city: "Обнинск, Калужская область",
   category: "medical",
   categoryLabel: "Медицина",
-  partner: "МРНЦ им. А. Ф. Цыба — филиал НМИЦ радиологии Минздрава России",
-  image: "/images/industries/medical.jpg",
-  imageAlt: "Медицинский радиологический научный центр имени А. Ф. Цыба в Обнинске",
-  supply: ["металлические изделия по проектной документации"],
-  description: "Поставка металлических изделий для медицинского объекта в Обнинске. В портфолио объект идентифицирован как реконструированный клинический корпус МРНЦ им. А. Ф. Цыба; Минстрой России подтвердил завершение реконструкции комплекса площадью свыше 7,5 тыс. м² в конце 2023 года.",
-  sourceUrl: "https://minstroyrf.gov.ru/press/v-obninske-zavershena-rekonstruktsiya-kliniki-meditsinskogo-radiologicheskogo-nauchnogo-tsentra-imen/",
-  sourceLabel: "Минстрой России",
+  partner: "МРНЦ им. А. Ф. Цыба — филиал ФГБУ «НМИЦ радиологии» Минздрава России",
+  image: "https://vestnikstroy.ru/upload/iblock/af3/qwjf6j6ttixu368xe86x1wg8bz6dqzmz.jpeg",
+  imageAlt: "Здание клиники МРНЦ им. А. Ф. Цыба в Обнинске",
+  imageCredit: "Фото: «Вестник строительного комплекса»",
+  imageSourceUrl: "https://vestnikstroy.ru/articles/aktualno/v-obninske-zavershilos-blagoustroystvo-territorii-meditsinskogo-tsentra-imeni-a-f-tsyba-/",
+  supply: ["металлокассеты — поставка продолжается", "изделия по проектной документации"],
+  description: "Объект в Обнинске — Медицинский радиологический научный центр имени А. Ф. Цыба. «Сталь Продукт» производит и поставляет металлокассеты для объекта; поставка продолжается в настоящее время. Монтаж не выполняем. Официальный сайт НМИЦ радиологии подтверждает МРНЦ им. А. Ф. Цыба по адресу: Обнинск, ул. Королёва, 4. Публичные фотографии используются для идентификации объекта и не привязываются к конкретной поставленной партии без отдельного подтверждения.",
+  sourceUrl: "https://new.nmicr.ru/mrrc/",
+  sourceLabel: "Официальный сайт НМИЦ радиологии",
   featured: true,
 };
 
 const obninskPhotos: ProjectPhoto[] = [
   {
     src: "https://vestnikstroy.ru/upload/iblock/af3/qwjf6j6ttixu368xe86x1wg8bz6dqzmz.jpeg",
-    alt: "Реконструированный корпус МРНЦ им. А. Ф. Цыба в Обнинске после благоустройства",
+    alt: "Здание клиники МРНЦ им. А. Ф. Цыба в Обнинске после реконструкции",
     credit: "«Вестник строительного комплекса»",
     sourceUrl: "https://vestnikstroy.ru/articles/aktualno/v-obninske-zavershilos-blagoustroystvo-territorii-meditsinskogo-tsentra-imeni-a-f-tsyba-/",
   },
   {
     src: "https://sdelanounas.ru/uploads/3/0/3021772793354_orig.jpeg",
-    alt: "Новый клинический корпус центра имени А. Ф. Цыба в Обнинске",
+    alt: "Клинический корпус МРНЦ им. А. Ф. Цыба в Обнинске",
     credit: "«Сделано у нас»",
     sourceUrl: "https://sdelanounas.ru/blogs/174421/",
   },

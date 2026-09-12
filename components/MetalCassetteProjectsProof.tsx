@@ -1,10 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { MetalCassetteAnnualOutput } from "./MetalCassetteAnnualOutput";
-import { realProjects } from "@/data/real-projects";
+import { realProjectsShowcase } from "@/data/real-project-showcase";
 
-const slugs = ["solovinaya-roshcha", "onkologicheskiy-dispanser", "odkb-novyy-korpus", "smolenskiy-meditsinskiy-kolledzh"];
-const projects = slugs.map((slug) => realProjects.find((project) => project.slug === slug)!).filter(Boolean);
+const slugs = [
+  "solovinaya-roshcha",
+  "onkologicheskiy-dispanser",
+  "odkb-novyy-korpus",
+  "mrrc-tsyba-obninsk",
+  "smolenskiy-meditsinskiy-kolledzh",
+];
+const projects = slugs.map((slug) => realProjectsShowcase.find((project) => project.slug === slug)!).filter(Boolean);
 
 export function MetalCassetteProjectsProof() {
   return (
@@ -16,16 +22,16 @@ export function MetalCassetteProjectsProof() {
           <div className="max-w-3xl">
             <p className="eyebrow">Реальные поставки</p>
             <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Где используются наши металлокассеты</h2>
-            <p className="mt-4 text-sm leading-7 text-white/58">Не только каталог и расчёт: металлокассеты и связанные изделия поставлялись для жилой застройки, медицинских и образовательных объектов.</p>
+            <p className="mt-4 text-sm leading-7 text-white/58">Не только каталог и расчёт: металлокассеты и связанные изделия поставлялись для жилой застройки, медицинских и образовательных объектов. Для МРНЦ им. А. Ф. Цыба в Обнинске поставка металлокассет продолжается.</p>
           </div>
           <Link href="/projects" className="text-xs font-bold uppercase text-steel-orange">Все реализованные объекты&nbsp; →</Link>
         </div>
 
-        <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {projects.map((project) => (
             <article key={project.slug} className="group flex h-full flex-col overflow-hidden border border-white/12 bg-[#111519] transition hover:border-steel-orange/65">
               <div className="relative aspect-[16/10] overflow-hidden bg-[#172026]">
-                <Image src={project.image} alt={project.imageAlt} fill sizes="(max-width:767px) 100vw, (max-width:1279px) 50vw, 25vw" className="object-cover brightness-[.88] transition duration-500 group-hover:scale-[1.025]" />
+                <Image src={project.image} alt={project.imageAlt} fill sizes="(max-width:767px) 100vw, (max-width:1279px) 50vw, 20vw" className="object-cover brightness-[.88] transition duration-500 group-hover:scale-[1.025]" />
                 <span className="absolute bottom-3 left-3 max-w-[90%] bg-black/65 px-2 py-1 text-[9px] uppercase tracking-[.06em] text-white/65">{project.imageCredit ?? "Отраслевая иллюстрация"}</span>
               </div>
               <div className="flex flex-1 flex-col p-5">
@@ -41,7 +47,7 @@ export function MetalCassetteProjectsProof() {
           ))}
         </div>
 
-        <p className="mt-5 text-xs leading-6 text-white/40">Фотографии идентифицируют объект или проект. Состав поставки указан по подтверждённой информации компании; видимый на фотографии конкретный элемент не приписывается производству «Сталь Продукт» без отдельного подтверждения.</p>
+        <p className="mt-5 text-xs leading-6 text-white/40">Фотографии идентифицируют объект или проект. Состав поставки указан по подтверждённой информации компании; видимый на фотографии конкретный элемент не приписывается производству «Сталь Продукт» без отдельного подтверждения. Монтаж на объектах не выполняем.</p>
       </div>
     </section>
   );
