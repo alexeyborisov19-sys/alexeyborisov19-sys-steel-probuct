@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { MetalCassetteAnnualOutput } from "./MetalCassetteAnnualOutput";
 import { realProjects } from "@/data/real-projects";
 
 const slugs = ["solovinaya-roshcha", "onkologicheskiy-dispanser", "odkb-novyy-korpus", "smolenskiy-meditsinskiy-kolledzh"];
@@ -9,6 +10,8 @@ export function MetalCassetteProjectsProof() {
   return (
     <section className="border-t border-white/10 bg-[#0a0e11] py-14 sm:py-20">
       <div className="container">
+        <MetalCassetteAnnualOutput className="mb-12" />
+
         <div className="flex flex-col justify-between gap-5 border-b border-white/12 pb-6 lg:flex-row lg:items-end">
           <div className="max-w-3xl">
             <p className="eyebrow">Реальные поставки</p>
