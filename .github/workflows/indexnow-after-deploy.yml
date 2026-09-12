@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Verify live AI discovery endpoints
+      - name: Verify live AI discovery and entity endpoints
         env:
           SITE_URL: https://www.steelprodukt.ru
           DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -62,7 +62,8 @@ jobs:
               fetch_live robots.txt "$tmpdir/robots.txt" && \
               fetch_live llms.txt "$tmpdir/llms.txt" && \
               fetch_live llms-full.txt "$tmpdir/llms-full.txt" && \
-              fetch_live indexnow-key.txt "$tmpdir/indexnow-key.txt"
+              fetch_live indexnow-key.txt "$tmpdir/indexnow-key.txt" && \
+              fetch_live company/facts "$tmpdir/company-facts.html"
             then
               key="$(tr -d '\r\n' < "$tmpdir/indexnow-key.txt")"
               checks_ok=true
@@ -74,27 +75,36 @@ jobs:
               grep -Fq 'Disallow: /api/' "$tmpdir/robots.txt" || checks_ok=false
               grep -Fq '# Сталь Продукт' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq 'бренд/товарный знак, не юридическое лицо' "$tmpdir/llms.txt" || checks_ok=false
+              grep -Fq '/company/facts' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq '## Производственные возможности' "$tmpdir/llms-full.txt" || checks_ok=false
               grep -Fq '60 000 м²/год' "$tmpdir/llms-full.txt" || checks_ok=false
               grep -Fq 'Монтаж на объектах не выполняется.' "$tmpdir/llms-full.txt" || checks_ok=false
+              grep -Fq 'Факты о производстве «Сталь Продукт»' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq 'бренд/товарный знак, не юридическое лицо' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq '60 000 м²/год' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq 'Монтаж на объектах не выполняется.' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq '"@type":"Brand"' "$tmpdir/company-facts.html" || checks_ok=false
+              grep -Fq 'ООО «ЭНЕРГОАЛЬЯНС»' "$tmpdir/company-facts.html" || checks_ok=false
               [[ "$key" == "$expected_key" ]] || checks_ok=false
 
               if [[ "$checks_ok" == true ]]; then
-                echo "Live AI endpoints verified for release $DEPLOYED_SHA: robots.txt, llms.txt, llms-full.txt, indexnow-key.txt."
+                echo "Live AI/entity endpoints verified for release $DEPLOYED_SHA: robots.txt, llms.txt, llms-full.txt, indexnow-key.txt, company/facts."
                 exit 0
               fi
             fi
 
-            echo "Production AI endpoints are not fully ready for release $DEPLOYED_SHA yet (attempt $attempt/12)."
+            echo "Production AI/entity endpoints are not fully ready for release $DEPLOYED_SHA yet (attempt $attempt/12)."
             sleep 5
           done
 
-          echo "Live AI endpoint verification failed for release $DEPLOYED_SHA."
+          echo "Live AI/entity endpoint verification failed for release $DEPLOYED_SHA."
           echo "Diagnostic markers:"
           grep -F 'User-agent:' "$tmpdir/robots.txt" || true
           grep -F 'бренд/товарный знак' "$tmpdir/llms.txt" || true
           grep -F 'Производственные возможности' "$tmpdir/llms-full.txt" || true
           grep -F '60 000 м²/год' "$tmpdir/llms-full.txt" || true
+          grep -F 'Факты о производстве' "$tmpdir/company-facts.html" || true
+          grep -F '"@type":"Brand"' "$tmpdir/company-facts.html" || true
           echo "Published key length: $(tr -d '\r\n' < "$tmpdir/indexnow-key.txt" | wc -c)"
           exit 1
 
@@ -137,7 +147,10 @@ jobs:
                   printf '/products\n' >> "$paths_file"
                   ;;
                 data/production-services.ts|data/manufacturing-facts.ts)
-                  printf '/production\n/llms.txt\n/llms-full.txt\n' >> "$paths_file"
+                  printf '/production\n/company/facts\n/llms.txt\n/llms-full.txt\n' >> "$paths_file"
+                  ;;
+                lib/entity-schema.ts|lib/legal.ts)
+                  printf '/\n/company\n/company/facts\n' >> "$paths_file"
                   ;;
                 data/solution-details.ts|data/solution-seo.ts)
                   printf '/solutions\n' >> "$paths_file"
