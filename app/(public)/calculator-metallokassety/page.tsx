@@ -62,7 +62,7 @@ const faqItems = [
 const calculatorSchema = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "Калькулятор фасадных металлокассет",
+  name: "Калькулятор металлокассет — цена и количество",
   description,
   url: absoluteUrl(path),
   applicationCategory: "BusinessApplication",
