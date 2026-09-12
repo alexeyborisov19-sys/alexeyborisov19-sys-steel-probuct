@@ -12,6 +12,13 @@ type PageMetadataInput = {
   modifiedTime?: string;
 };
 
+function socialImagePath(image: string) {
+  // Project/article content can legitimately use an attributed external photo,
+  // but Open Graph images should stay on our own domain. This keeps social
+  // previews stable and prevents SEO audits from depending on third-party CDNs.
+  return /^https?:\/\//i.test(image) ? siteConfig.defaultOgImage : image;
+}
+
 export function createPageMetadata({
   title,
   description,
@@ -23,6 +30,7 @@ export function createPageMetadata({
   modifiedTime,
 }: PageMetadataInput): Metadata {
   const canonical = canonicalPath(path);
+  const socialImage = socialImagePath(image);
   const openGraph: NonNullable<Metadata["openGraph"]> = {
     type: openGraphType,
     locale: siteConfig.locale,
@@ -30,7 +38,7 @@ export function createPageMetadata({
     siteName: siteConfig.name,
     title,
     description,
-    images: [{ url: absoluteUrl(image), width: 1200, height: 630, alt: title }],
+    images: [{ url: absoluteUrl(socialImage), width: 1200, height: 630, alt: title }],
     ...(openGraphType === "article"
       ? {
           publishedTime,
@@ -61,7 +69,7 @@ export function createPageMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: [absoluteUrl(image)],
+      images: [absoluteUrl(socialImage)],
     },
   };
 }
