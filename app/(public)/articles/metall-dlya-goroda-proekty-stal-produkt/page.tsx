@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
-import { realProjects } from "@/data/real-projects";
+import { realProjects, type RealProject, type RealProjectCategory } from "@/data/real-projects";
 import { articleSchema, breadcrumbSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -15,13 +15,14 @@ export const metadata: Metadata = createPageMetadata({
   title,
   description,
   path,
-  image: "/images/industries/residential.jpg",
+  image: "https://static.tildacdn.com/tild6566-3364-4764-a666-393734303130/4_2_1_747.webp",
   keywords: [
     "объекты Сталь Продукт",
     "металлокассеты Смоленск объекты",
     "металлоизделия для больниц",
     "металлоизделия для школ",
     "металлоизделия для застройщиков",
+    "поставки металлокассет Смоленск",
   ],
   openGraphType: "article",
   publishedTime: "2026-09-12",
@@ -30,18 +31,69 @@ export const metadata: Metadata = createPageMetadata({
 
 const selectedSlugs = [
   "solovinaya-roshcha",
-  "onkologicheskiy-dispanser",
-  "odkb-novyy-korpus",
-  "feniks-pechersk",
-  "smolenskiy-meditsinskiy-kolledzh",
-  "stodolishchenskaya-shkola",
   "klovskiy",
   "unity-development",
+  "metrum-group",
+  "vostokstroy",
+  "smolenskaya-oblastnaya-klinicheskaya-bolnitsa",
+  "odkb-novyy-korpus",
+  "onkologicheskiy-dispanser",
+  "litsey-solovinaya-roshcha",
+  "smolenskiy-meditsinskiy-kolledzh",
+  "feniks-pechersk",
+  "stodolishchenskaya-shkola",
 ];
 
 const selectedProjects = selectedSlugs.map((slug) => realProjects.find((project) => project.slug === slug)!).filter(Boolean);
 
+const sectionNames: Record<RealProjectCategory, string> = {
+  residential: "Жилая застройка",
+  medical: "Медицина",
+  education: "Образование",
+};
+
+function ProjectCard({ project }: { project: RealProject }) {
+  return (
+    <article className="group flex h-full flex-col overflow-hidden border border-white/12 bg-[#111519] transition hover:border-steel-orange/65">
+      <div className="relative aspect-[16/10] overflow-hidden bg-[#172026]">
+        <Image
+          src={project.image}
+          alt={project.imageAlt}
+          fill
+          sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"
+          className="object-cover brightness-[.9] contrast-[1.02] transition duration-500 group-hover:scale-[1.025]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/80 via-transparent to-transparent" />
+        <span className="absolute bottom-3 left-3 max-w-[92%] bg-black/65 px-2 py-1 text-[9px] uppercase tracking-[.06em] text-white/65">
+          {project.imageCredit ?? "Отраслевая иллюстрация"}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[.08em]">
+          <span className="text-steel-orange">{project.categoryLabel}</span>
+          <span className="text-white/30">·</span>
+          <span className="text-white/45">{project.city}</span>
+        </div>
+        <h3 className="mt-3 text-lg font-semibold leading-tight">{project.title}</h3>
+        {project.partner ? <p className="mt-2 text-xs text-white/42">{project.partner}</p> : null}
+        <p className="mt-4 text-sm leading-6 text-white/58">{project.description}</p>
+        <div className="mt-5 border-t border-white/10 pt-4">
+          <p className="text-[10px] font-bold uppercase tracking-[.1em] text-white/38">Поставка</p>
+          <p className="mt-2 text-sm leading-6 text-white/74">{project.supply.join(" · ")}</p>
+        </div>
+        <div className="mt-auto flex flex-wrap gap-4 pt-5">
+          {project.href ? <Link href={project.href} className="text-xs font-bold uppercase text-steel-orange">Кейс&nbsp; →</Link> : null}
+          <a href={project.sourceUrl} target="_blank" rel="noreferrer" className="text-[10px] font-bold uppercase text-white/45 hover:text-white">Об объекте&nbsp; ↗</a>
+          {project.imageSourceUrl ? <a href={project.imageSourceUrl} target="_blank" rel="noreferrer" className="text-[10px] font-bold uppercase text-white/35 hover:text-white">Источник фото&nbsp; ↗</a> : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function MetalForCityArticle() {
+  const solovinaya = selectedProjects.find((project) => project.slug === "solovinaya-roshcha")!;
+
   return (
     <>
       <JsonLd data={[
@@ -49,7 +101,7 @@ export default function MetalForCityArticle() {
           headline: "Металл для города: где работают изделия Сталь Продукт",
           description,
           path,
-          image: "/images/industries/residential.jpg",
+          image: solovinaya.image,
           datePublished: "2026-09-12",
           dateModified: "2026-09-12",
         }),
@@ -61,11 +113,11 @@ export default function MetalForCityArticle() {
       ]} />
       <PageLayout
         path={path}
-        eyebrow="Инженерный журнал · Проекты"
+        eyebrow="Инженерный журнал · Инженерная практика"
         title="Металл для города: где работают изделия Сталь Продукт"
-        description="От крупной жилой застройки до новых медицинских корпусов и школ. Показываем, как металлокассеты, решётки, кронштейны, корпуса и нестандартные изделия становятся частью реальных строительных объектов."
-        image="/images/industries/residential.jpg"
-        imageAlt="Изделия из листового металла для городских строительных объектов"
+        description="От крупной жилой застройки до новых медицинских корпусов и школ. Металлокассеты, вентиляционные решётки, кронштейны, корпуса и нестандартные изделия в реальных строительных проектах."
+        image={solovinaya.image}
+        imageAlt={solovinaya.imageAlt}
       >
         <article className="bg-[#0c1013] py-14 sm:py-20">
           <div className="container max-w-6xl">
@@ -73,64 +125,52 @@ export default function MetalForCityArticle() {
               <span className="text-steel-orange">12 сентября 2026</span><span className="mx-3">·</span><span>Инженерная практика</span><span className="mx-3">·</span><Link href="/projects" className="text-steel-orange">Полное портфолио</Link>
             </div>
 
-            <p className="mt-8 max-w-4xl text-lg leading-8 text-white/78">Готовое здание редко показывает, сколько разных металлических изделий находится за его архитектурой. На фасаде работают кассеты, решётки и доборные элементы; в инженерных зонах — кронштейны, корпуса и ящики. Для производства это не разные миры, а одна задача: превратить документацию большого объекта в повторяемую, маркированную и комплектную серию деталей.</p>
+            <p className="mt-8 max-w-4xl text-lg leading-8 text-white/78">Готовое здание редко показывает, сколько разных металлических изделий находится за его архитектурой. На фасаде работают кассеты, решётки и доборные элементы; в инженерных зонах — кронштейны, корпуса и ящики. Для производства это одна задача: превратить документацию большого объекта в повторяемую, маркированную и комплектную серию деталей.</p>
 
             <section className="mt-10 border border-steel-orange/35 bg-[#111519] p-6 sm:p-8">
-              <p className="eyebrow">Важно о публикации</p>
-              <p className="mt-4 text-sm leading-7 text-white/62">Состав поставок указан по подтверждённой информации компании. Ссылки на официальные сайты используются для идентификации объектов и их публичного контекста. Иллюстрации на этой странице принадлежат сайту и показывают тип объекта; они не выдаются за фотографии конкретной партии «Сталь Продукт». Монтаж компания не выполняет.</p>
+              <p className="eyebrow">Как читать эту публикацию</p>
+              <p className="mt-4 text-sm leading-7 text-white/62">Состав поставок указан по подтверждённой информации компании. Фотографии идентифицируют соответствующий объект или проект там, где удалось подтвердить изображение; для нескольких объектов пока используется нейтральная отраслевая иллюстрация. Мы не утверждаем, что конкретный видимый на фотографии элемент изготовлен «Сталь Продукт», если такая привязка отдельно не подтверждена. Монтаж на объектах не выполняем.</p>
             </section>
 
-            <section className="mt-14 grid gap-6 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
-              <div>
-                <p className="font-mono text-sm font-bold text-steel-orange">01</p>
-                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">«Соловьиная роща»: масштаб больше одного дома</h2>
-                <p className="mt-5 text-base leading-8 text-white/68">Один из самых сильных примеров — многолетняя работа с проектами микрорайона «Соловьиная роща» и «Нового квартала». В разные периоды для объектов застройки поставлялись металлокассеты, кронштейны, корпуса, ящики и другие изделия по проектной документации. Отдельная часть истории — образовательная инфраструктура микрорайона.</p>
-                <p className="mt-5 text-base leading-8 text-white/68">Для производства ценность такого сотрудничества в повторяемости: спустя время необходимо снова выпускать серии, работать с новыми очередями и сохранять управляемость большого количества позиций.</p>
-                <Link href="/projects/solovinaya-roshcha" className="mt-5 inline-flex text-xs font-bold uppercase text-steel-orange">Большой кейс «Соловьиная роща»&nbsp; →</Link>
-              </div>
-              <div className="relative aspect-[4/3] overflow-hidden border border-white/12"><Image src="/images/industries/residential.jpg" alt="Иллюстрация жилого проекта" fill sizes="(max-width:1023px) 100vw, 45vw" className="object-cover brightness-[.88]" /></div>
-            </section>
-
-            <section className="mt-16">
-              <p className="font-mono text-sm font-bold text-steel-orange">02</p>
-              <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Медицина: объект часто требует сразу нескольких групп изделий</h2>
-              <p className="mt-5 max-w-4xl text-base leading-8 text-white/68">На медицинских объектах особенно хорошо видно преимущество широкого производственного контура. Для нового Смоленского областного онкологического диспансера поставка включала металлокассеты, вентиляционные решётки и другие металлические изделия. Для нового корпуса областной детской клинической больницы поставлялись металлические изделия и фасадные элементы. Для Смоленской областной клинической больницы выполнялись поставки изделий по проектной документации.</p>
-              <div className="mt-7 grid gap-4 md:grid-cols-2">
-                {selectedProjects.filter((project) => project.category === "medical").map((project) => (
-                  <article key={project.slug} className="border border-white/12 bg-[#111519] p-5">
-                    <p className="text-xs font-bold uppercase tracking-[.1em] text-steel-orange">{project.city}</p>
-                    <h3 className="mt-3 text-lg font-semibold">{project.title}</h3>
-                    <p className="mt-3 text-sm leading-6 text-white/58">{project.supply.join(" · ")}</p>
-                    <a href={project.sourceUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex text-xs font-bold uppercase text-white/50 hover:text-white">Официальный источник&nbsp; ↗</a>
-                  </article>
-                ))}
+            <section className="mt-14 overflow-hidden border border-steel-orange/45 bg-[#111519]">
+              <div className="grid lg:grid-cols-[1.05fr_.95fr]">
+                <div className="relative min-h-80 bg-[#172026] lg:min-h-[480px]">
+                  <Image src={solovinaya.image} alt={solovinaya.imageAlt} fill priority sizes="(max-width:1023px) 100vw, 55vw" className="object-cover brightness-[.9]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/75 via-transparent to-transparent" />
+                  <span className="absolute bottom-4 left-4 bg-black/65 px-3 py-2 text-[10px] uppercase tracking-[.06em] text-white/65">{solovinaya.imageCredit}</span>
+                </div>
+                <div className="flex flex-col p-6 sm:p-8">
+                  <p className="font-mono text-sm font-bold text-steel-orange">01 · Ключевой кластер</p>
+                  <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">«Соловьиная роща»: масштаб больше одного дома</h2>
+                  <p className="mt-5 text-base leading-8 text-white/68">Это не единичная поставка, а многолетняя работа с несколькими очередями крупного микрорайона и его социальной инфраструктурой. В разные периоды для проектов поставлялись металлокассеты, кронштейны, металлические корпуса и ящики, а также другие изделия по рабочей документации.</p>
+                  <p className="mt-5 text-sm leading-7 text-white/55">Официальный сайт застройщика показывает несколько очередей «Нового квартала», территорию проекта 78 га и парк площадью 27 га. В истории застройщика также указано более 260 тыс. м² введённого жилья за 2020–2025 годы.</p>
+                  <div className="mt-6 flex flex-wrap gap-2">{solovinaya.supply.map((item) => <span key={item} className="border border-white/12 px-3 py-2 text-xs text-white/68">{item}</span>)}</div>
+                  <div className="mt-auto flex flex-wrap gap-4 pt-7">
+                    <Link href="/projects/solovinaya-roshcha" className="text-xs font-bold uppercase text-steel-orange">Большой кейс&nbsp; →</Link>
+                    <a href={solovinaya.sourceUrl} target="_blank" rel="noreferrer" className="text-xs font-bold uppercase text-white/45 hover:text-white">Застройщик&nbsp; ↗</a>
+                  </div>
+                </div>
               </div>
             </section>
 
-            <section className="mt-16 grid gap-6 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
-              <div className="relative aspect-[4/3] overflow-hidden border border-white/12"><Image src="/images/industries/educational.jpg" alt="Иллюстрация образовательного объекта" fill sizes="(max-width:1023px) 100vw, 45vw" className="object-cover brightness-[.9]" /></div>
-              <div>
-                <p className="font-mono text-sm font-bold text-steel-orange">03</p>
-                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Образование: новые школы и модернизация существующих зданий</h2>
-                <p className="mt-5 text-base leading-8 text-white/68">В образовательном направлении портфолио включает многопрофильный лицей в «Соловьиной роще», строящуюся техношколу «Феникс» в Печерске, Смоленский базовый медицинский колледж и Стодолищенскую среднюю школу. Для колледжа и школы в Стодолище подтверждена поставка металлокассет; для «Феникса» — металлических изделий по проекту.</p>
-                <p className="mt-5 text-base leading-8 text-white/68">Для реконструкции и капитального ремонта особенно важна фактическая геометрия существующего здания: новые элементы приходится увязывать с уже сформированными проёмами и отметками.</p>
-              </div>
-            </section>
-
-            <section className="mt-16">
-              <p className="font-mono text-sm font-bold text-steel-orange">04</p>
-              <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Жилая застройка: работа с несколькими девелоперами</h2>
-              <p className="mt-5 max-w-4xl text-base leading-8 text-white/68">Кроме «Ваш дом», портфолио включает сотрудничество с проектами «Кловский», «Юнити Девелопмент», «Метрум Груп» и «ВостокСтрой». В рамках такой работы поставлялись металлокассеты, кронштейны, металлические ящики и корпуса и другие изделия по спецификациям объектов. Конкретный состав партии зависит от проекта и не переносится автоматически с одного дома на другой.</p>
-              <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {selectedProjects.filter((project) => project.category === "residential" && project.slug !== "solovinaya-roshcha").map((project) => (
-                  <article key={project.slug} className="border border-white/12 bg-[#111519] p-5">
-                    <h3 className="text-lg font-semibold">{project.title}</h3>
-                    <p className="mt-3 text-sm leading-6 text-white/58">{project.supply.join(" · ")}</p>
-                    <a href={project.sourceUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex text-xs font-bold uppercase text-steel-orange">Сайт проекта&nbsp; ↗</a>
-                  </article>
-                ))}
-              </div>
-            </section>
+            {(["medical", "education", "residential"] as RealProjectCategory[]).map((category, index) => {
+              const projects = selectedProjects.filter((project) => project.category === category && project.slug !== "solovinaya-roshcha");
+              const intro = category === "medical"
+                ? "Медицинские объекты показывают, как в одной поставке сходятся фасадные и инженерные изделия. Для нового онкодиспансера подтверждена поставка металлокассет, вентиляционных решёток и других металлических изделий; для нового корпуса ОДКБ — металлических изделий и фасадных элементов."
+                : category === "education"
+                  ? "В образовательном направлении есть и новое строительство, и капитальный ремонт: лицей в «Соловьиной роще», техношкола «Феникс» в Печерске, медицинский колледж и Стодолищенская школа."
+                  : "Помимо «Ваш дом», портфолио включает работу с проектами «Кловский», «Юнити Девелопмент», «Метрум Груп» и «ВостокСтрой». Состав конкретной партии всегда определяется документацией отдельного объекта.";
+              return (
+                <section key={category} className="mt-16">
+                  <p className="font-mono text-sm font-bold text-steel-orange">0{index + 2}</p>
+                  <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">{sectionNames[category]}</h2>
+                  <p className="mt-5 max-w-4xl text-base leading-8 text-white/68">{intro}</p>
+                  <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {projects.map((project) => <ProjectCard key={project.slug} project={project} />)}
+                  </div>
+                </section>
+              );
+            })}
 
             <section className="mt-16 border-y border-white/12 py-10">
               <p className="font-mono text-sm font-bold text-steel-orange">05</p>
@@ -146,8 +186,14 @@ export default function MetalForCityArticle() {
             </section>
 
             <div className="mt-12 flex flex-col justify-between gap-5 border border-steel-orange/35 bg-gradient-to-r from-steel-orange/12 to-transparent p-6 sm:flex-row sm:items-center sm:p-8">
-              <div><h2 className="text-xl font-semibold uppercase">Все подтверждённые объекты — в портфолио</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">Карточки сгруппированы по жилой застройке, медицине и образованию и содержат состав поставки и ссылку на официальный источник об объекте.</p></div>
-              <Link href="/projects" className="clip-corner bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase">Открыть проекты&nbsp; →</Link>
+              <div>
+                <h2 className="text-xl font-semibold uppercase">Все объекты — в портфолио поставок</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">Полная подборка с составом поставки, официальными источниками и отдельным кейсом «Соловьиная роща».</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/projects" className="clip-corner bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase">Открыть проекты&nbsp; →</Link>
+                <Link href="/products/metallokassety" className="border border-white/25 px-6 py-4 text-xs font-bold uppercase">Металлокассеты&nbsp; →</Link>
+              </div>
             </div>
           </div>
         </article>
