@@ -1,194 +1,210 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const cassette = {
-  widthMm: 1170,
-  heightMm: 545,
-  rustMm: 20,
+type Mode = "area" | "wall";
+type CassetteType = "open" | "closed";
+type Thickness = "0.65" | "0.7" | "1.0" | "1.2";
+
+type Estimate = {
+  netAreaM2: number;
+  quantity: number;
+  approximateRateRubM2: number;
+  approximateTotalRub: number;
 };
 
-const thicknesses = ["0,5", "0,7", "1,0", "1,2"] as const;
+const thicknesses: Array<{ value: Thickness; label: string }> = [
+  { value: "0.65", label: "0,65" },
+  { value: "0.7", label: "0,7" },
+  { value: "1.0", label: "1,0" },
+  { value: "1.2", label: "1,2" },
+];
 
-const moduleWidthMm = cassette.widthMm + cassette.rustMm;
-const moduleHeightMm = cassette.heightMm + cassette.rustMm;
-const moduleArea = (moduleWidthMm / 1000) * (moduleHeightMm / 1000);
+const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
+const decimal = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
-const numberFormatter = new Intl.NumberFormat("ru-RU", {
-  maximumFractionDigits: 0,
-});
-
-const areaFormatter = new Intl.NumberFormat("ru-RU", {
-  maximumFractionDigits: 2,
-});
+function numeric(value: string) {
+  return Number(value.trim().replace(/\s+/g, "").replace(",", "."));
+}
 
 export function MetalCassetteCalculator() {
-  const [areaInput, setAreaInput] = useState("100");
-  const [selectedThickness, setSelectedThickness] = useState<(typeof thicknesses)[number]>("0,5");
+  const [mode, setMode] = useState<Mode>("area");
+  const [type, setType] = useState<CassetteType>("open");
+  const [thickness, setThickness] = useState<Thickness>("0.7");
+  const [area, setArea] = useState("100");
+  const [wallWidth, setWallWidth] = useState("12000");
+  const [wallHeight, setWallHeight] = useState("6000");
+  const [openings, setOpenings] = useState("0");
+  const [result, setResult] = useState<Estimate | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
-  const result = useMemo(() => {
-    const parsedArea = Number(areaInput.trim().replace(/\s+/g, "").replace(",", "."));
-    const area = Number.isFinite(parsedArea) && parsedArea > 0 ? parsedArea : 0;
-    const quantity = area > 0 ? Math.ceil(area / moduleArea) : 0;
+  const payload = useMemo(() => ({
+    mode,
+    type,
+    thickness,
+    areaM2: numeric(area),
+    wallWidthMm: numeric(wallWidth),
+    wallHeightMm: numeric(wallHeight),
+    openingsM2: numeric(openings),
+  }), [mode, type, thickness, area, wallWidth, wallHeight, openings]);
 
-    return {
-      area,
-      quantity,
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setStatus("loading");
+      try {
+        const response = await fetch("/api/calc-metallokassety", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("estimate failed");
+        const data = (await response.json()) as Estimate;
+        setResult(data);
+        setStatus("ready");
+      } catch {
+        if (controller.signal.aborted) return;
+        setResult(null);
+        setStatus("error");
+      }
+    }, 140);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [areaInput]);
+  }, [payload]);
 
-  const specialistHref = result.area > 0
+  const specialistHref = result && result.netAreaM2 > 0
     ? {
         pathname: "/contacts",
         query: {
           source: "calculator-metallokassety",
-          area: String(result.area),
-          thickness: selectedThickness,
+          mode,
+          type,
+          thickness,
+          area: String(result.netAreaM2),
           quantity: String(result.quantity),
+          estimate: String(result.approximateTotalRub),
         },
         hash: "contact-form",
       }
     : "/contacts#contact-form";
 
-  return (
-    <section id="calculator-metallokasset" className="mt-16 scroll-mt-24 overflow-hidden border border-steel-orange/35 bg-[#101417]">
-      <div className="grid min-w-0 lg:grid-cols-[1.02fr_.98fr]">
-        <div className="relative min-w-0 border-b border-white/10 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 bg-[linear-gradient(135deg,transparent_49%,rgba(224,86,36,.26)_50%,transparent_51%)]" />
-          <p className="eyebrow">Предварительный расчёт</p>
-          <h2 className="mt-3 max-w-xl text-2xl font-semibold uppercase leading-tight sm:text-3xl">
-            Калькулятор металлокассет
-          </h2>
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/62">
-            Укажите площадь фасада и предполагаемую толщину металла. Калькулятор определит ориентировочное количество кассет, а исходные данные можно сразу передать специалисту для коммерческого расчёта.
-          </p>
+  const typeName = type === "open" ? "Открытая" : "Закрытая";
 
-          <div className="mt-7 border border-white/12 bg-[#0c1013] p-4 sm:p-5">
-            <label htmlFor="facade-area" className="text-xs font-bold uppercase tracking-[.12em] text-white/60">
-              Площадь фасада
-            </label>
-            <div className="mt-3 flex items-stretch">
-              <input
-                id="facade-area"
-                type="text"
-                inputMode="decimal"
-                value={areaInput}
-                onChange={(event) => setAreaInput(event.target.value)}
-                placeholder="Например, 100"
-                aria-describedby="facade-area-help"
-                className="min-w-0 flex-1 border border-white/20 bg-[#111519] px-4 py-4 text-2xl font-semibold text-white outline-none transition placeholder:text-white/20 focus:border-steel-orange"
-              />
-              <span className="flex min-w-16 items-center justify-center border-y border-r border-white/20 bg-white/[.035] text-sm font-bold text-steel-orange">
-                м²
-              </span>
-            </div>
-            <p id="facade-area-help" className="mt-2 text-xs leading-5 text-white/40">
-              Введите общую площадь облицовываемой поверхности без вычета рустов.
+  return (
+    <section id="calculator-metallokasset" className="mt-12 scroll-mt-24 overflow-hidden border border-steel-orange/35 bg-[#101417] sm:mt-16">
+      <div className="border-b border-white/10 px-5 py-5 sm:px-8">
+        <p className="eyebrow">Предварительный расчёт</p>
+        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+          <div>
+            <h2 className="text-2xl font-semibold uppercase leading-tight sm:text-3xl">Калькулятор металлокассет</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/60">
+              Выберите быстрый расчёт по площади или более точную оценку по габаритам стены. Производственные развёртки, DXF и технологические параметры в публичный расчёт не входят.
             </p>
           </div>
+          <div className="grid grid-cols-2 border border-white/12 bg-[#0c1013] p-1">
+            <button type="button" onClick={() => setMode("area")} aria-pressed={mode === "area"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "area" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>
+              По площади
+            </button>
+            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>
+              По стене
+            </button>
+          </div>
+        </div>
+      </div>
 
-          <fieldset className="mt-6 min-w-0">
-            <legend className="text-xs font-bold uppercase tracking-[.12em] text-white/60">
-              Предполагаемая толщина металла
-            </legend>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {thicknesses.map((thickness) => {
-                const isSelected = selectedThickness === thickness;
-
+      <div className="grid lg:grid-cols-[1.05fr_.95fr]">
+        <div className="min-w-0 border-b border-white/10 p-5 sm:p-8 lg:border-b-0 lg:border-r">
+          <fieldset>
+            <legend className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Тип кассеты</legend>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {(["open", "closed"] as const).map((value) => {
+                const selected = type === value;
                 return (
-                  <button
-                    key={thickness}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => setSelectedThickness(thickness)}
-                    className={`min-w-0 border px-3 py-3 text-left transition ${
-                      isSelected
-                        ? "border-steel-orange bg-steel-orange text-white"
-                        : "border-white/15 bg-[#0c1013] text-white hover:border-steel-orange/70"
-                    }`}
-                  >
-                    <span className="block text-lg font-semibold">{thickness} мм</span>
-                    <span className={`mt-1 block text-xs font-bold uppercase tracking-[.08em] ${isSelected ? "text-white/75" : "text-white/40"}`}>
-                      Передадим в заявку
-                    </span>
+                  <button key={value} type="button" aria-pressed={selected} onClick={() => setType(value)} className={`min-h-16 border px-4 py-3 text-left transition ${selected ? "border-steel-orange bg-steel-orange/12" : "border-white/12 bg-[#0c1013] hover:border-steel-orange/60"}`}>
+                    <span className="block text-sm font-semibold">{value === "open" ? "Открытая" : "Закрытая"}</span>
+                    <span className="mt-1 block text-xs leading-5 text-white/45">{value === "open" ? "видимый крепёж · открытый шов" : "скрытый крепёж · замковый стык"}</span>
                   </button>
                 );
               })}
             </div>
           </fieldset>
 
-          <div className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-3">
-            <div className="bg-[#0c1013] p-4">
-              <p className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Кассета</p>
-              <p className="mt-2 text-sm font-semibold">1170 × 545 мм</p>
+          {mode === "area" ? (
+            <div className="mt-6">
+              <label htmlFor="facade-area" className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Площадь фасада</label>
+              <div className="mt-3 flex">
+                <input id="facade-area" inputMode="decimal" value={area} onChange={(event) => setArea(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-xl font-semibold outline-none focus:border-steel-orange" aria-describedby="area-help" />
+                <span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 bg-white/[.035] text-sm font-bold text-steel-orange">м²</span>
+              </div>
+              <p id="area-help" className="mt-2 text-xs leading-5 text-white/40">Быстрая оценка для первого бюджета. Точная раскладка зависит от геометрии стен и проёмов.</p>
             </div>
-            <div className="bg-[#0c1013] p-4">
-              <p className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Руст</p>
-              <p className="mt-2 text-sm font-semibold">20 × 20 мм</p>
+          ) : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="wall-width" className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Ширина стены</label>
+                <div className="mt-3 flex"><input id="wall-width" inputMode="numeric" value={wallWidth} onChange={(event) => setWallWidth(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" /><span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 text-xs text-white/50">мм</span></div>
+              </div>
+              <div>
+                <label htmlFor="wall-height" className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Высота стены</label>
+                <div className="mt-3 flex"><input id="wall-height" inputMode="numeric" value={wallHeight} onChange={(event) => setWallHeight(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" /><span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 text-xs text-white/50">мм</span></div>
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="wall-openings" className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Площадь окон и дверей <span className="font-normal normal-case tracking-normal text-white/35">необязательно</span></label>
+                <div className="mt-3 flex"><input id="wall-openings" inputMode="decimal" value={openings} onChange={(event) => setOpenings(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" /><span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 text-xs text-white/50">м²</span></div>
+                <p className="mt-2 text-xs leading-5 text-white/40">Положение проёмов влияет на реальную подрезку, поэтому по одной их площади результат остаётся предварительным.</p>
+              </div>
             </div>
-            <div className="bg-[#0c1013] p-4">
-              <p className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Расчётный модуль</p>
-              <p className="mt-2 text-sm font-semibold">1190 × 565 мм</p>
+          )}
+
+          <fieldset className="mt-6">
+            <legend className="text-xs font-bold uppercase tracking-[.12em] text-white/55">Толщина металла</legend>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {thicknesses.map((item) => {
+                const selected = thickness === item.value;
+                return <button key={item.value} type="button" aria-pressed={selected} onClick={() => setThickness(item.value)} className={`min-h-12 border px-3 text-sm font-semibold transition ${selected ? "border-steel-orange bg-steel-orange text-white" : "border-white/12 bg-[#0c1013] text-white/68 hover:border-steel-orange/60"}`}>{item.label} мм</button>;
+              })}
             </div>
+          </fieldset>
+
+          <div className="mt-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-3">
+            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Типовой формат</p><p className="mt-2 text-sm font-semibold">1170 × 545 мм</p></div>
+            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Конструкция</p><p className="mt-2 text-sm font-semibold">{type === "open" ? "открытый шов" : "замковый стык"}</p></div>
+            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/40">Статус</p><p className="mt-2 text-sm font-semibold">предварительный расчёт</p></div>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col bg-[radial-gradient(circle_at_100%_0%,rgba(224,86,36,.13),transparent_42%)] p-6 sm:p-8">
-          <div className="flex items-center justify-between border-b border-white/12 pb-5">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-steel-orange">Результат</p>
-              <p className="mt-1 text-xs text-white/45">Ориентировочное количество</p>
-            </div>
-            <span className="flex h-12 w-12 items-center justify-center border border-steel-orange/50 text-2xl text-steel-orange">Σ</span>
+        <div className="flex min-w-0 flex-col bg-[radial-gradient(circle_at_100%_0%,rgba(224,86,36,.14),transparent_45%)] p-5 sm:p-8">
+          <div className="border-b border-white/12 pb-5">
+            <p className="text-xs font-bold uppercase tracking-[.14em] text-steel-orange">Результат</p>
+            <p className="mt-1 text-xs text-white/45">{typeName} кассета · {thickness.replace(".", ",")} мм</p>
           </div>
 
           <div className="mt-7">
-            <p className="text-xs font-bold uppercase tracking-[.12em] text-white/45">
-              Металлокассеты
-            </p>
+            <p className="text-xs font-bold uppercase tracking-[.12em] text-white/45">Ориентировочная стоимость</p>
             <p aria-live="polite" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              {result.quantity > 0 ? `≈ ${numberFormatter.format(result.quantity)} шт.` : "—"}
+              {status === "loading" ? "…" : result && result.approximateTotalRub > 0 ? `≈ ${money.format(result.approximateTotalRub)} ₽` : "—"}
             </p>
-            <p className="mt-3 text-xs leading-5 text-white/45">
-              Количество рассчитано по модулю 1190 × 565 мм. Точная раскладка определяется по геометрии фасада, проёмам, углам и рабочей документации.
-            </p>
+            <p className="mt-3 text-xs leading-5 text-white/45">Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа.</p>
           </div>
 
-          <dl className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-            <div className="bg-[#0d1114] p-4">
-              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Площадь для оценки</dt>
-              <dd className="mt-2 text-2xl font-semibold text-steel-orange">
-                {result.area > 0 ? `${areaFormatter.format(result.area)} м²` : "—"}
-              </dd>
-            </div>
-            <div className="bg-[#0d1114] p-4">
-              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Предполагаемая толщина</dt>
-              <dd className="mt-2 text-2xl font-semibold">{selectedThickness} мм</dd>
-            </div>
-            <div className="bg-[#0d1114] p-4">
-              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Расчётный модуль</dt>
-              <dd className="mt-2 text-lg font-semibold">1190 × 565 мм</dd>
-            </div>
-            <div className="bg-[#0d1114] p-4">
-              <dt className="text-xs font-bold uppercase tracking-[.1em] text-white/40">Коммерческая стоимость</dt>
-              <dd className="mt-2 text-lg font-semibold">После проверки проекта</dd>
-            </div>
+          <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Площадь облицовки</dt><dd className="mt-2 text-xl font-semibold text-steel-orange">{result ? `${decimal.format(result.netAreaM2)} м²` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Количество кассет</dt><dd className="mt-2 text-xl font-semibold">{result && result.quantity > 0 ? `≈ ${money.format(result.quantity)} шт.` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Ориентир за м²</dt><dd className="mt-2 text-lg font-semibold">{result ? `≈ ${money.format(result.approximateRateRubM2)} ₽` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Толщина</dt><dd className="mt-2 text-lg font-semibold">{thickness.replace(".", ",")} мм</dd></div>
           </dl>
 
-          <p className="mt-5 text-[13px] leading-5 text-white/38">
-            Расчёт количества носит предварительный характер. Коммерческая стоимость формируется после проверки раскладки, проёмов, углов, материала, покрытия, доборных элементов и объёма партии.
-          </p>
+          {status === "error" ? <p className="mt-4 text-sm text-red-300">Не удалось обновить расчёт. Проверьте введённые значения.</p> : null}
 
-          <Link
-            href={specialistHref}
-            className="clip-corner mt-7 inline-flex max-w-full justify-center break-words bg-steel-orange-deep px-7 py-4 text-center text-sm font-bold uppercase leading-snug transition hover:bg-steel-orange-deeper"
-          >
-            Передать специалисту для расчёта&nbsp; →
-          </Link>
-          <p className="mt-3 text-center text-[13px] leading-5 text-white/45">
-            На следующем шаге можно прикрепить PDF, DXF, DWG, STEP, изображения и архивы.
-          </p>
+          <div className="mt-auto pt-7">
+            <Link href={specialistHref} className="clip-corner flex min-h-12 items-center justify-center bg-steel-orange-deep px-6 py-4 text-center text-sm font-bold uppercase transition hover:bg-orange-600">Получить точный расчёт&nbsp; →</Link>
+            <p className="mt-3 text-center text-xs leading-5 text-white/42">На следующем шаге можно приложить PDF, DXF, DWG, STEP, Excel, изображения или архив проекта.</p>
+          </div>
         </div>
       </div>
     </section>

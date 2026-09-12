@@ -36,10 +36,12 @@ const staticModifiedAt: Record<string, Date> = {
   "/industries": new Date("2026-08-20T14:44:10.000Z"),
   "/projects": new Date("2026-08-25T12:06:42.000Z"),
   "/products": new Date("2026-08-25T15:45:53.000Z"),
-  "/articles": new Date("2026-08-20T00:00:00.000Z"),
+  "/articles": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
-  "/calculator-metallokassety": new Date("2026-08-25T13:18:54.000Z"),
-  "/products/metallokassety": productPagesModifiedAt,
+  "/articles/ploshchad-fasada-raskhod-metalla-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
+  "/articles/uzly-fasada-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
+  "/calculator-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
+  "/products/metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
   "/products/korziny-dlya-konditsionerov": commercialProductPagesModifiedAt,
   "/products/ventilyacionnye-reshetki": commercialProductPagesModifiedAt,
@@ -85,7 +87,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
-    "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/calculator-metallokassety",
+    "/", "/company", "/contacts", "/production", "/solutions", "/industries", "/projects", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/calculator-metallokassety",
     "/products/metallokassety", "/products/dobornye-elementy",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];
