@@ -1,0 +1,54 @@
+name: Notify IndexNow after production deploy
+
+on:
+  workflow_run:
+    workflows:
+      - Publish to Beget
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steelprodukt-indexnow
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    name: Submit production URLs to IndexNow
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get current production source
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Wait for the AI discovery file from the new release
+        env:
+          SITE_URL: https://www.steelprodukt.ru
+        run: |
+          set -euo pipefail
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --max-time 10 "$SITE_URL/llms.txt" | grep -q "Сталь Продукт"; then
+              echo "Production release is serving llms.txt."
+              exit 0
+            fi
+            echo "Production is not ready yet (attempt $attempt/12)."
+            sleep 5
+          done
+          echo "The new production release did not become readable in time."
+          exit 1
+
+      - name: Notify IndexNow
+        env:
+          NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+        run: node scripts/submit-indexnow.mjs
