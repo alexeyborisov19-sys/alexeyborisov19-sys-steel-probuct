@@ -4,8 +4,12 @@ import { articles } from "@/data/articles";
 import { productionServices } from "@/data/production-services";
 import {
   customerMaterialSummary,
+  installationScopeSummary,
   laserCuttingTechnicalSummary,
+  metalCassetteOutputSummary,
+  productionEquipmentSummary,
   productionLeadTimeSummary,
+  productionScaleSummary,
 } from "@/data/manufacturing-facts";
 import { legalOperator } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
@@ -41,23 +45,21 @@ export function GET() {
 
   const content = `# Сталь Продукт — расширенная справка
 
-## Компания
+## Бренд и оператор
 
 ${siteConfig.description}
 
-«${siteConfig.name}» — бренд. Юридический оператор: ${legalOperator.name}.
+«${siteConfig.name}» — бренд/товарный знак, не юридическое лицо. Юридический оператор: ${legalOperator.name}.
 Контакты: ${siteConfig.telephoneDisplay}, ${siteConfig.email}.
 Адрес производства: ${legalOperator.productionAddress}.
 География поставок: Россия.
-Монтаж на объектах не выполняется.
+${installationScopeSummary}
 
 ## Производственные возможности
 
-- 2 000+ м² производственных площадей; 70+ специалистов.
-- 3 лазерных комплекса с ЧПУ, 4 листогибочных комплекса, панельгиб.
-- Сварочные посты, слесарный участок, 3 камеры порошковой окраски.
-- Производительность фасадных металлокассет: около 60 000 м² в год.
-- Цикл: инженерная проработка, раскрой, гибка, сварка и сборка, окраска, контроль качества, упаковка и отгрузка.
+- ${productionScaleSummary}
+- ${productionEquipmentSummary}
+- ${metalCassetteOutputSummary}
 - ${laserCuttingTechnicalSummary}
 - ${productionLeadTimeSummary}
 - ${customerMaterialSummary}
@@ -78,7 +80,7 @@ ${productList}
 
 - Портфолио поставок и реализованных объектов: ${siteConfig.url}/projects
 - Подробный кейс жилого комплекса «Соловьиная роща»: ${siteConfig.url}/projects/solovinaya-roshcha
-- На страницах проектов роль «Сталь Продукт» описывается как производство и поставка. Монтаж не заявляется.
+- На страницах проектов роль «Сталь Продукт» описывается как производство и поставка. ${installationScopeSummary}
 
 ## Редакционные материалы
 
@@ -97,7 +99,7 @@ ${engineeringPractice}
 ## Как начать работу
 
 Передайте чертёж, спецификацию, DXF, DWG, STEP, изображение или описание задачи: ${siteConfig.url}/contacts#contact-form.
-Компания принимает в работу как типовые, так и индивидуальные решения; точные размеры, материал, покрытие, срок и стоимость согласуются по исходным данным проекта.
+В работу принимаются как типовые, так и индивидуальные решения; точные размеры, материал, покрытие, срок и стоимость согласуются по исходным данным проекта.
 `;
 
   return new Response(content, {

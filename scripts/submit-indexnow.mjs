@@ -86,9 +86,9 @@ async function discoverPriorityUrls() {
 }
 
 const indexNowKey = await loadPublishedKey();
-const urlList = requestedPaths.length
-  ? [...new Set(requestedPaths.map((path) => new URL(path, `${siteUrl}/`).toString()))]
-  : await discoverPriorityUrls();
+const priorityUrls = await discoverPriorityUrls();
+const requestedUrls = requestedPaths.map((path) => new URL(path, `${siteUrl}/`).toString());
+const urlList = [...new Set([...priorityUrls, ...requestedUrls])];
 
 if (urlList.length > maximumBatchSize) {
   throw new Error(`IndexNow batch has ${urlList.length} URLs; maximum is ${maximumBatchSize}`);

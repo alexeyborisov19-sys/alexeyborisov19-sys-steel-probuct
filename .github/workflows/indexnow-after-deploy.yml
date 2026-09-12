@@ -22,17 +22,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get current production source
+      - name: Get deployed production source
         uses: actions/checkout@v5
         with:
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Wait for the AI discovery file from the new release
+      - name: Wait for the AI discovery file from the release
         env:
           SITE_URL: https://www.steelprodukt.ru
         run: |
@@ -42,13 +43,72 @@ jobs:
               echo "Production release is serving llms.txt."
               exit 0
             fi
-            echo "Production is not ready yet (attempt $attempt/12)."
+            echo "Production is not readable yet (attempt $attempt/12)."
             sleep 5
           done
-          echo "The new production release did not become readable in time."
+          echo "The production release did not become readable in time."
           exit 1
 
-      - name: Notify IndexNow
+      - name: Collect changed public URL paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths_file="$RUNNER_TEMP/indexnow-paths.txt"
+          : > "$paths_file"
+
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            while IFS= read -r file; do
+              case "$file" in
+                "app/(public)/page.tsx")
+                  printf '/\n' >> "$paths_file"
+                  ;;
+                app/\(public\)/*/page.tsx)
+                  route="${file#app/(public)}"
+                  route="${route%/page.tsx}"
+                  if [[ "$route" != *"["* ]]; then
+                    printf '%s\n' "$route" >> "$paths_file"
+                  fi
+                  ;;
+                app/robots.txt/route.ts)
+                  printf '/robots.txt\n' >> "$paths_file"
+                  ;;
+                app/llms.txt/route.ts)
+                  printf '/llms.txt\n' >> "$paths_file"
+                  ;;
+                app/llms-full.txt/route.ts)
+                  printf '/llms-full.txt\n' >> "$paths_file"
+                  ;;
+                app/sitemap.ts)
+                  printf '/sitemap.xml\n' >> "$paths_file"
+                  ;;
+                data/articles.ts)
+                  printf '/articles\n' >> "$paths_file"
+                  ;;
+                data/products.ts|data/commercial-product-landings.ts)
+                  printf '/products\n' >> "$paths_file"
+                  ;;
+                data/production-services.ts|data/manufacturing-facts.ts)
+                  printf '/production\n/llms.txt\n/llms-full.txt\n' >> "$paths_file"
+                  ;;
+                data/solution-details.ts|data/solution-seo.ts)
+                  printf '/solutions\n' >> "$paths_file"
+                  ;;
+                data/real-projects.ts|data/real-project-showcase.ts)
+                  printf '/projects\n' >> "$paths_file"
+                  ;;
+              esac
+            done < <(git diff --name-only HEAD^ HEAD)
+          fi
+
+          sort -u -o "$paths_file" "$paths_file"
+          echo "Changed public URL paths:"
+          cat "$paths_file" || true
+
+      - name: Notify IndexNow about key and changed URLs
         env:
           NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
-        run: node scripts/submit-indexnow.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed_paths < "$RUNNER_TEMP/indexnow-paths.txt"
+          node scripts/submit-indexnow.mjs "${changed_paths[@]}"

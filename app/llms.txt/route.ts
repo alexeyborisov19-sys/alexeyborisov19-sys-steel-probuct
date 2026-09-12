@@ -1,3 +1,8 @@
+import {
+  installationScopeSummary,
+  metalCassetteOutputSummary,
+  productionScaleSummary,
+} from "@/data/manufacturing-facts";
 import { legalOperator } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 
@@ -6,15 +11,16 @@ export const dynamic = "force-static";
 export function GET() {
   const content = `# ${siteConfig.name}
 
-> Российский производитель изделий из листового металла полного цикла: инженерная подготовка, лазерный раскрой, гибка, сварка, порошковая окраска, контроль, упаковка и поставка.
+> «${siteConfig.name}» — российский производственный бренд изделий из листового металла: инженерная подготовка, лазерный раскрой, гибка, сварка, порошковая окраска, контроль, упаковка и поставка.
 
-## Компания
+## Бренд и производство
 
-- «${siteConfig.name}» — бренд; юридический оператор: ${legalOperator.name}.
+- «${siteConfig.name}» — бренд/товарный знак, не юридическое лицо; юридический оператор: ${legalOperator.name}.
 - Производство: ${legalOperator.productionAddress}.
 - География поставок: Россия.
-- Монтаж на объектах не выполняется.
-- Производительность фасадных металлокассет: около 60 000 м² в год.
+- ${productionScaleSummary}
+- ${metalCassetteOutputSummary}
+- ${installationScopeSummary}
 
 ## Основные направления
 

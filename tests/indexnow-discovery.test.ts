@@ -8,7 +8,7 @@ import test from "node:test";
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const publishedIndexNowKey = "abcdef1234567890";
 
-test("IndexNow derives commercial and AI-discovery URLs from sitemap priority and uses the published verification key", async () => {
+test("IndexNow combines commercial, AI-discovery and explicitly changed URLs using the published key", async () => {
   let submittedBody: { host: string; key: string; keyLocation: string; urlList: string[] } | undefined;
 
   const server = createServer(async (request, response) => {
@@ -53,7 +53,7 @@ test("IndexNow derives commercial and AI-discovery URLs from sitemap priority an
     const address = server.address();
     assert.ok(address && typeof address !== "string");
     const baseUrl = `http://127.0.0.1:${address.port}`;
-    const child = spawn(process.execPath, ["scripts/submit-indexnow.mjs"], {
+    const child = spawn(process.execPath, ["scripts/submit-indexnow.mjs", "/articles/changed"], {
       cwd: repoRoot,
       env: {
         ...process.env,
@@ -75,6 +75,7 @@ test("IndexNow derives commercial and AI-discovery URLs from sitemap priority an
       [...submittedBody.urlList].sort(),
       [
         `${baseUrl}/`,
+        `${baseUrl}/articles/changed`,
         `${baseUrl}/llms-full.txt`,
         `${baseUrl}/llms.txt`,
         `${baseUrl}/products/registry-product`,

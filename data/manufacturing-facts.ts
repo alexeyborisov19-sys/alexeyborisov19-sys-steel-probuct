@@ -17,10 +17,39 @@ export const productionEquipment = {
   laserCleaningSystems: 1,
 } as const;
 
+export const productionScale = {
+  floorArea: "2 000+ м²",
+  specialists: "70+",
+  annualMetalCassetteOutput: "около 60 000 м²/год",
+} as const;
+
+export const productionScope = {
+  onSiteInstallation: false,
+} as const;
+
 export const productionOrderConditions = {
   typicalLeadTime: "7–14 дней",
   customerSuppliedMaterial: "работаем с металлом заказчика",
 } as const;
+
+export const productionScaleSummary =
+  `Производственная площадь — ${productionScale.floorArea}; ${productionScale.specialists} специалистов.`;
+
+export const productionEquipmentSummary =
+  `${productionEquipment.laserComplexes} лазерных комплекса; ` +
+  `${productionEquipment.pressBrakes} листогибочных комплекса; ` +
+  `${productionEquipment.panelBenders} панельгиб; ` +
+  `${productionEquipment.weldingStations} сварочных поста; ` +
+  `${productionEquipment.powderCoatingBooths} камеры порошковой окраски; ` +
+  `${productionEquipment.shotBlastingChambers} дробеструйная камера; ` +
+  `${productionEquipment.laserCleaningSystems} система лазерной очистки.`;
+
+export const metalCassetteOutputSummary =
+  `Ориентировочный выпуск фасадных металлокассет — ${productionScale.annualMetalCassetteOutput}.`;
+
+export const installationScopeSummary = productionScope.onSiteInstallation
+  ? "Монтаж на объектах выполняется."
+  : "Монтаж на объектах не выполняется.";
 
 export const laserCuttingTechnicalSummary =
   `Лазерная резка чёрной стали в диапазоне ${laserCuttingCapabilities.thicknessRange}. ` +
