@@ -113,8 +113,6 @@ export function MetalCassetteCalculator() {
           thickness,
           area: String(result.netAreaM2),
           quantity: String(result.quantity),
-          rate: String(result.approximateRateRubM2),
-          estimate: String(result.approximateTotalRub),
         },
         hash: "contact-form",
       }

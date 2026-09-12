@@ -10,11 +10,13 @@ test("solutions and industries expose proof-backed manufacturing positioning", a
   assert.match(industry, /ManufacturingProofSection/);
 });
 
-test("metal cassette collection does not promise a price calculator", async () => {
+test("metal cassette collection exposes a qualified preliminary price calculator", async () => {
   const source = await read("app/(public)/products/metallokassety/page.tsx");
-  assert.doesNotMatch(source, /Калькулятор стоимости/);
-  assert.doesNotMatch(source, /Калькулятор даёт ориентир/);
-  assert.match(source, /ориентировочное количество кассет/);
+  assert.match(source, /<MetalCassetteCalculator \/>/);
+  assert.match(source, /Рассчитать цену/);
+  assert.match(source, /ориентировочную стоимость и количество/);
+  assert.match(source, /Финальная цена подтверждается после проверки/);
+  assert.doesNotMatch(source, /buildDXF|CORNER_MODEL|размер развёртки/i);
 });
 
 test("homepage scenarios use direct industry routes and honest image descriptions", async () => {
