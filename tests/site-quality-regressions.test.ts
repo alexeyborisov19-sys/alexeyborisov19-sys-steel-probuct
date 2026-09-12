@@ -54,25 +54,23 @@ test("product pages explain pricing inputs without publishing invented prices", 
   assert.doesNotMatch(pricingFactors, /от \d+[\s ]*₽|\d+[\s ]*руб/i);
 });
 
-test("cassette calculator estimates quantity without publishing unverified prices", async () => {
+test("cassette calculator publishes a qualified preliminary price without production geometry", async () => {
   const [calculator, page] = await Promise.all([
     readFile(cassetteCalculatorPath, "utf8"),
     readFile(cassetteCalculatorPagePath, "utf8"),
   ]);
 
-  assert.doesNotMatch(calculator, /const prices\b|\bprice\b|\btotal\b|estimate:|₽/);
-  assert.doesNotMatch(page, /расчёт стоимости фасада|стоимость фасадных металлокассет|Ориентировочный расчёт стоимости|₽/i);
-  assert.match(calculator, /Ориентировочное количество/);
-  assert.match(calculator, /После проверки проекта/);
-  assert.match(calculator, /quantity: String\(result\.quantity\)/);
-  // The title names the calculator and what it measures. Its exact phrasing is
-  // free to change for the SERP — pinning the whole string here made a title
-  // trim look like a broken price guarantee — but it must never start
-  // promising a cost.
-  const pageTitle = /^const title = "([^"]+)";/m.exec(page)?.[1] ?? "";
-  assert.match(pageTitle, /^Калькулятор металлокассет/);
-  assert.doesNotMatch(pageTitle, /цен|стоимост|₽/i);
-  assert.match(page, /Почему калькулятор не показывает цену/);
+  assert.match(calculator, /Ориентировочная стоимость/);
+  assert.match(calculator, /Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа/);
+  assert.match(calculator, /Получить точный расчёт/);
+  assert.match(calculator, /0\.65/);
+  assert.match(calculator, /0\.7/);
+  assert.match(calculator, /1\.0/);
+  assert.match(calculator, /1\.2/);
+  assert.doesNotMatch(calculator, /buildDXF|addOpen|addClosed|priceAddW|priceAddH|CORNER_MODEL/);
+  assert.match(page, /Калькулятор металлокассет — цена и количество/);
+  assert.match(page, /предварительную оценку количества и стоимости/i);
+  assert.match(page, /Почему калькулятор не выдаёт DXF и развёртку/);
 });
 
 test("production photo grids stay on responsive Next Image delivery", async () => {
