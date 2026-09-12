@@ -6,7 +6,7 @@ import { articleSchema, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const path = "/articles/uzly-fasada-metallokassety";
-const title = "Узлы фасада из металлокассет: окна, углы, парапет";
+const title = "Узлы фасада из металлокассет: окна и углы";
 const description = "Какие узлы проверить до запуска металлокассет в серию: окна, наружные и внутренние углы, парапет, цоколь, деформационный шов и водоотведение.";
 
 export const metadata: Metadata = createPageMetadata({
