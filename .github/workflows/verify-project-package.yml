@@ -3,7 +3,7 @@ name: Verify project package
 on:
   push:
     branches:
-      - feat/project-galleries-exhibitions-obninsk-sep12
+      - fix/canonical-metrica-project-media-sep13
   pull_request:
     branches:
       - main
@@ -23,8 +23,8 @@ jobs:
     timeout-minutes: 30
     env:
       NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
-      NEXT_PUBLIC_YM_COUNTER_ID: "111263638"
-      NEXT_PUBLIC_YM_WEBVISOR: "false"
+      NEXT_PUBLIC_YM_COUNTER_ID: "112542227"
+      NEXT_PUBLIC_YM_WEBVISOR: "true"
 
     steps:
       - name: Checkout

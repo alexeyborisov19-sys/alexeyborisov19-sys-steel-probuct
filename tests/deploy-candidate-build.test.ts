@@ -35,10 +35,6 @@ test("production builds and audits a candidate before replacing the active Next 
   const candidateBuild = buildScript.indexOf('NEXT_DIST_DIR="$CANDIDATE_DIST" npm run build');
   const stopOldWorker = buildScript.indexOf('pm2 delete "$APP_NAME"');
   const productionRedirectAudit = buildScript.indexOf('SEO_AUDIT_BASE_URL="http://127.0.0.1:3000" node scripts/audit-legacy-redirects.mjs');
-  // The rollback copy is also cleared at the start of a deploy, so the discard
-  // this test is about is the one that follows the audit. Searching from the
-  // audit keeps the assertion on its real subject: move the discard above the
-  // audit and this finds nothing, exactly as it should.
   const discardPreviousBuild = buildScript.indexOf('rm -rf "$PREVIOUS_DIST"', productionRedirectAudit);
   assert.ok(candidateBuild >= 0 && stopOldWorker > candidateBuild, "the live worker must stay up during the candidate build");
   assert.ok(
@@ -90,10 +86,15 @@ test("production publishes the release built on the runner instead of building o
   // .next/cache is build state and by far the largest part of the tree.
   assert.match(workflow, /tar --exclude=\.\/cache/);
 
-  // The counter has no fallback in code, so a build without it would silently
-  // ship a site with no analytics.
-  assert.match(workflow, /NEXT_PUBLIC_YM_COUNTER_ID/);
-  assert.match(workflow, /The Yandex Metrica counter is absent from the built client bundle\./);
+  // Public analytics configuration is pinned on the production host before the
+  // runner build, then verified both as configuration and as compiled output.
+  assert.match(workflow, /Pin production analytics configuration/);
+  assert.match(workflow, /set_public_value NEXT_PUBLIC_YM_COUNTER_ID 112542227/);
+  assert.match(workflow, /set_public_value NEXT_PUBLIC_YM_WEBVISOR true/);
+  assert.match(workflow, /if \[ "\$YM_COUNTER_ID" != "112542227" \]; then/);
+  assert.match(workflow, /The canonical Yandex Metrica counter is absent from the built client bundle\./);
+  assert.match(workflow, /for legacy_id in 111263638 112129777; do/);
+  assert.match(workflow, /Legacy Yandex Metrica counter \$legacy_id leaked into the client bundle\./);
 });
 
 test("an interrupted promotion cannot leave production without a worker", async () => {
@@ -116,7 +117,6 @@ test("an interrupted promotion cannot leave production without a worker", async 
   assert.ok(stopOldWorker > windowOpens, "the old worker must only stop inside the guarded window");
   assert.ok(guardCleared > stopOldWorker, "the guard must stay armed until the new worker is audited");
 
-  // The recovery itself must put a build back and restart the worker.
   const handler = buildScript.slice(
     buildScript.indexOf("restore_service_on_abort() {"),
     guardInstalled,

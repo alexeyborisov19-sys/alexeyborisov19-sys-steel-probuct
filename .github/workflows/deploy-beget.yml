@@ -26,11 +26,10 @@ jobs:
   # free, and deploy #281 was OOM-killed mid-build, so the release is built on a
   # runner and shipped to the host as a finished .next tree.
   #
-  # NEXT_PUBLIC_* values are inlined into the client bundle while it is built, so
-  # the runner needs the same ones the host would have used. They are read from
-  # the host's own .env.production rather than restated here: a second copy would
-  # drift, and one of them — NEXT_PUBLIC_YM_COUNTER_ID — has no fallback in the
-  # code, so a wrong or missing value silently stops Yandex Metrica.
+  # NEXT_PUBLIC_* values are inlined into the client bundle while it is built.
+  # The production host remains the source of truth for public configuration,
+  # but the Metrica counter and Webvisor mode are intentionally pinned below so
+  # stale values can never silently restore a legacy analytics configuration.
   config:
     name: Read public build configuration
     runs-on: ubuntu-latest
@@ -52,6 +51,37 @@ jobs:
           printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Pin production analytics configuration
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          test -n "$APP_PATH"
+          ENV_FILE="$APP_PATH/.env.production"
+          touch "$ENV_FILE"
+
+          set_public_value() {
+            key="$1"
+            value="$2"
+            if grep -q "^${key}=" "$ENV_FILE"; then
+              sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+            else
+              printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+            fi
+          }
+
+          set_public_value NEXT_PUBLIC_YM_COUNTER_ID 112542227
+          set_public_value NEXT_PUBLIC_YM_WEBVISOR true
+          echo "Production analytics configuration pinned to the canonical counter."
+          REMOTE
 
       - name: Read NEXT_PUBLIC_* from the production environment
         id: read
@@ -84,9 +114,6 @@ jobs:
           YANDEX_VERIFICATION="$(value_of NEXT_PUBLIC_YANDEX_VERIFICATION)"
           GOOGLE_VERIFICATION="$(value_of NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION)"
 
-          # Fail loudly rather than build a release whose analytics or canonical
-          # origin are quietly wrong. The two checked here are the ones the site
-          # cannot fall back to in code.
           for required in SITE_URL YM_COUNTER_ID; do
             if [ -z "${!required}" ]; then
               echo "NEXT_PUBLIC_$required is missing from $BEGET_APP_PATH/.env.production."
@@ -94,6 +121,15 @@ jobs:
               exit 1
             fi
           done
+
+          if [ "$YM_COUNTER_ID" != "112542227" ]; then
+            echo "Unexpected Yandex Metrica counter: $YM_COUNTER_ID"
+            exit 1
+          fi
+          if [ "$YM_WEBVISOR" != "true" ]; then
+            echo "NEXT_PUBLIC_YM_WEBVISOR must be true for the canonical production configuration."
+            exit 1
+          fi
 
           {
             echo "site_url=$SITE_URL"
@@ -149,18 +185,26 @@ jobs:
           NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ needs.config.outputs.google_verification }}
         run: npm run build
 
-      - name: Confirm the counter reached the client bundle
+      - name: Confirm canonical Metrica configuration reached the client bundle
         env:
           YM_COUNTER_ID: ${{ needs.config.outputs.ym_counter_id }}
         run: |
           set -euo pipefail
-          # Metrica failing is silent and would go unnoticed for weeks, so the
-          # counter is verified in the built output instead of being assumed.
-          if ! grep -rqF "$YM_COUNTER_ID" .next/static; then
-            echo "The Yandex Metrica counter is absent from the built client bundle."
+          if [ "$YM_COUNTER_ID" != "112542227" ]; then
+            echo "The build was not configured with the canonical Metrica counter."
             exit 1
           fi
-          echo "Counter present in the client bundle."
+          if ! grep -rqF "112542227" .next/static; then
+            echo "The canonical Yandex Metrica counter is absent from the built client bundle."
+            exit 1
+          fi
+          for legacy_id in 111263638 112129777; do
+            if grep -rqF "$legacy_id" .next/static; then
+              echo "Legacy Yandex Metrica counter $legacy_id leaked into the client bundle."
+              exit 1
+            fi
+          done
+          echo "Canonical counter present; legacy counters absent."
 
       - name: Stamp the release with its commit
         run: |
