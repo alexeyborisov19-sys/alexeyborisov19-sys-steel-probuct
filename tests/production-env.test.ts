@@ -10,7 +10,7 @@ function validProductionEnvironment(): NodeJS.ProcessEnv {
   return {
     NODE_ENV: "production",
     NEXT_PUBLIC_SITE_URL: "https://www.steelprodukt.ru",
-    NEXT_PUBLIC_YM_COUNTER_ID: "111263638",
+    NEXT_PUBLIC_YM_COUNTER_ID: "112542227",
     NEXT_PUBLIC_YM_WEBVISOR: "false",
     SMTP_HOST: "smtp.example.ru",
     SMTP_PORT: "587",
