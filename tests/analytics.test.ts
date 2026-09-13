@@ -132,10 +132,22 @@ test("never passes personal data to the Yandex goal callback", () => {
   });
 });
 
-test("Metrika host is absent from pre-consent client source", () => {
-  const source = readFileSync(resolve("components/Analytics.tsx"), "utf8");
-  assert.equal(source.includes("mc.yandex.ru"), false);
-  assert.equal(source.includes("mc.yandex.com"), false);
-  assert.match(source, /if \(!analyticsAllowed\) return null/);
-  assert.match(source, /\['mc','yandex','ru'\]\.join\('\.'\)/);
+test("Metrika runtime is absent from the initial pre-consent client path", () => {
+  const layout = readFileSync(resolve("app/(public)/layout.tsx"), "utf8");
+  const gate = readFileSync(resolve("components/ConsentGatedAnalytics.tsx"), "utf8");
+  const runtime = readFileSync(resolve("components/Analytics.tsx"), "utf8");
+  const consent = readFileSync(resolve("components/CookieConsent.tsx"), "utf8");
+
+  assert.doesNotMatch(layout, /from "@\/components\/Analytics"/);
+  assert.match(layout, /<ConsentGatedAnalytics \/>/);
+  assert.match(gate, /await import\("\.\/Analytics"\)/);
+  assert.match(gate, /hasAnalyticsConsent\(\)/);
+  assert.equal(gate.includes("mc.yandex.ru"), false);
+  assert.equal(gate.includes("mc.yandex.com"), false);
+  assert.equal(runtime.includes("mc.yandex.ru"), false);
+  assert.equal(runtime.includes("mc.yandex.com"), false);
+  assert.match(runtime, /\['mc','yandex','ru'\]\.join\('\.'\)/);
+
+  const legalLinks = consent.match(/<Link prefetch=\{false\}/g) ?? [];
+  assert.equal(legalLinks.length, 2, "cookie-banner legal routes must not be prefetched before consent");
 });
