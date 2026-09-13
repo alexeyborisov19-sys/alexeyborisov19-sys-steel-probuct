@@ -16,7 +16,10 @@ const contentSecurityPolicy = [
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "upgrade-insecure-requests",
-].join("; ");
+// Keep whitespace on both sides of the directive separator. The CSP semantics
+// are unchanged, but static URL scanners do not mistake the semicolon for part
+// of a hostname such as `mc.yandex.ru;` or `mc.yandex.com;`.
+].join(" ; ");
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
