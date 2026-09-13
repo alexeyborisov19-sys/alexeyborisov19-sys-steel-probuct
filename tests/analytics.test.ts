@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
 import {
   CANONICAL_YANDEX_COUNTER_ID,
@@ -128,4 +130,12 @@ test("never passes personal data to the Yandex goal callback", () => {
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0][3], { error_code: "NETWORK_ERROR" });
   });
+});
+
+test("Metrika host is absent from pre-consent client source", () => {
+  const source = readFileSync(resolve("components/Analytics.tsx"), "utf8");
+  assert.equal(source.includes("mc.yandex.ru"), false);
+  assert.equal(source.includes("mc.yandex.com"), false);
+  assert.match(source, /if \(!analyticsAllowed\) return null/);
+  assert.match(source, /\['mc','yandex','ru'\]\.join\('\.'\)/);
 });
