@@ -31,8 +31,8 @@ export function ConsentGatedAnalytics() {
         return;
       }
 
-      const module = await import("./Analytics");
-      if (active) setAnalyticsComponent(() => module.Analytics);
+      const analyticsModule = await import("./Analytics");
+      if (active) setAnalyticsComponent(() => analyticsModule.Analytics);
     }
 
     void syncConsent();
