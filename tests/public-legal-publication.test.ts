@@ -39,15 +39,15 @@ test("published services page describes controls without exposing internal imple
 test("public legal version identifiers match their displayed dates", async () => {
   const legal = await readFile(join(root, "lib/legal.ts"), "utf8");
 
-  for (const key of ["privacy", "personalDataConsent", "cookies"]) {
-    assert.match(legal, new RegExp(`${key}: "2026-08-27"`));
-  }
-  assert.match(legal, /services: "2026-09-01"/);
+  assert.match(legal, /privacy: "2026-09-13"/);
+  assert.match(legal, /personalDataConsent: "2026-08-27"/);
+  assert.match(legal, /cookies: "2026-09-13"/);
+  assert.match(legal, /services: "2026-09-13"/);
 
-  assert.match(legal, /privacy: "27 августа 2026 года"/);
+  assert.match(legal, /privacy: "13 сентября 2026 года"/);
   assert.match(legal, /personalDataConsent: "27 августа 2026 года"/);
-  assert.match(legal, /cookies: "27 августа 2026 года"/);
-  assert.match(legal, /services: "1 сентября 2026 года"/);
+  assert.match(legal, /cookies: "13 сентября 2026 года"/);
+  assert.match(legal, /services: "13 сентября 2026 года"/);
 });
 
 test("every public form leads with the separate consent document", async () => {
