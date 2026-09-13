@@ -35,7 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       site_url: ${{ steps.read.outputs.site_url }}
-      ym_counter_id: ${{ steps.read.outputs.ym_counter_id }}
       ym_webvisor: ${{ steps.read.outputs.ym_webvisor }}
       yandex_verification: ${{ steps.read.outputs.yandex_verification }}
       google_verification: ${{ steps.read.outputs.google_verification }}
@@ -131,9 +130,12 @@ jobs:
             exit 1
           fi
 
+          # Do not pass the counter number through a job output. GitHub Actions
+          # may classify a numeric output as a secret and suppress it, which would
+          # leave NEXT_PUBLIC_YM_COUNTER_ID empty in the build job. The host value
+          # is validated above; the runner uses the same canonical constant below.
           {
             echo "site_url=$SITE_URL"
-            echo "ym_counter_id=$YM_COUNTER_ID"
             echo "ym_webvisor=$YM_WEBVISOR"
             echo "yandex_verification=$YANDEX_VERIFICATION"
             echo "google_verification=$GOOGLE_VERIFICATION"
@@ -179,21 +181,15 @@ jobs:
         env:
           NODE_ENV: production
           NEXT_PUBLIC_SITE_URL: ${{ needs.config.outputs.site_url }}
-          NEXT_PUBLIC_YM_COUNTER_ID: ${{ needs.config.outputs.ym_counter_id }}
+          NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
           NEXT_PUBLIC_YM_WEBVISOR: ${{ needs.config.outputs.ym_webvisor }}
           NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ needs.config.outputs.yandex_verification }}
           NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ needs.config.outputs.google_verification }}
         run: npm run build
 
       - name: Confirm canonical Metrica configuration reached the client bundle
-        env:
-          YM_COUNTER_ID: ${{ needs.config.outputs.ym_counter_id }}
         run: |
           set -euo pipefail
-          if [ "$YM_COUNTER_ID" != "112542227" ]; then
-            echo "The build was not configured with the canonical Metrica counter."
-            exit 1
-          fi
           if ! grep -rqF "112542227" .next/static; then
             echo "The canonical Yandex Metrica counter is absent from the built client bundle."
             exit 1
