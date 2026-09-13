@@ -4,6 +4,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { EngineeringAssistantLauncher } from "@/components/EngineeringAssistantLauncher";
 import { JsonLd } from "@/components/JsonLd";
 import { SitePreloader } from "@/components/SitePreloader";
+import { YandexEcommerce } from "@/components/YandexEcommerce";
 import { brandEntitySchema, legalOperatorEntitySchema } from "@/lib/entity-schema";
 import { websiteSchema } from "@/lib/schema";
 import { siteConfig } from "@/lib/site";
@@ -70,6 +71,7 @@ export default function PublicLayout({ children }: Readonly<{ children: React.Re
     <>
       <JsonLd data={[brandEntitySchema(), legalOperatorEntitySchema(), websiteSchema()]} />
       <Analytics />
+      <YandexEcommerce />
       <SitePreloader />
       {children}
       <EngineeringAssistantLauncher />
