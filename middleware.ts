@@ -22,6 +22,16 @@ const legacyRedirects = new Map([
   ["/kronhtein", "/solutions/engineering"],
   ["/rehotka", "/solutions/engineering"],
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
+  // Historical crawl noise and misspellings seen in Webmaster exports. Redirect
+  // only when there is one unambiguous modern equivalent; otherwise the path is
+  // deliberately retired with 410 below instead of creating a misleading soft 404.
+  ["/krihki", "/products/parapetnye-kryshki"],
+  ["/fasad", "/products/metallokassety"],
+  ["/metalkaset", "/products/metallokassety"],
+  ["/articles;", "/articles"],
+  ["/contacts;", "/contacts"],
+  ["/production;", "/production"],
+  ["/products;", "/products"],
 ]);
 
 export function middleware(request: NextRequest) {
@@ -129,6 +139,17 @@ export const config = {
     "/kronhtein",
     "/rehotka",
     "/vnutri",
+    "/krihki",
+    "/fasad",
+    "/metalkaset",
+    "/articles;",
+    "/contacts;",
+    "/production;",
+    "/products;",
+    "/preload",
+    "/articles/preload",
+    "/industries/preload",
+    "/tpost/:path*",
     "/cast-iron/:path*",
     "/chugunnoe-lityo",
     "/chugunnoe-lityo-foto",

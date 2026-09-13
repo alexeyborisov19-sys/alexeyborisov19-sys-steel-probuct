@@ -15,18 +15,24 @@ type CookieChoice = {
   updatedAt: string;
 };
 
+// Private/embedded browsers can deny localStorage. Keep the visitor's explicit
+// choice for the lifetime of the current document so the banner and analytics
+// behaviour still match the button they pressed, without inventing persistence.
+let transientChoice: CookieChoice | null = null;
+
 function readChoice(): CookieChoice | null {
   try {
     const stored = window.localStorage.getItem(consentKey);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored) as Partial<CookieChoice>;
-    if (parsed.version !== 2 || parsed.necessary !== true || typeof parsed.analytics !== "boolean") return null;
-    return parsed as CookieChoice;
+    if (stored) {
+      const parsed = JSON.parse(stored) as Partial<CookieChoice>;
+      if (parsed.version === 2 && parsed.necessary === true && typeof parsed.analytics === "boolean") {
+        return parsed as CookieChoice;
+      }
+    }
   } catch {
     // Some private-browser and embedded-browser modes disable storage access.
-    // Cookie consent must never prevent the website from opening in that case.
-    return null;
   }
+  return transientChoice;
 }
 
 function saveChoice(analytics: boolean) {
@@ -36,10 +42,11 @@ function saveChoice(analytics: boolean) {
     analytics,
     updatedAt: new Date().toISOString(),
   };
+  transientChoice = choice;
   try {
     window.localStorage.setItem(consentKey, JSON.stringify(choice));
   } catch {
-    // Keep the choice for this page visit even if persistent storage is blocked.
+    // The in-memory choice above keeps consent consistent for this page visit.
   }
   window.dispatchEvent(new Event(consentEvent));
 }

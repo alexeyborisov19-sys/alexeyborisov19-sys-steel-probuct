@@ -151,3 +151,10 @@ test("Metrika runtime is absent from the initial pre-consent client path", () =>
   const legalLinks = consent.match(/<Link prefetch=\{false\}/g) ?? [];
   assert.equal(legalLinks.length, 2, "cookie-banner legal routes must not be prefetched before consent");
 });
+
+test("cookie consent keeps an in-memory choice when localStorage is unavailable", () => {
+  const consent = readFileSync(resolve("components/CookieConsent.tsx"), "utf8");
+  assert.match(consent, /let transientChoice: CookieChoice \| null = null/);
+  assert.match(consent, /transientChoice = choice/);
+  assert.match(consent, /return transientChoice/);
+});
