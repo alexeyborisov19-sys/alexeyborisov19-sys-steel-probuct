@@ -27,17 +27,18 @@ const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
+const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/": new Date("2026-08-26T00:00:00.000Z"),
+  "/": discoveryHubsModifiedAt,
   "/company": new Date("2026-08-25T15:10:21.000Z"),
   "/company/facts": new Date("2026-09-12T00:00:00.000Z"),
   "/contacts": new Date("2026-08-25T17:32:36.000Z"),
   "/production": new Date("2026-08-25T21:24:08.000Z"),
-  "/solutions": new Date("2026-08-20T00:00:00.000Z"),
-  "/industries": new Date("2026-08-20T14:44:10.000Z"),
-  "/projects": new Date("2026-09-12T00:00:00.000Z"),
+  "/solutions": discoveryHubsModifiedAt,
+  "/industries": discoveryHubsModifiedAt,
+  "/projects": discoveryHubsModifiedAt,
   "/projects/solovinaya-roshcha": new Date("2026-09-12T00:00:00.000Z"),
-  "/products": new Date("2026-08-25T15:45:53.000Z"),
+  "/products": discoveryHubsModifiedAt,
   "/articles": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
   "/articles/ploshchad-fasada-raskhod-metalla-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
