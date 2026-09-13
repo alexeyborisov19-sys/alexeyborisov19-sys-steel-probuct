@@ -10,7 +10,6 @@ type GoalCall = [number, string, string, Record<string, unknown>];
 
 function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
   const previousWindow = globalThis.window;
-  const previousCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
   const calls: GoalCall[] = [];
   Object.defineProperty(globalThis, "window", {
     configurable: true,
@@ -18,14 +17,11 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
       ym: (...args: GoalCall) => calls.push(args),
     },
   });
-  process.env.NEXT_PUBLIC_YM_COUNTER_ID = "111263638";
   try {
     callback(calls);
   } finally {
     if (previousWindow === undefined) delete (globalThis as { window?: Window }).window;
     else Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
-    if (previousCounterId === undefined) delete process.env.NEXT_PUBLIC_YM_COUNTER_ID;
-    else process.env.NEXT_PUBLIC_YM_COUNTER_ID = previousCounterId;
   }
 }
 
@@ -49,12 +45,12 @@ test("sends every quote funnel goal to the analytics counter", () => {
     ]);
     assert.ok(calls.every((call) => call[1] === "reachGoal"));
 
-    // Each goal is reported once, to the single configured counter. Direct reads
+    // Each goal is reported once, to the single approved counter. Direct reads
     // the same counter, so a second copy would only duplicate the conversion.
     for (const goal of goalsInOrder) {
       assert.deepEqual(
         calls.filter((call) => call[2] === goal).map((call) => call[0]),
-        [111263638],
+        [112542227],
         `goal ${goal} must reach the analytics counter exactly once`,
       );
     }
