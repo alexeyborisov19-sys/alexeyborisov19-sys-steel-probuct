@@ -6,8 +6,8 @@ import { Brand } from "./Brand";
 import { CookieSettingsButton } from "./CookieConsent";
 
 const columns = [
-  ["Компания", ["О компании", "Факты о производстве", "Преимущества", "Инженерный журнал «Сталь Продукт»"]],
-  ["Решения", ["Архитектурные", "Для кондиционирования", "Для промышленности", "Инженерные системы"]],
+  ["Компания", ["О компании", "Факты о производстве", "Преимущества", "Проекты", "Инженерный журнал «Сталь Продукт»"]],
+  ["Решения", ["Архитектурные", "Для кондиционирования", "Для промышленности", "Инженерные системы", "Индивидуальные решения"]],
   ["Для объектов", ["Жилые комплексы", "Производственные предприятия", "Инженерная инфраструктура"]],
   ["Производство", ["Производственный процесс", "Контроль качества", "Материалы и покрытия"]],
 ] as const;
@@ -16,10 +16,12 @@ const footerLinks: Record<string, string> = {
   "О компании": "/company",
   "Факты о производстве": "/company/facts",
   "Преимущества": "/company#advantages",
+  "Проекты": "/projects",
   "Архитектурные": "/products",
   "Для кондиционирования": "/solutions/climate",
   "Для промышленности": "/solutions/industry",
   "Инженерные системы": "/solutions/engineering",
+  "Индивидуальные решения": "/solutions/custom",
   "Жилые комплексы": "/industries/zhilye-kompleksy",
   "Производственные предприятия": "/industries/proizvodstvennye-predpriyatiya",
   "Инженерная инфраструктура": "/industries/inzhenernaya-infrastruktura",
@@ -28,6 +30,15 @@ const footerLinks: Record<string, string> = {
   "Материалы и покрытия": "/production",
   "Инженерный журнал «Сталь Продукт»": "/articles",
 };
+
+const keyCommercialLinks = [
+  ["Металлокассеты", "/products/metallokassety"],
+  ["Корзины для кондиционеров", "/products/korziny-dlya-konditsionerov"],
+  ["Вентиляционные решётки", "/products/ventilyacionnye-reshetki"],
+  ["Металлические корпуса", "/products/metallicheskie-korpusa"],
+  ["Закладные детали", "/products/zakladnye-detali"],
+  ["Проекты", "/projects"],
+] as const;
 
 const legalDocuments = [
   ["Политика обработки данных", legalLinks.privacy],
@@ -72,6 +83,12 @@ export function Footer() {
         </div>
       </div>
       <div className="mt-9 border-t border-white/10 pt-5">
+        <p className="text-xs font-bold uppercase tracking-[.12em] text-white/60">Ключевые направления</p>
+        <nav className="mt-3 flex flex-wrap gap-x-5 gap-y-2" aria-label="Ключевые направления продукции">
+          {keyCommercialLinks.map(([label, href]) => <Link key={href} href={href} className="text-xs text-white/60 transition hover:text-steel-orange">{label}</Link>)}
+        </nav>
+      </div>
+      <div className="mt-5 border-t border-white/10 pt-5">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-white/60">Правовые документы</p>
         <nav className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
           {legalDocuments.map(([label, href]) => <Link key={href} href={href} prefetch={false} className="text-xs text-white/60 transition hover:text-steel-orange">{label}</Link>)}
