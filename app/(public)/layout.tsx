@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Analytics } from "@/components/Analytics";
+import { ConsentGatedAnalytics } from "@/components/ConsentGatedAnalytics";
 import { CookieConsent } from "@/components/CookieConsent";
 import { EngineeringAssistantLauncher } from "@/components/EngineeringAssistantLauncher";
 import { JsonLd } from "@/components/JsonLd";
@@ -70,7 +70,7 @@ export default function PublicLayout({ children }: Readonly<{ children: React.Re
   return (
     <>
       <JsonLd data={[brandEntitySchema(), legalOperatorEntitySchema(), websiteSchema()]} />
-      <Analytics />
+      <ConsentGatedAnalytics />
       <YandexEcommerce />
       <SitePreloader />
       {children}
