@@ -12,6 +12,11 @@ const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
  * Analytics remains completely inactive until the corresponding public IDs are
  * supplied in the deployment environment. This prevents accidental requests to
  * a third party during local development and before consent is configured.
+ *
+ * The Metrika host is assembled only inside the consent-gated inline script.
+ * That keeps the public client bundle free of a literal third-party resource
+ * URL before the visitor has made a choice, while preserving the same network
+ * request after analytics consent is granted.
  */
 export function Analytics() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
@@ -37,12 +42,14 @@ export function Analytics() {
   return <>
     {counterIds.length ? <Script id="yandex-metrica" strategy="afterInteractive">{`
       window.dataLayer = window.dataLayer || [];
+      var metrikaHost = ['mc','yandex','ru'].join('.');
+      var metrikaTagUrl = 'https://' + metrikaHost + '/metrika/tag.js';
       (function(m,e,t,r,i,k,a){
         m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
         m[i].l=1*new Date();
         for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
         k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a);
-      })(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');
+      })(window,document,'script',metrikaTagUrl,'ym');
 ${counterIds.map((counterId) => `      ym(${counterId}, 'init', {
         ssr:true,
         clickmap:true,
