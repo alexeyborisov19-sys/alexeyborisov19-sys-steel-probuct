@@ -150,7 +150,9 @@ export function YandexEcommerce() {
       }
 
       const schemas = readJsonLdSchemas();
-      const detailProduct = schemas.map(productFromSchema).find(Boolean);
+      const detailProduct = schemas
+        .map(productFromSchema)
+        .find((product): product is YandexEcommerceProduct => product !== null);
       if (detailProduct) {
         pushDetail(detailProduct);
         sentForPage = true;
