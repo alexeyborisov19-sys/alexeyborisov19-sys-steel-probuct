@@ -36,7 +36,7 @@ export function UpcomingIndustryEvents() {
       <div className="mt-7">
         <div className="flex flex-col justify-between gap-4 border border-steel-orange/35 bg-[linear-gradient(135deg,rgba(224,86,36,.12),rgba(16,21,25,.98)_48%)] p-5 sm:flex-row sm:items-end sm:p-6">
           <div>
-            <p className="eyebrow">Проверено 12 сентября 2026</p>
+            <p className="eyebrow">Проверено 13 сентября 2026</p>
             <h3 className="mt-2 text-xl font-semibold uppercase sm:text-2xl">Ближайшие подтверждённые выставки и события</h3>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/55">Даты, города и площадки сверены по официальным сайтам организаторов. В подборке — фасады, строительство, сварка, покрытия, металлообработка и промышленное оборудование.</p>
           </div>
