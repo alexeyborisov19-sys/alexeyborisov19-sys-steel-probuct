@@ -8,9 +8,9 @@ export const CANONICAL_YANDEX_COUNTER_ID = 112542227;
 
 // The first identifiers are Yandex's recommended lead-form goals. The second
 // identifiers keep detailed B2B funnel reporting available in Metrica.
-// Create goals with these exact names in the Metrica interface after adding
-// the counter ID to the production environment.
-const yandexGoalByEvent: Record<string, string[]> = {
+// The exact identifiers are synchronized with the canonical Metrica counter by
+// the protected GitHub Actions workflow in this repository.
+export const yandexGoalByEvent: Record<string, string[]> = {
   quote_form_started: ["ym-open-leadform", "quote_form_started"],
   quote_file_attached: ["quote_file_attached"],
   quote_request_submit: ["quote_request_submit"],
