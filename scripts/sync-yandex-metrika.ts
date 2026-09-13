@@ -51,6 +51,46 @@ export function collectDesiredTargets() {
   return [...new Set(Object.values(yandexGoalByEvent).flat())].sort();
 }
 
+/**
+ * GitHub Secrets are often filled by copying directly from the Yandex OAuth
+ * result page. Accept the safe common variants without ever logging the token:
+ *   - raw token
+ *   - `OAuth <token>`
+ *   - `access_token=<token>`
+ *   - full verification_code URL containing #access_token=...
+ */
+export function normalizeYandexOAuthToken(rawValue: string) {
+  let value = rawValue.trim();
+  if (!value) throw new Error("YANDEX_METRIKA_OAUTH_TOKEN is empty");
+
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+
+  value = value.replace(/^OAuth\s+/i, "").trim();
+
+  const tokenMatch = value.match(/(?:^|[#?&])access_token=([^&#\s]+)/i);
+  if (tokenMatch) {
+    try {
+      value = decodeURIComponent(tokenMatch[1]);
+    } catch {
+      value = tokenMatch[1];
+    }
+  } else if (/^https?:\/\//i.test(value)) {
+    throw new Error(
+      "YANDEX_METRIKA_OAUTH_TOKEN contains a URL, but no access_token was found in it.",
+    );
+  }
+
+  value = value.trim();
+  if (!value) throw new Error("YANDEX_METRIKA_OAUTH_TOKEN does not contain an OAuth token");
+
+  return value;
+}
+
 function actionTarget(goal: ExistingGoal) {
   if (goal.type !== "action") return null;
   const exactCondition = goal.conditions?.find(
@@ -122,9 +162,9 @@ function writeGithubSummary(lines: string[]) {
   appendFileSync(summaryFile, `${lines.join("\n")}\n`, "utf8");
 }
 
-export async function syncYandexMetrikaGoals(token: string) {
+export async function syncYandexMetrikaGoals(rawToken: string) {
   assertConfigurationIsComplete();
-  if (!token.trim()) throw new Error("YANDEX_METRIKA_OAUTH_TOKEN is empty");
+  const token = normalizeYandexOAuthToken(rawToken);
 
   const desiredTargets = collectDesiredTargets();
   const before = await listGoals(token);
