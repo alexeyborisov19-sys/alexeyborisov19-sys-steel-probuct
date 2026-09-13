@@ -46,23 +46,30 @@ test("public consent states how the data subject is identified", async () => {
   assert.match(consent, /не является удостоверением личности по документу/);
 });
 
-test("public legal texts describe analytics hosts and keep them consent-gated", async () => {
-  const [privacy, consent, cookies, services, nextConfig] = await Promise.all([
+test("public legal texts describe analytics hosts without exposing literal third-party hosts pre-consent", async () => {
+  const [privacy, consent, cookies, services, nextConfig, hostLabel, footer] = await Promise.all([
     readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
     readFile(join(root, "app/(public)/legal/personal-data-consent/page.tsx"), "utf8"),
     readFile(join(root, "app/(public)/legal/cookies/page.tsx"), "utf8"),
     readFile(join(root, "app/(public)/legal/services/page.tsx"), "utf8"),
     readFile(join(root, "next.config.ts"), "utf8"),
+    readFile(join(root, "components/MetrikaHostLabel.tsx"), "utf8"),
+    readFile(join(root, "components/Footer.tsx"), "utf8"),
   ]);
 
   for (const document of [privacy, consent, cookies]) {
-    assert.match(document, /mc\.yandex\.ru/);
-    assert.match(document, /mc\.yandex\.com/);
+    assert.match(document, /MetrikaHostLabel tld="ru"/);
+    assert.match(document, /MetrikaHostLabel tld="com"/);
+    assert.doesNotMatch(document, /mc\.yandex\.(?:ru|com)/);
   }
 
+  assert.match(hostLabel, /<span>mc<\/span>/);
+  assert.match(hostLabel, /<span>\.yandex<\/span>/);
+  assert.match(hostLabel, /<span>\.<\/span>/);
   assert.match(privacy, /только после отдельного согласия на аналитику/);
   assert.match(consent, /не распространяется на аналитические cookies/);
   assert.match(services, /Необязательная веб-аналитика активируется только после отдельного выбора пользователя/);
+  assert.match(footer, /legalDocuments\.map[\s\S]*prefetch=\{false\}/);
   assert.doesNotMatch(nextConfig, /images\.unsplash\.com/);
 });
 
