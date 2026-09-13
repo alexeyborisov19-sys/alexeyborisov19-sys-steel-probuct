@@ -1,0 +1,50 @@
+name: Sync Yandex Metrika goals
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "lib/analytics.ts"
+      - "scripts/sync-yandex-metrika.ts"
+      - "tests/yandex-metrika-sync.test.ts"
+      - ".github/workflows/sync-yandex-metrika.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yandex-metrika-goal-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync canonical counter goals
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YANDEX_METRIKA_OAUTH_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify secret is configured
+        shell: bash
+        run: |
+          if [ -z "$YANDEX_METRIKA_OAUTH_TOKEN" ]; then
+            echo "YANDEX_METRIKA_OAUTH_TOKEN is not configured." >&2
+            exit 1
+          fi
+
+      - name: Sync Yandex Metrika goals
+        run: node --import tsx scripts/sync-yandex-metrika.ts
