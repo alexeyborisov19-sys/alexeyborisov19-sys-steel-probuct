@@ -139,6 +139,10 @@ async function listGoals(token: string) {
 }
 
 async function createActionGoal(token: string, target: string, metadata: GoalMetadata) {
+  // The live Management API currently rejects a JSON boolean in is_favorite
+  // with invalid_json even though the OpenAPI schema documents it as boolean.
+  // The field is optional and only affects the UI favorite marker, not goal
+  // collection or Direct optimization, so omit it for compatibility.
   await apiRequest(
     `/management/v1/counter/${CANONICAL_YANDEX_COUNTER_ID}/goals`,
     token,
@@ -148,7 +152,6 @@ async function createActionGoal(token: string, target: string, metadata: GoalMet
         goal: {
           name: metadata.name,
           type: "action",
-          is_favorite: Boolean(metadata.favorite),
           conditions: [{ type: "exact", url: target }],
         },
       }),
