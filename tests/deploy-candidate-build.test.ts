@@ -93,7 +93,7 @@ test("production publishes the release built on the runner instead of building o
   // The counter has no fallback in code, so a build without it would silently
   // ship a site with no analytics.
   assert.match(workflow, /NEXT_PUBLIC_YM_COUNTER_ID/);
-  assert.match(workflow, /The Yandex Metrica counter is absent from the built client bundle\./);
+  assert.match(workflow, /The canonical Yandex Metrica counter is absent from the built client bundle\./);
 });
 
 test("an interrupted promotion cannot leave production without a worker", async () => {
