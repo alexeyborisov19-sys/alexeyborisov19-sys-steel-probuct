@@ -1,19 +1,5 @@
 import type { NextConfig } from "next";
 
-const projectImageHosts = [
-  "https://static.tildacdn.com",
-  "https://smolgazeta.ru",
-  "https://static.mk.ru",
-  "https://images.cdn-cian.ru",
-  "https://lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru",
-  "https://www.rabochy-put.ru",
-  "https://vostokstroy67.ru",
-  "https://smoldaily.ru",
-  "https://vestnikstroy.ru",
-  "https://sdelanounas.ru",
-  "https://www.atlant-complex.ru",
-];
-
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -22,7 +8,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline' https://mc.yandex.ru",
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com ${projectImageHosts.join(" ")}`,
+  "img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com",
   "font-src 'self' data:",
   "media-src 'self'",
   "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com",
@@ -55,15 +41,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "static.tildacdn.com" },
-      { protocol: "https", hostname: "smolgazeta.ru" },
-      { protocol: "https", hostname: "static.mk.ru" },
-      { protocol: "https", hostname: "images.cdn-cian.ru" },
-      { protocol: "https", hostname: "lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru" },
-      { protocol: "https", hostname: "smoldaily.ru" },
-      { protocol: "https", hostname: "vestnikstroy.ru" },
-    ],
+    // Project photographs from third-party sites are kept as source links only.
+    // Do not whitelist remote image hosts without a separate rights/privacy review.
+    remotePatterns: [],
   },
   async redirects() {
     return [

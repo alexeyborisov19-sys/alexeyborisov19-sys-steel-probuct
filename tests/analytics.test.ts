@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CANONICAL_YANDEX_COUNTER_ID,
   createResettableOnce,
   sanitizeAnalyticsParams,
   trackLeadEvent,
+  yandexCounterIds,
 } from "@/lib/analytics";
 
 type GoalCall = [number, string, string, Record<string, unknown>];
@@ -18,7 +20,7 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
       ym: (...args: GoalCall) => calls.push(args),
     },
   });
-  process.env.NEXT_PUBLIC_YM_COUNTER_ID = "111263638";
+  process.env.NEXT_PUBLIC_YM_COUNTER_ID = String(CANONICAL_YANDEX_COUNTER_ID);
   try {
     callback(calls);
   } finally {
@@ -29,7 +31,7 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
   }
 }
 
-test("sends every quote funnel goal to the analytics counter", () => {
+test("sends every quote funnel goal to the canonical analytics counter", () => {
   withAnalyticsWindow((calls) => {
     trackLeadEvent("quote_form_started", { form_location: "contacts" });
     trackLeadEvent("quote_file_attached", { files_added: 1 });
@@ -49,16 +51,29 @@ test("sends every quote funnel goal to the analytics counter", () => {
     ]);
     assert.ok(calls.every((call) => call[1] === "reachGoal"));
 
-    // Each goal is reported once, to the single configured counter. Direct reads
-    // the same counter, so a second copy would only duplicate the conversion.
     for (const goal of goalsInOrder) {
       assert.deepEqual(
         calls.filter((call) => call[2] === goal).map((call) => call[0]),
-        [111263638],
-        `goal ${goal} must reach the analytics counter exactly once`,
+        [CANONICAL_YANDEX_COUNTER_ID],
+        `goal ${goal} must reach the canonical analytics counter exactly once`,
       );
     }
   });
+});
+
+test("legacy or unknown Metrica counters fail closed", () => {
+  const previousCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
+  try {
+    for (const legacyId of ["111263638", "112129777", "999999999", ""]) {
+      process.env.NEXT_PUBLIC_YM_COUNTER_ID = legacyId;
+      assert.deepEqual(yandexCounterIds(), [], `counter ${legacyId || "<empty>"} must be rejected`);
+    }
+    process.env.NEXT_PUBLIC_YM_COUNTER_ID = String(CANONICAL_YANDEX_COUNTER_ID);
+    assert.deepEqual(yandexCounterIds(), [CANONICAL_YANDEX_COUNTER_ID]);
+  } finally {
+    if (previousCounterId === undefined) delete process.env.NEXT_PUBLIC_YM_COUNTER_ID;
+    else process.env.NEXT_PUBLIC_YM_COUNTER_ID = previousCounterId;
+  }
 });
 
 test("the form-start goal fires once per form completion cycle", () => {

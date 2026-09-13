@@ -18,7 +18,7 @@ export const legalOperator = {
     correspondentAccount: "30101810145250000411",
     bik: "044525411",
   },
-  policyVersion: "30 июля 2026 года",
+  policyVersion: "13 сентября 2026 года",
 } as const;
 
 export const legalDocumentVersions = {

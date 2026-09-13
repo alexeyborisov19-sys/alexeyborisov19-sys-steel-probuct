@@ -23,7 +23,7 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   assert.ok(klovskiy && klovskiy.photos.length >= 2);
   assert.ok(unity && unity.photos.length >= 2);
   assert.ok(regionalHospital && regionalHospital.photos.length >= 2);
-  assert.ok(odkb && odkb.photos.length >= 3);
+  assert.ok(odkb && odkb.photos.length >= 4);
   assert.ok(oncology && oncology.photos.length >= 2);
   assert.ok(feniks && feniks.photos.length >= 4);
   assert.equal(realProjectsShowcase.some((project) => project.slug === "kb-8-fmba-obninsk"), false);

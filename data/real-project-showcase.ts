@@ -98,6 +98,12 @@ const galleries: Record<string, ProjectPhoto[]> = {
   ],
   "odkb-novyy-korpus": [
     {
+      src: "https://static.mk.ru/upload/entities/2026/03/11/18/articles/facebookPicture/80/5c/4a/c0/cc7a5ba438db3b358c287acc43ba3192.jpg",
+      alt: "Фасад нового корпуса Смоленской областной детской клинической больницы в марте 2026 года",
+      credit: "«МК в Смоленске», пресс-материалы объекта",
+      sourceUrl: "https://www.mk-smolensk.ru/social/2026/03/12/vasiliy-anokhin-novyy-korpus-detskoy-oblastnoy-bolnicy-gotov-na-73.html",
+    },
+    {
       src: "https://smolgazeta.ru/fc-web/fc-files/2026/03/167633.jpg",
       alt: "Монтаж фасадных элементов нового хирургического корпуса детской областной больницы",
       credit: "«Смоленская газета»",
@@ -175,9 +181,9 @@ const obninskProject: RealProject = {
   category: "medical",
   categoryLabel: "Медицина",
   partner: "МРНЦ им. А. Ф. Цыба — филиал ФГБУ «НМИЦ радиологии» Минздрава России",
-  image: "https://vestnikstroy.ru/upload/iblock/af3/qwjf6j6ttixu368xe86x1wg8bz6dqzmz.jpeg",
-  imageAlt: "Здание клиники МРНЦ им. А. Ф. Цыба в Обнинске",
-  imageCredit: "Фото: «Вестник строительного комплекса»",
+  image: "/images/industries/medical.jpg",
+  imageAlt: "Иллюстративный визуал медицинского объекта",
+  imageCredit: "Иллюстративный визуал отрасли · не фото объекта",
   imageSourceUrl: "https://vestnikstroy.ru/articles/aktualno/v-obninske-zavershilos-blagoustroystvo-territorii-meditsinskogo-tsentra-imeni-a-f-tsyba-/",
   supply: ["металлокассеты — поставка продолжается", "изделия по проектной документации"],
   description: "Объект в Обнинске — Медицинский радиологический научный центр имени А. Ф. Цыба. «Сталь Продукт» производит и поставляет металлокассеты для объекта; поставка продолжается в настоящее время. Монтаж не выполняем. Официальный сайт НМИЦ радиологии подтверждает МРНЦ им. А. Ф. Цыба по адресу: Обнинск, ул. Королёва, 4. Публичные фотографии используются для идентификации объекта и не привязываются к конкретной поставленной партии без отдельного подтверждения.",
