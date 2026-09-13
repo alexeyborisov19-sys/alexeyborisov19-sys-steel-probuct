@@ -13,7 +13,24 @@ const legacyRedirects = new Map([
   ["/kronhtein", "/solutions/engineering"],
   ["/rehotka", "/solutions/engineering"],
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
+  ["/krihki", "/products/parapetnye-kryshki"],
+  ["/fasad", "/products/metallokassety"],
+  ["/metalkaset", "/products/metallokassety"],
+  ["/articles;", "/articles"],
+  ["/contacts;", "/contacts"],
+  ["/production;", "/production"],
+  ["/products;", "/products"],
 ]);
+
+const retiredUrls = [
+  "/preload",
+  "/articles/preload",
+  "/industries/preload",
+  "/tpost/8k5t28gnc1-there-is-a-first-post-headline",
+  "/tpost/0h4a9f3hn1-title-of-the-second-sample-post",
+  "/tpost/rd16su7hd1-the-third-title-for-the-post",
+  "/chugunnoe-lityo",
+];
 
 const errors = [];
 
@@ -37,7 +54,18 @@ for (const [source, destination] of legacyRedirects) {
   }
 }
 
-console.log(`SEO-аудит legacy-редиректов: ${legacyRedirects.size} URL`);
+for (const path of retiredUrls) {
+  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual" });
+  if (response.status !== 410) {
+    errors.push(`${path}: ожидается 410, получен ${response.status}`);
+  }
+  const robots = (response.headers.get("x-robots-tag") ?? "").toLowerCase();
+  if (!robots.includes("noindex")) {
+    errors.push(`${path}: удалённый URL не содержит X-Robots-Tag noindex`);
+  }
+}
+
+console.log(`SEO-аудит legacy-редиректов: ${legacyRedirects.size} редиректов, ${retiredUrls.length} удалённых URL`);
 console.log(`Ошибки: ${errors.length}`);
 if (errors.length) {
   errors.forEach((error) => console.log(`- ${error}`));
