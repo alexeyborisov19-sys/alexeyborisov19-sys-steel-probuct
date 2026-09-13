@@ -6,12 +6,11 @@ import { yandexCounterIds } from "@/lib/analytics";
 import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
 const counterIds = yandexCounterIds();
-const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
 
 /**
- * Analytics remains completely inactive until the corresponding public IDs are
- * supplied in the deployment environment. This prevents accidental requests to
- * a third party during local development and before consent is configured.
+ * Yandex Metrica is loaded only after the visitor explicitly allows analytics.
+ * Counter 112542227 is the single canonical counter for the public website and
+ * Yandex Direct conversion goals.
  */
 export function Analytics() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
@@ -47,7 +46,8 @@ ${counterIds.map((counterId) => `      ym(${counterId}, 'init', {
         clickmap:true,
         trackLinks:true,
         accurateTrackBounce:true,
-        webvisor:${webvisorEnabled ? "true" : "false"}
+        webvisor:true,
+        ecommerce:'dataLayer'
       });`).join("\n")}
     `}</Script> : null}
   </>;
