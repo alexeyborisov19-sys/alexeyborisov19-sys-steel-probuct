@@ -4,10 +4,12 @@ type AnalyticsWindow = Window & {
   ym?: (counterId: number, command: "reachGoal", target: string, params?: EventParams) => void;
 };
 
+export const YANDEX_METRIKA_COUNTER_ID = 112542227;
+
 // The first identifiers are Yandex's recommended lead-form goals. The second
 // identifiers keep detailed B2B funnel reporting available in Metrica.
-// Create goals with these exact names in the Metrica interface after adding
-// the counter ID to the production environment.
+// Create goals with these exact names in the Metrica interface for counter
+// 112542227. Direct must use this same counter rather than a parallel one.
 const yandexGoalByEvent: Record<string, string[]> = {
   quote_form_started: ["ym-open-leadform", "quote_form_started"],
   quote_file_attached: ["quote_file_attached"],
@@ -52,15 +54,12 @@ export function createResettableOnce(callback: () => void) {
 }
 
 /**
- * Every counter the site reports to. Direct is pointed at this same counter
- * instead of a second one: the site sent both identical data, so a separate
- * advertising counter added a parallel data flow with nothing extra in it, and
- * the cookie policy would have had to describe it. Read at call time so tests
- * can swap the environment.
+ * The public site reports to one canonical Yandex Metrica counter.
+ * Keep Direct, site goals and legal disclosures tied to this same ID so a
+ * deployment environment cannot accidentally restore an obsolete counter.
  */
 export function yandexCounterIds() {
-  return [Number(process.env.NEXT_PUBLIC_YM_COUNTER_ID)]
-    .filter((counterId) => Number.isFinite(counterId) && counterId > 0);
+  return [YANDEX_METRIKA_COUNTER_ID];
 }
 
 export function trackLeadEvent(eventName: string, params: EventParams = {}) {
