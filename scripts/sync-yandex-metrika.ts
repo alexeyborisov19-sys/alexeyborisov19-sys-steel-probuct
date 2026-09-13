@@ -25,6 +25,18 @@ type GoalsResponse = {
   goals?: ExistingGoal[];
 };
 
+type CounterFlags = {
+  collect_first_party_data?: boolean;
+  measurement_enabled?: boolean;
+};
+
+type CounterResponse = {
+  counter?: {
+    id?: number;
+    counter_flags?: CounterFlags;
+  };
+};
+
 export const METRIKA_GOAL_METADATA: Record<string, GoalMetadata> = {
   "ym-open-leadform": { name: "Форма заявки — открыта" },
   quote_form_started: { name: "Форма заявки — начало заполнения" },
@@ -130,6 +142,50 @@ async function apiRequest<T>(path: string, token: string, init: RequestInit = {}
   return (text ? JSON.parse(text) : {}) as T;
 }
 
+async function readCounterFlags(token: string) {
+  const result = await apiRequest<CounterResponse>(
+    `/management/v1/counter/${CANONICAL_YANDEX_COUNTER_ID}?field=counter_flags`,
+    token,
+  );
+  return result.counter?.counter_flags ?? {};
+}
+
+async function enforcePrivacyCounterFlags(token: string) {
+  const before = await readCounterFlags(token);
+  let changed = false;
+
+  // SteelProdukt does not send form PII to analytics. Keep Yandex Metrica's
+  // Advanced Matching / automatic first-party contact collection disabled too.
+  if (before.collect_first_party_data !== false) {
+    await apiRequest(
+      `/management/v1/counter/${CANONICAL_YANDEX_COUNTER_ID}?field=counter_flags`,
+      token,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          counter: {
+            counter_flags: {
+              collect_first_party_data: false,
+            },
+          },
+        }),
+      },
+    );
+    changed = true;
+  }
+
+  const after = await readCounterFlags(token);
+  if (after.collect_first_party_data !== false) {
+    throw new Error("Metrika privacy verification failed: collect_first_party_data is still enabled.");
+  }
+
+  return {
+    changed,
+    collectFirstPartyData: after.collect_first_party_data,
+    measurementEnabled: after.measurement_enabled,
+  };
+}
+
 async function listGoals(token: string) {
   const result = await apiRequest<GoalsResponse>(
     `/management/v1/counter/${CANONICAL_YANDEX_COUNTER_ID}/goals`,
@@ -168,6 +224,7 @@ function writeGithubSummary(lines: string[]) {
 export async function syncYandexMetrikaGoals(rawToken: string) {
   assertConfigurationIsComplete();
   const token = normalizeYandexOAuthToken(rawToken);
+  const privacy = await enforcePrivacyCounterFlags(token);
 
   const desiredTargets = collectDesiredTargets();
   const before = await listGoals(token);
@@ -216,6 +273,7 @@ export async function syncYandexMetrikaGoals(rawToken: string) {
     `Required JS goals: **${desiredTargets.length}**`,
     `Created now: **${created.length}**`,
     `Already present: **${skipped.length}**`,
+    `Advanced first-party contact collection: **disabled**${privacy.changed ? " (changed now)" : ""}`,
     "",
     "Primary Direct optimization goal: `quote_request_success`.",
     "Secondary successful assistant lead: `assistant_lead_success`.",
@@ -226,9 +284,12 @@ export async function syncYandexMetrikaGoals(rawToken: string) {
   console.log(`Counter ${CANONICAL_YANDEX_COUNTER_ID}: ${desiredTargets.length} required goals.`);
   console.log(`Created ${created.length}: ${created.join(", ") || "none"}`);
   console.log(`Already present ${skipped.length}: ${skipped.join(", ") || "none"}`);
+  console.log(
+    `collect_first_party_data=false verified${privacy.changed ? " (disabled now)" : " (already disabled)"}.`,
+  );
   console.log("Verification passed. Existing goals were not deleted or modified.");
 
-  return { created, skipped, total: desiredTargets.length };
+  return { created, skipped, total: desiredTargets.length, privacy };
 }
 
 async function main() {
