@@ -3,6 +3,7 @@ import test from "node:test";
 import { yandexGoalByEvent } from "@/lib/analytics";
 import {
   collectDesiredTargets,
+  DESIRED_METRIKA_COUNTER_FLAGS,
   METRIKA_GOAL_METADATA,
   normalizeYandexOAuthToken,
 } from "@/scripts/sync-yandex-metrika";
@@ -22,6 +23,12 @@ test("Metrika goal display names are unique and key conversions are favorites", 
   assert.equal(METRIKA_GOAL_METADATA.quote_request_success.favorite, true);
   assert.equal(METRIKA_GOAL_METADATA.assistant_lead_success.favorite, true);
   assert.equal(METRIKA_GOAL_METADATA["ym-submit-leadform"].favorite, true);
+});
+
+test("Metrika counter sync disables advanced first-party contact-data matching", () => {
+  assert.deepEqual(DESIRED_METRIKA_COUNTER_FLAGS, {
+    collect_first_party_data: false,
+  });
 });
 
 test("site emits the primary Direct optimization goal on successful quote requests", () => {

@@ -25,6 +25,26 @@ type GoalsResponse = {
   goals?: ExistingGoal[];
 };
 
+type CounterFlags = {
+  collect_first_party_data?: boolean;
+  measurement_enabled?: boolean;
+  [key: string]: unknown;
+};
+
+type CounterInfo = {
+  id?: number;
+  autogoals_enabled?: boolean;
+  counter_flags?: CounterFlags;
+  code_options?: {
+    visor?: boolean;
+    [key: string]: unknown;
+  };
+};
+
+type CounterResponse = {
+  counter?: CounterInfo;
+};
+
 export const METRIKA_GOAL_METADATA: Record<string, GoalMetadata> = {
   "ym-open-leadform": { name: "Форма заявки — открыта" },
   quote_form_started: { name: "Форма заявки — начало заполнения" },
@@ -46,6 +66,10 @@ export const METRIKA_GOAL_METADATA: Record<string, GoalMetadata> = {
   assistant_lead_success: { name: "Инженерный помощник — лид получен", favorite: true },
   assistant_lead_error: { name: "Инженерный помощник — ошибка лида" },
 };
+
+export const DESIRED_METRIKA_COUNTER_FLAGS = {
+  collect_first_party_data: false,
+} as const;
 
 export function collectDesiredTargets() {
   return [...new Set(Object.values(yandexGoalByEvent).flat())].sort();
@@ -138,6 +162,51 @@ async function listGoals(token: string) {
   return result.goals ?? [];
 }
 
+async function getCounterInfo(token: string) {
+  const result = await apiRequest<CounterResponse>(
+    `/management/v1/counter/${CANONICAL_YANDEX_COUNTER_ID}?field=counter_flags,code_options`,
+    token,
+  );
+  if (!result.counter) throw new Error("Yandex Metrika API did not return the canonical counter.");
+  return result.counter;
+}
+
+async function enforceCounterPrivacy(token: string) {
+  const before = await getCounterInfo(token);
+  const wasEnabled = before.counter_flags?.collect_first_party_data === true;
+
+  if (before.counter_flags?.collect_first_party_data !== DESIRED_METRIKA_COUNTER_FLAGS.collect_first_party_data) {
+    await apiRequest<CounterResponse>(
+      `/management/v1/counter/${CANONICAL_YANDEX_COUNTER_ID}?field=counter_flags`,
+      token,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          counter: {
+            counter_flags: DESIRED_METRIKA_COUNTER_FLAGS,
+          },
+        }),
+      },
+    );
+  }
+
+  const after = await getCounterInfo(token);
+  if (after.counter_flags?.collect_first_party_data !== false) {
+    throw new Error("Metrika privacy verification failed: collect_first_party_data is not false.");
+  }
+
+  console.log(
+    `Advanced first-party contact-data matching: disabled${wasEnabled ? " (changed now)" : " (already disabled)"}.`,
+  );
+  console.log(
+    `Measurement Protocol flag left unchanged: ${String(after.counter_flags?.measurement_enabled ?? "not reported")}.`,
+  );
+  console.log(`Counter Webvisor code option reported by API: ${String(after.code_options?.visor ?? "not reported")}.`);
+  console.log(`Automatic goals left unchanged: ${String(after.autogoals_enabled ?? "not reported")}.`);
+
+  return after;
+}
+
 async function createActionGoal(token: string, target: string, metadata: GoalMetadata) {
   // The live Management API currently rejects a JSON boolean in is_favorite
   // with invalid_json even though the OpenAPI schema documents it as boolean.
@@ -209,6 +278,8 @@ export async function syncYandexMetrikaGoals(rawToken: string) {
     throw new Error(`Metrika sync verification failed. Missing goals: ${missingAfterSync.join(", ")}`);
   }
 
+  const counter = await enforceCounterPrivacy(token);
+
   const summary = [
     "## Yandex Metrika goal sync",
     "",
@@ -216,10 +287,12 @@ export async function syncYandexMetrikaGoals(rawToken: string) {
     `Required JS goals: **${desiredTargets.length}**`,
     `Created now: **${created.length}**`,
     `Already present: **${skipped.length}**`,
+    `Advanced contact-data matching: **${counter.counter_flags?.collect_first_party_data === false ? "disabled" : "unexpected"}**`,
     "",
     "Primary Direct optimization goal: `quote_request_success`.",
     "Secondary successful assistant lead: `assistant_lead_success`.",
-    "No existing goals were deleted or modified.",
+    "Existing goals were not deleted or modified.",
+    "Measurement Protocol and automatic-goal settings were not changed.",
   ];
   writeGithubSummary(summary);
 
