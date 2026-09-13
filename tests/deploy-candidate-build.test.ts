@@ -90,10 +90,16 @@ test("production publishes the release built on the runner instead of building o
   // .next/cache is build state and by far the largest part of the tree.
   assert.match(workflow, /tar --exclude=\.\/cache/);
 
-  // The counter has no fallback in code, so a build without it would silently
-  // ship a site with no analytics.
-  assert.match(workflow, /NEXT_PUBLIC_YM_COUNTER_ID/);
+  // The canonical counter is deliberately a build-time constant. GitHub Actions
+  // can classify a numeric job output as a secret and suppress it, which would
+  // compile an empty NEXT_PUBLIC_YM_COUNTER_ID. The host value is checked in the
+  // config job, but the runner must not depend on that value crossing job output.
+  assert.match(workflow, /NEXT_PUBLIC_YM_COUNTER_ID: '112542227'/);
+  assert.doesNotMatch(workflow, /needs\.config\.outputs\.ym_counter_id/);
+  assert.doesNotMatch(workflow, /ym_counter_id: \$\{\{ steps\.read\.outputs\.ym_counter_id \}\}/);
+  assert.match(workflow, /grep -rqF "112542227" \.next\/static/);
   assert.match(workflow, /The canonical Yandex Metrica counter is absent from the built client bundle\./);
+  assert.match(workflow, /111263638 112129777/);
 });
 
 test("an interrupted promotion cannot leave production without a worker", async () => {
