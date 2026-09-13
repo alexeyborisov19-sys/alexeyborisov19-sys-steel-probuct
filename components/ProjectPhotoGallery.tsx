@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { ProjectPhoto } from "@/data/real-project-showcase";
 
 type ProjectPhotoGalleryProps = {
@@ -27,12 +28,13 @@ export function ProjectPhotoGallery({ photos, className = "", tall = false }: Pr
                     </div>
                   </div>
                 ) : (
-                  <img
+                  <Image
                     src={photo.src}
                     alt={photo.alt}
-                    loading={index === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover brightness-[.92]"
+                    fill
+                    sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
+                    priority={index === 0 && tall}
+                    className="object-cover brightness-[.92]"
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#080b0d]/78 via-transparent to-transparent" />
