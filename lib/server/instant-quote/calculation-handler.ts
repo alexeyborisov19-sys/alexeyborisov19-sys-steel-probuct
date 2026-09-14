@@ -10,7 +10,7 @@ import {
   type ProjectPart,
 } from "@/lib/instant-quote/domain";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
-import type { ProjectCadEvidence } from "@/lib/instant-quote/project-factual-calculation";
+import type { PartFactualInputs, ProjectCadEvidence } from "@/lib/instant-quote/project-factual-calculation";
 import { clientKey } from "@/lib/security/client-ip";
 import { consumeRules, quoteRateRules } from "@/lib/security/rate-limit";
 import { PayloadTooLargeError, readMultipartForm } from "@/lib/security/request-body";
@@ -27,16 +27,22 @@ import {
 
 const ROUTE = "online-calculation";
 
+type RunCalculationInputs = {
+  internalNotes?: string[];
+  authoritativeFactualByPartId?: Record<string, PartFactualInputs>;
+};
+
 type RunCalculation = (
   project: InstantQuoteProject,
   evidenceByPartId: ProjectCadEvidence,
-  inputs?: { internalNotes?: string[] },
+  inputs?: RunCalculationInputs,
   now?: Date,
 ) => Promise<ClientProjectCalculationView>;
 
 type StepServerAnalysis = {
   model: NormalizedCadModel;
   productionReady: boolean;
+  authoritativeFactualInputs?: PartFactualInputs;
 };
 
 type AnalyzeStep = (inspection: UploadInspection, format: "step" | "stp") => Promise<StepServerAnalysis>;
@@ -49,9 +55,10 @@ export type OnlineCalculationHandlerDependencies = {
 };
 
 async function analyzePlanarStep(inspection: UploadInspection, format: "step" | "stp"): Promise<StepServerAnalysis> {
-  const [{ createStepCadAdapter }, { occtStepKernel }] = await Promise.all([
+  const [{ createStepCadAdapter }, { occtStepKernel }, { measurePrivateStepProductionEvidence }] = await Promise.all([
     import("@/lib/instant-quote/step-adapter"),
     import("@/lib/instant-quote/occt-step-kernel"),
+    import("@/lib/server/instant-quote/private-step-production-evidence"),
   ]);
   const adapter = createStepCadAdapter(occtStepKernel);
   const bytes = new Uint8Array(
@@ -59,15 +66,21 @@ async function analyzePlanarStep(inspection: UploadInspection, format: "step" | 
     inspection.buffer.byteOffset,
     inspection.buffer.byteLength,
   );
-  const model = await adapter.analyze({ fileName: inspection.safeName, format, bytes });
+  const [model, privateEvidence] = await Promise.all([
+    adapter.analyze({ fileName: inspection.safeName, format, bytes }),
+    measurePrivateStepProductionEvidence(bytes).catch(() => null),
+  ]);
   const flat = model.sheetMetal?.flatPatternCandidate;
   const productionReady = flat?.confidence === "high"
     && (model.geometry.areaMm2 ?? 0) > 0
     && (model.geometry.blankAreaMm2 ?? 0) > 0
     && (model.geometry.cutLengthMm ?? 0) > 0
     && (model.geometry.contourCount ?? 0) > 0;
+  const authoritativeFactualInputs = productionReady && privateEvidence?.surfaceAreaMm2
+    ? { powderAreaM2: privateEvidence.surfaceAreaMm2 / 1_000_000 }
+    : undefined;
 
-  return { model, productionReady };
+  return { model, productionReady, authoritativeFactualInputs };
 }
 
 const defaults: OnlineCalculationHandlerDependencies = {
@@ -105,11 +118,17 @@ async function buildAuthoritativeProject(
   inspections: UploadInspection[],
   now: Date,
   analyzeStep: AnalyzeStep,
-): Promise<{ project: InstantQuoteProject; evidenceByPartId: ProjectCadEvidence; analysisNotes: string[] }> {
+): Promise<{
+  project: InstantQuoteProject;
+  evidenceByPartId: ProjectCadEvidence;
+  authoritativeFactualByPartId: Record<string, PartFactualInputs>;
+  analysisNotes: string[];
+}> {
   const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
   const projectId = serverProjectId(now);
   const createdAt = now.toISOString();
   const evidenceByPartId: ProjectCadEvidence = {};
+  const authoritativeFactualByPartId: Record<string, PartFactualInputs> = {};
   const analysisNotes: string[] = [];
   const parts: ProjectPart[] = [];
 
@@ -134,10 +153,13 @@ async function buildAuthoritativeProject(
       state = model.warnings.length ? "manual-review" : "configurable";
     } else if (format === "step" || format === "stp") {
       try {
-        const { model, productionReady } = await analyzeStep(inspection, format);
+        const { model, productionReady, authoritativeFactualInputs } = await analyzeStep(inspection, format);
         if (productionReady) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
+          if (authoritativeFactualInputs && Object.keys(authoritativeFactualInputs).length > 0) {
+            authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
+          }
           state = model.warnings.length ? "manual-review" : "configurable";
           analysisNotes.push(`STEP ${inspection.safeName}: server OpenCascade confirmed a high-confidence planar sheet flat pattern.`);
         } else {
@@ -189,6 +211,7 @@ async function buildAuthoritativeProject(
       parts,
     },
     evidenceByPartId,
+    authoritativeFactualByPartId,
     analysisNotes,
   };
 }
@@ -251,7 +274,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       }
 
       const now = new Date();
-      const { project, evidenceByPartId, analysisNotes } = await buildAuthoritativeProject(
+      const { project, evidenceByPartId, authoritativeFactualByPartId, analysisNotes } = await buildAuthoritativeProject(
         manifestRaw,
         inspections,
         now,
@@ -260,7 +283,10 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       const clientView = await dependencies.runCalculation(
         project,
         evidenceByPartId,
-        { internalNotes: [...storageNotes(requestId, quarantined), ...analysisNotes] },
+        {
+          authoritativeFactualByPartId,
+          internalNotes: [...storageNotes(requestId, quarantined), ...analysisNotes],
+        },
         now,
       );
 
