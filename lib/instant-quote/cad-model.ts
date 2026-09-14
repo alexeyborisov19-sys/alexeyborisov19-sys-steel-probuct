@@ -1,6 +1,10 @@
 import type { CadFormat, PartGeometrySummary } from "@/lib/instant-quote/domain";
 import type { SheetMetalAnalysis, SheetMetalBoundaryPreview } from "@/lib/instant-quote/sheet-metal";
-import type { StepUnfoldGeometryEvidence } from "@/lib/instant-quote/unfold-geometry";
+import type {
+  BRepPanelBoundaryPreview3D,
+  BRepPanelTangentSegment3D,
+  StepUnfoldGeometryEvidence,
+} from "@/lib/instant-quote/unfold-geometry";
 
 export type CadVector3 = [number, number, number];
 
@@ -164,6 +168,67 @@ function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
   }
 }
 
+function validateUnfoldBoundary3d(
+  boundary: unknown,
+  sourceFaceIds: string[],
+  errors: string[],
+) {
+  if (boundary == null) return;
+  if (!boundary || typeof boundary !== "object" || Array.isArray(boundary)) {
+    errors.push("STEP unfold panel boundary must be an object.");
+    return;
+  }
+
+  const candidate = boundary as Partial<BRepPanelBoundaryPreview3D>;
+  if (candidate.source !== "brep-edge-sampling") errors.push("STEP unfold panel boundary source is invalid.");
+  if (candidate.displayOnly !== true) errors.push("STEP unfold panel boundary must remain display-only.");
+  if (typeof candidate.faceId !== "string" || !sourceFaceIds.includes(candidate.faceId)) errors.push("STEP unfold panel boundary must belong to one of the paired BRep skin faces.");
+  if (!Array.isArray(candidate.wires) || candidate.wires.length < 1) {
+    errors.push("STEP unfold panel boundary requires at least one wire.");
+    return;
+  }
+
+  const seenHashes = new Set<number>();
+  for (const wire of candidate.wires) {
+    if (!wire || typeof wire.id !== "string" || !wire.id) errors.push("Every STEP unfold 3D boundary wire requires an id.");
+    if (!Array.isArray(wire?.edges) || wire.edges.length < 1) {
+      errors.push("Every STEP unfold 3D boundary wire requires at least one edge.");
+      continue;
+    }
+    for (const edge of wire.edges) {
+      if (!edge || typeof edge.id !== "string" || !edge.id) errors.push("Every STEP unfold 3D boundary edge requires an id.");
+      if (!Number.isInteger(edge?.edgeHash) || edge.edgeHash < 0 || seenHashes.has(edge.edgeHash)) errors.push("Every STEP unfold 3D boundary edge requires a unique non-negative BRep edge hash.");
+      else seenHashes.add(edge.edgeHash);
+      if (typeof edge?.curveKind !== "string" || !edge.curveKind) errors.push("Every STEP unfold 3D boundary edge requires a curve kind.");
+      if (!Array.isArray(edge?.pointsMm) || edge.pointsMm.length < 2) {
+        errors.push("Every STEP unfold 3D boundary edge requires at least two XYZ points.");
+        continue;
+      }
+      if (edge.pointsMm.some((point) => !finiteVector3(point))) errors.push("STEP unfold 3D boundary points must be finite XYZ vectors.");
+    }
+  }
+}
+
+function validateTangentSegment(
+  tangent: BRepPanelTangentSegment3D,
+  knownPanelIds: Set<string>,
+  errors: string[],
+) {
+  if (typeof tangent.panelId !== "string" || !knownPanelIds.has(tangent.panelId)) errors.push("STEP unfold tangent must reference a known panel id.");
+  if (!finiteVector3(tangent.startMm) || !finiteVector3(tangent.endMm)) errors.push("STEP unfold tangent endpoints must be finite XYZ vectors.");
+  else if (Math.hypot(
+    tangent.endMm[0] - tangent.startMm[0],
+    tangent.endMm[1] - tangent.startMm[1],
+    tangent.endMm[2] - tangent.startMm[2],
+  ) <= 1e-8) errors.push("STEP unfold tangent must have positive length.");
+  if (!Array.isArray(tangent.sourceEdgeHashes)
+    || tangent.sourceEdgeHashes.length !== 2
+    || tangent.sourceEdgeHashes.some((hash) => !Number.isInteger(hash) || hash < 0)
+    || tangent.sourceEdgeHashes[0] === tangent.sourceEdgeHashes[1]) {
+    errors.push("STEP unfold tangent must reference two distinct non-negative BRep edge hashes.");
+  }
+}
+
 function validateUnfoldGeometry(unfoldGeometry: unknown, errors: string[]) {
   if (unfoldGeometry == null) return;
   if (!unfoldGeometry || typeof unfoldGeometry !== "object" || Array.isArray(unfoldGeometry)) {
@@ -189,6 +254,7 @@ function validateUnfoldGeometry(unfoldGeometry: unknown, errors: string[]) {
     if (!finiteVector3(panel.centerMm) || !finiteVector3(panel.normal)) errors.push("STEP unfold panel center and normal must be finite XYZ vectors.");
     else if (Math.hypot(panel.normal[0], panel.normal[1], panel.normal[2]) <= 1e-8) errors.push("STEP unfold panel normal must be non-zero.");
     if (!finitePositive(panel.areaMm2)) errors.push("STEP unfold panel area must be finite and positive.");
+    validateUnfoldBoundary3d(panel.boundary3d, Array.isArray(panel.sourceFaceIds) ? panel.sourceFaceIds : [], errors);
   }
 
   const bendIds = new Set<string>();
@@ -208,6 +274,19 @@ function validateUnfoldGeometry(unfoldGeometry: unknown, errors: string[]) {
     ) <= 1e-8) errors.push("STEP unfold bend axis must have positive length.");
     if (!finitePositive(bend.angleDeg) || bend.angleDeg > 189) errors.push("STEP unfold bend angle is invalid.");
     if (!finitePositive(bend.insideRadiusMm)) errors.push("STEP unfold bend inside radius is invalid.");
+
+    if (bend.tangentSegments != null) {
+      if (!Array.isArray(bend.tangentSegments) || bend.tangentSegments.length !== 2) {
+        errors.push("STEP unfold bend tangency evidence must contain exactly two panel segments.");
+      } else {
+        const tangentPanelIds = new Set<string>();
+        for (const tangent of bend.tangentSegments) {
+          validateTangentSegment(tangent, panelIds, errors);
+          tangentPanelIds.add(tangent.panelId);
+        }
+        if (tangentPanelIds.size !== 2 || !bend.panelIds.every((panelId) => tangentPanelIds.has(panelId))) errors.push("STEP unfold bend tangency evidence must cover exactly its two connected panels.");
+      }
+    }
   }
 }
 
@@ -258,6 +337,18 @@ export function validateNormalizedCadModel(input: unknown) {
   if (!Array.isArray(model.features)) errors.push("Normalized CAD features must be an array.");
   validateSheetMetalAnalysis(model.sheetMetal, errors);
   validateUnfoldGeometry(model.unfoldGeometry, errors);
+  if (model.unfoldGeometry && model.format !== "step" && model.format !== "stp") errors.push("BRep unfold geometry is only valid for STEP/STP models.");
+  if (model.unfoldGeometry) {
+    const thicknessCandidate = model.sheetMetal?.thicknessCandidate;
+    if (!thicknessCandidate || thicknessCandidate.confidence !== "medium") {
+      errors.push("BRep unfold geometry requires the same medium-confidence sheet-metal thickness evidence.");
+    } else {
+      const tolerance = Math.max(0.05, model.unfoldGeometry.thicknessMm * 0.02);
+      if (Math.abs(model.unfoldGeometry.thicknessMm - thicknessCandidate.thicknessMm) > tolerance) errors.push("BRep unfold geometry thickness disagrees with sheet-metal thickness evidence.");
+    }
+    const sourceBendIds = new Set(model.sheetMetal?.bendCandidates.map((bend) => bend.id) ?? []);
+    if (model.unfoldGeometry.bends.some((bend) => !sourceBendIds.has(bend.bendId))) errors.push("BRep unfold geometry contains a bend absent from the source sheet-metal analysis.");
+  }
   if (!Array.isArray(model.warnings) || model.warnings.some((warning) => typeof warning !== "string")) errors.push("Normalized CAD warnings must be a string array.");
 
   if (!model.metadata || typeof model.metadata !== "object") {
