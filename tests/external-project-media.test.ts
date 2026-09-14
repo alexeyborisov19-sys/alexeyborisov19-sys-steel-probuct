@@ -7,18 +7,16 @@ const gallerySource = readFileSync(new URL("../components/ProjectPhotoGallery.ts
 const nextConfigSource = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
 const jsonLdSource = readFileSync(new URL("../components/JsonLd.tsx", import.meta.url), "utf8");
 
-const projectMediaHosts = [
+const approvedProjectMediaHosts = [
   "static.tildacdn.com",
-  "smolgazeta.ru",
-  "static.mk.ru",
   "images.cdn-cian.ru",
-  "lic-mnogoprofilnyj-smolensk-r66.gosweb.gosuslugi.ru",
   "www.rabochy-put.ru",
   "vostokstroy67.ru",
+  "smolgazeta.ru",
+  "static.mk.ru",
   "smoldaily.ru",
   "vestnikstroy.ru",
   "sdelanounas.ru",
-  "www.atlant-complex.ru",
 ];
 
 test("project card images are first-party paths", () => {
@@ -30,22 +28,23 @@ test("project card images are first-party paths", () => {
   }
 });
 
-test("third-party project media hosts are not whitelisted in Next image or CSP config", () => {
-  for (const host of projectMediaHosts) {
+test("approved third-party project media hosts are whitelisted in Next image and CSP config", () => {
+  for (const host of approvedProjectMediaHosts) {
     assert.equal(
       nextConfigSource.includes(host),
-      false,
-      `${host} must not be whitelisted for automatic image loading`,
+      true,
+      `${host} must remain whitelisted so approved project photography can render`,
     );
   }
-  assert.match(nextConfigSource, /remotePatterns:\s*\[\]/);
+  assert.doesNotMatch(nextConfigSource, /remotePatterns:\s*\[\]/);
 });
 
-test("project gallery never renders a remote photo src as an image", () => {
-  assert.match(gallerySource, /isRemoteSource\(photo\.src\)/);
-  assert.match(gallerySource, /const remote = isRemoteSource\(photo\.src\)/);
-  assert.match(gallerySource, /remote \? \(/);
-  assert.match(gallerySource, /Оригинал фото/);
+test("project gallery renders approved photo sources with visible attribution", () => {
+  assert.match(gallerySource, /src=\{photo\.src\}/);
+  assert.match(gallerySource, /href=\{photo\.sourceUrl\}/);
+  assert.match(gallerySource, /Источник: \{photo\.credit\}/);
+  assert.doesNotMatch(gallerySource, /право на публикацию файла не подтверждено/);
+  assert.doesNotMatch(gallerySource, /Оригинал фото/);
 });
 
 test("JSON-LD removes third-party image URLs before serialization", () => {
