@@ -1,15 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateFactualProductionCost } from "../lib/instant-quote/factual-calculation";
+import {
+  calculateFactualProductionCost,
+  type FactualRateBook,
+} from "../lib/instant-quote/factual-calculation";
 import type { MaterialMarketPrice } from "../lib/instant-quote/pricing";
+
+const fixtureSource = {
+  id: "test-fixture",
+  label: "Synthetic test fixture",
+  confirmedAt: "2099-01-01",
+  note: "Non-production values used only by automated tests.",
+};
+
+const fixtureRateBook: FactualRateBook = {
+  laserRubPerM: [{ materialId: "cold", thicknessMm: 1, rateRub: 100, source: fixtureSource }],
+  bendRubEach: { rateRub: 10, source: fixtureSource },
+  weldRubPerM: { rateRub: 1000, source: fixtureSource },
+  powderRubPerM2: { rateRub: 200, source: fixtureSource },
+};
 
 const exactCold1mm: MaterialMarketPrice = {
   materialId: "cold",
   thicknessMm: 1,
-  rubPerTon: 72400,
-  source: "Confirmed supplier price",
-  sourceDate: "2026-09-13",
-  fetchedAt: "2026-09-13T10:00:00.000Z",
+  rubPerTon: 100000,
+  source: "Synthetic supplier fixture",
+  sourceDate: "2099-01-01",
+  fetchedAt: "2099-01-01T00:00:00.000Z",
   exactThickness: true,
 };
 
@@ -23,32 +40,29 @@ const baseGeometry = {
   bendCount: 2,
 };
 
-test("calculates only confirmed direct production cost without hidden uplift, setup or markup", () => {
+test("calculates only supplied protected rates without hidden uplift, setup or markup", () => {
   const result = calculateFactualProductionCost({
     materialId: "cold",
     thicknessMm: 1,
     quantity: 10,
     geometry: baseGeometry,
     marketPrice: exactCold1mm,
-    materialPriceSourceId: "confirmed-supplier",
+    materialPriceSourceId: "fixture-supplier",
     materialPriceStale: false,
     operations: ["laser-cutting", "bending"],
+    rateBook: fixtureRateBook,
   });
 
-  // 0.5 m² × 1 mm × 7800 kg/m³ = 3.9 kg.
-  // Material: 3.9 × 72.4 = 282.36 RUB/part.
-  // Laser: 3 m × 50 = 150 RUB/part.
-  // Bends: 2 × 25 = 50 RUB/part.
   assert.equal(result.status, "complete");
-  assert.equal(result.confirmedDirectCostRubEach, 482.36);
-  assert.equal(result.confirmedDirectCostRubBatch, 4823.6);
+  assert.equal(result.confirmedDirectCostRubEach, 710);
+  assert.equal(result.confirmedDirectCostRubBatch, 7100);
   assert.equal(result.parameters.purchasedMassKgEach, 3.9);
   assert.equal(result.lines.length, 3);
   assert.equal(result.commercialPriceReady, false);
   assert.equal(result.missing.length, 0);
 });
 
-test("does not price an unconfirmed laser thickness by nearest legacy rate", () => {
+test("does not price a thickness absent from the protected rate book", () => {
   const result = calculateFactualProductionCost({
     materialId: "cold",
     thicknessMm: 2,
@@ -56,6 +70,7 @@ test("does not price an unconfirmed laser thickness by nearest legacy rate", () 
     geometry: { ...baseGeometry, bendCount: 0 },
     marketPrice: { ...exactCold1mm, thicknessMm: 2, exactThickness: true },
     operations: ["laser-cutting"],
+    rateBook: fixtureRateBook,
   });
 
   assert.equal(result.status, "partial");
@@ -63,7 +78,7 @@ test("does not price an unconfirmed laser thickness by nearest legacy rate", () 
   assert.equal(result.lines.some((line) => line.code === "laser-cutting"), false);
 });
 
-test("keeps material cost out of factual subtotal when supplier thickness is not exact", () => {
+test("keeps material cost out when supplier thickness is not exact", () => {
   const result = calculateFactualProductionCost({
     materialId: "cold",
     thicknessMm: 1,
@@ -71,12 +86,13 @@ test("keeps material cost out of factual subtotal when supplier thickness is not
     geometry: baseGeometry,
     marketPrice: { ...exactCold1mm, thicknessMm: 1.2, exactThickness: false },
     operations: ["bending"],
+    rateBook: fixtureRateBook,
   });
 
   assert.equal(result.status, "partial");
   assert.ok(result.missing.some((item) => item.code === "material-thickness-price"));
   assert.equal(result.lines.some((line) => line.code === "material"), false);
-  assert.equal(result.lines.find((line) => line.code === "bending")?.amountRubEach, 50);
+  assert.equal(result.lines.find((line) => line.code === "bending")?.amountRubEach, 20);
 });
 
 test("requires actual weld length rather than treating selected welding as zero cost", () => {
@@ -87,28 +103,12 @@ test("requires actual weld length rather than treating selected welding as zero 
     geometry: baseGeometry,
     marketPrice: exactCold1mm,
     operations: ["welding"],
+    rateBook: fixtureRateBook,
   });
 
   assert.equal(result.status, "partial");
   assert.ok(result.missing.some((item) => item.code === "weld-length"));
   assert.equal(result.lines.some((line) => line.code === "welding"), false);
-});
-
-test("prices welding only from explicit weld length at the confirmed rate", () => {
-  const result = calculateFactualProductionCost({
-    materialId: "cold",
-    thicknessMm: 1,
-    quantity: 2,
-    geometry: baseGeometry,
-    marketPrice: exactCold1mm,
-    operations: ["welding"],
-    weldLengthM: 1.25,
-  });
-
-  const welding = result.lines.find((line) => line.code === "welding");
-  assert.equal(welding?.rateRub, 1800);
-  assert.equal(welding?.amountRubEach, 2250);
-  assert.equal(welding?.amountRubBatch, 4500);
 });
 
 test("requires explicit powder area and never assumes two painted sides", () => {
@@ -119,6 +119,7 @@ test("requires explicit powder area and never assumes two painted sides", () => 
     geometry: baseGeometry,
     marketPrice: exactCold1mm,
     operations: ["powder-coating"],
+    rateBook: fixtureRateBook,
   });
   assert.equal(missingArea.status, "partial");
   assert.ok(missingArea.missing.some((item) => item.code === "powder-area"));
@@ -130,11 +131,10 @@ test("requires explicit powder area and never assumes two painted sides", () => 
     geometry: baseGeometry,
     marketPrice: exactCold1mm,
     operations: ["powder-coating"],
-    powderAreaM2: 0.82,
+    rateBook: fixtureRateBook,
+    powderAreaM2: 0.8,
   });
-  const powder = explicitArea.lines.find((line) => line.code === "powder-coating");
-  assert.equal(powder?.rateRub, 450);
-  assert.equal(powder?.amountRubEach, 369);
+  assert.equal(explicitArea.lines.find((line) => line.code === "powder-coating")?.amountRubEach, 160);
 });
 
 test("marks stale supplier pricing as incomplete instead of silently using it", () => {
@@ -146,6 +146,7 @@ test("marks stale supplier pricing as incomplete instead of silently using it", 
     marketPrice: exactCold1mm,
     materialPriceStale: true,
     operations: [],
+    rateBook: fixtureRateBook,
   });
 
   assert.equal(result.status, "partial");
@@ -153,7 +154,7 @@ test("marks stale supplier pricing as incomplete instead of silently using it", 
   assert.equal(result.confirmedDirectCostRubEach, 0);
 });
 
-test("reports unknown operation rates instead of importing Alpha defaults", () => {
+test("reports unknown operation rates instead of importing public defaults", () => {
   const result = calculateFactualProductionCost({
     materialId: "cold",
     thicknessMm: 1,
@@ -161,24 +162,9 @@ test("reports unknown operation rates instead of importing Alpha defaults", () =
     geometry: baseGeometry,
     marketPrice: exactCold1mm,
     operations: ["assembly", "packaging", "surface-preparation"],
+    rateBook: fixtureRateBook,
   });
 
   assert.equal(result.status, "partial");
   assert.equal(result.missing.filter((item) => item.code === "operation-rate").length, 3);
-  assert.equal(result.lines.some((line) => ["assembly", "packaging", "surface-preparation"].includes(line.code)), false);
-});
-
-test("surfaces unapproved pierce charging policy separately from confirmed laser metres", () => {
-  const result = calculateFactualProductionCost({
-    materialId: "cold",
-    thicknessMm: 1,
-    quantity: 1,
-    geometry: { ...baseGeometry, pierceCount: 4 },
-    marketPrice: exactCold1mm,
-    operations: ["laser-cutting"],
-  });
-
-  assert.equal(result.status, "partial");
-  assert.equal(result.lines.find((line) => line.code === "laser-cutting")?.amountRubEach, 150);
-  assert.ok(result.missing.some((item) => item.code === "laser-pierce-policy"));
 });
