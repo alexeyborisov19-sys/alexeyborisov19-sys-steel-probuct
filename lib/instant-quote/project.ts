@@ -5,6 +5,7 @@ import {
   type ManufacturingOperation,
   type PartGeometrySummary,
   type ProjectPart,
+  type QuoteState,
 } from "@/lib/instant-quote/domain";
 
 export function addPartToProject(
@@ -25,8 +26,8 @@ export function addPartToProject(
     state: "queued",
     geometry: null,
     configuration: {
-      materialId: null,
-      thicknessMm: null,
+      materialId: "hot",
+      thicknessMm: 1,
       quantity: 1,
       operations: ["laser-cutting"],
     },
@@ -53,7 +54,7 @@ export function updatePartGeometry(
     updatedAt: iso,
     parts: project.parts.map((part) =>
       part.id === partId
-        ? { ...part, geometry, state: "dfm-review" as const }
+        ? { ...part, geometry, state: "dfm-review" as const, quote: { kind: "not-requested" as const } }
         : part,
     ),
   };
@@ -98,6 +99,65 @@ export function setPartQuantity(
           }
         : part,
     ),
+  };
+}
+
+export function setPartMaterial(
+  project: InstantQuoteProject,
+  partId: string,
+  materialId: string,
+  now = new Date(),
+): InstantQuoteProject {
+  const iso = now.toISOString();
+  return {
+    ...project,
+    updatedAt: iso,
+    parts: project.parts.map((part) =>
+      part.id === partId
+        ? {
+            ...part,
+            configuration: { ...part.configuration, materialId },
+            quote: { kind: "not-requested" as const },
+          }
+        : part,
+    ),
+  };
+}
+
+export function setPartThickness(
+  project: InstantQuoteProject,
+  partId: string,
+  thicknessMm: number,
+  now = new Date(),
+): InstantQuoteProject {
+  const safeThickness = Number.isFinite(thicknessMm) && thicknessMm > 0 ? thicknessMm : null;
+  const iso = now.toISOString();
+  return {
+    ...project,
+    updatedAt: iso,
+    parts: project.parts.map((part) =>
+      part.id === partId
+        ? {
+            ...part,
+            configuration: { ...part.configuration, thicknessMm: safeThickness },
+            quote: { kind: "not-requested" as const },
+          }
+        : part,
+    ),
+  };
+}
+
+export function setPartQuote(
+  project: InstantQuoteProject,
+  partId: string,
+  quote: QuoteState,
+  now = new Date(),
+): InstantQuoteProject {
+  const iso = now.toISOString();
+  return {
+    ...project,
+    updatedAt: iso,
+    parts: project.parts.map((part) => (part.id === partId ? { ...part, quote } : part)),
   };
 }
 
