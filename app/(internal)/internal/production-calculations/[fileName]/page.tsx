@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { InternalCalculationRevisionForm } from "@/components/instant-quote/InternalCalculationRevisionForm";
 import { InternalPageHeader, InternalShell } from "@/components/pd-admin/InternalShell";
 import { Panel, StatusPill } from "@/components/pd-admin/Ui";
 import { summarizeProjectCalculationCompleteness } from "@/lib/instant-quote/calculation-completeness";
@@ -20,10 +21,11 @@ export default async function ProductionCalculationDetailPage({ params }: { para
   const shell = { user: context.user, session: context.session, csrfToken: context.csrfToken };
   context.close();
 
+  const { fileName } = await params;
+  const decodedFileName = decodeURIComponent(fileName);
   let report;
   try {
-    const { fileName } = await params;
-    report = await readInternalProductionReport(decodeURIComponent(fileName));
+    report = await readInternalProductionReport(decodedFileName);
   } catch {
     notFound();
   }
@@ -34,6 +36,15 @@ export default async function ProductionCalculationDetailPage({ params }: { para
   );
   const readinessLabel = readiness.status === "ready" ? "готов" : readiness.status === "blocked" ? "заблокирован" : "требует проверки";
   const readinessPill = readiness.status === "ready" ? "ready" : readiness.status === "blocked" ? "critical" : "warning";
+  const snapshot = report.calculationInputSnapshot;
+  const revisionParts = snapshot?.project.parts.map((part) => ({
+    partId: part.id,
+    label: part.fileName,
+    bendCount: snapshot.factualByPartId[part.id]?.bendCount,
+    weldLengthM: snapshot.factualByPartId[part.id]?.weldLengthM,
+    powderAreaM2: snapshot.factualByPartId[part.id]?.powderAreaM2,
+    powderSides: snapshot.powderSidesByPartId[part.id],
+  })) ?? [];
 
   return <InternalShell {...shell}>
     <div className="mb-5"><Link href="/internal/production-calculations" className="text-sm text-steel-orange hover:underline">← Все производственные расчёты</Link></div>
@@ -42,6 +53,15 @@ export default async function ProductionCalculationDetailPage({ params }: { para
       title={`Расчёт ${report.projectId}`}
       description={`Сформирован ${new Date(report.generatedAt).toLocaleString("ru-RU")} · расчётная база ${report.basisVersion}`}
     />
+
+    {report.revision && <Panel title="История ревизии" className="mb-6">
+      <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+        <div><div className="text-white/35">Предыдущий отчёт</div><div className="mt-1 font-mono text-xs">{report.revision.supersedesReportId}</div></div>
+        <div><div className="text-white/35">Изменил</div><div className="mt-1">{report.revision.changedByDisplayName}</div></div>
+        <div><div className="text-white/35">Дата</div><div className="mt-1">{new Date(report.revision.changedAt).toLocaleString("ru-RU")}</div></div>
+        <div><div className="text-white/35">Причина</div><div className="mt-1">{report.revision.reason}</div></div>
+      </div>
+    </Panel>}
 
     <div className="grid gap-4 md:grid-cols-5">
       <Panel title="Подтверждено"><div className="text-2xl font-semibold">{money(report.calculation.confirmedDirectCostRub)}</div><p className="mt-2 text-xs text-white/40">Внутренняя сумма только подтверждённых статей.</p></Panel>
@@ -98,5 +118,9 @@ export default async function ProductionCalculationDetailPage({ params }: { para
     </div>
 
     {report.internalNotes.length > 0 && <Panel title="Внутренние примечания" className="mt-6"><ul className="space-y-2 text-sm text-white/65">{report.internalNotes.map((note) => <li key={note}>• {note}</li>)}</ul></Panel>}
+
+    <Panel title="Новая технологическая ревизия" className="mt-6">
+      {snapshot ? <InternalCalculationRevisionForm fileName={decodedFileName} csrfToken={shell.csrfToken} parts={revisionParts} /> : <div className="border border-amber-400/20 bg-amber-400/[.04] p-4 text-sm text-white/55">Этот отчёт создан до введения input snapshot. Автоматическая ревизия недоступна: сформируйте новый расчёт из исходного CAD.</div>}
+    </Panel>
   </InternalShell>;
 }
