@@ -5,9 +5,26 @@ import { validateNormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // Technical Alpha guard only; not a published commercial file-size limit.
 const MAX_ALPHA_CAD_BYTES = 25 * 1024 * 1024;
+
+async function analyzeForClientPreview(input: {
+  fileName: string;
+  format: "dxf" | "dwg" | "step" | "stp";
+  bytes: Uint8Array;
+}) {
+  if (input.format === "step" || input.format === "stp") {
+    const [{ createStepCadAdapter }, { occtStepKernel }] = await Promise.all([
+      import("@/lib/instant-quote/step-adapter"),
+      import("@/lib/instant-quote/occt-step-kernel"),
+    ]);
+    return createStepCadAdapter(occtStepKernel).analyze(input);
+  }
+
+  return analyzeCad(input);
+}
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     const bytes = new Uint8Array(await entry.arrayBuffer());
-    const model = await analyzeCad({
+    const model = await analyzeForClientPreview({
       fileName: entry.name,
       format,
       bytes,
