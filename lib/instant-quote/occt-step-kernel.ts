@@ -10,6 +10,11 @@ import {
   type Vector3,
 } from "@/lib/instant-quote/sheet-metal";
 import type { StepKernelPort, StepKernelResult } from "@/lib/instant-quote/step-adapter";
+import {
+  buildStepUnfoldGeometryEvidence,
+  type CylinderAxisSegmentObservation,
+  type StepUnfoldGeometryEvidence,
+} from "@/lib/instant-quote/unfold-geometry";
 
 type OcctKernelInstance = import("occt-wasm").OcctKernel;
 type OcctShapeHandle = import("occt-wasm").ShapeHandle;
@@ -33,27 +38,42 @@ function deriveCylinderAxis(
   radiusMm: number,
 ) {
   const uMid = (bounds.uMin + bounds.uMax) / 2;
-  const vMid = (bounds.vMin + bounds.vMax) / 2;
-  const vSpan = Math.abs(bounds.vMax - bounds.vMin);
-  if (!(vSpan > 1e-8)) return null;
+  const startSurface = kernel.pointOnSurface(face, uMid, bounds.vMin);
+  const endSurface = kernel.pointOnSurface(face, uMid, bounds.vMax);
+  const startNormal = kernel.surfaceNormal(face, uMid, bounds.vMin);
+  const endNormal = kernel.surfaceNormal(face, uMid, bounds.vMax);
+  if (![startSurface, endSurface, startNormal, endNormal].every(finiteVec3)) return null;
 
-  const point = kernel.pointOnSurface(face, uMid, vMid);
-  const normal = kernel.surfaceNormal(face, uMid, vMid);
-  const lower = kernel.pointOnSurface(face, uMid, vMid - vSpan * 0.25);
-  const upper = kernel.pointOnSurface(face, uMid, vMid + vSpan * 0.25);
-  if (![point, normal, lower, upper].every(finiteVec3)) return null;
+  const startRadial = normalizeVector([startNormal.x, startNormal.y, startNormal.z]);
+  const endRadial = normalizeVector([endNormal.x, endNormal.y, endNormal.z]);
+  if (!startRadial || !endRadial) return null;
 
-  const radial = normalizeVector([normal.x, normal.y, normal.z]);
-  const axis = normalizeVector([upper.x - lower.x, upper.y - lower.y, upper.z - lower.z]);
-  if (!radial || !axis) return null;
+  const startMm: Vector3 = [
+    startSurface.x - startRadial[0] * radiusMm,
+    startSurface.y - startRadial[1] * radiusMm,
+    startSurface.z - startRadial[2] * radiusMm,
+  ];
+  const endMm: Vector3 = [
+    endSurface.x - endRadial[0] * radiusMm,
+    endSurface.y - endRadial[1] * radiusMm,
+    endSurface.z - endRadial[2] * radiusMm,
+  ];
+  const axis = normalizeVector([
+    endMm[0] - startMm[0],
+    endMm[1] - startMm[1],
+    endMm[2] - startMm[2],
+  ]);
+  if (!axis) return null;
 
   return {
     axis,
     originMm: [
-      point.x - radial[0] * radiusMm,
-      point.y - radial[1] * radiusMm,
-      point.z - radial[2] * radiusMm,
+      (startMm[0] + endMm[0]) / 2,
+      (startMm[1] + endMm[1]) / 2,
+      (startMm[2] + endMm[2]) / 2,
     ] as Vector3,
+    startMm,
+    endMm,
   };
 }
 
@@ -159,10 +179,11 @@ function collectSheetMetalAnalysis(
   kernel: OcctKernelInstance,
   shape: OcctShapeHandle,
   volumeMm3?: number,
-): SheetMetalAnalysis {
+): { sheetMetal: SheetMetalAnalysis; unfoldGeometry?: StepUnfoldGeometryEvidence } {
   const faces = kernel.getSubShapes(shape, "face");
   const planarFaces: PlaneFaceObservation[] = [];
   const cylindricalFaces: CylinderFaceObservation[] = [];
+  const cylinderAxes: CylinderAxisSegmentObservation[] = [];
   let otherFaceCount = 0;
 
   for (let index = 0; index < faces.length; index += 1) {
@@ -223,8 +244,9 @@ function collectSheetMetalAnalysis(
       if (surfaceType === "cylinder") {
         const cylinder = kernel.getFaceCylinderData(face);
         const bounds = kernel.uvBounds(face);
+        const boundsFinite = [bounds.uMin, bounds.uMax, bounds.vMin, bounds.vMax].every(Number.isFinite);
         const angleSpanRad = Math.abs(bounds.uMax - bounds.uMin);
-        if (cylinder && Number.isFinite(cylinder.radius) && cylinder.radius > 0 && Number.isFinite(angleSpanRad)) {
+        if (cylinder && Number.isFinite(cylinder.radius) && cylinder.radius > 0 && boundsFinite && Number.isFinite(angleSpanRad)) {
           const axisData = deriveCylinderAxis(kernel, face, bounds, cylinder.radius);
           cylindricalFaces.push({
             id: faceId,
@@ -235,6 +257,13 @@ function collectSheetMetalAnalysis(
             angleSpanRad,
             edgeHashes,
           });
+          if (axisData) {
+            cylinderAxes.push({
+              faceId,
+              startMm: axisData.startMm,
+              endMm: axisData.endMm,
+            });
+          }
         } else {
           otherFaceCount += 1;
         }
@@ -250,10 +279,15 @@ function collectSheetMetalAnalysis(
     }
   }
 
-  return analyzeSheetMetalTopology(
+  const sheetMetal = analyzeSheetMetalTopology(
     { planarFaces, cylindricalFaces, otherFaceCount },
     { volumeMm3 },
   );
+  const unfoldGeometry = sheetMetal.thicknessCandidate?.confidence === "medium"
+    ? buildStepUnfoldGeometryEvidence({ sheetMetal, planarFaces, cylinderAxes })
+    : undefined;
+
+  return { sheetMetal, unfoldGeometry };
 }
 
 /**
@@ -304,9 +338,12 @@ class OcctStepKernel implements StepKernelPort {
       }
 
       let sheetMetal: SheetMetalAnalysis | undefined;
+      let unfoldGeometry: StepUnfoldGeometryEvidence | undefined;
       const warnings: string[] = [];
       try {
-        sheetMetal = collectSheetMetalAnalysis(kernel, shape, volumeMm3);
+        const analysis = collectSheetMetalAnalysis(kernel, shape, volumeMm3);
+        sheetMetal = analysis.sheetMetal;
+        unfoldGeometry = analysis.unfoldGeometry;
       } catch {
         warnings.push("BRep-анализ листовой геометрии не завершён; STEP остаётся доступен для 3D-просмотра и ручной технологической проверки.");
       }
@@ -329,6 +366,7 @@ class OcctStepKernel implements StepKernelPort {
         root: null,
         features: [],
         sheetMetal,
+        unfoldGeometry,
         warnings,
         parserVersion: "5.0.0",
       };
