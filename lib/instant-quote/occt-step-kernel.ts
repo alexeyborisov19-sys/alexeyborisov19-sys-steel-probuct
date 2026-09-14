@@ -10,6 +10,8 @@ import type { StepKernelPort, StepKernelResult } from "@/lib/instant-quote/step-
 type OcctKernelInstance = import("occt-wasm").OcctKernel;
 type OcctShapeHandle = import("occt-wasm").ShapeHandle;
 
+const HASH_UPPER_BOUND = 0x7fffffff;
+
 function finiteVec3(vector: { x: number; y: number; z: number }) {
   return Number.isFinite(vector.x) && Number.isFinite(vector.y) && Number.isFinite(vector.z);
 }
@@ -29,7 +31,11 @@ function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeH
         continue;
       }
 
+      const faceHash = kernel.hashCode(face, HASH_UPPER_BOUND);
+      const faceId = `face-${index}-${faceHash}`;
+      const edgeHashes = kernel.subShapeHashes(face, "edge", HASH_UPPER_BOUND);
       const surfaceType = kernel.surfaceType(face);
+
       if (surfaceType === "plane") {
         const center = kernel.getSurfaceCenterOfMass(face);
         const bounds = kernel.uvBounds(face);
@@ -50,10 +56,11 @@ function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeH
         }
 
         planarFaces.push({
-          id: `face-${index}`,
+          id: faceId,
           areaMm2,
           centerMm: [center.x, center.y, center.z],
           normal: [normal.x, normal.y, normal.z],
+          edgeHashes,
         });
         continue;
       }
@@ -71,12 +78,13 @@ function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeH
           Number.isFinite(angleSpanRad)
         ) {
           cylindricalFaces.push({
-            id: `face-${index}`,
+            id: faceId,
             areaMm2,
             radiusMm: cylinder.radius,
             originMm: [cylinder.origin[0], cylinder.origin[1], cylinder.origin[2]],
             axis: [cylinder.direction[0], cylinder.direction[1], cylinder.direction[2]],
             angleSpanRad,
+            edgeHashes,
           });
         } else {
           otherFaceCount += 1;
