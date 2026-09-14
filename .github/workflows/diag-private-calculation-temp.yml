@@ -28,6 +28,7 @@ jobs:
       STEEL_PRODUCT_ROUND_STEP_RUB: "10"
       CLAMAV_ENABLED: "false"
       TRUST_NGINX_PROXY: "false"
+      IP_HASH_SALT: "synthetic-ci-only-calculation-smoke-salt"
     steps:
       - name: Checkout PR
         uses: actions/checkout@v5
@@ -177,10 +178,14 @@ jobs:
 
           HTTP_CODE="$(curl --silent --show-error --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
             -H 'Origin: http://127.0.0.1:3012' \
+            -H 'Referer: http://127.0.0.1:3012/online-order' \
             -F "manifest=<$RUNNER_TEMP/manifest.json" \
             -F "files=@$RUNNER_TEMP/smoke.dxf;type=application/dxf" \
             http://127.0.0.1:3012/api/online-order/calculate)"
           echo "PACKAGED_CALCULATION_HTTP=$HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            sed -n '1,240p' "$RUNNER_TEMP/server.log"
+          fi
 
           python3 - <<'PY'
           import json, os
