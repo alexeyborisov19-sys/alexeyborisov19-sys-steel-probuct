@@ -33,8 +33,11 @@
   - `Steel Product Online Alpha CI`: success — TypeScript, Unit tests, Next.js build.
   - `Verify project package`: success — Lint, Typecheck, Tests, Build, SEO audit.
 - PR #90 остаётся `open`, `draft`, `merged=false`; base остаётся `main`.
-- **Current WIP implementation HEAD:** `9e16324077c8c55b85263802a17b45795b4977dd`.
-- WIP status: DXF LWPOLYLINE bulge geometry implemented + regression tests added; CI при первой проверке ещё не был создан. Не считать новый checkpoint до полного GREEN.
+- **Current WIP implementation HEAD:** `f8f97fc2a5ed77a36dab76e209d08f9227528e44`.
+- `9e163240…` regression run дал RED на TypeScript: старый `tests/instant-quote-snapshot.test.ts` вручную создавал `DxfShape.polyline` без нового `bulges[]`.
+- Production bulge logic не была причиной ошибки; failure локализован в test fixture.
+- `f8f97fc2…` обновил fixture явным `bulges: [0,0,0,0]` и является текущей точкой повторного CI gate.
+- Не считать bulge block новым checkpoint до полного GREEN.
 
 > Journal commits выше implementation SHA являются recovery metadata. Новый implementation checkpoint фиксируется только после regression + CI gate.
 
@@ -193,19 +196,19 @@
 - `LWPOLYLINE_BULGE` больше не считается unsupported только из-за наличия кривого сегмента;
 - `2a0a6089…`: preview строит кривые segment points; preview sampling не используется для production length/bounds;
 - exact area/pierce topology для bulged closed contour намеренно fail-closed (`areaStatus=unavailable`) до arc-aware topology proof;
-- `9e163240…`: regression tests: positive/negative semicircle, signed quarter arc, closing bulge, zero-bulge compatibility, fail-closed area topology.
-
-Текущий gate: CI PENDING / not yet observed at first check.
+- `9e163240…`: regression tests: positive/negative semicircle, signed quarter arc, closing bulge, zero-bulge compatibility, fail-closed area topology;
+- CI на `9e163240…`: lint GREEN, TypeScript RED только из-за legacy test fixture без обязательного `bulges[]`;
+- `f8f97fc2…`: fixture обновлён zero-bulge metadata; повторный CI обязателен.
 
 ---
 
 ## 5. NEXT ACTION — начинать отсюда
 
-**NEXT ACTION #1:** проверить оба CI workflow на implementation tree с `9e163240…`. Если RED — исправить только текущие failures, не добавляя следующий функциональный слой.
+**NEXT ACTION #1:** проверить оба CI workflow на tree с `f8f97fc2…` (или последующем journal-only HEAD). Если RED — исправить только текущие failures, не добавляя следующий функциональный слой.
 
-**NEXT ACTION #2:** если GREEN — обновить `Last GREEN implementation checkpoint` на проверенный SHA/tree и перенести bulge bounds/length/preview в DONE.
+**NEXT ACTION #2:** если GREEN — обновить `Last GREEN implementation checkpoint` на проверенный implementation SHA и перенести bulge bounds/length/preview в DONE.
 
-**NEXT ACTION #3:** после GREEN оценить следующий DXF gap. Приоритет: либо exact arc-aware area/topology для bulged closed contour, либо legacy `POLYLINE/VERTEX`; выбрать меньший доказуемый блок с regression fixtures.
+**NEXT ACTION #3:** после GREEN оценить следующий DXF gap. Приоритет: exact arc-aware area/topology для bulged closed contour, если можно доказать аналитически и тестами; иначе legacy `POLYLINE/VERTEX`.
 
 **NEXT ACTION #4:** сохранять fail-closed semantics: никакую аппроксимированную площадь/число прожигов не выдавать как factual production value.
 
@@ -257,8 +260,9 @@ Green относится только к SHA, который реально пр
 - `e2d3bb9c…`: аналитические bulge arc bounds/cut length + segment metadata;
 - `2a0a6089…`: curved preview;
 - `9e163240…`: bulge regression suite;
-- area/pierce topology для curved closed contours остаётся fail-closed до отдельного доказанного блока;
-- CI ещё не подтверждён на момент этой записи.
+- CI `9e163240…`: lint GREEN, typecheck RED из-за `instant-quote-snapshot.test.ts` fixture без `bulges[]`;
+- `f8f97fc2…`: fixture исправлен zero-bulge metadata, production logic не ослаблялась;
+- area/pierce topology для curved closed contours остаётся fail-closed до отдельного доказанного блока.
 
 ---
 
@@ -268,5 +272,5 @@ Green относится только к SHA, который реально пр
 1. `Last GREEN implementation checkpoint` = свежий проверенный implementation SHA;
 2. честный CI status;
 3. DONE / IN PROGRESS / NEXT ACTION;
-4. changelog с SHA и fail-closed ограничениями;
+4. changelog с SHA, failure/fix и fail-closed ограничениями;
 5. не менять жёсткие продуктовые решения без явного решения владельца.
