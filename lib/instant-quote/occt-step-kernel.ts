@@ -1,5 +1,88 @@
 import type { CadMeshPrimitive } from "@/lib/instant-quote/cad-model";
+import {
+  analyzeSheetMetalTopology,
+  type CylinderFaceObservation,
+  type PlaneFaceObservation,
+  type SheetMetalAnalysis,
+} from "@/lib/instant-quote/sheet-metal";
 import type { StepKernelPort, StepKernelResult } from "@/lib/instant-quote/step-adapter";
+
+type OcctKernelInstance = import("occt-wasm").OcctKernel;
+type OcctShapeHandle = import("occt-wasm").ShapeHandle;
+
+function finiteVec3(vector: { x: number; y: number; z: number }) {
+  return Number.isFinite(vector.x) && Number.isFinite(vector.y) && Number.isFinite(vector.z);
+}
+
+function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeHandle): SheetMetalAnalysis {
+  const faces = kernel.getSubShapes(shape, "face");
+  const planarFaces: PlaneFaceObservation[] = [];
+  const cylindricalFaces: CylinderFaceObservation[] = [];
+  let otherFaceCount = 0;
+
+  for (let index = 0; index < faces.length; index += 1) {
+    const face = faces[index];
+    try {
+      const areaMm2 = kernel.getSurfaceArea(face);
+      if (!Number.isFinite(areaMm2) || areaMm2 <= 0) {
+        otherFaceCount += 1;
+        continue;
+      }
+
+      const surfaceType = kernel.surfaceType(face);
+      if (surfaceType === "plane") {
+        const center = kernel.getSurfaceCenterOfMass(face);
+        const bounds = kernel.uvBounds(face);
+        const uvIsFinite = [bounds.uMin, bounds.uMax, bounds.vMin, bounds.vMax].every(Number.isFinite);
+        if (!finiteVec3(center) || !uvIsFinite) {
+          otherFaceCount += 1;
+          continue;
+        }
+
+        const normal = kernel.surfaceNormal(
+          face,
+          (bounds.uMin + bounds.uMax) / 2,
+          (bounds.vMin + bounds.vMax) / 2,
+        );
+        if (!finiteVec3(normal)) {
+          otherFaceCount += 1;
+          continue;
+        }
+
+        planarFaces.push({
+          id: `face-${index}`,
+          areaMm2,
+          centerMm: [center.x, center.y, center.z],
+          normal: [normal.x, normal.y, normal.z],
+        });
+        continue;
+      }
+
+      if (surfaceType === "cylinder") {
+        const cylinder = kernel.getFaceCylinderData(face);
+        if (cylinder && Number.isFinite(cylinder.radius) && cylinder.radius > 0) {
+          cylindricalFaces.push({
+            id: `face-${index}`,
+            areaMm2,
+            radiusMm: cylinder.radius,
+          });
+        } else {
+          otherFaceCount += 1;
+        }
+        continue;
+      }
+
+      otherFaceCount += 1;
+    } catch {
+      // A single unusual face must not make an otherwise inspectable STEP fail.
+      otherFaceCount += 1;
+    } finally {
+      kernel.release(face);
+    }
+  }
+
+  return analyzeSheetMetalTopology({ planarFaces, cylindricalFaces, otherFaceCount });
+}
 
 /**
  * Browser-side OpenCascade STEP bridge.
@@ -48,6 +131,14 @@ class OcctStepKernel implements StepKernelPort {
         // Tessellated surface models can still be shown even when no solids are reported.
       }
 
+      let sheetMetal: SheetMetalAnalysis | undefined;
+      const warnings: string[] = [];
+      try {
+        sheetMetal = collectSheetMetalAnalysis(kernel, shape);
+      } catch {
+        warnings.push("BRep-анализ листовой геометрии не завершён; STEP остаётся доступен для 3D-просмотра и ручной технологической проверки.");
+      }
+
       const primitive: CadMeshPrimitive = {
         id: "step-model",
         name: "STEP model",
@@ -56,7 +147,6 @@ class OcctStepKernel implements StepKernelPort {
         indices: Array.from(mesh.indices),
       };
 
-      const warnings: string[] = [];
       if (!volumeMm3) warnings.push("STEP не содержит подтверждённого замкнутого объёма; масса и толщина требуют дополнительного анализа.");
       if (solidCount === 0) warnings.push("OpenCascade не обнаружил отдельные solid-тела; модель доступна для просмотра, но требует технологической проверки.");
 
@@ -66,6 +156,7 @@ class OcctStepKernel implements StepKernelPort {
         bodyCount: solidCount || undefined,
         root: null,
         features: [],
+        sheetMetal,
         warnings,
         parserVersion: "5.0.0",
       };
