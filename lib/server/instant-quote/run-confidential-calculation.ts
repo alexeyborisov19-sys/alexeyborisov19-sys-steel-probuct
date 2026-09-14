@@ -11,6 +11,7 @@ import {
   calculateProjectFactualCost,
   type PartFactualInputs,
   type ProjectCadEvidence,
+  type ProjectFactualPartResult,
 } from "@/lib/instant-quote/project-factual-calculation";
 import {
   deriveProductionParameters,
@@ -32,6 +33,15 @@ export type ConfidentialCalculationInputs = {
   internalNotes?: string[];
 };
 
+type CommercialPricingPolicy = {
+  metalMultiplier: number;
+  drawingPercentOfWorks: number;
+  finalPercent: number;
+  fixedAddRubEach: number;
+  fixedAddEnabled: boolean;
+  roundStepRub: number;
+};
+
 function asMaterialId(value: string | null): MaterialId | null {
   if (value === "cold" || value === "hot" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
   return null;
@@ -44,13 +54,72 @@ function signalStatus(status: string): ClientCalculationSignal["status"] {
   return "pending";
 }
 
+function privatePositiveEnv(name: string) {
+  const raw = process.env[name]?.trim();
+  const value = raw == null || raw === "" ? Number.NaN : Number(raw);
+  if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} is not configured`);
+  return value;
+}
+
+function privateNonNegativeEnv(name: string) {
+  const raw = process.env[name]?.trim();
+  const value = raw == null || raw === "" ? Number.NaN : Number(raw);
+  if (!Number.isFinite(value) || value < 0) throw new Error(`${name} is not configured`);
+  return value;
+}
+
+function loadCommercialPricingPolicy(): CommercialPricingPolicy {
+  const fixedRaw = process.env.STEEL_PRODUCT_FIXED_ADD_ENABLED?.trim();
+  if (fixedRaw !== "true" && fixedRaw !== "false") {
+    throw new Error("STEEL_PRODUCT_FIXED_ADD_ENABLED is not configured");
+  }
+  return {
+    metalMultiplier: privatePositiveEnv("STEEL_PRODUCT_METAL_MULTIPLIER"),
+    drawingPercentOfWorks: privateNonNegativeEnv("STEEL_PRODUCT_DRAW_PCT"),
+    finalPercent: privateNonNegativeEnv("STEEL_PRODUCT_FINAL_PCT"),
+    fixedAddRubEach: privateNonNegativeEnv("STEEL_PRODUCT_FIXED_ADD_RUB"),
+    fixedAddEnabled: fixedRaw === "true",
+    roundStepRub: privatePositiveEnv("STEEL_PRODUCT_ROUND_STEP_RUB"),
+  };
+}
+
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function roundUpTo(value: number, step: number) {
+  return roundMoney(Math.ceil((value - 1e-9) / step) * step);
+}
+
+/**
+ * Applies the approved commercial policy server-side. Only the resulting sale
+ * total may cross the public boundary; material/operation rates and direct cost
+ * remain in the private production report.
+ */
+function approvedSalePriceRub(part: ProjectFactualPartResult, policy: CommercialPricingPolicy) {
+  if (part.status !== "complete" || !part.calculation) return null;
+  const calculation = part.calculation;
+  const materialEach = calculation.lines
+    .filter((line) => line.code === "material")
+    .reduce((sum, line) => sum + line.amountRubEach, 0);
+  const worksBaseEach = calculation.lines
+    .filter((line) => line.code !== "material")
+    .reduce((sum, line) => sum + line.amountRubEach, 0);
+  const worksEach = worksBaseEach + (policy.fixedAddEnabled ? policy.fixedAddRubEach : 0);
+  const drawingEach = worksEach * policy.drawingPercentOfWorks / 100;
+  const subtotalEach = materialEach * policy.metalMultiplier + worksEach + drawingEach;
+  const saleEach = roundUpTo(subtotalEach * (1 + policy.finalPercent / 100), policy.roundStepRub);
+  return roundMoney(saleEach * calculation.quantity);
+}
+
 /**
  * Complete confidential calculation boundary.
  *
  * 1. Loads rates and supplier-price snapshots from protected server storage.
  * 2. Calculates internal production cost and physical production parameters.
- * 3. Writes the full confidential report outside the public web tree.
- * 4. Returns only the explicitly client-safe projection.
+ * 3. Applies the protected commercial pricing policy.
+ * 4. Writes the full confidential report outside the public web tree.
+ * 5. Returns only the explicitly client-safe projection and approved total.
  *
  * The persisted report filename/id/path is intentionally NOT returned from this
  * function, so a public route cannot accidentally serialize an internal report
@@ -63,6 +132,7 @@ export async function runConfidentialCalculationForClient(
   now = new Date(),
 ): Promise<ClientProjectCalculationView> {
   const basis = await loadPrivateCalculationBasis();
+  const commercialPolicy = loadCommercialPricingPolicy();
   const explicitFactualByPartId = inputs.factualByPartId ?? {};
   const authoritativeFactualByPartId = inputs.authoritativeFactualByPartId ?? {};
   const powderSidesByPartId = inputs.powderSidesByPartId ?? {};
@@ -128,7 +198,7 @@ export async function runConfidentialCalculationForClient(
   const signals: ClientCalculationSignal[] = calculation.parts.map((part) => ({
     partId: part.partId,
     status: signalStatus(part.status),
-    approvedSalePriceRub: null,
+    approvedSalePriceRub: approvedSalePriceRub(part, commercialPolicy),
   }));
 
   return createClientCalculationView(project, signals);
