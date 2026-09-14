@@ -113,6 +113,26 @@ function parseDxfInspection(inspection: UploadInspection) {
   return parseAsciiDxf(inspection.buffer.toString("utf8"));
 }
 
+/**
+ * Maps an internal exception to a coarse server-log-only category. The raw
+ * exception, paths, rate values and private report details are deliberately not
+ * logged or returned to the browser.
+ */
+function safeCalculationFailureCode(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH")) return "PRIVATE_BASIS_CONFIG";
+  if (message.includes("Invalid private calculation basis")) return "PRIVATE_BASIS_INVALID";
+  if (/STEEL_PRODUCT_(?:METAL_MULTIPLIER|DRAW_PCT|FINAL_PCT|FIXED_ADD_RUB|FIXED_ADD_ENABLED|ROUND_STEP_RUB)/.test(message)) {
+    return "PRIVATE_PRICING_CONFIG";
+  }
+  if (message.includes("STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT")) return "PRIVATE_REPORT_CONFIG";
+  if (/EACCES|EPERM|permission denied/i.test(message)) return "PRIVATE_STORAGE_ACCESS";
+  if (/ENOENT|no such file or directory/i.test(message)) return "PRIVATE_STORAGE_MISSING";
+  if (/server-only/i.test(message)) return "SERVER_MODULE_BOUNDARY";
+  if (/report/i.test(message) && /write|rename|mkdir|chmod/i.test(message)) return "PRIVATE_REPORT_WRITE";
+  return "CALCULATION_RUNTIME";
+}
+
 async function buildAuthoritativeProject(
   manifestRaw: string,
   inspections: UploadInspection[],
@@ -303,7 +323,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
         return response(400, requestId, { ok: false, code: "INVALID_CONFIGURATION", message: error.message });
       }
 
-      safeSecurityLog(ROUTE, "calculation_failed", ownerKey, { requestId, code: "CALCULATION_UNAVAILABLE" });
+      safeSecurityLog(ROUTE, "calculation_failed", ownerKey, { requestId, code: safeCalculationFailureCode(error) });
       return response(503, requestId, {
         ok: false,
         code: "CALCULATION_UNAVAILABLE",
