@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createStepCadAdapter } from "../lib/instant-quote/step-adapter";
 
-test("high-confidence planar STEP promotes laser geometry but not inferred thickness", async () => {
+test("high-confidence planar STEP promotes laser geometry and proven zero bend count, but not inferred thickness", async () => {
   const adapter = createStepCadAdapter({
     id: "fake-planar-step-kernel",
     async readStep() {
@@ -62,7 +62,7 @@ test("high-confidence planar STEP promotes laser geometry but not inferred thick
   assert.equal(model.geometry.contourCount, 1);
   assert.equal(model.geometry.pierceCount, 1);
   assert.equal(model.geometry.thicknessMm, undefined);
-  assert.equal(model.geometry.bendCount, undefined);
+  assert.equal(model.geometry.bendCount, 0);
   assert.deepEqual(model.warnings, []);
   assert.equal(model.sheetMetal?.warnings[0], "candidate diagnostic retained on sheetMetal only");
 });
