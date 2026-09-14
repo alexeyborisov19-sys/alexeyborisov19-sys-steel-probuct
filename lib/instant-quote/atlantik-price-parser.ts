@@ -12,12 +12,48 @@ const SECTION_BY_TITLE: Array<{ pattern: RegExp; materialId: MaterialId }> = [
   { pattern: /лист\s+горячекатан/i, materialId: "hot" },
 ];
 
+const RUSSIAN_MONTH = new Map([
+  ["января", 1],
+  ["февраля", 2],
+  ["марта", 3],
+  ["апреля", 4],
+  ["мая", 5],
+  ["июня", 6],
+  ["июля", 7],
+  ["августа", 8],
+  ["сентября", 9],
+  ["октября", 10],
+  ["ноября", 11],
+  ["декабря", 12],
+]);
+
 function normalizedLines(text: string) {
   return text
     .replace(/\u00a0/g, " ")
     .split(/\r?\n/)
     .map((line) => line.replace(/[ \t]+/g, " ").trim())
     .filter(Boolean);
+}
+
+export function extractAtlantikPriceDocumentDate(text: string): string | null {
+  const match = text.toLowerCase().match(
+    /\b(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s+(\d{4})(?:\s+года)?\b/i,
+  );
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = RUSSIAN_MONTH.get(match[2].toLowerCase());
+  const year = Number(match[3]);
+  if (!month || !Number.isInteger(day) || !Number.isInteger(year)) return null;
+
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    candidate.getUTCFullYear() !== year
+    || candidate.getUTCMonth() !== month - 1
+    || candidate.getUTCDate() !== day
+  ) return null;
+
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function decimal(value: string) {
