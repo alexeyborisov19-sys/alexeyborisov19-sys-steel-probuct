@@ -5,7 +5,10 @@ import { createHash } from "node:crypto";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { parseAtlantikSheetPriceText } from "@/lib/instant-quote/atlantik-price-parser";
+import {
+  extractAtlantikPriceDocumentDate,
+  parseAtlantikSheetPriceText,
+} from "@/lib/instant-quote/atlantik-price-parser";
 import type { StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
 import {
   loadPrivateCalculationBasis,
@@ -19,7 +22,7 @@ const FETCH_TIMEOUT_MS = 20_000;
 const EXTRACT_TIMEOUT_MS = 20_000;
 const ALLOWED_HOSTS = new Set(["atlantik-company.com", "www.atlantik-company.com"]);
 
-function sourceDate(response: Response, now: Date) {
+function httpSourceDate(response: Response, now: Date) {
   const modified = response.headers.get("last-modified");
   if (modified && Number.isFinite(Date.parse(modified))) {
     return new Date(modified).toISOString().slice(0, 10);
@@ -173,8 +176,8 @@ export async function refreshAtlantikPriceSnapshot(
   if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") throw new Error("Atlantik price response is not a PDF");
 
   const fetchedAt = now.toISOString();
-  const effectiveSourceDate = sourceDate(response, now);
   const text = await extractPdfText(bytes);
+  const effectiveSourceDate = extractAtlantikPriceDocumentDate(text) ?? httpSourceDate(response, now);
   const rows = parseAtlantikSheetPriceText(text, {
     sourceDate: effectiveSourceDate,
     fetchedAt,
