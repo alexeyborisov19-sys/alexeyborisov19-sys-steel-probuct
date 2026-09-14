@@ -11,7 +11,16 @@ const now = new Date("2026-09-14T12:00:00.000Z");
 
 function parsed(): ParsedDxf {
   return {
-    shapes: [{ kind: "line", a: { x: 0, y: 0 }, b: { x: 500, y: 300 } }],
+    shapes: [{
+      kind: "polyline",
+      points: [
+        { x: 0, y: 0 },
+        { x: 500, y: 0 },
+        { x: 500, y: 300 },
+        { x: 0, y: 300 },
+      ],
+      closed: true,
+    }],
     width: 500,
     height: 300,
     minX: 0,
@@ -20,11 +29,11 @@ function parsed(): ParsedDxf {
     maxY: 300,
     cutLength: 1600,
     contours: 1,
-    closedContours: 0,
-    pierces: null,
-    holeCount: null,
-    area: null,
-    areaStatus: "unavailable",
+    closedContours: 1,
+    pierces: 1,
+    holeCount: 0,
+    area: 150_000,
+    areaStatus: "exact",
     units: "мм",
     unitsCode: 4,
     unsupportedEntities: [],
@@ -58,15 +67,16 @@ function projectFixture() {
   project = updatePartGeometry(project, id, {
     widthMm: 500,
     heightMm: 300,
-    areaMm2: 120_000,
+    areaMm2: 150_000,
     cutLengthMm: 1600,
     contourCount: 1,
     pierceCount: 1,
+    holeCount: 0,
   }, now);
   return { project, id };
 }
 
-test("quote snapshot preserves supplier source and pricing formula version", () => {
+test("quote snapshot preserves supplier source while incomplete feature DFM keeps automatic ordering gated", () => {
   const { project, id } = projectFixture();
   const pricing = calculateProjectProvisionalPricing(project, { [id]: parsed() }, snapshots(now.toISOString()), now);
   const quote = createProvisionalQuoteSnapshot(project, pricing, now);
@@ -79,10 +89,12 @@ test("quote snapshot preserves supplier source and pricing formula version", () 
   assert.ok(quote.pricingFormulaVersion.includes("provisional"));
   assert.equal(quote.lines[0].priceSource?.sourceId, "atlantik-smolensk");
   assert.equal(quote.lines[0].priceSource?.source, "Атлантик Компани");
-  assert.equal(quote.automaticOrderReady, true);
+  assert.equal(quote.lines[0].status, "manual");
+  assert.ok(quote.lines[0].reviewReasons.some((reason) => reason.includes("Feature")));
+  assert.equal(quote.automaticOrderReady, false);
 });
 
-test("stale supplier price remains reproducible but blocks automatic order readiness", () => {
+test("stale supplier price remains reproducible and also blocks automatic order readiness", () => {
   const { project, id } = projectFixture();
   const oldFetchedAt = "2026-09-01T12:00:00.000Z";
   const pricing = calculateProjectProvisionalPricing(project, { [id]: parsed() }, snapshots(oldFetchedAt), now);
