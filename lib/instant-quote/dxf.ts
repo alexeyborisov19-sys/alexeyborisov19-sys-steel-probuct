@@ -42,6 +42,8 @@ type CircularArc = {
 };
 
 const EPSILON = 1e-12;
+const LEGACY_POLYLINE_COMPLEX_FLAGS = 2 | 4 | 8 | 16 | 32 | 64;
+const LEGACY_VERTEX_COMPLEX_FLAGS = 1 | 2 | 8 | 16 | 32 | 64 | 128;
 
 function distance(a: Point2D, b: Point2D) {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -136,8 +138,8 @@ function exactArcBounds(shape: Extract<DxfShape, { kind: "arc" }>) {
 }
 
 /**
- * Converts the DXF LWPOLYLINE bulge attached to vertex `a` into its exact
- * signed circular arc from `a` to `b`.
+ * Converts the DXF polyline bulge attached to vertex `a` into its exact signed
+ * circular arc from `a` to `b`.
  *
  * DXF bulge = tan(includedAngle / 4). Positive values are counter-clockwise,
  * negative values clockwise. Production bounds/length use this analytic arc;
@@ -309,6 +311,66 @@ function parseLwPolyline(fields: Pair[]) {
   return { points, bulges };
 }
 
+function parseLegacyPolylineSequence(pairs: Pair[], start: number, headerFields: Pair[]) {
+  const headerFlags = numberField(headerFields, 70) ?? 0;
+  const closed = (headerFlags & 1) === 1;
+  const issues = new Set<string>();
+  const points: Point2D[] = [];
+  const bulges: number[] = [];
+
+  if ((headerFlags & LEGACY_POLYLINE_COMPLEX_FLAGS) !== 0) issues.add("POLYLINE_COMPLEX");
+
+  let cursor = start;
+  let foundSeqend = false;
+  while (cursor < pairs.length) {
+    if (pairs[cursor][0] !== 0) {
+      cursor++;
+      continue;
+    }
+
+    const entity = pairs[cursor][1];
+    if (entity === "SEQEND") {
+      const sequenceEnd = collectEntityFields(pairs, cursor).end;
+      cursor = sequenceEnd;
+      foundSeqend = true;
+      break;
+    }
+
+    if (entity !== "VERTEX") {
+      issues.add("POLYLINE_SEQUENCE");
+      break;
+    }
+
+    const { fields, end } = collectEntityFields(pairs, cursor);
+    const vertexFlags = numberField(fields, 70) ?? 0;
+    const x = numberField(fields, 10);
+    const y = numberField(fields, 20);
+    const z = numberField(fields, 30) ?? 0;
+    const bulge = numberField(fields, 42) ?? 0;
+
+    if ((vertexFlags & LEGACY_VERTEX_COMPLEX_FLAGS) !== 0 || Math.abs(z) > EPSILON) {
+      issues.add("POLYLINE_COMPLEX");
+    }
+    if (x == null || y == null) {
+      issues.add("POLYLINE_INVALID_VERTEX");
+    } else {
+      points.push({ x, y });
+      bulges.push(Number.isFinite(bulge) ? bulge : 0);
+    }
+
+    cursor = end;
+  }
+
+  if (!foundSeqend) issues.add("POLYLINE_SEQUENCE");
+  if (points.length < 2) issues.add("POLYLINE_TOO_FEW_VERTICES");
+
+  return {
+    shape: issues.size === 0 ? { kind: "polyline" as const, points, bulges, closed } : null,
+    issues: [...issues],
+    end: cursor,
+  };
+}
+
 export function parseAsciiDxf(text: string): ParsedDxf {
   const pairs = parsePairs(text);
   const units = detectUnits(pairs);
@@ -373,11 +435,19 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       continue;
     }
 
+    if (value === "POLYLINE") {
+      const legacy = parseLegacyPolylineSequence(pairs, end, fields);
+      for (const issue of legacy.issues) unsupported.add(issue);
+      if (legacy.shape) shapes.push(legacy.shape);
+      i = Math.max(i, legacy.end - 1);
+      continue;
+    }
+
     if (!["TEXT", "MTEXT", "DIMENSION", "POINT"].includes(value)) unsupported.add(value);
   }
 
   if (!shapes.length) {
-    throw new Error("В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, CIRCLE или ARC.");
+    throw new Error("В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, POLYLINE, CIRCLE или ARC.");
   }
 
   const pointsForBounds: Point2D[] = [];
