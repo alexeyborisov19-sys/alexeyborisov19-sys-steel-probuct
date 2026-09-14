@@ -31,13 +31,13 @@ export type PricingBasis = {
   };
   engineeringPctOfWorks: number;
   provisionalCommercialPct: number;
-  fixedPartAddRub: number;
+  setupRubPerUniquePart: number;
 };
 
 // Provisional internal basis migrated from the metalworking calculator dated 2026-09-14.
-// These values are deliberately isolated so the online product can later use approved ERP/admin rates.
+// Values are isolated so the future admin/ERP layer can replace them without touching the CAD logic.
 export const PROVISIONAL_PRICING_BASIS: PricingBasis = {
-  // User-approved rule for the new platform: current metal market/procurement price + 5%.
+  // Rule approved for Steel Product Online: supplier/market metal price + 5%.
   materialMarketUpliftPct: 5,
   densityKgM3: {
     cold: 7800,
@@ -63,40 +63,46 @@ export const PROVISIONAL_PRICING_BASIS: PricingBasis = {
   },
   engineeringPctOfWorks: 5,
   provisionalCommercialPct: 16.5,
-  fixedPartAddRub: 1000,
+  // Old calculator had 1,000 RUB per part. The new engine treats it as one setup charge
+  // per unique line item and amortizes it across quantity, which produces sensible series pricing.
+  setupRubPerUniquePart: 1000,
 };
 
 export type CuttingRate = {
   thicknessMm: number;
-  rubPerM: number;
+  baseRubPerM: number;
+  from100mRubPerM: number;
+  from500mRubPerM: number;
   pierceRub: number;
 };
 
 // Steel laser rates migrated from the current internal metalworking calculator.
-// Quantity-tier selection will be added above this table; c1/base is used for the first alpha.
 export const PROVISIONAL_STEEL_CUTTING_RATES: CuttingRate[] = [
-  { thicknessMm: 0.8, rubPerM: 62.8, pierceRub: 1.4 },
-  { thicknessMm: 1, rubPerM: 50, pierceRub: 1.4 },
-  { thicknessMm: 1.5, rubPerM: 64.2, pierceRub: 1.4 },
-  { thicknessMm: 2, rubPerM: 66.9, pierceRub: 1.4 },
-  { thicknessMm: 2.5, rubPerM: 75.1, pierceRub: 1.4 },
-  { thicknessMm: 3, rubPerM: 88.8, pierceRub: 1.4 },
-  { thicknessMm: 4, rubPerM: 102.4, pierceRub: 2.8 },
-  { thicknessMm: 5, rubPerM: 122.9, pierceRub: 2.8 },
-  { thicknessMm: 6, rubPerM: 157, pierceRub: 2.8 },
-  { thicknessMm: 8, rubPerM: 218.4, pierceRub: 2.8 },
-  { thicknessMm: 10, rubPerM: 273, pierceRub: 6.5 },
-  { thicknessMm: 12, rubPerM: 338, pierceRub: 6.5 },
-  { thicknessMm: 14, rubPerM: 361.1, pierceRub: 8.6 },
-  { thicknessMm: 16, rubPerM: 480.5, pierceRub: 8.6 },
-  { thicknessMm: 18, rubPerM: 524.2, pierceRub: 12 },
-  { thicknessMm: 20, rubPerM: 600.6, pierceRub: 12 },
-  { thicknessMm: 25, rubPerM: 760.1, pierceRub: 18 },
-  { thicknessMm: 30, rubPerM: 912.1, pierceRub: 21.6 },
-  { thicknessMm: 40, rubPerM: 1216.2, pierceRub: 28.8 },
+  { thicknessMm: 0.8, baseRubPerM: 62.8, from100mRubPerM: 39.6, from500mRubPerM: 35.5, pierceRub: 1.4 },
+  { thicknessMm: 1, baseRubPerM: 50, from100mRubPerM: 39.6, from500mRubPerM: 35.5, pierceRub: 1.4 },
+  { thicknessMm: 1.5, baseRubPerM: 64.2, from100mRubPerM: 45.1, from500mRubPerM: 41, pierceRub: 1.4 },
+  { thicknessMm: 2, baseRubPerM: 66.9, from100mRubPerM: 51.9, from500mRubPerM: 46.5, pierceRub: 1.4 },
+  { thicknessMm: 2.5, baseRubPerM: 75.1, from100mRubPerM: 64.2, from500mRubPerM: 57.4, pierceRub: 1.4 },
+  { thicknessMm: 3, baseRubPerM: 88.8, from100mRubPerM: 73.8, from500mRubPerM: 66.9, pierceRub: 1.4 },
+  { thicknessMm: 4, baseRubPerM: 102.4, from100mRubPerM: 83.3, from500mRubPerM: 75.1, pierceRub: 2.8 },
+  { thicknessMm: 5, baseRubPerM: 122.9, from100mRubPerM: 97, from500mRubPerM: 88.8, pierceRub: 2.8 },
+  { thicknessMm: 6, baseRubPerM: 157, from100mRubPerM: 112, from500mRubPerM: 102.4, pierceRub: 2.8 },
+  { thicknessMm: 8, baseRubPerM: 218.4, from100mRubPerM: 143.4, from500mRubPerM: 129.7, pierceRub: 2.8 },
+  { thicknessMm: 10, baseRubPerM: 273, from100mRubPerM: 227.5, from500mRubPerM: 171.6, pierceRub: 6.5 },
+  { thicknessMm: 12, baseRubPerM: 338, from100mRubPerM: 260, from500mRubPerM: 214.5, pierceRub: 6.5 },
+  { thicknessMm: 14, baseRubPerM: 361.1, from100mRubPerM: 361.1, from500mRubPerM: 361.1, pierceRub: 8.6 },
+  { thicknessMm: 16, baseRubPerM: 480.5, from100mRubPerM: 480.5, from500mRubPerM: 480.5, pierceRub: 8.6 },
+  { thicknessMm: 18, baseRubPerM: 524.2, from100mRubPerM: 524.2, from500mRubPerM: 524.2, pierceRub: 12 },
+  { thicknessMm: 20, baseRubPerM: 600.6, from100mRubPerM: 600.6, from500mRubPerM: 600.6, pierceRub: 12 },
+  { thicknessMm: 25, baseRubPerM: 760.1, from100mRubPerM: 760.1, from500mRubPerM: 760.1, pierceRub: 18 },
+  { thicknessMm: 30, baseRubPerM: 912.1, from100mRubPerM: 912.1, from500mRubPerM: 912.1, pierceRub: 21.6 },
+  { thicknessMm: 40, baseRubPerM: 1216.2, from100mRubPerM: 1216.2, from500mRubPerM: 1216.2, pierceRub: 28.8 },
 ];
 
-export function applyMetalUplift(rubPerTon: number, upliftPct = PROVISIONAL_PRICING_BASIS.materialMarketUpliftPct) {
+export function applyMetalUplift(
+  rubPerTon: number,
+  upliftPct = PROVISIONAL_PRICING_BASIS.materialMarketUpliftPct,
+) {
   if (!Number.isFinite(rubPerTon) || rubPerTon <= 0) throw new Error("Invalid metal market price");
   return rubPerTon * (1 + upliftPct / 100);
 }
@@ -120,6 +126,12 @@ export function nearestCuttingRate(thicknessMm: number, rows = PROVISIONAL_STEEL
   );
 }
 
+export function cuttingRubPerM(rate: CuttingRate, totalBatchCutM: number) {
+  if (totalBatchCutM >= 500) return rate.from500mRubPerM;
+  if (totalBatchCutM >= 100) return rate.from100mRubPerM;
+  return rate.baseRubPerM;
+}
+
 export type ProvisionalPartPricingInput = {
   materialId: MaterialId;
   thicknessMm: number;
@@ -131,7 +143,7 @@ export type ProvisionalPartPricingInput = {
   weldLengthM?: number;
   powderSides?: 1 | 2;
   assemblyMinutes?: number;
-  // Optional nesting/scrap multiplier. 1.10 = ten percent more purchased mass than net geometry mass.
+  // Temporary until true nesting exists. Actual nesting should replace this factor.
   materialUsageFactor?: number;
 };
 
@@ -142,9 +154,11 @@ export type ProvisionalPartPrice = {
   purchasedMassKg: number;
   materialRubEach: number;
   laserRubEach: number;
+  laserRubPerM: number;
   operationsRubEach: number;
   engineeringRubEach: number;
-  fixedAddRubEach: number;
+  setupRubBatch: number;
+  setupRubEach: number;
   internalSubtotalRubEach: number;
   provisionalCommercialRubEach: number;
   unitRub: number;
@@ -171,9 +185,11 @@ export function calculateProvisionalPartPrice(
 
   const cut = nearestCuttingRate(input.thicknessMm);
   const cutLengthM = Math.max(0, (input.geometry.cutLengthMm ?? 0) / 1000);
+  const totalBatchCutM = cutLengthM * quantity;
+  const laserRubPerM = cuttingRubPerM(cut, totalBatchCutM);
   const pierces = Math.max(0, input.geometry.contourCount ?? 0);
   const laserRubEach = input.operations.includes("laser-cutting")
-    ? cutLengthM * cut.rubPerM + pierces * cut.pierceRub
+    ? cutLengthM * laserRubPerM + pierces * cut.pierceRub
     : 0;
 
   let operationsRubEach = 0;
@@ -186,8 +202,9 @@ export function calculateProvisionalPartPrice(
 
   const worksRubEach = laserRubEach + operationsRubEach;
   const engineeringRubEach = worksRubEach * basis.engineeringPctOfWorks / 100;
-  const fixedAddRubEach = basis.fixedPartAddRub;
-  const internalSubtotalRubEach = materialRubEach + worksRubEach + engineeringRubEach + fixedAddRubEach;
+  const setupRubBatch = basis.setupRubPerUniquePart;
+  const setupRubEach = setupRubBatch / quantity;
+  const internalSubtotalRubEach = materialRubEach + worksRubEach + engineeringRubEach + setupRubEach;
   const provisionalCommercialRubEach = internalSubtotalRubEach * basis.provisionalCommercialPct / 100;
   const unitRub = internalSubtotalRubEach + provisionalCommercialRubEach;
 
@@ -203,9 +220,11 @@ export function calculateProvisionalPartPrice(
     purchasedMassKg,
     materialRubEach,
     laserRubEach,
+    laserRubPerM,
     operationsRubEach,
     engineeringRubEach,
-    fixedAddRubEach,
+    setupRubBatch,
+    setupRubEach,
     internalSubtotalRubEach,
     provisionalCommercialRubEach,
     unitRub,
