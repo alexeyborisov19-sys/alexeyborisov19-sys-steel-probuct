@@ -31,6 +31,7 @@ const quote: ProvisionalQuoteSnapshot = {
       materialMarketRubPerTon: 60_000,
       materialMarketTier: "under-3t",
       materialPricedRubPerTon: 63_000,
+      materialAllocationStrategy: "bounding-rectangle",
       netAreaMm2: 150_000,
       blankWidthMm: 500,
       blankHeightMm: 300,
