@@ -1,0 +1,96 @@
+name: Roll back Steel Product Online review
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/steel-product-online-clean-alpha-sep14
+    paths:
+      - deploy/ROLLBACK_REVIEW
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steelprodukt-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Restore pre-review production snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Restore latest review snapshot
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          BACKUP_ROOT=/var/backups/steelprodukt/review-releases
+          POINTER="$BACKUP_ROOT/LATEST"
+          test -s "$POINTER"
+          SNAPSHOT_ID="$(cat "$POINTER")"
+          case "$SNAPSHOT_ID" in
+            *[!A-Za-z0-9._-]*|'') echo "Invalid rollback snapshot id"; exit 1 ;;
+          esac
+          ARCHIVE="$BACKUP_ROOT/$SNAPSHOT_ID/release.tar.gz"
+          test -r "$ARCHIVE"
+          RESTORE_DIR="$(mktemp -d /tmp/steelprodukt-review-rollback.XXXXXX)"
+          trap 'rm -rf "$RESTORE_DIR"' EXIT
+          tar -xzf "$ARCHIVE" -C "$RESTORE_DIR"
+          test -d "$RESTORE_DIR/.next"
+          test -f "$RESTORE_DIR/package.json"
+          test -f "$RESTORE_DIR/package-lock.json"
+          test -f "$RESTORE_DIR/.env.production"
+
+          APP_NAME="$(node -p "require('$APP_PATH/ecosystem.config.cjs').apps[0].name" 2>/dev/null || printf steelprodukt)"
+          pm2 delete "$APP_NAME" 2>/dev/null || true
+
+          rm -rf "$APP_PATH/.next" "$APP_PATH/public"
+          cp -a "$RESTORE_DIR/.next" "$APP_PATH/.next"
+          cp -a "$RESTORE_DIR/public" "$APP_PATH/public"
+          cp -a "$RESTORE_DIR/package.json" "$APP_PATH/package.json"
+          cp -a "$RESTORE_DIR/package-lock.json" "$APP_PATH/package-lock.json"
+          cp -a "$RESTORE_DIR/ecosystem.config.cjs" "$APP_PATH/ecosystem.config.cjs"
+          if [ -f "$RESTORE_DIR/next.config.ts" ]; then cp -a "$RESTORE_DIR/next.config.ts" "$APP_PATH/next.config.ts"; fi
+          if [ -f "$RESTORE_DIR/next.config.js" ]; then cp -a "$RESTORE_DIR/next.config.js" "$APP_PATH/next.config.js"; fi
+          cp -a "$RESTORE_DIR/.env.production" "$APP_PATH/.env.production"
+          chmod 600 "$APP_PATH/.env.production"
+          chown -R nodejs:nodejs "$APP_PATH"
+
+          sudo -iu nodejs bash -lc "cd '$APP_PATH' && npm ci --no-audit --no-fund"
+          sudo -iu nodejs bash -lc "cd '$APP_PATH' && pm2 start ecosystem.config.cjs --env production --update-env && pm2 save"
+
+          for _ in $(seq 1 40); do
+            if curl -fsS --max-time 2 http://127.0.0.1:3000/api/health >/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          curl -fsS http://127.0.0.1:3000/api/health >/dev/null
+          curl -fsS http://127.0.0.1:3000/robots.txt >/dev/null
+
+          rm -rf /var/cache/nginx/steelprodukt/* 2>/dev/null || true
+          if nginx -t >/dev/null 2>&1; then nginx -s reload || true; fi
+          echo "Rolled back production to review snapshot: $SNAPSHOT_ID"
+          REMOTE

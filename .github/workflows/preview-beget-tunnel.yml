@@ -1,0 +1,272 @@
+name: Steel Product Online Preview
+
+on:
+  push:
+    branches:
+      - feat/steel-product-online-clean-alpha-sep14
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steel-product-online-preview
+  cancel-in-progress: true
+
+env:
+  PREVIEW_PORT: "3101"
+
+jobs:
+  preview:
+    name: Build and run isolated preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build preview
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3101
+          NEXT_PUBLIC_YM_COUNTER_ID: ""
+          NEXT_PUBLIC_YM_WEBVISOR: "false"
+          NEXT_PUBLIC_YANDEX_VERIFICATION: ""
+          NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ""
+        run: npm run build
+
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload isolated preview source and build
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          STAGING_PATH="${BEGET_APP_PATH}-preview"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" "mkdir -p '$STAGING_PATH' '$STAGING_PATH/.next'"
+
+          rsync -az --delete-delay \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.agents/' \
+            --exclude='.codex/' \
+            --exclude='.claude/' \
+            --exclude='.claude-flow/' \
+            --exclude='.mcp.json' \
+            --exclude='AGENTS.md' \
+            --exclude='.env*' \
+            --exclude='.data/' \
+            --exclude='node_modules/' \
+            --exclude='.next/' \
+            --exclude='public/video/company-film-flat.mp4' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
+            ./ "$BEGET_USER@$BEGET_HOST:$STAGING_PATH/"
+
+          rsync -az --delete \
+            --exclude='cache/' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
+            ./.next/ "$BEGET_USER@$BEGET_HOST:$STAGING_PATH/.next/"
+
+      - name: Configure and start isolated preview
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" \
+            "PROD_PATH='$BEGET_APP_PATH' STAGING_PATH='${BEGET_APP_PATH}-preview' PREVIEW_PORT='$PREVIEW_PORT' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          test -n "$PROD_PATH"
+          test -n "$STAGING_PATH"
+          test -f "$PROD_PATH/.env.production"
+          test -f "$STAGING_PATH/package.json"
+          test -f "$STAGING_PATH/.next/BUILD_ID"
+
+          read_env_value() {
+            key="$1"
+            sed -n "s/^${key}=//p" "$PROD_PATH/.env.production" \
+              | head -n 1 \
+              | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/"
+          }
+
+          BASIS_PATH="$(read_env_value STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH)"
+          if [ -z "$BASIS_PATH" ]; then
+            echo "Production calculation basis path is not configured."
+            exit 1
+          fi
+          case "$BASIS_PATH" in
+            /*) ;;
+            *) BASIS_PATH="$PROD_PATH/$BASIS_PATH" ;;
+          esac
+          test -r "$BASIS_PATH"
+
+          mkdir -p \
+            "$STAGING_PATH/.data/private-production-reports" \
+            "$STAGING_PATH/.data/quarantine" \
+            "$STAGING_PATH/.data/quote-leads" \
+            "$STAGING_PATH/.data/assistant-leads" \
+            "$STAGING_PATH/.data/consent-audit" \
+            "$STAGING_PATH/.bin"
+
+          IP_SALT="$(openssl rand -hex 32)"
+          AUDIT_SALT="$(openssl rand -hex 32)"
+          cat > "$STAGING_PATH/.env.production" <<ENV
+          NODE_ENV=production
+          NEXT_PUBLIC_SITE_URL=http://127.0.0.1:${PREVIEW_PORT}
+          NEXT_PUBLIC_YM_COUNTER_ID=
+          NEXT_PUBLIC_YM_WEBVISOR=false
+          NEXT_PUBLIC_YANDEX_VERIFICATION=
+          NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
+          STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH=$BASIS_PATH
+          STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT=$STAGING_PATH/.data/private-production-reports
+          STEEL_PRODUCT_PRICE_REFRESH_TOKEN=
+          STEEL_PRODUCT_PRICE_REFRESH_PORT=$PREVIEW_PORT
+          UPLOAD_QUARANTINE_PATH=$STAGING_PATH/.data/quarantine
+          QUOTE_STORAGE_PATH=$STAGING_PATH/.data/quote-leads
+          ASSISTANT_LEAD_STORAGE_PATH=$STAGING_PATH/.data/assistant-leads
+          CONSENT_AUDIT_STORAGE_PATH=$STAGING_PATH/.data/consent-audit
+          LEAD_RETENTION_DAYS=7
+          CONSENT_AUDIT_RETENTION_DAYS=7
+          IP_HASH_SALT=$IP_SALT
+          CONSENT_AUDIT_SALT=$AUDIT_SALT
+          TRUST_NGINX_PROXY=false
+          CLAMAV_ENABLED=false
+          SMTP_HOST=
+          SMTP_USER=
+          SMTP_PASSWORD=
+          YANDEX_AI_ENABLED=false
+          ASSISTANT_TELEGRAM_ENABLED=false
+          PD_ADMIN_ENABLED=false
+          ENV
+          chmod 600 "$STAGING_PATH/.env.production"
+
+          chown -R nodejs:nodejs "$STAGING_PATH"
+
+          sudo -iu nodejs bash -lc "cd '$STAGING_PATH' && npm ci --omit=dev --no-audit --no-fund"
+
+          stop_pid_file() {
+            pid_file="$1"
+            if [ -f "$pid_file" ]; then
+              old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+              if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+                kill "$old_pid" 2>/dev/null || true
+                for _ in 1 2 3 4 5; do
+                  kill -0 "$old_pid" 2>/dev/null || break
+                  sleep 1
+                done
+                kill -9 "$old_pid" 2>/dev/null || true
+              fi
+              rm -f "$pid_file"
+            fi
+          }
+
+          stop_pid_file "$STAGING_PATH/.preview-app.pid"
+          stop_pid_file "$STAGING_PATH/.preview-tunnel.pid"
+
+          sudo -iu nodejs bash -lc "cd '$STAGING_PATH' && set -a && . ./.env.production && set +a && nohup ./node_modules/.bin/next start -H 127.0.0.1 -p '$PREVIEW_PORT' > .preview-app.log 2>&1 & echo \$! > .preview-app.pid"
+
+          for _ in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${PREVIEW_PORT}/api/health" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS "http://127.0.0.1:${PREVIEW_PORT}/api/health" >/dev/null
+
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            x86_64|amd64) CF_ARCH=amd64 ;;
+            aarch64|arm64) CF_ARCH=arm64 ;;
+            *) echo "Unsupported cloudflared architecture: $ARCH"; exit 1 ;;
+          esac
+          if [ ! -x "$STAGING_PATH/.bin/cloudflared" ]; then
+            curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" \
+              -o "$STAGING_PATH/.bin/cloudflared"
+            chmod 755 "$STAGING_PATH/.bin/cloudflared"
+            chown nodejs:nodejs "$STAGING_PATH/.bin/cloudflared"
+          fi
+
+          rm -f "$STAGING_PATH/.preview-tunnel.log" "$STAGING_PATH/.preview-url"
+          sudo -iu nodejs bash -lc "cd '$STAGING_PATH' && nohup ./.bin/cloudflared tunnel --no-autoupdate --url 'http://127.0.0.1:$PREVIEW_PORT' > .preview-tunnel.log 2>&1 & echo \$! > .preview-tunnel.pid"
+
+          for _ in $(seq 1 30); do
+            URL="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' "$STAGING_PATH/.preview-tunnel.log" | head -n 1 || true)"
+            if [ -n "$URL" ]; then
+              printf '%s\n' "$URL" > "$STAGING_PATH/.preview-url"
+              chown nodejs:nodejs "$STAGING_PATH/.preview-url"
+              break
+            fi
+            sleep 1
+          done
+
+          test -s "$STAGING_PATH/.preview-url" || {
+            cat "$STAGING_PATH/.preview-tunnel.log"
+            exit 1
+          }
+          REMOTE
+
+      - name: Verify public preview and print link
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          STAGING_PATH="${BEGET_APP_PATH}-preview"
+          PREVIEW_URL="$(ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" "cat '$STAGING_PATH/.preview-url'")"
+          test -n "$PREVIEW_URL"
+
+          for _ in $(seq 1 20); do
+            if curl -fsSL --retry 2 --retry-delay 1 "$PREVIEW_URL/api/health" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsSL "$PREVIEW_URL/api/health" >/dev/null
+          curl -fsSL "$PREVIEW_URL/online-order" | grep -q "Steel Product Online"
+
+          echo "Steel Product Online preview: $PREVIEW_URL/online-order"
+          {
+            echo "## Steel Product Online preview"
+            echo
+            echo "$PREVIEW_URL/online-order"
+          } >> "$GITHUB_STEP_SUMMARY"

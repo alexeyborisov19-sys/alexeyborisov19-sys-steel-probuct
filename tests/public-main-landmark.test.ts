@@ -24,7 +24,10 @@ test("the SEO crawler checks source assets without forcing expensive image optim
   assert.match(auditSource, /function imagePathForAudit\(src\)/);
   assert.match(auditSource, /url\.pathname === "\/_next\/image"/);
   assert.match(auditSource, /url\.searchParams\.get\("url"\)/);
-  assert.match(auditSource, /imagePaths\.add\(imagePathForAudit\(src\)\)/);
+  assert.match(auditSource, /sourcePath\?\.startsWith\("\/"\)/);
+  assert.match(auditSource, /return null/);
+  assert.match(auditSource, /const sourcePath = imagePathForAudit\(src\)/);
+  assert.match(auditSource, /if \(sourcePath\) imagePaths\.add\(sourcePath\)/);
   assert.doesNotMatch(auditSource, /imagePaths\.add\(src\)/);
 });
 

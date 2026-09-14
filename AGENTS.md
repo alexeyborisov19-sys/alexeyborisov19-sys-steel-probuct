@@ -2,6 +2,19 @@
 
 For substantial website tasks, treat the installed skills and MCP tools as one coordinated team.
 
+## Steel Product Online recovery protocol
+For any task involving Steel Product Online, `/online-order`, CAD/DFM/STEP/DXF calculation, internal production calculation reports, supplier price feeds, or the instant-quote modules:
+
+1. **Before editing code, read `docs/STEEL_PRODUCT_ONLINE_DEV_JOURNAL.md` in the current working branch.**
+2. Compare the journal's recorded checkpoint with the actual branch HEAD and current PR/CI status.
+3. If HEAD has advanced since the journal checkpoint, inspect the intervening commits and update the journal before starting new implementation.
+4. Resume from the journal's `NEXT ACTION`; do not recreate modules listed under `DONE` unless a concrete regression or CI failure proves they are broken.
+5. After each completed meaningful development block, update the journal's `Live checkpoint`, `DONE / IN PROGRESS / NEXT ACTION`, and short changelog.
+6. A previous green CI result applies only to the SHA that actually passed it. Never describe a newer HEAD as green without checking that newer HEAD.
+7. Never merge/publish Steel Product Online or enable checkout/payment unless the owner explicitly changes the current project constraints recorded in the journal.
+
+This recovery journal is the durable source of development continuity after network/session resets.
+
 ## Lead workflow
 - Start with `.agents/skills/site-director/SKILL.md` for page creation, redesigns, conversion work, or site-wide changes.
 - Use Ruflo MCP for orchestration when available.
