@@ -22,6 +22,8 @@ test("parses basic line geometry in millimetres", () => {
   assert.equal(parsed.width, 100);
   assert.equal(parsed.height, 50);
   assert.equal(parsed.contours, 1);
+  assert.equal(parsed.areaStatus, "unavailable");
+  assert.equal(parsed.area, null);
   assert.ok(parsed.cutLength > 111 && parsed.cutLength < 112);
 });
 
@@ -36,6 +38,38 @@ test("uses actual arc extents instead of full-circle bounding box", () => {
   assert.ok(parsed.maxY <= 100.0001);
 });
 
+test("calculates exact area and pierce count for a closed polyline", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LWPOLYLINE", "70", "1",
+    "10", "0", "20", "0",
+    "10", "100", "20", "0",
+    "10", "100", "20", "50",
+    "10", "0", "20", "50",
+  ]));
+
+  assert.equal(parsed.areaStatus, "exact");
+  assert.equal(parsed.area, 5000);
+  assert.equal(parsed.closedContours, 1);
+  assert.equal(parsed.pierces, 1);
+  assert.equal(parsed.holeCount, 0);
+});
+
+test("subtracts an internal circle as a hole", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LWPOLYLINE", "70", "1",
+    "10", "0", "20", "0",
+    "10", "100", "20", "0",
+    "10", "100", "20", "100",
+    "10", "0", "20", "100",
+    "0", "CIRCLE", "10", "50", "20", "50", "40", "10",
+  ]));
+
+  assert.equal(parsed.areaStatus, "exact");
+  assert.ok(Math.abs((parsed.area ?? 0) - (10000 - Math.PI * 100)) < 0.001);
+  assert.equal(parsed.pierces, 2);
+  assert.equal(parsed.holeCount, 1);
+});
+
 test("flags LWPOLYLINE bulges for manual review instead of silently trusting them", () => {
   const parsed = parseAsciiDxf(dxf([
     "0", "LWPOLYLINE", "70", "1",
@@ -45,4 +79,5 @@ test("flags LWPOLYLINE bulges for manual review instead of silently trusting the
   ]));
 
   assert.ok(parsed.unsupportedEntities.includes("LWPOLYLINE_BULGE"));
+  assert.equal(parsed.areaStatus, "unavailable");
 });
