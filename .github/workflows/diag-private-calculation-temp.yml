@@ -50,8 +50,6 @@ jobs:
           mkdir -p "$DIAG_MODULES/server-only"
           printf '%s\n' '{"name":"server-only","version":"0.0.0","main":"index.js"}' > "$DIAG_MODULES/server-only/package.json"
           printf '%s\n' 'module.exports = {};' > "$DIAG_MODULES/server-only/index.js"
-          chown -R nodejs:nodejs "$DIAG_ROOT" "$DIAG_MODULES" "$RUNNER"
-          chmod 0700 "$DIAG_ROOT" "$DIAG_MODULES"
 
           cat > "$RUNNER" <<'NODE'
           const appPath = process.env.APP_PATH;
@@ -121,7 +119,9 @@ jobs:
             process.exit(1);
           }
           NODE
-          chown nodejs:nodejs "$RUNNER"
+
+          chown -R nodejs:nodejs "$DIAG_ROOT" "$DIAG_MODULES" "$RUNNER"
+          chmod 0700 "$DIAG_ROOT" "$DIAG_MODULES"
           chmod 0600 "$RUNNER"
 
           sudo -iu nodejs env \
