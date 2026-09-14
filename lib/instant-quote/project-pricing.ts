@@ -8,10 +8,22 @@ import {
   type ProvisionalPartPrice,
 } from "@/lib/instant-quote/pricing";
 
+export type ProjectPartPriceSource = {
+  sourceId: string;
+  source: string;
+  sourceDate: string;
+  fetchedAt: string;
+  stale: boolean;
+  ageHours: number | null;
+  listedRubPerTon: number;
+  listedRubPerTonFrom3t?: number;
+};
+
 export type ProjectPartPricingResult = {
   partId: string;
   status: "calculated" | "blocked" | "manual" | "missing-geometry" | "missing-price";
   price: ProvisionalPartPrice | null;
+  priceSource: ProjectPartPriceSource | null;
   blockingReasons: string[];
   reviewReasons: string[];
 };
@@ -43,6 +55,7 @@ export function calculateProjectProvisionalPricing(
         partId: part.id,
         status: "missing-geometry",
         price: null,
+        priceSource: null,
         blockingReasons: [],
         reviewReasons: ["Нормализованная геометрия детали ещё не готова."],
       };
@@ -55,6 +68,7 @@ export function calculateProjectProvisionalPricing(
         partId: part.id,
         status: "manual",
         price: null,
+        priceSource: null,
         blockingReasons: [],
         reviewReasons: ["Материал или толщина не заданы."],
       };
@@ -78,15 +92,16 @@ export function calculateProjectProvisionalPricing(
     const reviewReasons = dfm.filter((item) => item.severity === "manual" || item.severity === "warning").map((item) => item.title);
 
     if (blockingReasons.length) {
-      return { partId: part.id, status: "blocked", price: null, blockingReasons, reviewReasons };
+      return { partId: part.id, status: "blocked", price: null, priceSource: null, blockingReasons, reviewReasons };
     }
 
     const selection = selectBestStoredPrice(snapshots, materialId, thicknessMm, now);
-    if (!selection.price) {
+    if (!selection.price || !selection.sourceId) {
       return {
         partId: part.id,
         status: "missing-price",
         price: null,
+        priceSource: null,
         blockingReasons,
         reviewReasons: [...reviewReasons, "Нет подтверждённой цены металла."],
       };
@@ -110,6 +125,16 @@ export function calculateProjectProvisionalPricing(
       partId: part.id,
       status: reviewReasons.length ? "manual" : "calculated",
       price,
+      priceSource: {
+        sourceId: selection.sourceId,
+        source: selection.price.source,
+        sourceDate: selection.price.sourceDate,
+        fetchedAt: selection.price.fetchedAt,
+        stale: selection.stale,
+        ageHours: selection.ageHours,
+        listedRubPerTon: selection.price.rubPerTon,
+        listedRubPerTonFrom3t: selection.price.rubPerTonFrom3t,
+      },
       blockingReasons,
       reviewReasons,
     };
