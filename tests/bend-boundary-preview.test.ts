@@ -18,6 +18,7 @@ function rectangleBoundary(
         id: "wire-0",
         edges: points.map((point, index) => ({
           id: `edge-${index}`,
+          edgeHash: index + 1,
           curveKind: "line",
           pointsMm: [point, points[(index + 1) % points.length]],
         })),
