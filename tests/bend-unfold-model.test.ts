@@ -122,6 +122,21 @@ test("model bridge refuses to invent bend allowance when the approved table has 
   assert.match(plan.errors.join(" "), /No approved bend allowance row/i);
 });
 
+test("model bridge blocks unfold evidence that names a bend absent from the source BRep candidates", () => {
+  const input = model();
+  input.unfoldGeometry!.bends[0].bendId = "bend:forged:evidence";
+
+  const plan = buildBendUnfoldPlanFromModel({
+    model: input,
+    table,
+    materialId: "hot",
+    confirmedThicknessMm: 2,
+  });
+
+  assert.equal(plan.status, "blocked");
+  assert.match(plan.errors.join(" "), /not present in the STEP BRep bend candidates/i);
+});
+
 test("normalized CAD validator rejects unfold bends that reference unknown panels", () => {
   const input = model();
   input.unfoldGeometry!.bends[0].panelIds = [panelA, "panel:missing:skin"];
