@@ -50,8 +50,9 @@ export const TRUSTED_METAL_PRICE_SOURCES: PriceFeedSource[] = [
     format: "xlsx",
     priority: 30,
     materials: ["hot", "cold", "zinc"],
-    enabled: true,
+    enabled: false,
     role: "fallback",
+    note: "Плановый резерв. Не включать до реализации и тестирования официального XLSX-adapter.",
   },
   {
     id: "union-inox",
@@ -60,8 +61,9 @@ export const TRUSTED_METAL_PRICE_SOURCES: PriceFeedSource[] = [
     format: "xlsx",
     priority: 30,
     materials: ["inox"],
-    enabled: true,
+    enabled: false,
     role: "fallback",
+    note: "Плановый резерв. Не включать до реализации и тестирования официального XLSX-adapter.",
   },
   {
     id: "union-nonferrous",
@@ -70,8 +72,9 @@ export const TRUSTED_METAL_PRICE_SOURCES: PriceFeedSource[] = [
     format: "xlsx",
     priority: 30,
     materials: ["alu", "copper", "brass"],
-    enabled: true,
+    enabled: false,
     role: "fallback",
+    note: "Плановый резерв. Не включать до реализации и тестирования официального XLSX-adapter.",
   },
 ];
 
