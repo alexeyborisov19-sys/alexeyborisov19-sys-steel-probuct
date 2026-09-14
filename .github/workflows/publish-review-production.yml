@@ -1,0 +1,124 @@
+name: Publish Steel Product Online review
+
+on:
+  push:
+    branches:
+      - feat/steel-product-online-clean-alpha-sep14
+    paths:
+      - .github/workflows/publish-review-production.yml
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: steelprodukt-review-publish-gate
+  cancel-in-progress: false
+
+jobs:
+  snapshot-and-dispatch:
+    name: Snapshot production and dispatch reviewed branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Create durable rollback snapshot and preflight private basis
+        id: snapshot
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          SNAPSHOT_ID="$(ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' REVIEW_SHA='$GITHUB_SHA' bash -s" <<'REMOTE'
+          set -euo pipefail
+          test -n "$APP_PATH"
+          test -d "$APP_PATH/.next"
+          test -d "$APP_PATH/public"
+          test -f "$APP_PATH/package.json"
+          test -f "$APP_PATH/package-lock.json"
+          test -f "$APP_PATH/ecosystem.config.cjs"
+          test -f "$APP_PATH/.env.production"
+
+          BASIS_PATH=/var/lib/steelprodukt/production/calculation-basis.json
+          REPORT_ROOT=/var/lib/steelprodukt/production/reports
+          test -r "$BASIS_PATH" || {
+            echo "Private calculation basis is not readable at the approved production path." >&2
+            exit 1
+          }
+          install -d -m 0700 -o nodejs -g "$(id -gn nodejs)" "$REPORT_ROOT"
+
+          BACKUP_ROOT=/var/backups/steelprodukt/review-releases
+          install -d -m 0700 -o root -g root "$BACKUP_ROOT"
+          STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+          SNAPSHOT_ID="${STAMP}-${REVIEW_SHA:0:12}"
+          SNAPSHOT_DIR="$BACKUP_ROOT/$SNAPSHOT_ID"
+          install -d -m 0700 -o root -g root "$SNAPSHOT_DIR"
+
+          ITEMS=(.next public package.json package-lock.json ecosystem.config.cjs .env.production)
+          if [ -f "$APP_PATH/next.config.ts" ]; then ITEMS+=(next.config.ts); fi
+          if [ -f "$APP_PATH/next.config.js" ]; then ITEMS+=(next.config.js); fi
+          tar -czf "$SNAPSHOT_DIR/release.tar.gz" -C "$APP_PATH" "${ITEMS[@]}"
+          chmod 0600 "$SNAPSHOT_DIR/release.tar.gz"
+          printf '%s\n' "$REVIEW_SHA" > "$SNAPSHOT_DIR/review-commit.txt"
+          chmod 0600 "$SNAPSHOT_DIR/review-commit.txt"
+          printf '%s\n' "$SNAPSHOT_ID" > "$BACKUP_ROOT/LATEST"
+          chmod 0600 "$BACKUP_ROOT/LATEST"
+
+          set_env_value() {
+            key="$1"
+            value="$2"
+            tmp="$(mktemp "$APP_PATH/.env.production.review.XXXXXX")"
+            awk -v key="$key" 'index($0, key "=") != 1 { print }' "$APP_PATH/.env.production" > "$tmp"
+            printf '%s=%s\n' "$key" "$value" >> "$tmp"
+            chown nodejs:"$(id -gn nodejs)" "$tmp"
+            chmod 0600 "$tmp"
+            mv -f "$tmp" "$APP_PATH/.env.production"
+          }
+          set_env_value STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH "$BASIS_PATH"
+          set_env_value STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT "$REPORT_ROOT"
+
+          find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+            | sort -nr | awk 'NR>5 {print $2}' | xargs -r rm -rf --
+
+          printf '%s' "$SNAPSHOT_ID"
+          REMOTE
+          )"
+          test -n "$SNAPSHOT_ID"
+          echo "snapshot_id=$SNAPSHOT_ID" >> "$GITHUB_OUTPUT"
+          echo "Rollback snapshot created: $SNAPSHOT_ID"
+
+      - name: Dispatch standard production deployment for this branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run deploy-beget.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+          echo "Dispatched Publish to Beget for $GITHUB_REF_NAME at $GITHUB_SHA"
+          echo "Rollback snapshot: ${{ steps.snapshot.outputs.snapshot_id }}"
+
+      - name: Record review publication metadata
+        run: |
+          {
+            echo "## Steel Product Online review publication"
+            echo
+            echo "Branch: \`$GITHUB_REF_NAME\`"
+            echo "Commit: \`$GITHUB_SHA\`"
+            echo "Rollback snapshot: \`${{ steps.snapshot.outputs.snapshot_id }}\`"
+            echo "The standard production deployment was dispatched; main was not merged."
+          } >> "$GITHUB_STEP_SUMMARY"
