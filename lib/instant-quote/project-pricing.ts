@@ -38,13 +38,13 @@ export function calculateProjectProvisionalPricing(
 ): ProjectPricingResult {
   const parts = project.parts.map<ProjectPartPricingResult>((part) => {
     const parsed = parsedByPartId[part.id];
-    if (!parsed || !part.geometry) {
+    if (!parsed || !part.geometry?.widthMm || !part.geometry?.heightMm) {
       return {
         partId: part.id,
         status: "missing-geometry",
         price: null,
         blockingReasons: [],
-        reviewReasons: ["Геометрия детали ещё не готова."],
+        reviewReasons: ["Нормализованная геометрия детали ещё не готова."],
       };
     }
 
@@ -60,7 +60,11 @@ export function calculateProjectProvisionalPricing(
       };
     }
 
-    const dfm = runVerifiedLaserDfm(parsed, thicknessMm, materialId);
+    const dfm = runVerifiedLaserDfm(
+      { width: part.geometry.widthMm, height: part.geometry.heightMm, units: "мм" },
+      thicknessMm,
+      materialId,
+    );
     if (parsed.unsupportedEntities.length) {
       dfm.push({
         code: "unsupported-dxf-entities",
@@ -75,16 +79,6 @@ export function calculateProjectProvisionalPricing(
 
     if (blockingReasons.length) {
       return { partId: part.id, status: "blocked", price: null, blockingReasons, reviewReasons };
-    }
-
-    if (parsed.units !== "мм") {
-      return {
-        partId: part.id,
-        status: "manual",
-        price: null,
-        blockingReasons,
-        reviewReasons: reviewReasons.length ? reviewReasons : ["Единицы CAD требуют подтверждения."],
-      };
     }
 
     const selection = selectBestStoredPrice(snapshots, materialId, thicknessMm, now);
