@@ -36,16 +36,16 @@
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
 
-### Закрытый последний block — DXF ELLIPSE
+### Текущий WIP — strict linear planar DXF SPLINE
 
-- Autodesk DXF contract: center `10/20`, major-axis vector `11/21`, minor/major ratio `40`, start/end parameters `41/42`; full ellipse = `0..2π`.
-- `671ad842…`: ellipse shape, exact parameterization, analytic extrema/bounds, exact full area `πab`, controlled adaptive-Simpson cut length.
-- `95ffc444…`: preview sampling отдельно от production math.
-- `c16e0162…`: full/rotated/partial/wrapped/hole/non-planar/invalid-ratio regression suite.
-- `aa6bee60…`: numerical integration fails closed при non-finite math или recursion depth exhaustion без доказанной tolerance.
-- `f0436d73…`: zero wrapped sweep и unavailable-length regressions.
-- Non-XY extrusion / major-axis Z не проецируются молча в XY.
-- Full ellipse участвует в exact closed topology; partial ellipse остаётся open topology.
+- Autodesk DXF SPLINE contract подтверждён: flags `70`, degree `71`, knot count `72`, control-point count `73`, knots `40`, optional weights `41`, control points `10/20/30`, normal `210/220/230`.
+- `d8e9ad7b423154db609365d3800a2d988dcbf6ab`: parser поддерживает только exact-safe subset: open, non-periodic, non-rational, planar+linear flags, degree 1, control-point Z=0, normal +Z/default, корректные declared counts и open-clamped degree-1 knot vector.
+- Supported spline нормализуется в open straight polyline по control points; bounds/length/preview переиспользуют уже проверенную exact polyline логику.
+- Fit points не используются для реконструкции; nonlinear/closed/periodic/rational/3D/malformed spline не дискретизируется приблизительно.
+- Internal fail-closed codes: `SPLINE_UNSUPPORTED`, `SPLINE_NONPLANAR`, `SPLINE_INVALID`, `SPLINE_KNOTS`.
+- `fb54a1e0d140662608a85e92b8b3bf92c898f965`: regression suite: valid control polygon, unit weights, knot-count mismatch, duplicate/interior knot order, degree>1, closed/periodic/rational flags, non-unit weights, non-zero Z, non-+Z normal, malformed/mismatched control points.
+- **Current WIP functional HEAD:** `fb54a1e0d140662608a85e92b8b3bf92c898f965`.
+- CI ещё не зафиксирован как GREEN. Следующий functional layer не начинать до gate.
 
 ---
 
@@ -117,29 +117,31 @@
 
 ## 4. IN PROGRESS
 
-### SPLINE — только доказуемый linear planar subset
+### SPLINE — strict exact linear planar subset
 
-Autodesk contract подтверждён: flags `70`, degree `71`, knot count `72`, control-point count `73`, knots `40`, control points `10/20/30`, optional weights `41`, normal `210/220/230`.
+Scope реализован и покрыт тестами, но block ещё не DONE до полного CI.
 
-Первый безопасный scope:
-- только open, non-periodic, non-rational SPLINE;
+Поддерживается только:
+- flags planar + linear;
 - degree = 1;
-- planar/linear flags должны подтверждать линейный 2D spline;
-- control-point Z = 0; normal только +Z/default;
-- knot count и control-point count должны совпадать с фактическими данными;
-- поддерживать только корректный open-clamped degree-1 knot vector: первые/последние 2 knots равны, внутренние knots строго возрастают;
-- такой spline геометрически совпадает с последовательностью control-point line segments и может быть нормализован в open straight polyline;
-- любые closed/periodic/rational/nonlinear/3D/malformed варианты — fail-closed, не sampling.
+- open, non-periodic, non-rational;
+- control-point Z = 0; normal +Z/default;
+- finite counts/coordinates/knots;
+- `knotCount = controlCount + 2`;
+- first/last double knots и строго возрастающие interior domain knots;
+- отсутствующие weights либо все weights = 1.
+
+Все остальные SPLINE варианты fail-closed и не превращаются в sampling-based production contour.
 
 ---
 
 ## 5. NEXT ACTION
 
-1. Добавить parser `SPLINE` для strict linear planar subset с отдельными internal issue codes.
-2. Не использовать fit points как замену control points и не реконструировать nonlinear spline приблизительно.
-3. Regression: valid degree-1 open-clamped spline, rotated/general control points, invalid knot count/order, degree>1, rational/periodic/closed, non-zero Z/non-planar normal.
-4. Preview должен переиспользовать normalized polyline; production length/bounds — exact straight segments.
-5. Записать WIP в журнал и выполнить полный CI до следующего layer.
+1. Полный CI на journal-only tree поверх `fb54a1e0…`.
+2. Если RED — получить конкретный job/log, исправить только SPLINE block и записать RED/fix в журнал.
+3. Если GREEN — `fb54a1e0…` становится новым functional checkpoint; journal tree — новым GREEN verified tree; SPLINE переносится в DONE.
+4. После GREEN закрыть regression-only hardening malformed legacy POLYLINE sequences (`POLYLINE_SEQUENCE`, `POLYLINE_INVALID_VERTEX`, `POLYLINE_TOO_FEW_VERTICES`) до более сложной curved topology.
+5. Exact bulged closed topology не начинать до отдельного доказуемого блока.
 
 ---
 
@@ -193,8 +195,10 @@ Green относится к конкретному проверенному SHA.
 - `f0436d73…` edge-case regressions;
 - `b984da3e…` both workflows fully GREEN — current verified checkpoint.
 
-### 2026-09-14 — next WIP
-- open strict degree-1 planar SPLINE subset only; nonlinear/rational/periodic remain unsupported.
+### 2026-09-14 — WIP strict linear SPLINE
+- `d8e9ad7b…` exact-safe degree-1 planar parser normalized to open polyline;
+- `fb54a1e0…` supported/fail-closed regression suite;
+- CI pending на момент записи.
 
 ---
 
