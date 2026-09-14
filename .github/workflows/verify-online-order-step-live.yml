@@ -1,0 +1,74 @@
+name: Verify Steel Product Online STEP live
+
+on:
+  push:
+    branches:
+      - feat/steel-product-online-clean-alpha-sep14
+    paths:
+      - .github/workflows/verify-online-order-step-live.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-step:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Get website source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate safe STEP fixture
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFile } from 'node:fs/promises';
+          import { OcctKernel } from 'occt-wasm';
+          const kernel = await OcctKernel.init();
+          try {
+            const shape = kernel.makeBox(120, 80, 1);
+            try {
+              const step = kernel.exportStep(shape);
+              await writeFile('/tmp/live-preview.step', Buffer.from(step));
+            } finally {
+              kernel.release(shape);
+            }
+          } finally {
+            kernel[Symbol.dispose]?.();
+          }
+          NODE
+
+      - name: Verify live STEP analysis returns a mesh
+        run: |
+          set -euo pipefail
+          status="$(curl -sS --retry 3 --retry-delay 2 --max-time 90 \
+            -o /tmp/step-response.json \
+            -w '%{http_code}' \
+            -F 'file=@/tmp/live-preview.step;type=application/step' \
+            https://www.steelprodukt.ru/api/online-order/cad/analyze)"
+          cat /tmp/step-response.json
+          test "$status" = "200"
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const payload = JSON.parse(await readFile('/tmp/step-response.json', 'utf8'));
+          if (payload?.ok !== true || payload?.preview?.kind !== 'client-cad-preview') {
+            throw new Error('Live STEP endpoint did not return a client preview.');
+          }
+          if (!Array.isArray(payload.preview.meshes) || payload.preview.meshes.length < 1) {
+            throw new Error('Live STEP endpoint returned no preview mesh.');
+          }
+          const mesh = payload.preview.meshes[0];
+          if (!Array.isArray(mesh.positions) || mesh.positions.length < 9 || !Array.isArray(mesh.indices) || mesh.indices.length < 3) {
+            throw new Error('Live STEP preview mesh is empty or malformed.');
+          }
+          console.log('Live STEP preview smoke test passed.');
+          NODE
