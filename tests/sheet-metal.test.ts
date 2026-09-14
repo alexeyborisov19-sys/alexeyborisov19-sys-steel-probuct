@@ -2,22 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { analyzeSheetMetalTopology } from "../lib/instant-quote/sheet-metal";
 
+const plateFaces = [
+  { id: "top", areaMm2: 5000, centerMm: [50, 25, 2] as [number, number, number], normal: [0, 0, 1] as [number, number, number] },
+  { id: "bottom", areaMm2: 5000, centerMm: [50, 25, 0] as [number, number, number], normal: [0, 0, -1] as [number, number, number] },
+];
+
 test("finds a conservative thickness candidate from dominant parallel sheet faces", () => {
   const analysis = analyzeSheetMetalTopology({
-    planarFaces: [
-      {
-        id: "top",
-        areaMm2: 5000,
-        centerMm: [50, 25, 2],
-        normal: [0, 0, 1],
-      },
-      {
-        id: "bottom",
-        areaMm2: 5000,
-        centerMm: [50, 25, 0],
-        normal: [0, 0, -1],
-      },
-    ],
+    planarFaces: plateFaces,
     cylindricalFaces: [],
     otherFaceCount: 4,
   });
@@ -61,25 +53,72 @@ test("refuses a thick block-like offset as sheet thickness", () => {
   assert.equal(analysis.thicknessCandidate, undefined);
 });
 
-test("reports cylindrical faces only as bend candidates", () => {
+test("accepts a coaxial partial-cylinder pair as a bend candidate only when radius gap matches thickness", () => {
   const analysis = analyzeSheetMetalTopology({
-    planarFaces: [],
+    planarFaces: plateFaces,
     cylindricalFaces: [
-      { id: "cyl-1", areaMm2: 420, radiusMm: 2 },
-      { id: "cyl-2", areaMm2: 390, radiusMm: 2 },
+      {
+        id: "inner-bend",
+        areaMm2: 500,
+        radiusMm: 3,
+        originMm: [0, 0, 0],
+        axis: [0, 1, 0],
+        angleSpanRad: Math.PI / 2,
+      },
+      {
+        id: "outer-bend",
+        areaMm2: 700,
+        radiusMm: 5,
+        originMm: [0, 25, 0],
+        axis: [0, 1, 0],
+        angleSpanRad: Math.PI / 2,
+      },
+    ],
+    otherFaceCount: 0,
+  });
+
+  assert.equal(analysis.bendCandidates.length, 1);
+  assert.equal(analysis.bendCandidates[0].radiusMm, 3);
+  assert.equal(analysis.bendCandidates[0].outerRadiusMm, 5);
+  assert.equal(analysis.bendCandidates[0].angleDeg, 90);
+  assert.deepEqual(analysis.bendCandidates[0].faceIds, ["inner-bend", "outer-bend"]);
+  assert.match(analysis.warnings.join(" "), /соосных пар/i);
+});
+
+test("does not classify a full cylinder or unpaired cylinder as a bend", () => {
+  const analysis = analyzeSheetMetalTopology({
+    planarFaces: plateFaces,
+    cylindricalFaces: [
+      {
+        id: "hole-inner",
+        areaMm2: 420,
+        radiusMm: 3,
+        originMm: [10, 10, 0],
+        axis: [0, 0, 1],
+        angleSpanRad: Math.PI * 2,
+      },
+      {
+        id: "hole-outer",
+        areaMm2: 500,
+        radiusMm: 5,
+        originMm: [10, 10, 0],
+        axis: [0, 0, 1],
+        angleSpanRad: Math.PI * 2,
+      },
+      {
+        id: "single-cylinder",
+        areaMm2: 390,
+        radiusMm: 7,
+        originMm: [40, 10, 0],
+        axis: [0, 0, 1],
+        angleSpanRad: Math.PI / 2,
+      },
       { id: "invalid", areaMm2: 100, radiusMm: 0 },
     ],
     otherFaceCount: 3,
   });
 
-  assert.equal(analysis.status, "insufficient");
-  assert.equal(analysis.cylindricalFaceCount, 2);
-  assert.deepEqual(
-    analysis.bendCandidates.map(({ id, radiusMm }) => ({ id, radiusMm })),
-    [
-      { id: "cyl-1", radiusMm: 2 },
-      { id: "cyl-2", radiusMm: 2 },
-    ],
-  );
-  assert.match(analysis.warnings.join(" "), /могут также относиться к отверстиям/i);
+  assert.equal(analysis.cylindricalFaceCount, 3);
+  assert.equal(analysis.bendCandidates.length, 0);
+  assert.match(analysis.warnings.join(" "), /не подтверждена как парная зона гиба/i);
 });
