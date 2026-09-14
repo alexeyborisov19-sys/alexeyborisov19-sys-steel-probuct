@@ -25,8 +25,10 @@ export type PartGeometrySummary = {
   heightMm?: number;
   depthMm?: number;
   thicknessMm?: number;
+  areaMm2?: number;
   cutLengthMm?: number;
   contourCount?: number;
+  pierceCount?: number;
   holeCount?: number;
   bendCount?: number;
   bodyCount?: number;
