@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyMetalUplift, calculateProvisionalPartPrice } from "../lib/instant-quote/pricing";
+import {
+  applyMetalUplift,
+  calculateProvisionalPartPrice,
+  supplierRubPerTon,
+} from "../lib/instant-quote/pricing";
 import { selectBestStoredPrice, shouldRefreshPriceFeeds } from "../lib/instant-quote/material-price-feed";
 
 const marketPrice = {
   materialId: "hot" as const,
   thicknessMm: 2,
   rubPerTon: 60_000,
+  rubPerTonFrom3t: 58_000,
   source: "test",
   sourceDate: "2026-09-14",
   fetchedAt: "2026-09-14T00:00:00.000Z",
@@ -42,7 +47,12 @@ test("price feed wants a refresh when a snapshot is older than a day", () => {
   ], new Date("2026-09-14T00:00:00.000Z")), true);
 });
 
-test("provisional quote keeps market price and plus-five price separately", () => {
+test("supplier tier switches to from-3t price only at three tonnes", () => {
+  assert.deepEqual(supplierRubPerTon(marketPrice, 2_999.9), { rubPerTon: 60_000, tier: "under-3t" });
+  assert.deepEqual(supplierRubPerTon(marketPrice, 3_000), { rubPerTon: 58_000, tier: "from-3t" });
+});
+
+test("provisional quote keeps supplier price and plus-five price separately", () => {
   const price = calculateProvisionalPartPrice({
     materialId: "hot",
     thicknessMm: 2,
@@ -55,9 +65,27 @@ test("provisional quote keeps market price and plus-five price separately", () =
   });
 
   assert.equal(price.materialMarketRubPerTon, 60_000);
+  assert.equal(price.materialMarketTier, "under-3t");
   assert.equal(price.materialPricedRubPerTon, 63_000);
   assert.equal(price.totalRub, price.unitRub * 10);
   assert.ok(price.laserRubEach > 0);
+});
+
+test("large material batch uses supplier from-3t tier before applying plus five percent", () => {
+  const price = calculateProvisionalPartPrice({
+    materialId: "hot",
+    thicknessMm: 10,
+    quantity: 200,
+    geometry: { widthMm: 2_000, heightMm: 1_000, cutLengthMm: 6_000, contourCount: 1 },
+    marketPrice: { ...marketPrice, thicknessMm: 10 },
+    operations: ["laser-cutting"],
+    materialUsageFactor: 1,
+  });
+
+  assert.ok(price.batchPurchasedMassKg >= 3_000);
+  assert.equal(price.materialMarketTier, "from-3t");
+  assert.equal(price.materialMarketRubPerTon, 58_000);
+  assert.equal(price.materialPricedRubPerTon, 60_900);
 });
 
 test("series quantity lowers unit price by amortizing setup and selecting cut tier", () => {
