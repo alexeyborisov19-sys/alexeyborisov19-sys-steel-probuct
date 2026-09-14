@@ -73,6 +73,27 @@ const ARTICLE_GROUPS: ArticleGroup[] = [
     missingCodes: ["powder-area", "operation-rate"],
     missingLabels: ["Порошковая окраска"],
   },
+  {
+    key: "assembly",
+    label: "Сборка",
+    lineCode: "assembly",
+    missingCodes: ["assembly-time", "operation-rate"],
+    missingLabels: ["Сборка"],
+  },
+  {
+    key: "surface-preparation",
+    label: "Подготовка поверхности",
+    lineCode: "surface-preparation",
+    missingCodes: ["surface-preparation-area", "operation-rate"],
+    missingLabels: ["Подготовка поверхности"],
+  },
+  {
+    key: "packaging",
+    label: "Упаковка",
+    lineCode: "packaging",
+    missingCodes: ["operation-rate"],
+    missingLabels: ["Упаковка"],
+  },
 ];
 
 function roundPct(confirmed: number, total: number) {
