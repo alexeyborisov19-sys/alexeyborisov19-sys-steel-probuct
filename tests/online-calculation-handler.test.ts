@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { NormalizedCadModel } from "../lib/instant-quote/cad-model";
 import { createOnlineCalculationHandler } from "../lib/server/instant-quote/calculation-handler";
 import type { OnlineCalculationHandlerDependencies } from "../lib/server/instant-quote/calculation-handler";
 
@@ -44,6 +45,7 @@ ENDSEC
 0
 EOF
 `;
+const stepBytes = "ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n";
 
 function request(manifest: Record<string, unknown>) {
   const form = new FormData();
@@ -54,6 +56,45 @@ function request(manifest: Record<string, unknown>) {
     headers: { Origin: "https://www.steelprodukt.ru" },
     body: form,
   });
+}
+
+function stepRequest(manifest: Record<string, unknown>, fileName = "part.step") {
+  const form = new FormData();
+  form.set("manifest", JSON.stringify(manifest));
+  form.append("files", new File([stepBytes], fileName, { type: "application/octet-stream" }));
+  return new Request("https://www.steelprodukt.ru/api/online-order/calculate", {
+    method: "POST",
+    headers: { Origin: "https://www.steelprodukt.ru" },
+    body: form,
+  });
+}
+
+function clientView(project: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[0]) {
+  return {
+    kind: "client-calculation" as const,
+    projectId: project.id,
+    title: project.title,
+    paymentEnabled: false as const,
+    parts: project.parts.map((part) => ({
+      partId: part.id,
+      fileName: part.fileName,
+      format: part.format,
+      status: (part.geometry ? "ready" : "needs-review") as "ready" | "needs-review",
+      configuration: {
+        materialId: part.configuration.materialId,
+        thicknessMm: part.configuration.thicknessMm,
+        quantity: part.configuration.quantity,
+        operations: [...part.configuration.operations],
+      },
+      cad: {
+        widthMm: part.geometry?.widthMm ?? null,
+        heightMm: part.geometry?.heightMm ?? null,
+        depthMm: part.geometry?.depthMm ?? null,
+      },
+      price: { status: "not-published" as const },
+      message: part.geometry ? "Внутренний расчёт завершён." : "Требуется внутренняя проверка.",
+    })),
+  };
 }
 
 function dependencies(onProject?: (project: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[0]) => void): Partial<OnlineCalculationHandlerDependencies> {
@@ -79,34 +120,99 @@ function dependencies(onProject?: (project: Parameters<OnlineCalculationHandlerD
     }],
     runCalculation: async (project) => {
       onProject?.(project);
-      return {
-        kind: "client-calculation",
-        projectId: project.id,
-        title: project.title,
-        paymentEnabled: false,
-        parts: project.parts.map((part) => ({
-          partId: part.id,
-          fileName: part.fileName,
-          format: part.format,
-          status: "ready" as const,
-          configuration: {
-            materialId: part.configuration.materialId,
-            thicknessMm: part.configuration.thicknessMm,
-            quantity: part.configuration.quantity,
-            operations: [...part.configuration.operations],
-          },
-          cad: {
-            widthMm: part.geometry?.widthMm ?? null,
-            heightMm: part.geometry?.heightMm ?? null,
-            depthMm: part.geometry?.depthMm ?? null,
-          },
-          price: { status: "not-published" as const },
-          message: "Внутренний расчёт завершён.",
-        })),
-      };
+      return clientView(project);
     },
   };
 }
+
+function stepModel(geometry: NormalizedCadModel["geometry"], warnings: string[] = []): NormalizedCadModel {
+  return {
+    format: "step",
+    units: "mm",
+    geometry,
+    meshes: [],
+    root: null,
+    features: [],
+    metadata: {
+      sourceFileName: "part.step",
+      sourceBytes: stepBytes.length,
+      parser: "synthetic-server-step-test",
+      analyzedAt: "2099-01-01T00:00:00.000Z",
+    },
+    warnings,
+  };
+}
+
+function stepDependencies(input: {
+  productionReady: boolean;
+  model?: NormalizedCadModel;
+  throwAnalysis?: boolean;
+  onAnalysis?: (format: "step" | "stp") => void;
+  onRun?: (
+    project: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[0],
+    evidence: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[1],
+  ) => void;
+}): Partial<OnlineCalculationHandlerDependencies> {
+  return {
+    inspectUploads: async (files) => {
+      const file = files[0];
+      const extension = file.name.toLowerCase().endsWith(".stp") ? "stp" : "step";
+      return [{
+        originalName: file.name,
+        safeName: `part.${extension}`,
+        extension,
+        browserMime: file.type || "application/octet-stream",
+        size: file.size,
+        safety: "unverified-cad",
+        buffer: Buffer.from(await file.arrayBuffer()),
+      }];
+    },
+    quarantineUploads: async (_requestId, inspections) => [{
+      originalName: inspections[0].originalName,
+      safeName: inspections[0].safeName,
+      extension: inspections[0].extension,
+      browserMime: inspections[0].browserMime,
+      size: inspections[0].size,
+      safety: "unverified-cad",
+      storageId: "synthetic-step-storage-id.step",
+      antivirus: "clean",
+    }],
+    analyzeStep: async (_inspection, format) => {
+      input.onAnalysis?.(format);
+      if (input.throwAnalysis) throw new Error("synthetic STEP failure");
+      return {
+        productionReady: input.productionReady,
+        model: input.model ?? stepModel({
+          widthMm: 120,
+          heightMm: 80,
+          depthMm: 2,
+          areaMm2: 9600,
+          blankAreaMm2: 9600,
+          cutLengthMm: 400,
+          contourCount: 1,
+          pierceCount: 1,
+          bendCount: 0,
+        }),
+      };
+    },
+    runCalculation: async (project, evidence) => {
+      input.onRun?.(project, evidence);
+      return clientView(project);
+    },
+  };
+}
+
+const stepManifest = {
+  title: "STEP safe project",
+  parts: [{
+    clientPartId: "step-part-1",
+    fileIndex: 0,
+    materialId: "hot",
+    thicknessMm: 2,
+    quantity: 3,
+    operations: [],
+  }],
+};
 
 test("server derives DXF geometry and does not trust client production metrics", async () => {
   let serverCutLength: number | undefined;
@@ -138,6 +244,86 @@ test("server derives DXF geometry and does not trust client production metrics",
   for (const token of ["directcost", "supplierprice", "raterub", "rubperton", "reportid", "storageid", "cutlengthmm"]) {
     assert.equal(json.includes(token), false, `response leaked ${token}`);
   }
+});
+
+test("server uses injected authoritative STEP analyzer and only accepts its production-ready geometry", async () => {
+  let analyzerCalled = false;
+  let capturedGeometry: NormalizedCadModel["geometry"] | null = null;
+  const handler = createOnlineCalculationHandler(stepDependencies({
+    productionReady: true,
+    onAnalysis: (format) => {
+      analyzerCalled = true;
+      assert.equal(format, "step");
+    },
+    onRun: (project) => {
+      capturedGeometry = project.parts[0].geometry;
+      assert.equal(project.parts[0].state, "configurable");
+    },
+  }));
+
+  const res = await handler(stepRequest({
+    ...stepManifest,
+    parts: [{
+      ...stepManifest.parts[0],
+      geometry: { widthMm: 999999, heightMm: 999999, cutLengthMm: 1 },
+      directCostRub: 1,
+    }],
+  }));
+
+  assert.equal(res.status, 200);
+  assert.equal(analyzerCalled, true);
+  assert.equal(capturedGeometry?.widthMm, 120);
+  assert.equal(capturedGeometry?.heightMm, 80);
+  assert.equal(capturedGeometry?.cutLengthMm, 400);
+
+  const json = JSON.stringify(await res.json()).toLowerCase();
+  for (const token of ["flatpatterncandidate", "unfoldgeometry", "brep", "directcost", "raterub", "rubperton", "reportid", "storageid", "cutlengthmm"]) {
+    assert.equal(json.includes(token), false, `STEP response leaked ${token}`);
+  }
+});
+
+test("server withholds STEP geometry when authoritative analyzer marks it not production-ready", async () => {
+  const handler = createOnlineCalculationHandler(stepDependencies({
+    productionReady: false,
+    model: stepModel({
+      widthMm: 300,
+      heightMm: 200,
+      depthMm: 40,
+      areaMm2: 60000,
+      blankAreaMm2: 60000,
+      cutLengthMm: 1000,
+      contourCount: 1,
+      bendCount: 3,
+    }, ["Synthetic bent STEP evidence"]),
+    onRun: (project, evidence) => {
+      assert.equal(project.parts[0].geometry, null);
+      assert.equal(project.parts[0].state, "manual-review");
+      assert.ok(evidence["step-part-1"].reviewReasons?.some((reason) => /production-authoritative/i.test(reason)));
+    },
+  }));
+
+  const res = await handler(stepRequest(stepManifest));
+  assert.equal(res.status, 200);
+  const body = await res.json() as { calculation?: { parts?: Array<{ status?: string; cad?: { widthMm?: number | null } }> } };
+  assert.equal(body.calculation?.parts?.[0]?.status, "needs-review");
+  assert.equal(body.calculation?.parts?.[0]?.cad?.widthMm, null);
+});
+
+test("STEP analyzer failure fails closed into internal review without production geometry", async () => {
+  const handler = createOnlineCalculationHandler(stepDependencies({
+    productionReady: false,
+    throwAnalysis: true,
+    onRun: (project, evidence) => {
+      assert.equal(project.parts[0].geometry, null);
+      assert.equal(project.parts[0].state, "manual-review");
+      assert.ok(evidence["step-part-1"].reviewReasons?.some((reason) => /OpenCascade/i.test(reason)));
+    },
+  }));
+
+  const res = await handler(stepRequest(stepManifest, "part.stp"));
+  assert.equal(res.status, 200);
+  const body = await res.json() as { calculation?: { parts?: Array<{ status?: string }> } };
+  assert.equal(body.calculation?.parts?.[0]?.status, "needs-review");
 });
 
 test("invalid private operation is rejected before calculation", async () => {
