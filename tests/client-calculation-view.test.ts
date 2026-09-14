@@ -61,6 +61,10 @@ test("public calculation projection excludes production economics and process me
     "blankarea",
     "dfmblocking",
     "reportid",
+    "materialmultiplier",
+    "fixedaddrub",
+    "drawpct",
+    "finalpct",
   ];
 
   for (const token of forbidden) assert.equal(json.includes(token), false, `public DTO leaked ${token}`);
@@ -74,4 +78,19 @@ test("public projection can expose only an explicitly approved final sale price"
   }]);
 
   assert.deepEqual(view.parts[0].price, { status: "approved", totalRub: 12345 });
+});
+
+test("public projection can carry a safe customer-facing result message", () => {
+  const view = createClientCalculationView(project, [{
+    partId: "part-1",
+    status: "ready",
+    approvedSalePriceRub: 12345,
+    message: "Предварительная стоимость: 12 345 ₽.",
+  }]);
+
+  assert.equal(view.parts[0].message, "Предварительная стоимость: 12 345 ₽.");
+  const json = JSON.stringify(view).toLowerCase();
+  for (const token of ["raterub", "rubperton", "directcost", "margin", "supplier", "reportid"]) {
+    assert.equal(json.includes(token), false, `public result message leaked ${token}`);
+  }
 });

@@ -4,6 +4,8 @@ export type ClientCalculationSignal = {
   partId: string;
   status: "pending" | "ready" | "needs-review" | "blocked";
   approvedSalePriceRub?: number | null;
+  /** Safe customer-facing status only. Never include internal calculation detail. */
+  message?: string;
 };
 
 export type ClientPartCalculationView = {
@@ -62,6 +64,13 @@ export function createClientCalculationView(
       const approvedSalePrice = signal?.approvedSalePriceRub;
       const hasApprovedSalePrice = Number.isFinite(approvedSalePrice) && (approvedSalePrice ?? 0) > 0;
       const status = signal?.status ?? "pending";
+      const defaultMessage = status === "blocked"
+        ? "Для этой детали требуется уточнение перед расчётом."
+        : status === "needs-review"
+          ? "Деталь проходит внутреннюю технологическую проверку."
+          : status === "ready"
+            ? "Внутренний расчёт завершён."
+            : "Деталь принята в расчёт.";
 
       return {
         partId: part.id,
@@ -82,13 +91,7 @@ export function createClientCalculationView(
         price: hasApprovedSalePrice
           ? { status: "approved", totalRub: approvedSalePrice! }
           : { status: "not-published" },
-        message: status === "blocked"
-          ? "Для этой детали требуется уточнение перед расчётом."
-          : status === "needs-review"
-            ? "Деталь проходит внутреннюю технологическую проверку."
-            : status === "ready"
-              ? "Внутренний расчёт завершён."
-              : "Деталь принята в расчёт.",
+        message: signal?.message?.trim() || defaultMessage,
       };
     }),
   };

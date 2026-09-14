@@ -6,15 +6,24 @@ import path from "node:path";
 import type { FactualRate, FactualRateBook } from "@/lib/instant-quote/factual-calculation";
 import type { StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
 import type { MaterialId, MaterialMarketPrice } from "@/lib/instant-quote/pricing";
+import type { PrivateCommercialPricing } from "@/lib/server/instant-quote/private-commercial-pricing";
 
 export type PrivateCalculationBasis = {
   version: string;
   rateBook: FactualRateBook;
   materialPriceSnapshots: StoredPriceSnapshot[];
+  commercialPricing?: PrivateCommercialPricing | null;
 };
 
 function finitePositive(value: unknown, label: string): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new Error(`Invalid private calculation basis: ${label}`);
+  }
+  return value;
+}
+
+function finiteNonNegative(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     throw new Error(`Invalid private calculation basis: ${label}`);
   }
   return value;
@@ -62,6 +71,23 @@ function rate(value: unknown, label: string): FactualRate | null {
   return {
     rateRub: finitePositive(row.rateRub, `${label}.rateRub`),
     source: source(row.source, `${label}.source`),
+  };
+}
+
+function commercialPricing(value: unknown): PrivateCommercialPricing | null {
+  if (value == null) return null;
+  if (!value || typeof value !== "object") throw new Error("Invalid private calculation basis: commercialPricing");
+  const row = value as Record<string, unknown>;
+  if (typeof row.fixedAddEnabled !== "boolean") {
+    throw new Error("Invalid private calculation basis: commercialPricing.fixedAddEnabled");
+  }
+  return {
+    materialMultiplier: finitePositive(row.materialMultiplier, "commercialPricing.materialMultiplier"),
+    drawPct: finiteNonNegative(row.drawPct, "commercialPricing.drawPct"),
+    finalPct: finiteNonNegative(row.finalPct, "commercialPricing.finalPct"),
+    fixedAddRubEach: finiteNonNegative(row.fixedAddRubEach, "commercialPricing.fixedAddRubEach"),
+    fixedAddEnabled: row.fixedAddEnabled,
+    roundStepRub: finitePositive(row.roundStepRub, "commercialPricing.roundStepRub"),
   };
 }
 
@@ -166,6 +192,7 @@ function parseBasis(value: unknown): PrivateCalculationBasis {
       packagingRubEach: rate(rateBookRaw.packagingRubEach, "packagingRubEach"),
     },
     materialPriceSnapshots,
+    commercialPricing: commercialPricing(root.commercialPricing),
   };
 }
 
@@ -180,10 +207,33 @@ function privateBasisPath() {
   return resolved;
 }
 
+async function writeBasisAtomically(candidate: Record<string, unknown>) {
+  const validated = parseBasis(candidate);
+  const basisPath = privateBasisPath();
+  const directory = path.dirname(basisPath);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  await chmod(directory, 0o700);
+  const tempPath = `${basisPath}.${randomUUID()}.tmp`;
+  await writeFile(tempPath, `${JSON.stringify(candidate, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+    flag: "wx",
+  });
+  await chmod(tempPath, 0o600);
+  await rename(tempPath, basisPath);
+  await chmod(basisPath, 0o600);
+  return validated;
+}
+
 /** Load confidential rates/prices only on the server. No fallback is allowed. */
 export async function loadPrivateCalculationBasis(): Promise<PrivateCalculationBasis> {
   const raw = await readFile(privateBasisPath(), "utf8");
   return parseBasis(JSON.parse(raw) as unknown);
+}
+
+/** Initialize or replace the complete validated private basis atomically. */
+export async function writePrivateCalculationBasis(nextBasis: PrivateCalculationBasis) {
+  return writeBasisAtomically(nextBasis as unknown as Record<string, unknown>);
 }
 
 /**
@@ -207,19 +257,5 @@ export async function replacePrivateMaterialPriceSnapshot(nextSnapshot: StoredPr
     materialPriceSnapshots: mergedSnapshots,
   };
 
-  // Validate the entire candidate before touching the source file.
-  const validated = parseBasis(candidate);
-  const directory = path.dirname(basisPath);
-  await mkdir(directory, { recursive: true, mode: 0o700 });
-  await chmod(directory, 0o700);
-  const tempPath = `${basisPath}.${randomUUID()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(candidate, null, 2)}\n`, {
-    encoding: "utf8",
-    mode: 0o600,
-    flag: "wx",
-  });
-  await chmod(tempPath, 0o600);
-  await rename(tempPath, basisPath);
-  await chmod(basisPath, 0o600);
-  return validated;
+  return writeBasisAtomically(candidate);
 }
