@@ -14,8 +14,9 @@ test("public online-order route uses only the client-safe workspace", async () =
   assert.doesNotMatch(page, /<ManufacturingWorkspace\s*\/>/);
 });
 
-test("client workspace does not import private economics or detailed DFM engines", async () => {
+test("client workspace and client calculation DTO do not expose private economics or production evidence", async () => {
   const client = await source("components/ClientManufacturingWorkspace.tsx");
+  const clientDto = await source("lib/instant-quote/client-calculation-view.ts");
   const forbidden = [
     "FALLBACK_METAL_PRICE_SNAPSHOTS",
     "calculateModelProjectPricing",
@@ -28,8 +29,13 @@ test("client workspace does not import private economics or detailed DFM engines
     "confirmedDirectCostRub",
     "pierceCount",
     "cutLengthMm",
+    "assemblyMinutes",
+    "surfacePreparationAreaM2",
+    "authoritativeFactualByPartId",
   ];
-  for (const token of forbidden) assert.equal(client.includes(token), false, `client workspace contains ${token}`);
+  for (const sourceText of [client, clientDto]) {
+    for (const token of forbidden) assert.equal(sourceText.includes(token), false, `public client boundary contains ${token}`);
+  }
 });
 
 test("public supplier seed contains no supplier prices", async () => {
