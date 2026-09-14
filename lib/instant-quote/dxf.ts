@@ -135,12 +135,7 @@ function circularArcBounds(arc: CircularArc) {
 }
 
 function exactArcBounds(shape: Extract<DxfShape, { kind: "arc" }>) {
-  return circularArcBounds({
-    c: shape.c,
-    r: shape.r,
-    start: shape.start,
-    sweep: normalizeArc(shape.start, shape.end),
-  });
+  return circularArcBounds({ c: shape.c, r: shape.r, start: shape.start, sweep: normalizeArc(shape.start, shape.end) });
 }
 
 export function bulgeArc(a: Point2D, b: Point2D, bulge: number): CircularArc | null {
@@ -157,10 +152,7 @@ export function bulgeArc(a: Point2D, b: Point2D, bulge: number): CircularArc | n
   const dy = b.y - a.y;
   const leftNormal = { x: -dy / chord, y: dx / chord };
   const centerOffset = chord * (1 - bulge * bulge) / (4 * bulge);
-  const c = {
-    x: midpoint.x + leftNormal.x * centerOffset,
-    y: midpoint.y + leftNormal.y * centerOffset,
-  };
+  const c = { x: midpoint.x + leftNormal.x * centerOffset, y: midpoint.y + leftNormal.y * centerOffset };
   const start = Math.atan2(a.y - c.y, a.x - c.x) * 180 / Math.PI;
   return { c, r: radius, start, sweep: sweepRad * 180 / Math.PI };
 }
@@ -333,10 +325,7 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
       const unitMinor = { x: -unitMajor.y, y: unitMajor.x };
       closed.push({
         area: Math.PI * majorRadius * minorRadius,
-        sample: {
-          x: shape.c.x + shape.major.x * 0.999,
-          y: shape.c.y + shape.major.y * 0.999,
-        },
+        sample: { x: shape.c.x + shape.major.x * 0.999, y: shape.c.y + shape.major.y * 0.999 },
         contains: (point) => {
           const dx = point.x - shape.c.x;
           const dy = point.y - shape.c.y;
@@ -359,11 +348,7 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
         exact = false;
         continue;
       }
-      closed.push({
-        area,
-        sample: shape.points[0],
-        contains: (point) => pointInPolygon(point, shape.points),
-      });
+      closed.push({ area, sample: shape.points[0], contains: (point) => pointInPolygon(point, shape.points) });
       continue;
     }
 
@@ -388,13 +373,7 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
     }
   });
 
-  return {
-    area: Math.max(0, netArea),
-    pierces: closed.length,
-    holes,
-    closedContours: closedContourCount,
-    status: "exact" as const,
-  };
+  return { area: Math.max(0, netArea), pierces: closed.length, holes, closedContours: closedContourCount, status: "exact" as const };
 }
 
 function parseLwPolyline(fields: Pair[]) {
@@ -507,9 +486,7 @@ function parseEllipse(fields: Pair[]) {
   }
   const majorRadius = Math.hypot(majorX!, majorY!);
   if (!(majorRadius > EPSILON) || !(ratio! > 0) || ratio! > 1 + 1e-10) return { shape: null, issue: "ELLIPSE_INVALID" };
-  if (rawStart < -1e-10 || rawStart > TWO_PI + 1e-10 || rawEnd < -1e-10 || rawEnd > TWO_PI + 1e-10) {
-    return { shape: null, issue: "ELLIPSE_PARAMETERS" };
-  }
+  if (rawStart < -1e-10 || rawStart > TWO_PI + 1e-10 || rawEnd < -1e-10 || rawEnd > TWO_PI + 1e-10) return { shape: null, issue: "ELLIPSE_PARAMETERS" };
 
   const start = Math.min(TWO_PI, Math.max(0, rawStart));
   const end = Math.min(TWO_PI, Math.max(0, rawEnd));
@@ -528,8 +505,103 @@ function parseEllipse(fields: Pair[]) {
   if (!(sweep > EPSILON) || sweep > TWO_PI + 1e-10) return { shape: null, issue: "ELLIPSE_PARAMETERS" };
   const length = ellipseArcLength(shape);
   if (length == null || !Number.isFinite(length) || !(length > 0)) return { shape: null, issue: "ELLIPSE_LENGTH_UNAVAILABLE" };
-
   return { shape, issue: null };
+}
+
+function parseSplineControlPoints(fields: Pair[]) {
+  const points: Point2D[] = [];
+  let invalid = false;
+  let nonPlanar = false;
+  let currentX: number | undefined;
+  let currentY: number | undefined;
+  let currentZ = 0;
+
+  const flush = () => {
+    if (currentX == null) return;
+    if (currentY == null || !Number.isFinite(currentX) || !Number.isFinite(currentY) || !Number.isFinite(currentZ)) invalid = true;
+    else {
+      points.push({ x: currentX, y: currentY });
+      if (Math.abs(currentZ) > EPSILON) nonPlanar = true;
+    }
+  };
+
+  for (const [code, raw] of fields) {
+    if (code === 10) {
+      flush();
+      const value = Number(raw);
+      currentX = Number.isFinite(value) ? value : undefined;
+      currentY = undefined;
+      currentZ = 0;
+      if (!Number.isFinite(value)) invalid = true;
+    } else if (code === 20 && currentX != null) {
+      const value = Number(raw);
+      currentY = Number.isFinite(value) ? value : undefined;
+      if (!Number.isFinite(value)) invalid = true;
+    } else if (code === 30 && currentX != null) {
+      const value = Number(raw);
+      if (Number.isFinite(value)) currentZ = value;
+      else invalid = true;
+    }
+  }
+  flush();
+  return { points, invalid, nonPlanar };
+}
+
+function parseLinearPlanarSpline(fields: Pair[]) {
+  const flags = numberField(fields, 70) ?? 0;
+  const degree = numberField(fields, 71);
+  const declaredKnotCount = numberField(fields, 72);
+  const declaredControlCount = numberField(fields, 73);
+  const normalX = numberField(fields, 210) ?? 0;
+  const normalY = numberField(fields, 220) ?? 0;
+  const normalZ = numberField(fields, 230) ?? 1;
+  const closed = (flags & 1) !== 0;
+  const periodic = (flags & 2) !== 0;
+  const rational = (flags & 4) !== 0;
+  const planar = (flags & 8) !== 0;
+  const linear = (flags & 16) !== 0;
+
+  if (!planar || !linear || closed || periodic || rational || degree !== 1) {
+    return { shape: null, issue: "SPLINE_UNSUPPORTED" };
+  }
+  if (Math.abs(normalX) > EPSILON || Math.abs(normalY) > EPSILON || Math.abs(normalZ - 1) > EPSILON) {
+    return { shape: null, issue: "SPLINE_NONPLANAR" };
+  }
+  if (!Number.isInteger(declaredKnotCount) || !Number.isInteger(declaredControlCount) || (declaredControlCount ?? 0) < 2) {
+    return { shape: null, issue: "SPLINE_INVALID" };
+  }
+
+  const rawKnots = fields.filter(([code]) => code === 40).map(([, raw]) => Number(raw));
+  if (rawKnots.some((value) => !Number.isFinite(value)) || rawKnots.length !== declaredKnotCount) {
+    return { shape: null, issue: "SPLINE_KNOTS" };
+  }
+  const { points, invalid, nonPlanar } = parseSplineControlPoints(fields);
+  if (invalid || points.length !== declaredControlCount) return { shape: null, issue: "SPLINE_INVALID" };
+  if (nonPlanar) return { shape: null, issue: "SPLINE_NONPLANAR" };
+  if (rawKnots.length !== points.length + 2) return { shape: null, issue: "SPLINE_KNOTS" };
+
+  const scale = Math.max(1, ...rawKnots.map((value) => Math.abs(value)));
+  const tolerance = scale * 1e-12;
+  if (Math.abs(rawKnots[0] - rawKnots[1]) > tolerance || Math.abs(rawKnots.at(-1)! - rawKnots.at(-2)!) > tolerance) {
+    return { shape: null, issue: "SPLINE_KNOTS" };
+  }
+  for (let index = 1; index < rawKnots.length - 2; index++) {
+    if (!(rawKnots[index + 1] - rawKnots[index] > tolerance)) return { shape: null, issue: "SPLINE_KNOTS" };
+  }
+  if (!(rawKnots.at(-2)! - rawKnots[1] > tolerance)) return { shape: null, issue: "SPLINE_KNOTS" };
+
+  const rawWeights = fields.filter(([code]) => code === 41).map(([, raw]) => Number(raw));
+  if (rawWeights.some((value) => !Number.isFinite(value))) return { shape: null, issue: "SPLINE_INVALID" };
+  if (rawWeights.length > 0) {
+    if (rawWeights.length !== points.length || rawWeights.some((value) => Math.abs(value - 1) > 1e-12)) {
+      return { shape: null, issue: "SPLINE_UNSUPPORTED" };
+    }
+  }
+
+  return {
+    shape: { kind: "polyline" as const, points, bulges: points.map(() => 0), closed: false },
+    issue: null,
+  };
 }
 
 export function parseAsciiDxf(text: string): ParsedDxf {
@@ -590,6 +662,13 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       continue;
     }
 
+    if (value === "SPLINE") {
+      const spline = parseLinearPlanarSpline(fields);
+      if (spline.shape) shapes.push(spline.shape);
+      else if (spline.issue) unsupported.add(spline.issue);
+      continue;
+    }
+
     if (value === "LWPOLYLINE") {
       const { points, bulges } = parseLwPolyline(fields);
       const flags = Number(first(70) ?? "0");
@@ -608,7 +687,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     if (!["TEXT", "MTEXT", "DIMENSION", "POINT"].includes(value)) unsupported.add(value);
   }
 
-  if (!shapes.length) throw new Error("В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, POLYLINE, CIRCLE, ARC или ELLIPSE.");
+  if (!shapes.length) throw new Error("В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, POLYLINE, CIRCLE, ARC, ELLIPSE или безопасный линейный SPLINE.");
 
   const pointsForBounds: Point2D[] = [];
   let cutLength = 0;
