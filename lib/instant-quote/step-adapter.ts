@@ -10,6 +10,7 @@ import { calculateMeshBounds } from "@/lib/instant-quote/mesh";
 export type StepKernelResult = {
   meshes: CadMeshPrimitive[];
   volumeMm3?: number;
+  bodyCount?: number;
   root?: CadAssemblyNode | null;
   features?: SheetMetalFeature[];
   warnings?: string[];
@@ -49,7 +50,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
           widthMm: bounds.size[0],
           heightMm: bounds.size[1],
           depthMm: bounds.size[2],
-          bodyCount: result.meshes.length,
+          bodyCount: result.bodyCount ?? result.meshes.length,
           volumeMm3: result.volumeMm3,
         },
         meshes: result.meshes,
