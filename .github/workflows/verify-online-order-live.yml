@@ -1,4 +1,5 @@
 name: Verify Steel Product Online live review
+# External HTTPS check after STEP preview release.
 
 on:
   push:
