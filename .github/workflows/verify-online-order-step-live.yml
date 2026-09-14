@@ -47,7 +47,65 @@ jobs:
           }
           NODE
 
-      - name: Verify live STEP analysis returns a mesh
+      - name: Inspect external API routing
+        run: |
+          set -uo pipefail
+          echo '--- EXTERNAL GET ---'
+          curl -sS -D /tmp/ext-get.headers -o /tmp/ext-get.body --max-time 30 \
+            https://www.steelprodukt.ru/api/online-order/cad/analyze || true
+          cat /tmp/ext-get.headers
+          cat /tmp/ext-get.body
+          echo
+          echo '--- EXTERNAL POST ---'
+          status="$(curl -sS -D /tmp/ext-post.headers -o /tmp/ext-post.body -w '%{http_code}' --max-time 90 \
+            -F 'file=@/tmp/live-preview.step;type=application/step' \
+            https://www.steelprodukt.ru/api/online-order/cad/analyze || true)"
+          echo "external_status=$status"
+          cat /tmp/ext-post.headers
+          cat /tmp/ext-post.body
+          echo
+
+      - name: Configure Beget access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Inspect direct Next API routing on Beget
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" \
+            /tmp/live-preview.step "$BEGET_USER@$BEGET_HOST:/tmp/live-preview.step"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          echo '--- LOCAL GET ---'
+          curl -sS -D /tmp/local-get.headers -o /tmp/local-get.body --max-time 30 \
+            http://127.0.0.1:3000/api/online-order/cad/analyze || true
+          cat /tmp/local-get.headers
+          cat /tmp/local-get.body
+          echo
+          echo '--- LOCAL POST ---'
+          status="$(curl -sS -D /tmp/local-post.headers -o /tmp/local-post.body -w '%{http_code}' --max-time 90 \
+            -F 'file=@/tmp/live-preview.step;type=application/step' \
+            http://127.0.0.1:3000/api/online-order/cad/analyze || true)"
+          echo "local_status=$status"
+          cat /tmp/local-post.headers
+          cat /tmp/local-post.body
+          echo
+          rm -f /tmp/live-preview.step /tmp/local-get.headers /tmp/local-get.body /tmp/local-post.headers /tmp/local-post.body
+          REMOTE
+
+      - name: Verify external STEP analysis returns a mesh
         run: |
           set -euo pipefail
           status="$(curl -sS --retry 3 --retry-delay 2 --max-time 90 \
@@ -55,6 +113,7 @@ jobs:
             -w '%{http_code}' \
             -F 'file=@/tmp/live-preview.step;type=application/step' \
             https://www.steelprodukt.ru/api/online-order/cad/analyze)"
+          echo "status=$status"
           cat /tmp/step-response.json
           test "$status" = "200"
           node --input-type=module <<'NODE'
