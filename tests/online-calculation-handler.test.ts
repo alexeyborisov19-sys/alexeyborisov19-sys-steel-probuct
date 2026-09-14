@@ -248,7 +248,6 @@ test("server derives DXF geometry and does not trust client production metrics",
 
 test("server uses injected authoritative STEP analyzer and only accepts its production-ready geometry", async () => {
   let analyzerCalled = false;
-  let capturedGeometry: NormalizedCadModel["geometry"] | null = null;
   const handler = createOnlineCalculationHandler(stepDependencies({
     productionReady: true,
     onAnalysis: (format) => {
@@ -256,7 +255,11 @@ test("server uses injected authoritative STEP analyzer and only accepts its prod
       assert.equal(format, "step");
     },
     onRun: (project) => {
-      capturedGeometry = project.parts[0].geometry;
+      const geometry = project.parts[0].geometry;
+      assert.ok(geometry);
+      assert.equal(geometry.widthMm, 120);
+      assert.equal(geometry.heightMm, 80);
+      assert.equal(geometry.cutLengthMm, 400);
       assert.equal(project.parts[0].state, "configurable");
     },
   }));
@@ -272,9 +275,6 @@ test("server uses injected authoritative STEP analyzer and only accepts its prod
 
   assert.equal(res.status, 200);
   assert.equal(analyzerCalled, true);
-  assert.equal(capturedGeometry?.widthMm, 120);
-  assert.equal(capturedGeometry?.heightMm, 80);
-  assert.equal(capturedGeometry?.cutLengthMm, 400);
 
   const json = JSON.stringify(await res.json()).toLowerCase();
   for (const token of ["flatpatterncandidate", "unfoldgeometry", "brep", "directcost", "raterub", "rubperton", "reportid", "storageid", "cutlengthmm"]) {
