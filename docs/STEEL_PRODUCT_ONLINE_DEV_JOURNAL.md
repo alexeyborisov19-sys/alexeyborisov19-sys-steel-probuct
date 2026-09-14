@@ -6,17 +6,13 @@
 
 1. Прочитать этот файл целиком.
 2. Получить актуальный HEAD ветки `feat/steel-product-online-clean-alpha-sep14` и состояние Draft PR #90.
-3. Если HEAD отличается от `Live checkpoint` ниже — посмотреть commits между записанным и актуальным HEAD и **обновить журнал до начала новой разработки**.
-4. Проверить CI именно на актуальном HEAD.
-5. Если CI красный — сначала исправить текущую ошибку. Не добавлять новый слой поверх красной контрольной точки без крайней необходимости.
-6. Продолжить только с пункта `NEXT ACTION`.
-7. После каждого законченного смыслового блока обновить:
-   - `Live checkpoint`;
-   - `DONE`;
-   - `IN PROGRESS`;
-   - `NEXT ACTION`;
-   - краткий changelog внизу.
-8. **Не переписывать уже завершённые модули заново**, если нет конкретного regression/CI evidence, что они сломаны.
+3. Сравнить актуальный HEAD с `Last implementation checkpoint` ниже.
+4. Если после checkpoint есть commits — посмотреть их сообщения/изменённые файлы. Journal/AGENTS-only commits сами по себе не означают, что код нужно переписывать.
+5. Проверить CI именно на актуальном HEAD/PR merge commit.
+6. Если CI красный — сначала исправить текущую ошибку. Не добавлять новый слой поверх красной контрольной точки без крайней необходимости.
+7. Продолжить только с пункта `NEXT ACTION`.
+8. После каждого законченного смыслового блока обновить `Live checkpoint`, `DONE / IN PROGRESS / NEXT ACTION` и короткий changelog.
+9. **Не переписывать уже завершённые модули заново**, если нет конкретного regression/CI evidence, что они сломаны.
 
 ---
 
@@ -31,12 +27,14 @@
 - Публикация: **ЗАПРЕЩЕНА до отдельного решения владельца**
 - Merge в `main`: **НЕ ДЕЛАТЬ** без отдельного решения владельца
 - Оплата / checkout: **НЕ РАЗРАБАТЫВАТЬ на текущем этапе**
-- Актуальный HEAD на момент записи: `4b8e11c7d3987fee04296128b940573f5131bcef`
-- Последний commit: `Inject authoritative STEP analyzer into calculation handler`
-- Текущий CI этого HEAD: **RED** — `Verify project package` остановился на `Lint`; typecheck/tests/build/SEO на этом run не выполнялись. Alpha CI нужно сверять отдельно.
-- Следующее действие до любых новых функций: **найти и исправить lint-error на `4b8e11c7…`, затем прогнать оба workflow до зелёного состояния.**
+- **Last implementation checkpoint:** `1068abbbd69c0cb3fd1cf13e4a2b2b01b5c23639`
+- Последний implementation commit: `Fix confidential pierce-rate test lint`
+- Предыдущий важный implementation commit: `4b8e11c7d3987fee04296128b940573f5131bcef` — `Inject authoritative STEP analyzer into calculation handler`.
+- Причина RED CI на `4b8e11c7…`: ESLint warning в `tests/factual-calculation.test.ts` — `_pierceRubEach` был объявлен и не использовался; `--max-warnings=0` остановил workflow.
+- Lint исправлен commit `1068abbb…` без изменения расчётной логики.
+- **CI для `1068abbb…` / актуального PR HEAD ещё требуется проверить полностью. Не считать green до фактического результата обоих workflow.**
 
-> Этот SHA — checkpoint, а не вечная истина. При следующем запуске обязательно сравнить его с реальным HEAD ветки.
+> Само обновление журнала создаёт metadata commit выше implementation checkpoint. При restart сначала смотреть commits после checkpoint и отличать journal/AGENTS metadata от реализации.
 
 ---
 
@@ -60,221 +58,152 @@
 
 ### 2.3 Конфиденциальность — абсолютное правило
 
-**Клиент НЕ должен получать:**
+**Клиент НЕ должен получать:** закупочные цены металла, внутренние ставки операций, себестоимость, внутреннюю маржу/коэффициенты, нормы, производственную расшифровку длины реза/прожигов/массы/отхода, detailed internal DFM, internal report IDs/пути или закрытые production evidence.
 
-- закупочные цены металла;
-- внутренние ставки операций;
-- себестоимость;
-- внутреннюю маржу/коэффициенты;
-- внутренние нормы;
-- длину реза/прожиги/массу/отход как внутреннюю производственную расшифровку;
-- подробные internal DFM причины;
-- внутренние report IDs/пути;
-- закрытые производственные ограничения и evidence.
+**Клиент может получать:** свой CAD/preview, безопасные габариты из своего CAD, выбранные им материал/толщину/количество/операции, coarse status (`pending / needs-review / blocked / ready`), а в будущем — только отдельно утверждённую конечную продажную цену и срок.
 
-**Клиент может получать:**
-
-- свой CAD/preview;
-- габариты, безопасно полученные из его CAD;
-- выбранные им материал/толщину/количество/операции;
-- coarse status (`pending / needs-review / blocked / ready`);
-- в будущем — только отдельно утверждённую конечную продажную цену и срок.
-
-Конфиденциальность должна обеспечиваться не CSS/скрытым блоком, а **разными server/client DTO и отсутствием внутренних полей в публичном API**.
+Конфиденциальность обеспечивать разными server/client DTO и отсутствием внутренних полей в публичном API, а не скрытием UI.
 
 ### 2.4 Внутренние производственные данные
 
-Полная производственная расшифровка идёт в отдельный закрытый отчёт, доступный только внутреннему admin/RBAC-контуру:
+Полная расшифровка идёт в отдельный закрытый отчёт только для внутреннего admin/RBAC-контура: закупочный металл, заготовка/расход, масса, отход, рез, прожиги, гибы, сварка, окраска, ставки, подтверждённые статьи себестоимости, missing articles, detailed DFM, версия расчётной базы и audit/revision history.
 
-- закупочный металл;
-- заготовка и расход;
-- масса нетто/закупочная;
-- отход;
-- длина реза;
-- прожиги;
-- гибы;
-- сварка;
-- окраска;
-- внутренние ставки;
-- подтверждённые статьи себестоимости;
-- missing articles;
-- detailed DFM;
-- версия закрытой расчётной базы;
-- audit/revision history.
-
-Файлы отчётов: вне `public/`, каталог `0700`, файлы `0600`.
+Файлы: вне `public/`, каталог `0700`, отчёты `0600`.
 
 ### 2.5 Логика металла и лазера
 
 - Лазер считать по **фактическому контуру детали**.
 - Материал до настоящего nesting считать по **прямоугольной расчётной заготовке вокруг детали**, включая обрезки.
-- Если есть authoritative allocated area от nesting — использовать её отдельно как более точный следующий уровень.
-- Нельзя подменять прямоугольную заготовку чистой площадью детали.
+- Если есть authoritative allocated area от nesting — использовать её как более точный следующий уровень.
+- Не подменять прямоугольную заготовку чистой площадью детали.
 
 ### 2.6 Фактический расчёт
 
-Нельзя выдавать красивый итог из неподтверждённых ставок.
-
-Правило:
-
 `подтверждённый физический параметр + подтверждённая закрытая ставка = подтверждённая статья`
 
-Если чего-то нет — статья `missing/partial`, а не `0` и не выдуманное значение.
-
-Старые Alpha коэффициенты/реальные ставки не должны жить в публичном репозитории. Закрытые ставки подаются runtime-only из private calculation basis.
+Если данных нет — `missing/partial`, а не `0` и не выдуманное значение. Реальные ставки и закупочные цены не хранить в публичном Git; подавать runtime-only из private calculation basis.
 
 ---
 
 ## 3. DONE — уже реализовано, не писать заново
 
 ### 3.1 Базовый CAD workspace
-
-- `/online-order` существует в feature-ветке.
-- Клиентский UI разделён с внутренней производственной информацией.
-- Drag/drop CAD.
+- `/online-order` в feature-ветке.
+- client-safe workspace отдельно от internal production data.
+- multi-file/project intake.
 - DXF/STEP/STP/DWG intake.
-- DXF локальный preview.
-- STEP 3D viewer через OpenCascade/mesh path.
-- Проект может содержать несколько деталей.
+- DXF preview.
+- STEP 3D viewer.
 
 ### 3.2 DXF
-
-- ASCII DXF parsing.
+- ASCII parser.
 - LINE/LWPOLYLINE/CIRCLE/ARC базовая геометрия.
-- bounds, cut length, contour/object evidence.
-- real SVG preview.
-- server-side authoritative re-parse для public calculation request.
-- public request не принимает от браузера `cutLength/mass/cost` как authoritative данные.
+- bounds/cut length/contour evidence.
+- SVG preview.
+- server-side authoritative re-parse для public calculation.
+- public request не принимает browser `cutLength/mass/cost` как authoritative.
 
-Известные DXF ограничения, не забывать:
-- ARC bbox требует/может требовать дальнейшего hardening;
-- LWPOLYLINE bulge 42;
-- POLYLINE/VERTEX, SPLINE, ELLIPSE, INSERT/BLOCK, HATCH и др.;
-- contour/pierce semantics ещё требуют production hardening.
+Известные gaps: ARC bbox hardening, LWPOLYLINE bulge 42, POLYLINE/VERTEX, SPLINE, ELLIPSE, INSERT/BLOCK, HATCH и production contour/pierce semantics.
 
 ### 3.3 STEP / Sheet Metal Engine
-
-Уже есть отдельные слои, не создавать их заново:
-
+Уже есть и не должны создаваться заново:
 - OpenCascade STEP analysis;
-- BRep planar/cylindrical face evidence;
-- thickness candidate;
-- bend candidates;
-- paired physical panel regions;
+- BRep planar/cylindrical evidence;
+- thickness/bend candidates;
+- paired panel regions;
 - finite bend axes;
 - topology graph;
 - explicit approved bend allowance table contract;
 - deterministic unfold plan;
 - rigid orientation flattening;
-- BRep panel boundaries;
-- 2D display preview;
-- tangency evidence via shared BRep edge hashes;
-- allowance spacing;
-- multi-bend spacing propagation;
+- BRep boundaries + 2D preview;
+- tangency evidence via BRep edge hashes;
+- allowance spacing + multi-bend propagation;
 - bend-strip regions;
 - panel/strip collision gates;
 - sampled flat-pattern region/contour candidate;
 - BRep area audit + verification gate;
-- pricing/CAM для непроверенной sampled bent-развёртки намеренно заблокированы.
-
-**Последний важный шаг:** на HEAD `4b8e11c7…` server calculation handler получил injectable authoritative STEP analyzer. То есть работу продолжать от server-authoritative STEP path, а не возвращаться к старому «STEP только manual review» без проверки текущего кода.
+- sampled/unverified bent STEP pricing/CAM intentionally blocked;
+- public calculation handler имеет injectable authoritative STEP analyzer.
 
 ### 3.4 Pricing / factual calculation
-
-Уже реализовано:
-
-- отдельный factual calculation engine;
+- factual calculation engine;
 - private runtime rate-book;
-- отсутствие реальных ставок в публичном seed;
-- отсутствие закупочных supplier prices в публичном seed;
+- no real rates/supplier prices in public seed;
 - project factual aggregation;
 - physical production parameters;
-- stock-aware supplier price selection;
+- stock-aware price selection;
 - exact-thickness requirement;
 - stale snapshot handling;
-- missing articles вместо invented defaults;
+- confidential laser batch tiers;
+- confidential pierce line when approved rate exists;
+- missing articles instead of invented defaults;
 - no hidden public 5%/16.5%/setup assumptions.
 
 ### 3.5 Metal price feed
-
-- Atlantik — primary confirmed automatic source для тех листовых групп, которые реально парсятся и валидируются.
-- Official PDF downloader with HTTPS allowlist.
-- PDF signature/size/timeout checks.
-- `pdftotext -layout` extraction.
-- parser + sanity checks.
-- normalized SHA-256 fingerprint.
-- dry-run режим.
-- explicit commit mode.
-- atomic private-basis snapshot replacement.
-- refresh endpoint protected long bearer token, `no-store`, без возврата цен.
-- METALLSERVIS — planned/secondary only; не включать автоматически, пока не подтверждён стабильный официальный machine-readable endpoint.
-- third-party aggregators не использовать как authoritative commercial source.
+- Atlantik primary automatic source for validated sheet groups;
+- official HTTPS PDF downloader;
+- PDF signature/size/timeout checks;
+- `pdftotext -layout`;
+- parser + sanity checks;
+- normalized SHA-256 fingerprint;
+- dry-run and explicit commit mode;
+- atomic private snapshot replacement;
+- protected no-store refresh endpoint without price response;
+- METALLSERVIS remains planned/secondary until stable official machine endpoint is confirmed;
+- no third-party aggregator as authoritative source.
 
 ### 3.6 Privacy boundary / public API
-
-- `ClientProjectCalculationView` — safe DTO.
-- public workspace не импортирует internal pricing/DFM economics.
-- public supplier seed пустой.
-- detailed internal data не сериализуется клиенту.
-- public calculation manifest принимает только выбор клиента, а не производственные цифры.
-- CAD uploads проходят existing security/quarantine path.
-- public calculation handler server-reparses authoritative geometry.
-- private calculation orchestrator lazy-loaded server-side.
-- confidentiality regression tests есть.
+- `ClientProjectCalculationView` safe DTO;
+- public workspace does not import internal pricing economics;
+- public supplier seed empty;
+- public manifest accepts customer choices, not production figures;
+- uploads use security/quarantine path;
+- server derives authoritative geometry;
+- private orchestrator lazy-loaded server-side;
+- confidentiality regression tests.
 
 ### 3.7 Internal production reports
-
-- private report storage outside public tree;
-- internal list page `/internal/production-calculations`;
-- internal detail page;
-- existing internal RBAC reused;
-- readiness/completeness score;
-- per-part checkpoints;
-- revision model;
-- revision parser принимает только физические технологические inputs, не rates/cost/total;
-- revision API использует existing internal session + CSRF;
-- immutable revision: старый отчёт не изменяется, новый пересчитывается по current private basis;
-- revision lineage (`supersedes`, actor, reason) предусмотрен;
-- internal revision form добавлен.
+- private storage outside public tree;
+- internal list/detail pages;
+- existing RBAC reused;
+- readiness/completeness score + per-part checkpoints;
+- immutable revision model;
+- revision parser accepts physical parameters, not rates/cost/total;
+- revision API uses internal session + CSRF;
+- revision lineage (`supersedes`, actor, reason);
+- internal revision form.
 
 ### 3.8 Clean branch / history
+Основная ветка: `feat/steel-product-online-clean-alpha-sep14`, Draft PR #90. Не возвращаться к старой длинной development-ветке #89 для новой работы.
 
-Основная рабочая ветка теперь:
-
-`feat/steel-product-online-clean-alpha-sep14`
-
-Draft PR #90.
-
-Использовать её, а не старую длинную development-ветку #89. Не возвращать реальные производственные ставки в Git history.
+### 3.9 Continuity / recovery
+- этот journal создан;
+- `AGENTS.md` требует читать journal до Steel Product Online edits;
+- журнал обновлять после meaningful block;
+- green CI всегда связывать с конкретным SHA.
 
 ---
 
-## 4. IN PROGRESS — текущая работа
+## 4. IN PROGRESS
 
-1. **Вернуть current HEAD в green CI.** Сейчас `Verify project package` падает на lint на `4b8e11c7…`.
-2. Проверить второй workflow (`Steel Product Online Alpha CI`) на том же HEAD.
-3. После green checkpoint проверить server-authoritative STEP flow end-to-end:
+1. Проверить оба CI после lint fix `1068abbb…` и journal metadata commit.
+2. Если есть новый failure — исправить его до green.
+3. После green проверить server-authoritative STEP end-to-end:
    - planar high-confidence STEP может дать factual geometry;
    - bent/sampled/unverified STEP не получает production pricing/CAM;
-   - клиент по-прежнему не получает internal evidence.
-4. Проверить internal revision form/API после последних изменений на реальном typecheck/tests/build.
+   - client response не получает internal evidence.
+4. Проверить internal revision form/API на полном typecheck/tests/build.
 
 ---
 
 ## 5. NEXT ACTION — начинать отсюда
 
-**NEXT ACTION #1:** получить точный lint log для HEAD `4b8e11c7d3987fee04296128b940573f5131bcef` и исправить lint без ослабления правил.
+**NEXT ACTION #1:** получить актуальный PR #90 HEAD после journal commit и проверить оба workflow.
 
-**NEXT ACTION #2:** прогнать оба workflow до полного green.
+**NEXT ACTION #2:** если CI green — добавить/проверить regression tests на injectable authoritative STEP analyzer в calculation handler: server analysis only, high-confidence planar allow, bent/unverified review-only, browser geometry never authoritative.
 
-**NEXT ACTION #3:** добавить/проверить regression tests на injectable authoritative STEP analyzer в calculation handler, чтобы:
-
-- сервер сам анализировал STEP/STP;
-- только high-confidence production-ready planar STEP передавал geometry в factual calculation;
-- bent/unverified STEP оставался internal-review;
-- browser-provided geometry не становилась authoritative.
-
-**NEXT ACTION #4:** после green — перейти к следующему фактическому gap, который реально уменьшает `partial` в internal completeness, а не к оплате/UI polish.
+**NEXT ACTION #3:** после STEP regression перейти к следующему factual gap, который уменьшает `partial` в internal completeness. Не идти в оплату/UI polish.
 
 ---
 
@@ -283,52 +212,38 @@ Draft PR #90.
 - merge в `main`;
 - deploy/publish;
 - checkout/payment;
-- показывать клиенту себестоимость или производственную расшифровку;
+- показывать клиенту себестоимость/производственную расшифровку;
 - хранить реальные ставки/закупочные цены в публичном Git;
 - возвращать клиенту internal report locator;
 - включать METALLSERVIS scraping на ненадёжном endpoint;
 - придумывать K-factor/bend allowance/rates/tolerances;
 - считать unverified bent STEP production-authoritative;
-- считать выбранную операцию нулевой стоимостью, если её фактический параметр/ставка неизвестны.
+- считать неизвестную операцию нулевой стоимостью.
 
 ---
 
 ## 7. CI policy
 
-Зелёной контрольной точкой считать HEAD только если проверен соответствующий актуальный commit.
-
-Не говорить «CI зелёный» на основании старого SHA.
-
-Минимальный gate:
-
-- lint;
-- TypeScript;
-- unit tests;
-- Next.js build;
-- SEO audit в workflow, где он предусмотрен.
-
-После каждого нового commit предыдущий green относится только к старому SHA.
+Green относится только к SHA, который реально прошёл проверки. Минимальный gate: lint, TypeScript, unit tests, Next.js build и SEO audit там, где он предусмотрен. Journal-only commits могут перезапустить CI, но не меняют business logic.
 
 ---
 
 ## 8. Краткий changelog checkpoints
 
 ### 2026-09-14 — recovery journal created
-
-- Зафиксирован current clean branch / PR #90.
-- Актуальный HEAD при создании: `4b8e11c7…`.
-- HEAD добавляет injectable authoritative STEP analyzer в public calculation handler.
-- Current Verify CI красный на lint; это первое действие после journal creation.
-- Введён обязательный restart protocol, чтобы после обрыва не повторять уже сделанную работу.
+- Зафиксирован clean branch / PR #90.
+- Initial implementation checkpoint: `4b8e11c7…` — authoritative STEP analyzer injection.
+- Найден lint failure: unused `_pierceRubEach` в factual calculation test.
+- Исправлен implementation commit `1068abbb…` без изменения расчётной логики.
+- `AGENTS.md` требует journal-first recovery protocol.
 
 ---
 
 ## 9. Как обновлять этот файл
 
-Не превращать журнал в подробный commit log на тысячи строк. После каждого смыслового блока:
-
-1. изменить `Live checkpoint` на свежий SHA + честный CI status;
-2. перенести завершённый пункт из `IN PROGRESS` в `DONE`;
-3. оставить **один конкретный** `NEXT ACTION #1`;
-4. добавить 2–5 строк в changelog;
-5. сохранить жёсткие продуктовые решения без переформулировок, которые меняют смысл.
+После meaningful block:
+1. обновить `Last implementation checkpoint`;
+2. записать честный CI status;
+3. DONE/IN PROGRESS/NEXT ACTION;
+4. 2–5 строк changelog;
+5. не менять жёсткие продуктовые решения без нового явного решения владельца.
