@@ -1,12 +1,16 @@
 import "server-only";
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseAtlantikSheetPriceText } from "@/lib/instant-quote/atlantik-price-parser";
 import type { StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
-import { replacePrivateMaterialPriceSnapshot } from "@/lib/server/instant-quote/private-calculation-basis";
+import {
+  loadPrivateCalculationBasis,
+  replacePrivateMaterialPriceSnapshot,
+} from "@/lib/server/instant-quote/private-calculation-basis";
 
 const SOURCE_ID = "atlantik-smolensk";
 const SOURCE_URL = "https://atlantik-company.com/price.pdf";
@@ -100,20 +104,59 @@ function validateRows(rows: ReturnType<typeof parseAtlantikSheetPriceText>) {
   return counts;
 }
 
+function contentSha256(rows: StoredPriceSnapshot["rows"]) {
+  const canonicalRows = rows
+    .map((row) => ({
+      materialId: row.materialId,
+      thicknessMm: row.thicknessMm,
+      rubPerTon: row.rubPerTon,
+      rubPerTonFrom3t: row.rubPerTonFrom3t ?? null,
+      size: row.size ?? null,
+      exactThickness: row.exactThickness ?? null,
+    }))
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return createHash("sha256").update(JSON.stringify(canonicalRows), "utf8").digest("hex");
+}
+
+async function previousSourceHash() {
+  try {
+    const basis = await loadPrivateCalculationBasis();
+    const snapshot = basis.materialPriceSnapshots.find((item) => item.sourceId === SOURCE_ID);
+    if (!snapshot) return null;
+    return snapshot.contentSha256 ?? contentSha256(snapshot.rows);
+  } catch {
+    // Dry-run must still be able to validate the upstream document when a local
+    // private basis is not configured yet. Commit mode will fail closed later.
+    return null;
+  }
+}
+
 export type AtlantikRefreshResult = {
   sourceId: typeof SOURCE_ID;
   sourceDate: string;
   fetchedAt: string;
   rowCount: number;
   materialCounts: { hot: number; cold: number; zinc: number };
+  contentChanged: boolean | null;
+  persisted: boolean;
+};
+
+export type AtlantikRefreshOptions = {
+  /** False validates the complete feed without modifying the private basis. */
+  persist?: boolean;
 };
 
 /**
  * Downloads the official Atlantik PDF, extracts its text locally, validates the
- * parsed sheet rows and atomically replaces only Atlantik's private snapshot.
- * On any error the previous private snapshot remains untouched.
+ * parsed sheet rows and, only when explicitly requested, atomically replaces
+ * Atlantik's private snapshot. On any error the previous snapshot remains
+ * untouched. Supplier prices are never returned to the caller.
  */
-export async function refreshAtlantikPriceSnapshot(now = new Date()): Promise<AtlantikRefreshResult> {
+export async function refreshAtlantikPriceSnapshot(
+  now = new Date(),
+  options: AtlantikRefreshOptions = {},
+): Promise<AtlantikRefreshResult> {
+  const persist = options.persist ?? true;
   const response = await fetch(SOURCE_URL, {
     redirect: "follow",
     cache: "no-store",
@@ -137,20 +180,25 @@ export async function refreshAtlantikPriceSnapshot(now = new Date()): Promise<At
     fetchedAt,
   });
   const materialCounts = validateRows(rows);
+  const nextContentSha256 = contentSha256(rows);
+  const previousContentSha256 = await previousSourceHash();
   const snapshot: StoredPriceSnapshot = {
     sourceId: SOURCE_ID,
     fetchedAt,
     sourceDate: effectiveSourceDate,
     status: "ok",
+    contentSha256: nextContentSha256,
     rows,
   };
 
-  await replacePrivateMaterialPriceSnapshot(snapshot);
+  if (persist) await replacePrivateMaterialPriceSnapshot(snapshot);
   return {
     sourceId: SOURCE_ID,
     sourceDate: effectiveSourceDate,
     fetchedAt,
     rowCount: rows.length,
     materialCounts,
+    contentChanged: previousContentSha256 == null ? null : previousContentSha256 !== nextContentSha256,
+    persisted: persist,
   };
 }
