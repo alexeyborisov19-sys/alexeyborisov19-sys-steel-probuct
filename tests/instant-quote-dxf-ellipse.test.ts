@@ -147,3 +147,30 @@ test("invalid ellipse ratio is fail-closed", () => {
   assert.ok(parsed.unsupportedEntities.includes("ELLIPSE_INVALID"));
   assert.equal(parsed.shapes.length, 1);
 });
+
+test("zero wrapped ellipse parameter sweep is fail-closed", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LINE", "10", "0", "20", "0", "11", "10", "21", "0",
+    "0", "ELLIPSE",
+    "10", "0", "20", "0",
+    "11", "100", "21", "0",
+    "40", "0.5", "41", String(Math.PI * 2), "42", "0",
+  ]));
+
+  assert.ok(parsed.unsupportedEntities.includes("ELLIPSE_PARAMETERS"));
+  assert.equal(parsed.shapes.length, 1);
+});
+
+test("ellipse is fail-closed when controlled arc-length integration cannot produce a finite result", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LINE", "10", "0", "20", "0", "11", "10", "21", "0",
+    "0", "ELLIPSE",
+    "10", "0", "20", "0",
+    "11", "1e308", "21", "0",
+    "40", "0.5", "41", "0", "42", String(Math.PI * 2),
+  ]));
+
+  assert.ok(parsed.unsupportedEntities.includes("ELLIPSE_LENGTH_UNAVAILABLE"));
+  assert.equal(parsed.shapes.length, 1);
+  assert.equal(parsed.shapes[0].kind, "line");
+});
