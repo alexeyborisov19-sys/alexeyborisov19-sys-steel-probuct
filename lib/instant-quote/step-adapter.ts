@@ -30,6 +30,29 @@ export interface StepKernelPort {
   readStep(bytes: Uint8Array): Promise<StepKernelResult>;
 }
 
+function verifiedBendCount(result: StepKernelResult, flatPattern: SheetMetalAnalysis["flatPatternCandidate"] | null) {
+  // A high-confidence planar-prism reconciliation proves there are no bends in
+  // the promoted sheet-metal geometry.
+  if (flatPattern?.confidence === "high") return 0;
+
+  const evidence = result.unfoldGeometry;
+  if (!evidence || evidence.source !== "brep" || evidence.issues.length > 0 || evidence.bends.length === 0) {
+    return undefined;
+  }
+
+  const panelIds = new Set(evidence.panels.map((panel) => panel.id));
+  const bendIds = new Set<string>();
+  for (const bend of evidence.bends) {
+    if (bendIds.has(bend.bendId)) return undefined;
+    bendIds.add(bend.bendId);
+    if (bend.panelIds[0] === bend.panelIds[1]) return undefined;
+    if (!panelIds.has(bend.panelIds[0]) || !panelIds.has(bend.panelIds[1])) return undefined;
+    if (!(bend.angleDeg > 0 && bend.angleDeg < 180) || !(bend.insideRadiusMm > 0)) return undefined;
+  }
+
+  return evidence.bends.length;
+}
+
 export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter {
   return {
     id: `steel-product-step:${kernel.id}`,
@@ -50,6 +73,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
       const flatPattern = result.sheetMetal?.flatPatternCandidate?.confidence === "high"
         ? result.sheetMetal.flatPatternCandidate
         : null;
+      const bendCount = verifiedBendCount(result, flatPattern);
 
       return {
         format: request.format,
@@ -63,6 +87,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
           cutLengthMm: flatPattern?.cutLengthMm,
           contourCount: flatPattern?.contourCount,
           pierceCount: flatPattern?.contourCount,
+          bendCount,
           bodyCount: result.bodyCount ?? result.meshes.length,
           volumeMm3: result.volumeMm3,
         },
