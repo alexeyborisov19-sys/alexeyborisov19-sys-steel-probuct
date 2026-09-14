@@ -4,7 +4,8 @@ export type DxfShape =
   | { kind: "line"; a: Point2D; b: Point2D }
   | { kind: "polyline"; points: Point2D[]; bulges: number[]; closed: boolean }
   | { kind: "circle"; c: Point2D; r: number }
-  | { kind: "arc"; c: Point2D; r: number; start: number; end: number };
+  | { kind: "arc"; c: Point2D; r: number; start: number; end: number }
+  | { kind: "ellipse"; c: Point2D; major: Point2D; ratio: number; start: number; end: number };
 
 export type ParsedDxf = {
   shapes: DxfShape[];
@@ -42,6 +43,7 @@ type CircularArc = {
 };
 
 const EPSILON = 1e-12;
+const TWO_PI = Math.PI * 2;
 const LEGACY_POLYLINE_COMPLEX_FLAGS = 2 | 4 | 8 | 16 | 32 | 64;
 const LEGACY_VERTEX_COMPLEX_FLAGS = 1 | 2 | 8 | 16 | 32 | 64 | 128;
 
@@ -52,6 +54,12 @@ function distance(a: Point2D, b: Point2D) {
 function normalizePositiveDegrees(value: number) {
   let normalized = value % 360;
   if (normalized < 0) normalized += 360;
+  return normalized;
+}
+
+function normalizePositiveRadians(value: number) {
+  let normalized = value % TWO_PI;
+  if (normalized < 0) normalized += TWO_PI;
   return normalized;
 }
 
@@ -137,14 +145,6 @@ function exactArcBounds(shape: Extract<DxfShape, { kind: "arc" }>) {
   });
 }
 
-/**
- * Converts the DXF polyline bulge attached to vertex `a` into its exact signed
- * circular arc from `a` to `b`.
- *
- * DXF bulge = tan(includedAngle / 4). Positive values are counter-clockwise,
- * negative values clockwise. Production bounds/length use this analytic arc;
- * preview sampling is kept separate.
- */
 export function bulgeArc(a: Point2D, b: Point2D, bulge: number): CircularArc | null {
   if (!Number.isFinite(bulge) || Math.abs(bulge) <= EPSILON) return null;
   const chord = distance(a, b);
@@ -165,12 +165,102 @@ export function bulgeArc(a: Point2D, b: Point2D, bulge: number): CircularArc | n
   };
   const start = Math.atan2(a.y - c.y, a.x - c.x) * 180 / Math.PI;
 
+  return { c, r: radius, start, sweep: sweepRad * 180 / Math.PI };
+}
+
+function ellipseAxes(shape: Extract<DxfShape, { kind: "ellipse" }>) {
   return {
-    c,
-    r: radius,
-    start,
-    sweep: sweepRad * 180 / Math.PI,
+    major: shape.major,
+    minor: { x: -shape.major.y * shape.ratio, y: shape.major.x * shape.ratio },
   };
+}
+
+function ellipseIsFull(shape: Extract<DxfShape, { kind: "ellipse" }>) {
+  return Math.abs(shape.start) <= 1e-10 && Math.abs(shape.end - TWO_PI) <= 1e-10;
+}
+
+function ellipseSweep(shape: Extract<DxfShape, { kind: "ellipse" }>) {
+  if (ellipseIsFull(shape)) return TWO_PI;
+  let sweep = shape.end - shape.start;
+  if (sweep <= 0) sweep += TWO_PI;
+  return sweep;
+}
+
+export function ellipsePoint(shape: Extract<DxfShape, { kind: "ellipse" }>, parameter: number): Point2D {
+  const axes = ellipseAxes(shape);
+  return {
+    x: shape.c.x + axes.major.x * Math.cos(parameter) + axes.minor.x * Math.sin(parameter),
+    y: shape.c.y + axes.major.y * Math.cos(parameter) + axes.minor.y * Math.sin(parameter),
+  };
+}
+
+function ellipseParameterWithinSweep(parameter: number, start: number, sweep: number) {
+  return normalizePositiveRadians(parameter - start) <= sweep + 1e-10;
+}
+
+function exactEllipseBounds(shape: Extract<DxfShape, { kind: "ellipse" }>) {
+  const axes = ellipseAxes(shape);
+  const sweep = ellipseSweep(shape);
+  const candidates = [shape.start, shape.start + sweep];
+  const xExtremum = Math.atan2(axes.minor.x, axes.major.x);
+  const yExtremum = Math.atan2(axes.minor.y, axes.major.y);
+  for (const parameter of [xExtremum, xExtremum + Math.PI, yExtremum, yExtremum + Math.PI]) {
+    if (ellipseParameterWithinSweep(parameter, shape.start, sweep)) candidates.push(parameter);
+  }
+  return candidates.map((parameter) => ellipsePoint(shape, parameter));
+}
+
+function ellipseSpeed(shape: Extract<DxfShape, { kind: "ellipse" }>, parameter: number) {
+  const axes = ellipseAxes(shape);
+  const dx = -axes.major.x * Math.sin(parameter) + axes.minor.x * Math.cos(parameter);
+  const dy = -axes.major.y * Math.sin(parameter) + axes.minor.y * Math.cos(parameter);
+  return Math.hypot(dx, dy);
+}
+
+function simpson(fa: number, fm: number, fb: number, width: number) {
+  return width * (fa + 4 * fm + fb) / 6;
+}
+
+function adaptiveSimpson(
+  fn: (value: number) => number,
+  a: number,
+  b: number,
+  tolerance: number,
+  whole: number,
+  fa: number,
+  fm: number,
+  fb: number,
+  depth: number,
+): number {
+  const midpoint = (a + b) / 2;
+  const leftMidpoint = (a + midpoint) / 2;
+  const rightMidpoint = (midpoint + b) / 2;
+  const flm = fn(leftMidpoint);
+  const frm = fn(rightMidpoint);
+  const left = simpson(fa, flm, fm, midpoint - a);
+  const right = simpson(fm, frm, fb, b - midpoint);
+  const delta = left + right - whole;
+
+  if (depth <= 0 || Math.abs(delta) <= 15 * tolerance) {
+    return left + right + delta / 15;
+  }
+  return adaptiveSimpson(fn, a, midpoint, tolerance / 2, left, fa, flm, fm, depth - 1)
+    + adaptiveSimpson(fn, midpoint, b, tolerance / 2, right, fm, frm, fb, depth - 1);
+}
+
+export function ellipseArcLength(shape: Extract<DxfShape, { kind: "ellipse" }>) {
+  const sweep = ellipseSweep(shape);
+  const a = shape.start;
+  const b = shape.start + sweep;
+  const midpoint = (a + b) / 2;
+  const fn = (parameter: number) => ellipseSpeed(shape, parameter);
+  const fa = fn(a);
+  const fm = fn(midpoint);
+  const fb = fn(b);
+  const whole = simpson(fa, fm, fb, b - a);
+  const majorRadius = Math.hypot(shape.major.x, shape.major.y);
+  const tolerance = Math.max(1e-10, majorRadius * 1e-10);
+  return adaptiveSimpson(fn, a, b, tolerance, whole, fa, fm, fb, 22);
 }
 
 function polygonArea(points: Point2D[]) {
@@ -219,11 +309,35 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
       continue;
     }
 
+    if (shape.kind === "ellipse") {
+      if (!ellipseIsFull(shape)) {
+        exact = false;
+        continue;
+      }
+      const majorRadius = Math.hypot(shape.major.x, shape.major.y);
+      const minorRadius = majorRadius * shape.ratio;
+      closedContourCount++;
+      const unitMajor = { x: shape.major.x / majorRadius, y: shape.major.y / majorRadius };
+      const unitMinor = { x: -unitMajor.y, y: unitMajor.x };
+      closed.push({
+        area: Math.PI * majorRadius * minorRadius,
+        sample: {
+          x: shape.c.x + shape.major.x * 0.999,
+          y: shape.c.y + shape.major.y * 0.999,
+        },
+        contains: (point) => {
+          const dx = point.x - shape.c.x;
+          const dy = point.y - shape.c.y;
+          const alongMajor = dx * unitMajor.x + dy * unitMajor.y;
+          const alongMinor = dx * unitMinor.x + dy * unitMinor.y;
+          return (alongMajor / majorRadius) ** 2 + (alongMinor / minorRadius) ** 2 < 1 - 1e-10;
+        },
+      });
+      continue;
+    }
+
     if (shape.kind === "polyline" && shape.closed && shape.points.length >= 3) {
       closedContourCount++;
-      // Bounds and path length for bulged segments are exact, but exact net-area
-      // topology requires arc-aware area + containment. Until that is proven by
-      // regression fixtures, fail closed instead of treating chord area as fact.
       if (hasCurvedPolylineSegment(shape)) {
         exact = false;
         continue;
@@ -241,8 +355,6 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
       continue;
     }
 
-    // Open lines/arcs or open polylines mean the parser cannot prove a complete
-    // laser contour topology, so area/pierce metrics must not be presented as exact.
     exact = false;
   }
 
@@ -306,7 +418,6 @@ function parseLwPolyline(fields: Pair[]) {
     }
   }
   flush();
-
   while (bulges.length < points.length) bulges.push(0);
   return { points, bulges };
 }
@@ -330,12 +441,10 @@ function parseLegacyPolylineSequence(pairs: Pair[], start: number, headerFields:
 
     const entity = pairs[cursor][1];
     if (entity === "SEQEND") {
-      const sequenceEnd = collectEntityFields(pairs, cursor).end;
-      cursor = sequenceEnd;
+      cursor = collectEntityFields(pairs, cursor).end;
       foundSeqend = true;
       break;
     }
-
     if (entity !== "VERTEX") {
       issues.add("POLYLINE_SEQUENCE");
       break;
@@ -348,16 +457,12 @@ function parseLegacyPolylineSequence(pairs: Pair[], start: number, headerFields:
     const z = numberField(fields, 30) ?? 0;
     const bulge = numberField(fields, 42) ?? 0;
 
-    if ((vertexFlags & LEGACY_VERTEX_COMPLEX_FLAGS) !== 0 || Math.abs(z) > EPSILON) {
-      issues.add("POLYLINE_COMPLEX");
-    }
-    if (x == null || y == null) {
-      issues.add("POLYLINE_INVALID_VERTEX");
-    } else {
+    if ((vertexFlags & LEGACY_VERTEX_COMPLEX_FLAGS) !== 0 || Math.abs(z) > EPSILON) issues.add("POLYLINE_COMPLEX");
+    if (x == null || y == null) issues.add("POLYLINE_INVALID_VERTEX");
+    else {
       points.push({ x, y });
       bulges.push(Number.isFinite(bulge) ? bulge : 0);
     }
-
     cursor = end;
   }
 
@@ -368,6 +473,47 @@ function parseLegacyPolylineSequence(pairs: Pair[], start: number, headerFields:
     shape: issues.size === 0 ? { kind: "polyline" as const, points, bulges, closed } : null,
     issues: [...issues],
     end: cursor,
+  };
+}
+
+function parseEllipse(fields: Pair[]) {
+  const cx = numberField(fields, 10);
+  const cy = numberField(fields, 20);
+  const majorX = numberField(fields, 11);
+  const majorY = numberField(fields, 21);
+  const majorZ = numberField(fields, 31) ?? 0;
+  const ratio = numberField(fields, 40);
+  const rawStart = numberField(fields, 41) ?? 0;
+  const rawEnd = numberField(fields, 42) ?? TWO_PI;
+  const extrusionX = numberField(fields, 210) ?? 0;
+  const extrusionY = numberField(fields, 220) ?? 0;
+  const extrusionZ = numberField(fields, 230) ?? 1;
+
+  if ([cx, cy, majorX, majorY, ratio].some((value) => value == null)) return { shape: null, issue: "ELLIPSE_INVALID" };
+  if (Math.abs(majorZ) > EPSILON || Math.abs(extrusionX) > EPSILON || Math.abs(extrusionY) > EPSILON || Math.abs(extrusionZ - 1) > EPSILON) {
+    return { shape: null, issue: "ELLIPSE_NONPLANAR" };
+  }
+  const majorRadius = Math.hypot(majorX!, majorY!);
+  if (!(majorRadius > EPSILON) || !(ratio! > 0) || ratio! > 1 + 1e-10) return { shape: null, issue: "ELLIPSE_INVALID" };
+  if (rawStart < -1e-10 || rawStart > TWO_PI + 1e-10 || rawEnd < -1e-10 || rawEnd > TWO_PI + 1e-10) {
+    return { shape: null, issue: "ELLIPSE_PARAMETERS" };
+  }
+
+  const start = Math.min(TWO_PI, Math.max(0, rawStart));
+  const end = Math.min(TWO_PI, Math.max(0, rawEnd));
+  const full = Math.abs(start) <= 1e-10 && Math.abs(end - TWO_PI) <= 1e-10;
+  if (!full && Math.abs(end - start) <= 1e-12) return { shape: null, issue: "ELLIPSE_PARAMETERS" };
+
+  return {
+    shape: {
+      kind: "ellipse" as const,
+      c: { x: cx!, y: cy! },
+      major: { x: majorX!, y: majorY! },
+      ratio: Math.min(1, ratio!),
+      start,
+      end,
+    },
+    issue: null,
   };
 }
 
@@ -400,9 +546,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       const y1 = numberField(fields, 20);
       const x2 = numberField(fields, 11);
       const y2 = numberField(fields, 21);
-      if ([x1, y1, x2, y2].every((n) => typeof n === "number")) {
-        shapes.push({ kind: "line", a: { x: x1!, y: y1! }, b: { x: x2!, y: y2! } });
-      }
+      if ([x1, y1, x2, y2].every((n) => typeof n === "number")) shapes.push({ kind: "line", a: { x: x1!, y: y1! }, b: { x: x2!, y: y2! } });
       continue;
     }
 
@@ -410,9 +554,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       const x = numberField(fields, 10);
       const y = numberField(fields, 20);
       const r = numberField(fields, 40);
-      if ([x, y, r].every((n) => typeof n === "number") && r! > 0) {
-        shapes.push({ kind: "circle", c: { x: x!, y: y! }, r: r! });
-      }
+      if ([x, y, r].every((n) => typeof n === "number") && r! > 0) shapes.push({ kind: "circle", c: { x: x!, y: y! }, r: r! });
       continue;
     }
 
@@ -422,9 +564,14 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       const r = numberField(fields, 40);
       const start = numberField(fields, 50);
       const finish = numberField(fields, 51);
-      if ([x, y, r, start, finish].every((n) => typeof n === "number") && r! > 0) {
-        shapes.push({ kind: "arc", c: { x: x!, y: y! }, r: r!, start: start!, end: finish! });
-      }
+      if ([x, y, r, start, finish].every((n) => typeof n === "number") && r! > 0) shapes.push({ kind: "arc", c: { x: x!, y: y! }, r: r!, start: start!, end: finish! });
+      continue;
+    }
+
+    if (value === "ELLIPSE") {
+      const ellipse = parseEllipse(fields);
+      if (ellipse.shape) shapes.push(ellipse.shape);
+      else if (ellipse.issue) unsupported.add(ellipse.issue);
       continue;
     }
 
@@ -446,9 +593,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     if (!["TEXT", "MTEXT", "DIMENSION", "POINT"].includes(value)) unsupported.add(value);
   }
 
-  if (!shapes.length) {
-    throw new Error("В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, POLYLINE, CIRCLE или ARC.");
-  }
+  if (!shapes.length) throw new Error("В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, POLYLINE, CIRCLE, ARC или ELLIPSE.");
 
   const pointsForBounds: Point2D[] = [];
   let cutLength = 0;
@@ -471,11 +616,11 @@ export function parseAsciiDxf(text: string): ParsedDxf {
         }
       }
     } else if (shape.kind === "circle") {
-      pointsForBounds.push(
-        { x: shape.c.x - shape.r, y: shape.c.y - shape.r },
-        { x: shape.c.x + shape.r, y: shape.c.y + shape.r },
-      );
+      pointsForBounds.push({ x: shape.c.x - shape.r, y: shape.c.y - shape.r }, { x: shape.c.x + shape.r, y: shape.c.y + shape.r });
       cutLength += Math.PI * shape.r * 2;
+    } else if (shape.kind === "ellipse") {
+      pointsForBounds.push(...exactEllipseBounds(shape));
+      cutLength += ellipseArcLength(shape);
     } else {
       pointsForBounds.push(...exactArcBounds(shape));
       cutLength += 2 * Math.PI * shape.r * (normalizeArc(shape.start, shape.end) / 360);
@@ -515,10 +660,7 @@ function sampleCircularArc(arc: CircularArc, maxStepDegrees = 8) {
   const steps = Math.max(1, Math.ceil(Math.abs(arc.sweep) / maxStepDegrees));
   return Array.from({ length: steps + 1 }, (_, index) => {
     const angle = (arc.start + (arc.sweep * index) / steps) * Math.PI / 180;
-    return {
-      x: arc.c.x + Math.cos(angle) * arc.r,
-      y: arc.c.y + Math.sin(angle) * arc.r,
-    };
+    return { x: arc.c.x + Math.cos(angle) * arc.r, y: arc.c.y + Math.sin(angle) * arc.r };
   });
 }
 
@@ -530,20 +672,18 @@ export function polylinePreviewPoints(shape: Extract<DxfShape, { kind: "polyline
     const a = shape.points[index];
     const b = shape.points[(index + 1) % shape.points.length];
     const curved = bulgeArc(a, b, shape.bulges[index] ?? 0);
-    if (!curved) {
-      result.push(b);
-      continue;
-    }
-    result.push(...sampleCircularArc(curved).slice(1));
+    if (!curved) result.push(b);
+    else result.push(...sampleCircularArc(curved).slice(1));
   }
   return result;
 }
 
+export function ellipsePreviewPoints(shape: Extract<DxfShape, { kind: "ellipse" }>, maxStepRadians = Math.PI / 36) {
+  const sweep = ellipseSweep(shape);
+  const steps = Math.max(1, Math.ceil(sweep / maxStepRadians));
+  return Array.from({ length: steps + 1 }, (_, index) => ellipsePoint(shape, shape.start + sweep * index / steps));
+}
+
 export function arcPoints(shape: Extract<DxfShape, { kind: "arc" }>) {
-  return sampleCircularArc({
-    c: shape.c,
-    r: shape.r,
-    start: shape.start,
-    sweep: normalizeArc(shape.start, shape.end),
-  });
+  return sampleCircularArc({ c: shape.c, r: shape.r, start: shape.start, sweep: normalizeArc(shape.start, shape.end) });
 }
