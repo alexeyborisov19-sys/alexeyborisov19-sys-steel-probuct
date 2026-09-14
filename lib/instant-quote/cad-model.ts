@@ -1,5 +1,6 @@
 import type { CadFormat, PartGeometrySummary } from "@/lib/instant-quote/domain";
 import type { SheetMetalAnalysis, SheetMetalBoundaryPreview } from "@/lib/instant-quote/sheet-metal";
+import type { StepUnfoldGeometryEvidence } from "@/lib/instant-quote/unfold-geometry";
 
 export type CadVector3 = [number, number, number];
 
@@ -35,6 +36,7 @@ export type NormalizedCadModel = {
   root: CadAssemblyNode | null;
   features: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  unfoldGeometry?: StepUnfoldGeometryEvidence;
   metadata: {
     sourceFileName: string;
     sourceBytes: number;
@@ -63,6 +65,12 @@ function finiteNonNegative(value: unknown) {
 
 function finitePositive(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function finiteVector3(value: unknown) {
+  return Array.isArray(value)
+    && value.length === 3
+    && value.every((item) => typeof item === "number" && Number.isFinite(item));
 }
 
 function validateBoundaryPreview(preview: unknown, errors: string[]) {
@@ -156,6 +164,53 @@ function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
   }
 }
 
+function validateUnfoldGeometry(unfoldGeometry: unknown, errors: string[]) {
+  if (unfoldGeometry == null) return;
+  if (!unfoldGeometry || typeof unfoldGeometry !== "object" || Array.isArray(unfoldGeometry)) {
+    errors.push("STEP unfold geometry must be an object.");
+    return;
+  }
+
+  const evidence = unfoldGeometry as Partial<StepUnfoldGeometryEvidence>;
+  if (evidence.source !== "brep") errors.push("STEP unfold geometry source must be BRep.");
+  if (!finitePositive(evidence.thicknessMm)) errors.push("STEP unfold geometry requires a positive BRep thickness.");
+  if (!Array.isArray(evidence.panels)) errors.push("STEP unfold geometry panels must be an array.");
+  if (!Array.isArray(evidence.bends)) errors.push("STEP unfold geometry bends must be an array.");
+  if (!Array.isArray(evidence.issues) || evidence.issues.some((issue) => typeof issue !== "string")) errors.push("STEP unfold geometry issues must be a string array.");
+
+  const panelIds = new Set<string>();
+  for (const panel of evidence.panels ?? []) {
+    if (!panel || typeof panel.id !== "string" || !panel.id || panelIds.has(panel.id)) {
+      errors.push("Every STEP unfold panel requires a unique id.");
+      continue;
+    }
+    panelIds.add(panel.id);
+    if (!Array.isArray(panel.sourceFaceIds) || panel.sourceFaceIds.length !== 2 || panel.sourceFaceIds.some((id) => typeof id !== "string" || !id) || panel.sourceFaceIds[0] === panel.sourceFaceIds[1]) errors.push("Every STEP unfold panel must reference two distinct BRep faces.");
+    if (!finiteVector3(panel.centerMm) || !finiteVector3(panel.normal)) errors.push("STEP unfold panel center and normal must be finite XYZ vectors.");
+    else if (Math.hypot(panel.normal[0], panel.normal[1], panel.normal[2]) <= 1e-8) errors.push("STEP unfold panel normal must be non-zero.");
+    if (!finitePositive(panel.areaMm2)) errors.push("STEP unfold panel area must be finite and positive.");
+  }
+
+  const bendIds = new Set<string>();
+  for (const bend of evidence.bends ?? []) {
+    if (!bend || typeof bend.bendId !== "string" || !bend.bendId || bendIds.has(bend.bendId)) {
+      errors.push("Every STEP unfold bend requires a unique bend id.");
+      continue;
+    }
+    bendIds.add(bend.bendId);
+    if (!Array.isArray(bend.sourceCylinderFaceIds) || bend.sourceCylinderFaceIds.length !== 2 || bend.sourceCylinderFaceIds.some((id) => typeof id !== "string" || !id) || bend.sourceCylinderFaceIds[0] === bend.sourceCylinderFaceIds[1]) errors.push("Every STEP unfold bend must reference two distinct cylindrical BRep faces.");
+    if (!Array.isArray(bend.panelIds) || bend.panelIds.length !== 2 || bend.panelIds.some((id) => typeof id !== "string" || !panelIds.has(id)) || bend.panelIds[0] === bend.panelIds[1]) errors.push("Every STEP unfold bend must connect two distinct known panel ids.");
+    if (!finiteVector3(bend.axisStartMm) || !finiteVector3(bend.axisEndMm)) errors.push("STEP unfold bend axis must contain finite XYZ endpoints.");
+    else if (Math.hypot(
+      bend.axisEndMm[0] - bend.axisStartMm[0],
+      bend.axisEndMm[1] - bend.axisStartMm[1],
+      bend.axisEndMm[2] - bend.axisStartMm[2],
+    ) <= 1e-8) errors.push("STEP unfold bend axis must have positive length.");
+    if (!finitePositive(bend.angleDeg) || bend.angleDeg > 189) errors.push("STEP unfold bend angle is invalid.");
+    if (!finitePositive(bend.insideRadiusMm)) errors.push("STEP unfold bend inside radius is invalid.");
+  }
+}
+
 export function validateNormalizedCadModel(input: unknown) {
   const errors: string[] = [];
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -202,6 +257,7 @@ export function validateNormalizedCadModel(input: unknown) {
 
   if (!Array.isArray(model.features)) errors.push("Normalized CAD features must be an array.");
   validateSheetMetalAnalysis(model.sheetMetal, errors);
+  validateUnfoldGeometry(model.unfoldGeometry, errors);
   if (!Array.isArray(model.warnings) || model.warnings.some((warning) => typeof warning !== "string")) errors.push("Normalized CAD warnings must be a string array.");
 
   if (!model.metadata || typeof model.metadata !== "object") {
