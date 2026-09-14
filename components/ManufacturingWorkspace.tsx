@@ -5,6 +5,7 @@ import type { ChangeEvent, DragEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { Cad2DViewer } from "@/components/Cad2DViewer";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
+import { StepFlatPatternViewer } from "@/components/StepFlatPatternViewer";
 import { analyzeCadBytes } from "@/lib/instant-quote/cad-dispatcher";
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { runVerifiedLaserDfm, type DfmResult } from "@/lib/instant-quote/dfm";
@@ -46,7 +47,7 @@ const OPERATION_OPTIONS: Array<{ id: ManufacturingOperation; label: string }> = 
   { id: "packaging", label: "Упаковка" },
 ];
 
-type WorkspaceTab = "model" | "dfm";
+type WorkspaceTab = "model" | "flat" | "dfm";
 
 function fmt(value: number, digits = Math.abs(value) < 1000 ? 2 : 0) {
   return value.toLocaleString("ru-RU", { maximumFractionDigits: digits });
@@ -347,9 +348,15 @@ export function ManufacturingWorkspace() {
 
   const isStep = activeModel?.format === "step" || activeModel?.format === "stp";
   const activeFlat = activeModel ? trustedPlanarFlat(activeModel) : null;
+  const flatPreview = activeFlat?.preview ?? null;
   const isTrustedPlanarStep = Boolean(isStep && activeFlat);
   const detectedStepThickness = activeModel?.sheetMetal?.thicknessCandidate?.thicknessMm;
   const bendCandidateCount = activeModel?.sheetMetal?.bendCandidates.length ?? 0;
+  const workspaceTabs: Array<{ id: WorkspaceTab; label: string }> = [
+    { id: "model", label: isStep ? "3D модель" : "2D модель" },
+    ...(flatPreview ? [{ id: "flat" as const, label: "Развёртка 2D" }] : []),
+    { id: "dfm", label: `DFM ${dfm.length ? `· ${dfm.length}` : ""}` },
+  ];
   const modelMetrics = isTrustedPlanarStep && activeFlat
     ? [
         ["X", `${fmt(activeFlat.widthMm)} мм`],
@@ -414,7 +421,7 @@ export function ManufacturingWorkspace() {
 
           <div className="order-1 min-w-0 overflow-hidden border border-white/10 bg-[#101416] xl:order-2">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
-              <div className="flex gap-1">{(["model", "dfm"] as const).map((item) => <button key={item} onClick={() => setTab(item)} className={`px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] transition ${tab === item ? "bg-steel-orange text-black" : "text-white/45 hover:text-white"}`}>{item === "model" ? (isStep ? "3D модель" : "2D модель") : `DFM ${dfm.length ? `· ${dfm.length}` : ""}`}</button>)}</div>
+              <div className="flex gap-1">{workspaceTabs.map((item) => <button key={item.id} onClick={() => setTab(item.id)} className={`px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] transition ${tab === item.id ? "bg-steel-orange text-black" : "text-white/45 hover:text-white"}`}>{item.label}</button>)}</div>
               <div className="flex items-center gap-3 text-[10px] uppercase tracking-[.12em] text-white/35">{activeModel && <span className="border border-white/10 px-2 py-1">{activeModel.metadata.parser}</span>}{activePart && <span className="max-w-[220px] truncate">{activePart.fileName}</span>}{activePart && <button onClick={removeActivePart} className="font-bold text-white/45 hover:text-red-300">Удалить</button>}</div>
             </div>
 
@@ -430,6 +437,11 @@ export function ManufacturingWorkspace() {
                   </motion.div>
                 ) : isAnalyzing ? (
                   <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center"><div className="w-full max-w-md px-8 text-center"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD geometry engine</p><h2 className="mt-4 text-2xl font-semibold">{activePart.format === "step" || activePart.format === "stp" ? "OpenCascade разбирает STEP" : "Разбираем и нормализуем CAD"}</h2><div className="relative mt-7 h-px overflow-hidden bg-white/10"><motion.span className="absolute inset-y-0 w-1/3 bg-steel-orange" animate={{ x: ["-100%", "300%"] }} transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }} /></div><p className="mt-4 text-xs text-white/35">геометрия · единицы · BRep · габариты · DFM</p></div></motion.div>
+                ) : tab === "flat" && activeFlat && flatPreview ? (
+                  <motion.div key={`flat-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-5 sm:p-8">
+                    <StepFlatPatternViewer preview={flatPreview} widthMm={activeFlat.widthMm} heightMm={activeFlat.heightMm} />
+                    <div className="absolute right-5 top-5 max-w-xs border border-white/10 bg-black/70 p-3 text-[9px] leading-relaxed text-white/45">2D-линии дискретизированы только для просмотра. Расчётная длина реза {fmt(activeFlat.cutLengthMm)} мм получена непосредственно из BRep и не зависит от плотности SVG-точек.</div>
+                  </motion.div>
                 ) : tab === "dfm" ? (
                   <motion.div key={`dfm-${activePart.id}`} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="relative p-5 sm:p-8">
                     <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Design for manufacturability</p><h2 className="mt-2 text-2xl font-semibold">Автоматическая проверка</h2></div><span className={`border px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] ${blocking ? "border-red-400/30 text-red-300" : manual ? "border-amber-400/25 text-amber-300" : "border-emerald-400/25 text-emerald-300"}`}>{blocking ? "Есть блокировка" : manual ? "Нужна проверка" : "Проверка пройдена"}</span></div>
@@ -444,7 +456,7 @@ export function ManufacturingWorkspace() {
                 )}
               </AnimatePresence>
 
-              {tab === "model" && activeModel && <div className="pointer-events-none absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-4">{modelMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
+              {(tab === "model" || tab === "flat") && activeModel && <div className="pointer-events-none absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-4">{modelMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
             </div>
           </div>
 
@@ -454,7 +466,7 @@ export function ManufacturingWorkspace() {
             {activePart ? <>
               <div className="space-y-5 p-5">
                 {isStep && <div className={`border p-3 text-[10px] leading-relaxed ${isTrustedPlanarStep ? "border-emerald-400/20 bg-emerald-400/[.04] text-white/52" : "border-steel-orange/20 bg-steel-orange/[.04] text-white/48"}`}>
-                  {isTrustedPlanarStep ? <><strong className="text-emerald-300">STEP лист:</strong> плоская листовая геометрия подтверждена. BRep-толщина {detectedStepThickness ? `${fmt(detectedStepThickness)} мм` : "требует проверки"}; выбранная толщина должна совпадать с CAD.</> : <><strong className="text-steel-orange">STEP 3D:</strong> BRep-анализ выполнен{detectedStepThickness ? `; кандидат толщины ${fmt(detectedStepThickness)} мм` : ""}{bendCandidateCount ? `; кандидатов зон гиба ${bendCandidateCount}` : ""}. До подтверждённой развёртки цена не рассчитывается автоматически.</>}
+                  {isTrustedPlanarStep ? <><strong className="text-emerald-300">STEP лист:</strong> плоская листовая геометрия подтверждена. BRep-толщина {detectedStepThickness ? `${fmt(detectedStepThickness)} мм` : "требует проверки"}; выбранная толщина должна совпадать с CAD.{flatPreview ? " Доступна отдельная 2D-вкладка BRep-контура." : ""}</> : <><strong className="text-steel-orange">STEP 3D:</strong> BRep-анализ выполнен{detectedStepThickness ? `; кандидат толщины ${fmt(detectedStepThickness)} мм` : ""}{bendCandidateCount ? `; кандидатов зон гиба ${bendCandidateCount}` : ""}. До подтверждённой развёртки цена не рассчитывается автоматически.</>}
                 </div>}
                 <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-left transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.075]" : "border-white/10 bg-[#0b0e10] hover:border-white/20"}`}><span className="block text-[11px] font-semibold">{option.label}</span><span className="mt-1 block text-[8px] leading-tight text-white/30">{option.note}</span></button>)}</div></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none focus:border-steel-orange">{thicknessOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
