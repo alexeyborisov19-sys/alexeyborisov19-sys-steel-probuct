@@ -1,0 +1,38 @@
+name: Sync OCCT dependency for Steel Product Online
+
+on:
+  push:
+    branches:
+      - feat/steel-product-instant-quote-cad-sep14
+    paths:
+      - '.github/workflows/occt-dependency-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/steel-product-instant-quote-cad-sep14
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+      - name: Install pinned OpenCascade WASM package
+        run: npm install --save-exact occt-wasm@5.0.0
+      - name: Commit dependency manifest and lockfile
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo 'No dependency changes to commit.'
+            exit 0
+          fi
+          git config user.name 'steel-product-alpha-bot'
+          git config user.email 'steel-product-alpha-bot@users.noreply.github.com'
+          git add package.json package-lock.json
+          git commit -m 'chore: add occt-wasm STEP kernel'
+          git push origin HEAD:feat/steel-product-instant-quote-cad-sep14
