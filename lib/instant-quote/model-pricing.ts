@@ -2,7 +2,13 @@ import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import type { InstantQuoteProject } from "@/lib/instant-quote/domain";
 import { runVerifiedLaserDfm } from "@/lib/instant-quote/dfm";
 import { selectBestStoredPrice, type StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
-import { calculateProvisionalPartPrice, type MaterialId, type ProvisionalPartPrice } from "@/lib/instant-quote/pricing";
+import {
+  calculateProvisionalPartPrice,
+  type CuttingRate,
+  type MaterialId,
+  type PricingBasis,
+  type ProvisionalPartPrice,
+} from "@/lib/instant-quote/pricing";
 
 export type ModelPartPricingStatus =
   | "calculated"
@@ -26,6 +32,11 @@ export type ModelProjectPricingResult = {
   totalRub: number;
   hasBlockingParts: boolean;
   hasReviewParts: boolean;
+};
+
+export type ProtectedPricingContext = {
+  basis: PricingBasis;
+  cuttingRates: CuttingRate[];
 };
 
 function materialIdOf(value: string | null): MaterialId | null {
@@ -55,6 +66,7 @@ export function calculateModelProjectPricing(
   project: InstantQuoteProject,
   modelsByPartId: Record<string, NormalizedCadModel>,
   snapshots: StoredPriceSnapshot[],
+  pricing: ProtectedPricingContext,
   now = new Date(),
 ): ModelProjectPricingResult {
   const parts = project.parts.map<ModelPartPricingResult>((part) => {
@@ -151,7 +163,7 @@ export function calculateModelProjectPricing(
       geometry: model.geometry,
       marketPrice: selection.price,
       operations: part.configuration.operations,
-    });
+    }, pricing.basis, pricing.cuttingRates);
 
     if (selection.stale) reviewReasons.push("Прайс металла требует обновления.");
 
