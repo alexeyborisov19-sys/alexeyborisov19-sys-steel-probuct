@@ -36,7 +36,7 @@ function parseTable(value: string) {
 export function runVerifiedLaserDfm(
   geometry: DfmGeometryInput,
   thicknessMm: number,
-  materialId: string = "hot",
+  materialId: string = "unknown",
 ): DfmResult[] {
   const results: DfmResult[] = [];
   const range = parseMmRange(laserCuttingCapabilities.thicknessRange);
@@ -71,11 +71,11 @@ export function runVerifiedLaserDfm(
             severity: "error",
           },
     );
-  } else if (!isConfirmedBlackSteel) {
+  } else {
     results.push({
       code: "material-thickness-review",
       title: "Диапазон материала требует подтверждения",
-      detail: "Для выбранного материала пока не заведена отдельная подтверждённая таблица допустимых толщин. Программа не переносит нормы чёрной стали автоматически.",
+      detail: "Для выбранного материала программа пока не применяет диапазон толщин чёрной стали автоматически. Материал и толщина должны быть подтверждены технологической базой.",
       severity: "manual",
     });
   }
