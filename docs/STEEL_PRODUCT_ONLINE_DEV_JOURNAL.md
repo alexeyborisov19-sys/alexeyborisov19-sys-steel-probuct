@@ -1,18 +1,16 @@
 # Steel Product Online — постоянный журнал разработки
 
-> Основной recovery/checkpoint-файл проекта. После любого обрыва соединения, новой сессии или потери контекста сначала читать этот файл, затем сверять его с реальным HEAD/CI и только после этого продолжать разработку.
+> Recovery/checkpoint-файл проекта. После обрыва или новой сессии сначала читать этот файл, затем сверять его с фактическим HEAD/CI и только после этого продолжать.
 
-## 0. Обязательный протокол после сброса
+## 0. Протокол восстановления
 
-1. Прочитать этот файл целиком.
-2. Получить актуальный HEAD ветки `feat/steel-product-online-clean-alpha-sep14` и состояние Draft PR #90.
-3. Сравнить актуальный HEAD с `Last implementation checkpoint`.
-4. Посмотреть commits после checkpoint. Journal/AGENTS-only commits не считать новой бизнес-реализацией.
-5. Проверить CI именно на актуальном implementation SHA/PR run.
-6. Если CI красный — сначала исправить текущий failure. Не добавлять новые слои поверх красной контрольной точки.
-7. Продолжать только с `NEXT ACTION`.
-8. После meaningful block обновлять checkpoint, DONE / IN PROGRESS / NEXT ACTION и changelog.
-9. Не переписывать модули из DONE без конкретного regression/CI evidence.
+1. Прочитать журнал целиком.
+2. Проверить HEAD `feat/steel-product-online-clean-alpha-sep14` и Draft PR #90.
+3. Сравнить HEAD с `Last GREEN verified tree` и `Last functional implementation SHA`.
+4. Journal-only commits не считать новой функциональностью, но CI green относится только к точному SHA, который реально проверялся.
+5. Если CI RED — исправлять текущий failure до любого нового functional layer.
+6. Продолжать с `NEXT ACTION`.
+7. После каждого meaningful block записывать WIP/RED/fix/GREEN и SHA.
 
 ---
 
@@ -21,256 +19,182 @@
 **Обновлено:** 2026-09-14
 
 - Репозиторий: `alexeyborisov19-sys/alexeyborisov19-sys-steel-probuct`
-- Рабочая ветка: `feat/steel-product-online-clean-alpha-sep14`
+- Ветка: `feat/steel-product-online-clean-alpha-sep14`
 - Draft PR: **#90 — `Steel Product Online: sanitized clean alpha snapshot`**
 - Base: `main`
-- Публикация: **НЕ ДЕЛАТЬ** без отдельного решения владельца
-- Merge в `main`: **НЕ ДЕЛАТЬ** без отдельного решения владельца
-- Оплата / checkout: **НЕ РАЗРАБАТЫВАТЬ на текущем этапе**
-- **Last GREEN implementation checkpoint:** `ae09b1e5b8f04db893eef174455f5af2e2d0991f`
-- Implementation commit: `Guard new internal physical inputs from public client boundary`
-- **CI на `ae09b1e…`: GREEN в обоих workflow.**
-  - `Steel Product Online Alpha CI`: success — TypeScript, Unit tests, Next.js build.
-  - `Verify project package`: success — Lint, Typecheck, Tests, Build, SEO audit.
-- PR #90 остаётся `open`, `draft`, `merged=false`; base остаётся `main`.
-- **Current WIP implementation HEAD:** `f8f97fc2a5ed77a36dab76e209d08f9227528e44`.
-- `9e163240…` regression run дал RED на TypeScript: старый `tests/instant-quote-snapshot.test.ts` вручную создавал `DxfShape.polyline` без нового `bulges[]`.
-- Production bulge logic не была причиной ошибки; failure локализован в test fixture.
-- `f8f97fc2…` обновил fixture явным `bulges: [0,0,0,0]` и является текущей точкой повторного CI gate.
-- Не считать bulge block новым checkpoint до полного GREEN.
+- Публикация: **НЕ ДЕЛАТЬ**
+- Merge в `main`: **НЕ ДЕЛАТЬ**
+- Оплата / checkout: **НЕ РАЗРАБАТЫВАТЬ**
+- PR остаётся `open`, `draft`, `merged=false`.
 
-> Journal commits выше implementation SHA являются recovery metadata. Новый implementation checkpoint фиксируется только после regression + CI gate.
+### Последняя проверенная точка
+
+- **Last functional implementation SHA:** `f8f97fc2a5ed77a36dab76e209d08f9227528e44`
+- Functional commit: `Update snapshot fixture for DXF bulge metadata`
+- **Last GREEN verified tree HEAD:** `155c19c555d4788d8a5af35f684ebdd231211482`
+- HEAD включает functional tree `f8f97fc2…` + journal metadata.
+- CI на `155c19c…` полностью GREEN:
+  - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
+  - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
+
+### Закрытый последний block — DXF LWPOLYLINE bulge
+
+- `DxfShape.polyline` хранит `bulges[]`, где bulge вершины относится к исходящему сегменту.
+- Bulge переводится аналитически в signed circular arc по DXF `bulge = tan(includedAngle/4)`.
+- Positive/negative sweep поддерживаются.
+- Production bbox использует точные cardinal extrema дуги.
+- Production cut length использует `radius × |sweep|`, а не хорду.
+- Closing bulge закрытого LWPOLYLINE относится к последнему→первому сегменту.
+- Preview рисует curved sampling, но sampling не участвует в production length/bounds.
+- Сам факт bulge больше не делает геометрию `unsupported`.
+- **Fail-closed:** exact area/pierce topology для bulged closed contour пока не объявляется фактом; `areaStatus=unavailable` до отдельного arc-aware topology proof.
+- Regression: positive/negative semicircle, signed quarter arc, closing bulge, zero-bulge compatibility, fail-closed area topology.
+- Первый CI на `9e163240…` дал TypeScript RED только из-за legacy test fixture без нового `bulges[]`; `f8f97fc2…` исправил fixture. Production logic для обхода теста не ослаблялась.
 
 ---
 
-## 2. Жёсткие продуктовые решения владельца
+## 2. Жёсткие решения владельца
 
-### 2.1 Что строим
+### Продукт
+`CAD → геометрия → DFM → материал/толщина → операции → фактический производственный расчёт → безопасный клиентский результат`.
 
-`CAD → геометрия → DFM → материал/толщина → операции → фактический производственный расчёт → безопасный клиентский результат`
+### Не делать сейчас
+- checkout/payment;
+- production deploy/publish;
+- merge в `main`;
+- автоматический release без внутренних gates.
 
-Функциональный ориентир — SendCutSend workflow, реализация clean-room.
+### Конфиденциальность
+Клиенту не показывать: закупочные цены, ставки, себестоимость, нормы, массу/отход/рез/прожиги как внутреннюю калькуляцию, detailed internal DFM, production evidence, report IDs/paths, factual assembly/surface-preparation inputs.
 
-### 2.2 Сейчас НЕ строим
+Клиентский boundary содержит только безопасный CAD/preview, безопасные габариты, выбранную конфигурацию, coarse status и в будущем отдельно утверждённую продажную цену/срок.
 
-- оплату;
-- checkout;
-- платёжные интеграции;
-- публичный production deploy;
-- автоматический release в производство без внутренних gates.
-
-### 2.3 Конфиденциальность
-
-Клиент НЕ получает: закупочные цены, внутренние ставки, себестоимость, коэффициенты/маржу, нормы, внутреннюю расшифровку реза/прожигов/массы/отхода, detailed internal DFM, report IDs/paths, production evidence, factual assembly/surface-preparation parameters.
-
-Клиент может получать: свой CAD/preview, безопасные габариты, выбранные материал/толщину/количество/операции, coarse status и в будущем отдельно утверждённую конечную продажную цену/срок.
-
-Разделение обеспечивать DTO/API boundary, а не скрытым UI.
-
-### 2.4 Внутренние отчёты
-
-В закрытом admin/RBAC контуре: закупочный металл, заготовка/расход, масса, отход, рез, прожиги, гибы, сварка, окраска, сборка, подготовка поверхности, упаковка, внутренние ставки, подтверждённая себестоимость, missing articles, detailed DFM, версия basis, audit/revision history.
-
-Хранение: вне `public/`, каталог `0700`, отчёты `0600`.
-
-### 2.5 Логика металла и лазера
-
-- Лазер — по **фактическому контуру детали**.
-- Металл до настоящего nesting — по **прямоугольной заготовке вокруг детали**, включая обрезки.
-- Authoritative nesting allocation позже может уточнить расход.
-- Чистая площадь детали не заменяет площадь закупочной прямоугольной заготовки.
-
-### 2.6 Фактический расчёт
-
-`подтверждённый физический параметр + подтверждённая закрытая ставка = подтверждённая статья`
-
-Если данных не хватает — `missing/partial`, а не ноль и не выдуманное значение. Реальные ставки/закупочные цены — только private runtime basis, не Git/client bundle.
+### Расчёт
+- Лазер — фактический контур.
+- Металл до настоящего nesting — прямоугольная заготовка вокруг детали, включая обрезки.
+- Неизвестный physical input/rate = `missing/partial`, не ноль.
+- Реальные rates/supplier prices — только private runtime basis.
+- Аппроксимацию нельзя выдавать за factual production value.
 
 ---
 
 ## 3. DONE — не создавать заново
 
-### CAD workspace / DXF
-- `/online-order` client-safe workspace.
-- multi-part project.
-- DXF/STEP/STP/DWG intake.
-- DXF ASCII parser: LINE/LWPOLYLINE/CIRCLE/ARC, bounds/cut length/preview.
-- ARC уже использует точные cardinal bounds и фактическую длину дуги; не переписывать без regression evidence.
-- public calculation server заново разбирает CAD; browser production metrics не authoritative.
-- Известные DXF gaps после текущего WIP: legacy POLYLINE/VERTEX, SPLINE, ELLIPSE, INSERT/BLOCK, HATCH, arc-aware exact closed-contour topology для bulged LWPOLYLINE, более строгая production contour/pierce topology.
+### Public/client safety
+- client-safe `/online-order` workspace;
+- safe client DTO;
+- public calculation server повторно анализирует CAD;
+- private economics/DFM/report evidence не импортируются в client boundary;
+- confidentiality regression запрещает `powderAreaM2`, `assemblyMinutes`, `surfacePreparationAreaM2`, `authoritativeFactualByPartId`, cost/rate/supplier/report/DFM evidence в client workspace/DTO.
 
-### STEP / Sheet Metal Engine
-- OpenCascade STEP analysis;
+### STEP
+- OpenCascade analysis;
 - BRep planar/cylindrical evidence;
 - thickness/bend candidates;
-- paired physical panels;
-- finite bend axes;
-- topology graph;
-- explicit approved bend allowance contract;
-- unfold plan;
-- rigid flatten orientation;
-- BRep boundaries + 2D preview;
-- tangency via edge hashes;
-- allowance spacing + multi-bend propagation;
-- bend strips;
-- panel/strip collision gates;
-- sampled flat-pattern region/contour;
-- BRep area audit + verification gate;
-- sampled/unverified bent STEP pricing/CAM intentionally blocked;
-- injectable authoritative STEP analyzer;
-- exact STEP BRep boundary surface area для factual coating только в server-only production evidence;
-- browser CAD model/client DTO не расширены производственной площадью поверхности;
-- private STEP physical evidence продвигается только для production-ready high-confidence planar STEP.
+- topology/unfold pipeline;
+- flat-pattern verification gates;
+- unverified bent STEP fail-closed для pricing/CAM;
+- server-only exact STEP surface area для internal factual coating;
+- server-authoritative factual evidence только в confidential snapshot/revisions.
 
-### Factual calculation
-- private runtime rate-book;
-- no real public rates/supplier prices;
-- project factual aggregation;
-- production parameters;
-- stock-aware supplier selection;
-- exact thickness / stale price handling;
-- confidential laser batch tiers;
-- confidential pierce line when rate exists;
+### Factual/internal
+- private runtime rate book;
+- supplier snapshot basis;
+- factual project aggregation;
 - bending/welding/powder;
-- assembly / surface preparation / packaging semantics;
-- `assemblyMinutes` + `surfacePreparationAreaM2` проходят project/internal immutable revision path;
-- missing physical input отдельно от missing rate;
-- no hidden public 5%/16.5%/setup assumptions;
-- provenance-aware physical input resolution: explicit technologist > server-authoritative CAD evidence > explicit coating-side derivation;
-- DXF coating area не выводится без явного выбора сторон;
-- production parameters используют effective factual inputs.
+- assembly/surface-preparation/packaging semantics;
+- `assemblyMinutes` + `surfacePreparationAreaM2` через internal immutable revisions;
+- internal report/list/detail/RBAC/CSRF/revision lineage;
+- manual technologist override выше automatic evidence.
 
 ### Supplier feed
-- Atlantik primary automatic source for validated sheet groups;
-- HTTPS allowlist, PDF signature/size/timeouts;
-- `pdftotext -layout` parser + sanity checks;
-- SHA-256 fingerprint;
-- dry-run + explicit persist;
-- atomic private snapshot replacement;
-- protected no-store refresh endpoint без возврата цен;
-- METALLSERVIS remains planned until stable official machine endpoint confirmed;
-- no third-party aggregator as authoritative source.
+- Atlantik protected refresh/parser/snapshot flow;
+- HTTPS allowlist, PDF validation, SHA-256, dry-run/persist, atomic private replacement;
+- METALLSERVIS не использовать как authoritative до стабильного official machine endpoint.
 
-### Privacy / public API
-- safe client DTO;
-- public workspace does not import internal economics;
-- public supplier seed empty;
-- public manifest accepts only customer choices;
-- security/quarantine upload path;
-- private orchestrator server-only/lazy;
-- confidentiality regression tests;
-- regression запрещает internal cost/rate/supplier/report/DFM evidence, `powderAreaM2`, `assemblyMinutes`, `surfacePreparationAreaM2`, `authoritativeFactualByPartId` в client workspace/client DTO.
-
-### Internal reports
-- private storage/list/detail pages;
-- existing RBAC;
-- readiness/completeness score;
-- per-part checkpoints;
-- immutable revision model;
-- revision input accepts only physical parameters, never rates/cost/total;
-- internal session + CSRF;
-- lineage (`supersedes`, actor, reason);
-- revision form;
-- server-authoritative factual inputs сохраняются в confidential snapshot и переживают immutable recalculation revisions;
-- manual technologist override остаётся выше automatic CAD evidence;
-- assembly/surface-preparation physical values поддерживают accept/reject/clear и readiness regression coverage.
-
-### Continuity
-- этот journal создан;
-- `AGENTS.md` требует journal-first recovery;
-- green CI привязывается к конкретному implementation SHA.
+### DXF
+- LINE, CIRCLE, ARC, LWPOLYLINE;
+- exact straight closed-polyline area/hole topology;
+- exact ARC bbox/length;
+- exact LWPOLYLINE bulge bbox/length + curved preview;
+- bulged closed area/pierce остаётся fail-closed.
 
 ---
 
 ## 4. IN PROGRESS
 
-### DXF LWPOLYLINE bulge (`group 42`)
+### Следующий DXF compatibility block — legacy `POLYLINE / VERTEX / SEQEND`
 
-Уже сделано в WIP:
-- `e2d3bb9c…`: `DxfShape.polyline` хранит `bulges[]`, где bulge вершины относится к исходящему сегменту;
-- реализовано аналитическое `bulge → circular arc` через DXF `tan(includedAngle/4)`;
-- positive/negative signed sweep поддерживаются;
-- bbox учитывает реальные cardinal extrema дуги;
-- cut length считается по `r × |sweep|`, а не по хорде;
-- последний bulge закрытого LWPOLYLINE применяется к closing segment;
-- `LWPOLYLINE_BULGE` больше не считается unsupported только из-за наличия кривого сегмента;
-- `2a0a6089…`: preview строит кривые segment points; preview sampling не используется для production length/bounds;
-- exact area/pierce topology для bulged closed contour намеренно fail-closed (`areaStatus=unavailable`) до arc-aware topology proof;
-- `9e163240…`: regression tests: positive/negative semicircle, signed quarter arc, closing bulge, zero-bulge compatibility, fail-closed area topology;
-- CI на `9e163240…`: lint GREEN, TypeScript RED только из-за legacy test fixture без обязательного `bulges[]`;
-- `f8f97fc2…`: fixture обновлён zero-bulge metadata; повторный CI обязателен.
+Причина приоритета: старый DXF формат хранит polyline как отдельный `POLYLINE` entity, затем серию `VERTEX`, затем `SEQEND`. Текущий parser рассматривает эти entities как unsupported, хотя геометрически многие из них эквивалентны LWPOLYLINE.
+
+Цель первого безопасного этапа:
+- поддержать только доказуемый 2D legacy polyline subset;
+- flags closed/open брать из `POLYLINE group 70`;
+- X/Y брать из `VERTEX 10/20`;
+- vertex bulge (`VERTEX group 42`) использовать через уже проверенную bulge-геометрию;
+- 3D/polyface/polygon-mesh variants не интерпретировать как простой контур — оставлять manual/unsupported;
+- production bbox/cut length переиспользуют тот же segment engine, а не отдельную формулу.
 
 ---
 
-## 5. NEXT ACTION — начинать отсюда
+## 5. NEXT ACTION
 
-**NEXT ACTION #1:** проверить оба CI workflow на tree с `f8f97fc2…` (или последующем journal-only HEAD). Если RED — исправить только текущие failures, не добавляя следующий функциональный слой.
-
-**NEXT ACTION #2:** если GREEN — обновить `Last GREEN implementation checkpoint` на проверенный implementation SHA и перенести bulge bounds/length/preview в DONE.
-
-**NEXT ACTION #3:** после GREEN оценить следующий DXF gap. Приоритет: exact arc-aware area/topology для bulged closed contour, если можно доказать аналитически и тестами; иначе legacy `POLYLINE/VERTEX`.
-
-**NEXT ACTION #4:** сохранять fail-closed semantics: никакую аппроксимированную площадь/число прожигов не выдавать как factual production value.
+1. Разобрать flags DXF legacy `POLYLINE` и определить fail-closed masks для 3D/polyface/mesh.
+2. Реализовать stateful parse `POLYLINE → VERTEX* → SEQEND` только для простого 2D subset.
+3. Нормализовать его в тот же `{points, bulges, closed}` shape, что LWPOLYLINE.
+4. Regression fixtures: open/closed, vertex bulge, last closing bulge, unsupported 3D/polyface flags, malformed sequence.
+5. Полный CI; при RED сначала исправить failure и записать его в журнал.
+6. После GREEN выбрать следующий gap: exact bulged closed topology либо SPLINE/ELLIPSE.
 
 ---
 
 ## 6. Запрещено без нового решения владельца
 
-- merge в `main`;
+- merge `main`;
 - deploy/publish;
-- checkout/payment;
-- показывать клиенту себестоимость/внутреннюю технологию;
-- реальные ставки/закупочные цены в публичном Git;
-- internal report locator клиенту;
-- ненадёжный METALLSERVIS scraping;
-- придуманные K-factor/bend allowance/rates/tolerances;
+- payment/checkout;
+- public internal economics/DFM/evidence;
+- реальные private rates/prices в Git/client;
 - unverified bent STEP как production-authoritative;
-- неизвестная операция как нулевая стоимость;
-- аппроксимированную DXF площадь выдавать как exact production fact.
+- unknown operation как zero cost;
+- 3D/polyface DXF трактовать как 2D contour;
+- approximate curved area/pierces выдавать как exact factual values.
 
 ---
 
 ## 7. CI policy
 
-Green относится только к SHA, который реально прошёл gate. Минимум: lint, TypeScript, unit tests, Next.js build, SEO audit там, где предусмотрен. Между RED/PENDING и GREEN не добавлять новый functional layer.
+Green относится к конкретному проверенному SHA. Минимум: lint, TypeScript, unit tests, Next.js build, SEO audit там, где предусмотрен. Новый functional layer только после green предыдущего дерева.
 
 ---
 
-## 8. Changelog checkpoints
+## 8. Changelog
 
-### 2026-09-14 — journal/recovery introduced
-- Clean branch / PR #90 закреплены как основной рабочий контур.
-- `AGENTS.md` требует journal-first restart protocol.
+### 2026-09-14 — recovery journal
+- Clean branch и Draft PR #90 закреплены как рабочий контур.
+- `AGENTS.md` требует journal-first recovery.
 
-### 2026-09-14 — factual CI restored
-- `3ffe7029…`: factual regression chain полностью GREEN.
+### 2026-09-14 — private STEP/factual safety
+- private STEP surface evidence + confidential provenance;
+- assembly/surface-preparation internal revision path;
+- `ae09b1e5…` — предыдущий green functional checkpoint.
 
-### 2026-09-14 — private STEP coating evidence
-- exact OpenCascade STEP boundary surface area вынесена в server-only production evidence;
-- server-authoritative factual provenance сохраняется только в confidential snapshot/revisions;
-- `5fab1567…` — GREEN implementation checkpoint.
-
-### 2026-09-14 — internal assembly / surface preparation revision path
-- `75308022…` → `673d74ef…`: project/internal path, revisions, production parameters, completeness и internal UI;
-- `7201aa40…` и последующие regression commits закрыли parser/project/readiness/confidentiality checks;
-- `ae09b1e5…`: client boundary regression дополнительно запрещает новые internal physical fields;
-- на `ae09b1e5…` оба workflow GREEN — предыдущий implementation checkpoint.
-
-### 2026-09-14 — WIP DXF LWPOLYLINE bulge
-- `e2d3bb9c…`: аналитические bulge arc bounds/cut length + segment metadata;
-- `2a0a6089…`: curved preview;
-- `9e163240…`: bulge regression suite;
-- CI `9e163240…`: lint GREEN, typecheck RED из-за `instant-quote-snapshot.test.ts` fixture без `bulges[]`;
-- `f8f97fc2…`: fixture исправлен zero-bulge metadata, production logic не ослаблялась;
-- area/pierce topology для curved closed contours остаётся fail-closed до отдельного доказанного блока.
+### 2026-09-14 — DXF LWPOLYLINE bulge
+- `e2d3bb9c…` — analytic bulge arc geometry, exact bbox/cut length;
+- `2a0a6089…` — curved preview;
+- `9e163240…` — regression suite;
+- CI RED: legacy snapshot fixture не содержал `bulges[]`;
+- `f8f97fc2…` — fixture updated, без ослабления production logic;
+- `155c19c…` — verified tree: оба workflow полностью GREEN;
+- curved closed area/pierce topology намеренно остаётся fail-closed.
 
 ---
 
-## 9. Как обновлять журнал
+## 9. Правило обновления журнала
 
-После meaningful block:
-1. `Last GREEN implementation checkpoint` = свежий проверенный implementation SHA;
-2. честный CI status;
-3. DONE / IN PROGRESS / NEXT ACTION;
-4. changelog с SHA, failure/fix и fail-closed ограничениями;
-5. не менять жёсткие продуктовые решения без явного решения владельца.
+После meaningful block записывать:
+1. functional SHA;
+2. verified GREEN tree SHA;
+3. RED/fix, если был;
+4. что DONE, что fail-closed;
+5. следующий конкретный action.
