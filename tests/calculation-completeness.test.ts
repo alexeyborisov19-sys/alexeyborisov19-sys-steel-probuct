@@ -143,6 +143,81 @@ test("keeps selected welding in review until actual weld length or rate is confi
   assert.equal(summary.items.find((item) => item.key === "article:welding")?.state, "missing");
 });
 
+test("tracks missing assembly and surface preparation physical inputs as separate readiness checks", () => {
+  const calculation = factual({
+    status: "partial",
+    missing: [
+      {
+        code: "assembly-time",
+        label: "Сборка",
+        reason: "Нужно фактическое время сборки на изделие.",
+        blocking: false,
+      },
+      {
+        code: "surface-preparation-area",
+        label: "Подготовка поверхности",
+        reason: "Нужна фактическая площадь подготовки поверхности на изделие.",
+        blocking: false,
+      },
+    ],
+  });
+
+  const summary = summarizePartCalculationCompleteness(part(calculation), parameters);
+  assert.equal(summary.status, "review");
+  assert.equal(summary.items.find((item) => item.key === "article:assembly")?.state, "missing");
+  assert.equal(summary.items.find((item) => item.key === "article:surface-preparation")?.state, "missing");
+});
+
+test("marks assembly, surface preparation and packaging confirmed when factual lines exist", () => {
+  const calculation = factual({
+    status: "complete",
+    lines: [
+      ...factual().lines,
+      {
+        code: "assembly",
+        label: "Сборка",
+        quantity: 0.2,
+        unit: "ч/шт",
+        rateRub: 600,
+        amountRubEach: 120,
+        amountRubBatch: 1200,
+        source,
+      },
+      {
+        code: "surface-preparation",
+        label: "Подготовка поверхности",
+        quantity: 0.4,
+        unit: "м²/шт",
+        rateRub: 200,
+        amountRubEach: 80,
+        amountRubBatch: 800,
+        source,
+      },
+      {
+        code: "packaging",
+        label: "Упаковка",
+        quantity: 1,
+        unit: "изделие/шт",
+        rateRub: 30,
+        amountRubEach: 30,
+        amountRubBatch: 300,
+        source,
+      },
+    ],
+  });
+
+  const summary = summarizePartCalculationCompleteness(part(calculation), {
+    ...parameters,
+    assembly: { minutesEach: 12, minutesBatch: 120, hoursBatch: 2 },
+    surfacePreparation: { areaM2Each: 0.4, areaM2Batch: 4 },
+    packaging: { selected: true, unitsBatch: 10 },
+  });
+  assert.equal(summary.status, "ready");
+  assert.equal(summary.items.find((item) => item.key === "article:assembly")?.state, "confirmed");
+  assert.equal(summary.items.find((item) => item.key === "article:surface-preparation")?.state, "confirmed");
+  assert.equal(summary.items.find((item) => item.key === "article:packaging")?.state, "confirmed");
+});
+
 test("DFM blocking reason always makes the part blocked", () => {
   const blockedPart: ProjectFactualPartResult = {
     ...part(),
