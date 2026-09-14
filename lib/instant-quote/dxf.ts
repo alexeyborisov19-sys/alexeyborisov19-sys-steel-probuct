@@ -2,7 +2,7 @@ export type Point2D = { x: number; y: number };
 
 export type DxfShape =
   | { kind: "line"; a: Point2D; b: Point2D }
-  | { kind: "polyline"; points: Point2D[]; closed: boolean }
+  | { kind: "polyline"; points: Point2D[]; bulges: number[]; closed: boolean }
   | { kind: "circle"; c: Point2D; r: number }
   | { kind: "arc"; c: Point2D; r: number; start: number; end: number };
 
@@ -34,8 +34,23 @@ type ClosedContour = {
   contains(point: Point2D): boolean;
 };
 
+type CircularArc = {
+  c: Point2D;
+  r: number;
+  start: number;
+  sweep: number;
+};
+
+const EPSILON = 1e-12;
+
 function distance(a: Point2D, b: Point2D) {
   return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+function normalizePositiveDegrees(value: number) {
+  let normalized = value % 360;
+  if (normalized < 0) normalized += 360;
+  return normalized;
 }
 
 export function normalizeArc(start: number, end: number) {
@@ -93,19 +108,67 @@ function numberField(fields: Pair[], code: number) {
   return Number.isFinite(value) ? value : undefined;
 }
 
-function exactArcBounds(shape: Extract<DxfShape, { kind: "arc" }>) {
-  const delta = normalizeArc(shape.start, shape.end);
-  const end = shape.start + delta;
-  const candidates = [shape.start, end];
-  for (const cardinal of [0, 90, 180, 270, 360]) {
-    let angle = cardinal;
-    while (angle < shape.start) angle += 360;
-    if (angle <= end + 1e-9) candidates.push(angle);
+function angleWithinSweep(angle: number, start: number, sweep: number) {
+  if (sweep >= 0) {
+    return normalizePositiveDegrees(angle - start) <= sweep + 1e-9;
+  }
+  return normalizePositiveDegrees(start - angle) <= -sweep + 1e-9;
+}
+
+function circularArcBounds(arc: CircularArc) {
+  const candidates = [arc.start, arc.start + arc.sweep];
+  for (const cardinal of [0, 90, 180, 270]) {
+    if (angleWithinSweep(cardinal, arc.start, arc.sweep)) candidates.push(cardinal);
   }
   return candidates.map((deg) => {
     const rad = deg * Math.PI / 180;
-    return { x: shape.c.x + Math.cos(rad) * shape.r, y: shape.c.y + Math.sin(rad) * shape.r };
+    return { x: arc.c.x + Math.cos(rad) * arc.r, y: arc.c.y + Math.sin(rad) * arc.r };
   });
+}
+
+function exactArcBounds(shape: Extract<DxfShape, { kind: "arc" }>) {
+  return circularArcBounds({
+    c: shape.c,
+    r: shape.r,
+    start: shape.start,
+    sweep: normalizeArc(shape.start, shape.end),
+  });
+}
+
+/**
+ * Converts the DXF LWPOLYLINE bulge attached to vertex `a` into its exact
+ * signed circular arc from `a` to `b`.
+ *
+ * DXF bulge = tan(includedAngle / 4). Positive values are counter-clockwise,
+ * negative values clockwise. Production bounds/length use this analytic arc;
+ * preview sampling is kept separate.
+ */
+export function bulgeArc(a: Point2D, b: Point2D, bulge: number): CircularArc | null {
+  if (!Number.isFinite(bulge) || Math.abs(bulge) <= EPSILON) return null;
+  const chord = distance(a, b);
+  if (!(chord > EPSILON)) return null;
+
+  const sweepRad = 4 * Math.atan(bulge);
+  const radius = chord * (1 + bulge * bulge) / (4 * Math.abs(bulge));
+  if (!(radius > 0) || !Number.isFinite(radius)) return null;
+
+  const midpoint = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const leftNormal = { x: -dy / chord, y: dx / chord };
+  const centerOffset = chord * (1 - bulge * bulge) / (4 * bulge);
+  const c = {
+    x: midpoint.x + leftNormal.x * centerOffset,
+    y: midpoint.y + leftNormal.y * centerOffset,
+  };
+  const start = Math.atan2(a.y - c.y, a.x - c.x) * 180 / Math.PI;
+
+  return {
+    c,
+    r: radius,
+    start,
+    sweep: sweepRad * 180 / Math.PI,
+  };
 }
 
 function polygonArea(points: Point2D[]) {
@@ -130,12 +193,22 @@ function pointInPolygon(point: Point2D, polygon: Point2D[]) {
   return inside;
 }
 
+function hasCurvedPolylineSegment(shape: Extract<DxfShape, { kind: "polyline" }>) {
+  const segmentCount = shape.closed ? shape.points.length : Math.max(0, shape.points.length - 1);
+  for (let index = 0; index < segmentCount; index++) {
+    if (Math.abs(shape.bulges[index] ?? 0) > EPSILON) return true;
+  }
+  return false;
+}
+
 function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
   const closed: ClosedContour[] = [];
+  let closedContourCount = 0;
   let exact = unsupported.size === 0;
 
   for (const shape of shapes) {
     if (shape.kind === "circle") {
+      closedContourCount++;
       closed.push({
         area: Math.PI * shape.r * shape.r,
         sample: { x: shape.c.x + shape.r * 0.999, y: shape.c.y },
@@ -145,6 +218,14 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
     }
 
     if (shape.kind === "polyline" && shape.closed && shape.points.length >= 3) {
+      closedContourCount++;
+      // Bounds and path length for bulged segments are exact, but exact net-area
+      // topology requires arc-aware area + containment. Until that is proven by
+      // regression fixtures, fail closed instead of treating chord area as fact.
+      if (hasCurvedPolylineSegment(shape)) {
+        exact = false;
+        continue;
+      }
       const area = polygonArea(shape.points);
       if (!(area > 0)) {
         exact = false;
@@ -163,8 +244,8 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
     exact = false;
   }
 
-  if (!exact || !closed.length) {
-    return { area: null, pierces: null, holes: null, closedContours: closed.length, status: "unavailable" as const };
+  if (!exact || !closed.length || closed.length !== closedContourCount) {
+    return { area: null, pierces: null, holes: null, closedContours: closedContourCount, status: "unavailable" as const };
   }
 
   let netArea = 0;
@@ -185,9 +266,47 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
     area: Math.max(0, netArea),
     pierces: closed.length,
     holes,
-    closedContours: closed.length,
+    closedContours: closedContourCount,
     status: "exact" as const,
   };
+}
+
+function parseLwPolyline(fields: Pair[]) {
+  const points: Point2D[] = [];
+  const bulges: number[] = [];
+  let currentX: number | undefined;
+  let currentY: number | undefined;
+  let currentBulge = 0;
+
+  const flush = () => {
+    if (currentX == null || currentY == null || !Number.isFinite(currentX) || !Number.isFinite(currentY)) return;
+    points.push({ x: currentX, y: currentY });
+    bulges.push(Number.isFinite(currentBulge) ? currentBulge : 0);
+  };
+
+  for (const [fieldCode, fieldValue] of fields) {
+    if (fieldCode === 10) {
+      flush();
+      const x = Number(fieldValue);
+      currentX = Number.isFinite(x) ? x : undefined;
+      currentY = undefined;
+      currentBulge = 0;
+      continue;
+    }
+    if (fieldCode === 20) {
+      const y = Number(fieldValue);
+      currentY = Number.isFinite(y) ? y : undefined;
+      continue;
+    }
+    if (fieldCode === 42) {
+      const bulge = Number(fieldValue);
+      currentBulge = Number.isFinite(bulge) ? bulge : 0;
+    }
+  }
+  flush();
+
+  while (bulges.length < points.length) bulges.push(0);
+  return { points, bulges };
 }
 
 export function parseAsciiDxf(text: string): ParsedDxf {
@@ -248,21 +367,9 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     }
 
     if (value === "LWPOLYLINE") {
-      const points: Point2D[] = [];
-      let currentX: number | undefined;
-      let hasBulge = false;
-      for (const [fieldCode, fieldValue] of fields) {
-        if (fieldCode === 10) currentX = Number(fieldValue);
-        if (fieldCode === 42 && Math.abs(Number(fieldValue)) > 1e-12) hasBulge = true;
-        if (fieldCode === 20 && currentX != null) {
-          const y = Number(fieldValue);
-          if (Number.isFinite(currentX) && Number.isFinite(y)) points.push({ x: currentX, y });
-          currentX = undefined;
-        }
-      }
-      if (hasBulge) unsupported.add("LWPOLYLINE_BULGE");
+      const { points, bulges } = parseLwPolyline(fields);
       const flags = Number(first(70) ?? "0");
-      if (points.length >= 2) shapes.push({ kind: "polyline", points, closed: (flags & 1) === 1 });
+      if (points.length >= 2) shapes.push({ kind: "polyline", points, bulges, closed: (flags & 1) === 1 });
       continue;
     }
 
@@ -280,9 +387,19 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       pointsForBounds.push(shape.a, shape.b);
       cutLength += distance(shape.a, shape.b);
     } else if (shape.kind === "polyline") {
-      pointsForBounds.push(...shape.points);
-      for (let p = 1; p < shape.points.length; p++) cutLength += distance(shape.points[p - 1], shape.points[p]);
-      if (shape.closed) cutLength += distance(shape.points.at(-1)!, shape.points[0]);
+      const segmentCount = shape.closed ? shape.points.length : shape.points.length - 1;
+      for (let p = 0; p < segmentCount; p++) {
+        const a = shape.points[p];
+        const b = shape.points[(p + 1) % shape.points.length];
+        const curved = bulgeArc(a, b, shape.bulges[p] ?? 0);
+        if (curved) {
+          pointsForBounds.push(...circularArcBounds(curved));
+          cutLength += curved.r * Math.abs(curved.sweep) * Math.PI / 180;
+        } else {
+          pointsForBounds.push(a, b);
+          cutLength += distance(a, b);
+        }
+      }
     } else if (shape.kind === "circle") {
       pointsForBounds.push(
         { x: shape.c.x - shape.r, y: shape.c.y - shape.r },
@@ -324,14 +441,39 @@ export function parseAsciiDxf(text: string): ParsedDxf {
   };
 }
 
-export function arcPoints(shape: Extract<DxfShape, { kind: "arc" }>) {
-  const delta = normalizeArc(shape.start, shape.end);
-  const steps = Math.max(8, Math.ceil(delta / 8));
+function sampleCircularArc(arc: CircularArc, maxStepDegrees = 8) {
+  const steps = Math.max(1, Math.ceil(Math.abs(arc.sweep) / maxStepDegrees));
   return Array.from({ length: steps + 1 }, (_, index) => {
-    const angle = ((shape.start + (delta * index) / steps) * Math.PI) / 180;
+    const angle = (arc.start + (arc.sweep * index) / steps) * Math.PI / 180;
     return {
-      x: shape.c.x + Math.cos(angle) * shape.r,
-      y: shape.c.y + Math.sin(angle) * shape.r,
+      x: arc.c.x + Math.cos(angle) * arc.r,
+      y: arc.c.y + Math.sin(angle) * arc.r,
     };
+  });
+}
+
+export function polylinePreviewPoints(shape: Extract<DxfShape, { kind: "polyline" }>) {
+  if (!shape.points.length) return [];
+  const result: Point2D[] = [shape.points[0]];
+  const segmentCount = shape.closed ? shape.points.length : shape.points.length - 1;
+  for (let index = 0; index < segmentCount; index++) {
+    const a = shape.points[index];
+    const b = shape.points[(index + 1) % shape.points.length];
+    const curved = bulgeArc(a, b, shape.bulges[index] ?? 0);
+    if (!curved) {
+      result.push(b);
+      continue;
+    }
+    result.push(...sampleCircularArc(curved).slice(1));
+  }
+  return result;
+}
+
+export function arcPoints(shape: Extract<DxfShape, { kind: "arc" }>) {
+  return sampleCircularArc({
+    c: shape.c,
+    r: shape.r,
+    start: shape.start,
+    sweep: normalizeArc(shape.start, shape.end),
   });
 }
