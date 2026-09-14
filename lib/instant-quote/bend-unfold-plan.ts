@@ -1,5 +1,13 @@
-import type { ResolvedBendAllowance } from "@/lib/instant-quote/bend-allowance";
-import type { BendTopologyGraph } from "@/lib/instant-quote/bend-topology";
+import {
+  resolveApprovedBendAllowances,
+  type ApprovedBendAllowanceTable,
+  type ResolvedBendAllowance,
+} from "@/lib/instant-quote/bend-allowance";
+import {
+  buildBendTopologyGraphFromUnfoldGeometry,
+  type BendTopologyGraph,
+} from "@/lib/instant-quote/bend-topology";
+import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import type { Vector3 } from "@/lib/instant-quote/sheet-metal";
 
 export type PlanarRegionGeometryEvidence = {
@@ -173,4 +181,74 @@ export function buildBendUnfoldPlan(input: {
     steps,
     errors: [],
   };
+}
+
+/**
+ * End-to-end readiness bridge from a normalized STEP model to a deterministic
+ * unfold plan. It still does not calculate 2D coordinates: the approved bend
+ * table resolves production allowance, while model.unfoldGeometry supplies only
+ * validated BRep panel regions and finite bend axes.
+ */
+export function buildBendUnfoldPlanFromModel(input: {
+  model: NormalizedCadModel;
+  table: ApprovedBendAllowanceTable;
+  materialId: string;
+  confirmedThicknessMm: number;
+}): BendUnfoldPlan {
+  const { model, table, materialId, confirmedThicknessMm } = input;
+  const evidence = model.unfoldGeometry;
+  const graph = buildBendTopologyGraphFromUnfoldGeometry(evidence);
+
+  if (!evidence || graph.status !== "tree") {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: graph.issues.length
+        ? graph.issues
+        : ["Normalized STEP does not contain a production-ready BRep bend tree."],
+    };
+  }
+
+  if (Math.abs(evidence.thicknessMm - confirmedThicknessMm) > Math.max(0.05, evidence.thicknessMm * 0.02)) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: [`Confirmed thickness ${confirmedThicknessMm} mm does not match BRep unfold thickness ${evidence.thicknessMm} mm.`],
+    };
+  }
+
+  const allowanceResolution = resolveApprovedBendAllowances({
+    graph,
+    table,
+    materialId,
+    confirmedThicknessMm,
+  });
+  if (!allowanceResolution.ok) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: allowanceResolution.errors,
+    };
+  }
+
+  return buildBendUnfoldPlan({
+    graph,
+    panels: evidence.panels.map((panel) => ({
+      faceId: panel.id,
+      centerMm: panel.centerMm,
+      normal: panel.normal,
+    })),
+    bendAxes: evidence.bends.map((bend) => ({
+      bendId: bend.bendId,
+      startMm: bend.axisStartMm,
+      endMm: bend.axisEndMm,
+    })),
+    allowances: allowanceResolution.values,
+  });
 }
