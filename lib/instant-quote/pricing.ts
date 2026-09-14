@@ -145,6 +145,8 @@ export type ProvisionalPartPricingInput = {
   weldLengthM?: number;
   powderSides?: 1 | 2;
   assemblyMinutes?: number;
+  // Reserved for future shop-specific allowance around the bounding blank.
+  // 1.0 means the current rule: metal = exact X×Y rectangular blank around the part.
   materialUsageFactor?: number;
 };
 
@@ -152,9 +154,13 @@ export type ProvisionalPartPrice = {
   materialMarketRubPerTon: number;
   materialMarketTier: "under-3t" | "from-3t";
   materialPricedRubPerTon: number;
+  netAreaMm2: number;
+  blankAreaMm2: number;
   netMassKg: number;
+  blankMassKg: number;
   purchasedMassKg: number;
   batchPurchasedMassKg: number;
+  blankWastePct: number | null;
   materialRubEach: number;
   laserRubEach: number;
   laserRubPerM: number;
@@ -177,20 +183,31 @@ export function calculateProvisionalPartPrice(
   const density = basis.densityKgM3[input.materialId];
   const bboxAreaMm2 = Math.max(0, (input.geometry.widthMm ?? 0) * (input.geometry.heightMm ?? 0));
   const hasExactPlanarArea = Boolean(input.geometry.areaMm2 && input.geometry.areaMm2 > 0);
-  const planarAreaMm2 = hasExactPlanarArea ? input.geometry.areaMm2! : bboxAreaMm2;
-  const areaM2 = planarAreaMm2 / 1_000_000;
+  const netAreaMm2 = hasExactPlanarArea ? input.geometry.areaMm2! : bboxAreaMm2;
+  const netAreaM2 = netAreaMm2 / 1_000_000;
   const thicknessM = input.thicknessMm / 1000;
+
+  // Net mass describes the finished part and may use the real closed-contour area.
   const netMassKg = input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0
     ? input.geometry.volumeMm3 / 1_000_000_000 * density
-    : areaM2 * thicknessM * density;
-  const usageFactor = Math.max(1, input.materialUsageFactor ?? 1.15);
-  const purchasedMassKg = netMassKg * usageFactor;
+    : netAreaM2 * thicknessM * density;
+
+  // Purchased metal is deliberately NOT based on net contour area.
+  // Until true sheet nesting is connected, Steel Product prices the rectangular X×Y blank around the part.
+  const blankAreaMm2 = bboxAreaMm2;
+  const blankMassKg = blankAreaMm2 / 1_000_000 * thicknessM * density;
+  const usageFactor = Math.max(1, input.materialUsageFactor ?? 1);
+  const purchasedMassKg = blankMassKg * usageFactor;
   const batchPurchasedMassKg = purchasedMassKg * quantity;
+  const blankWastePct = hasExactPlanarArea && blankAreaMm2 > 0
+    ? Math.max(0, (blankAreaMm2 - netAreaMm2) / blankAreaMm2 * 100)
+    : null;
 
   const supplierTier = supplierRubPerTon(input.marketPrice, batchPurchasedMassKg);
   const materialPricedRubPerTon = applyMetalUplift(supplierTier.rubPerTon, basis.materialMarketUpliftPct);
   const materialRubEach = purchasedMassKg * materialPricedRubPerTon / 1000;
 
+  // Laser remains tied to real toolpath: actual contour length + actual pierces.
   const cut = nearestCuttingRate(input.thicknessMm);
   const cutLengthM = Math.max(0, (input.geometry.cutLengthMm ?? 0) / 1000);
   const totalBatchCutM = cutLengthM * quantity;
@@ -204,7 +221,7 @@ export function calculateProvisionalPartPrice(
   const r = basis.operationRates;
   if (input.operations.includes("bending")) operationsRubEach += Math.max(0, input.bendCount ?? input.geometry.bendCount ?? 0) * r.bendRubEach;
   if (input.operations.includes("welding")) operationsRubEach += Math.max(0, input.weldLengthM ?? 0) * r.weldRubM;
-  if (input.operations.includes("powder-coating")) operationsRubEach += areaM2 * (input.powderSides ?? 2) * r.powderRubM2;
+  if (input.operations.includes("powder-coating")) operationsRubEach += netAreaM2 * (input.powderSides ?? 2) * r.powderRubM2;
   if (input.operations.includes("assembly")) operationsRubEach += Math.max(0, input.assemblyMinutes ?? 0) / 60 * r.assemblyRubHour;
   if (input.operations.includes("packaging")) operationsRubEach += r.packagingRubEach;
 
@@ -218,20 +235,24 @@ export function calculateProvisionalPartPrice(
 
   const warnings: string[] = [];
   if (!input.marketPrice.exactThickness) warnings.push("Цена металла выбрана по ближайшей толщине прайса.");
-  if (!(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0) && !hasExactPlanarArea) {
-    warnings.push("Точная площадь контура не подтверждена; масса рассчитана по габаритному прямоугольнику.");
-  } else if (!(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
-    warnings.push("Нетто-масса рассчитана по замкнутым DXF-контурам; расход заготовки будет уточнён настоящим nesting.");
+  warnings.push("Металл рассчитан по прямоугольной заготовке X×Y вокруг детали; настоящий листовой nesting позже уточнит распределение обрези по партии.");
+  if (!hasExactPlanarArea && !(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
+    warnings.push("Чистая площадь детали не подтверждена; нетто-масса временно равна массе габаритной заготовки.");
   }
+  if (usageFactor > 1) warnings.push(`К прямоугольной заготовке дополнительно применён коэффициент расхода ${usageFactor.toFixed(3)}.`);
   if (input.operations.includes("welding") && !(input.weldLengthM && input.weldLengthM > 0)) warnings.push("Сварка включена, но длина шва не определена.");
 
   return {
     materialMarketRubPerTon: supplierTier.rubPerTon,
     materialMarketTier: supplierTier.tier,
     materialPricedRubPerTon,
+    netAreaMm2,
+    blankAreaMm2,
     netMassKg,
+    blankMassKg,
     purchasedMassKg,
     batchPurchasedMassKg,
+    blankWastePct,
     materialRubEach,
     laserRubEach,
     laserRubPerM,
