@@ -1,6 +1,5 @@
 import "server-only";
 
-import type { ParsedDxf } from "@/lib/instant-quote/dxf";
 import type { InstantQuoteProject } from "@/lib/instant-quote/domain";
 import {
   createClientCalculationView,
@@ -11,6 +10,7 @@ import { resolveEffectiveFactualInputs } from "@/lib/instant-quote/factual-input
 import {
   calculateProjectFactualCost,
   type PartFactualInputs,
+  type ProjectCadEvidence,
 } from "@/lib/instant-quote/project-factual-calculation";
 import {
   deriveProductionParameters,
@@ -56,7 +56,7 @@ function signalStatus(status: string): ClientCalculationSignal["status"] {
  */
 export async function runConfidentialCalculationForClient(
   project: InstantQuoteProject,
-  parsedByPartId: Record<string, ParsedDxf>,
+  evidenceByPartId: ProjectCadEvidence,
   inputs: ConfidentialCalculationInputs = {},
   now = new Date(),
 ): Promise<ClientProjectCalculationView> {
@@ -71,7 +71,7 @@ export async function runConfidentialCalculationForClient(
 
   const calculation = calculateProjectFactualCost(
     project,
-    parsedByPartId,
+    evidenceByPartId,
     basis.materialPriceSnapshots,
     basis.rateBook,
     effectiveFactualByPartId,
@@ -97,7 +97,7 @@ export async function runConfidentialCalculationForClient(
   }
 
   const unsupportedEntitiesByPartId = Object.fromEntries(
-    Object.entries(parsedByPartId).map(([partId, parsed]) => [partId, [...parsed.unsupportedEntities]]),
+    Object.entries(evidenceByPartId).map(([partId, evidence]) => [partId, [...(evidence.unsupportedEntities ?? [])]]),
   );
   const calculationInputSnapshot: InternalCalculationInputSnapshot = {
     project,
