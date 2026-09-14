@@ -7,6 +7,7 @@ import type {
 } from "@/lib/instant-quote/cad-model";
 import { calculateMeshBounds } from "@/lib/instant-quote/mesh";
 import type { SheetMetalAnalysis } from "@/lib/instant-quote/sheet-metal";
+import type { StepUnfoldGeometryEvidence } from "@/lib/instant-quote/unfold-geometry";
 
 export type StepKernelResult = {
   meshes: CadMeshPrimitive[];
@@ -15,6 +16,7 @@ export type StepKernelResult = {
   root?: CadAssemblyNode | null;
   features?: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  unfoldGeometry?: StepUnfoldGeometryEvidence;
   warnings?: string[];
   parserVersion?: string;
 };
@@ -68,6 +70,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
         root: result.root ?? null,
         features: result.features ?? [],
         sheetMetal: result.sheetMetal,
+        unfoldGeometry: result.unfoldGeometry,
         metadata: {
           sourceFileName: request.fileName,
           sourceBytes: request.bytes.byteLength,
