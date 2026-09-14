@@ -20,6 +20,7 @@ function parsed(): ParsedDxf {
         { x: 500, y: 300 },
         { x: 0, y: 300 },
       ],
+      bulges: [0, 0, 0, 0],
       closed: true,
     }],
     width: 500,
