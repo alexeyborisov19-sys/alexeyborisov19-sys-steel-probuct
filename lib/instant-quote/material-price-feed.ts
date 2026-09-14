@@ -82,6 +82,8 @@ export type StoredPriceSnapshot = {
   rows: MaterialMarketPrice[];
   status: "ok" | "stale" | "failed";
   error?: string;
+  /** SHA-256 of normalized supplier rows, excluding fetch timestamps. */
+  contentSha256?: string;
 };
 
 export type PriceSelection = {
