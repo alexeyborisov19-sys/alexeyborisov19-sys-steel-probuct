@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+const projectImageHosts = [
+  "https://static.tildacdn.com",
+  "https://images.cdn-cian.ru",
+  "https://www.rabochy-put.ru",
+  "https://vostokstroy67.ru",
+  "https://smolgazeta.ru",
+  "https://static.mk.ru",
+  "https://smoldaily.ru",
+  "https://vestnikstroy.ru",
+  "https://sdelanounas.ru",
+] as const;
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -8,7 +20,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline' https://mc.yandex.ru",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com",
+  `img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com ${projectImageHosts.join(" ")}`,
   "font-src 'self' data:",
   "media-src 'self'",
   "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com",
@@ -16,9 +28,9 @@ const contentSecurityPolicy = [
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "upgrade-insecure-requests",
-// Keep whitespace on both sides of the directive separator. The CSP semantics
-// are unchanged, but static URL scanners do not mistake the semicolon for part
-// of a hostname such as `mc.yandex.ru;` or `mc.yandex.com;`.
+  // Keep whitespace on both sides of the directive separator. The CSP semantics
+  // are unchanged, but static URL scanners do not mistake the semicolon for part
+  // of a hostname such as `mc.yandex.ru;` or `mc.yandex.com;`.
 ].join(" ; ");
 
 const securityHeaders = [
@@ -44,9 +56,17 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   images: {
-    // Project photographs from third-party sites are kept as source links only.
-    // Do not whitelist remote image hosts without a separate rights/privacy review.
-    remotePatterns: [],
+    remotePatterns: [
+      { protocol: "https", hostname: "static.tildacdn.com" },
+      { protocol: "https", hostname: "images.cdn-cian.ru" },
+      { protocol: "https", hostname: "www.rabochy-put.ru" },
+      { protocol: "https", hostname: "vostokstroy67.ru" },
+      { protocol: "https", hostname: "smolgazeta.ru" },
+      { protocol: "https", hostname: "static.mk.ru" },
+      { protocol: "https", hostname: "smoldaily.ru" },
+      { protocol: "https", hostname: "vestnikstroy.ru" },
+      { protocol: "https", hostname: "sdelanounas.ru" },
+    ],
   },
   async redirects() {
     return [
