@@ -82,8 +82,13 @@ function isClientCadPreview(value: unknown): value is ClientCadPreview {
     && Array.isArray(candidate.meshes);
 }
 
+function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
+  return Array.from(event.dataTransfer.types).includes("Files");
+}
+
 export function ClientManufacturingWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragDepthRef = useRef(0);
   const [project, setProject] = useState(() => createEmptyProject());
   const [previewsByPartId, setPreviewsByPartId] = useState<Record<string, ClientCadPreview>>({});
   const [filesByPartId, setFilesByPartId] = useState<Record<string, File>>({});
@@ -92,6 +97,7 @@ export function ClientManufacturingWorkspace() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [projectCalculationMessage, setProjectCalculationMessage] = useState<string | null>(null);
   const [calculation, setCalculation] = useState<ClientProjectCalculationView | null>(null);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
 
   const activePart = useMemo(
     () => project.parts.find((part) => part.id === project.activePartId) ?? null,
@@ -206,8 +212,28 @@ export function ClientManufacturingWorkspace() {
     event.target.value = "";
     void ingestFiles(files);
   };
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+  const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) return;
     event.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDraggingFiles(true);
+  };
+  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  };
+  const onDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDraggingFiles(false);
+  };
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDraggingFiles(false);
     void ingestFiles(Array.from(event.dataTransfer.files ?? []));
   };
 
@@ -321,14 +347,23 @@ export function ClientManufacturingWorkspace() {
             <button onClick={() => inputRef.current?.click()} className="m-4 w-[calc(100%-2rem)] border border-white/12 px-3 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/55 hover:border-steel-orange hover:text-white">+ Добавить CAD</button>
           </aside>
 
-          <div className="min-w-0 overflow-hidden border border-white/10 bg-[#101416]">
+          <div
+            className="relative min-w-0 overflow-hidden border border-white/10 bg-[#101416]"
+            onDragEnter={onDragEnter}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+          >
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <span className="text-[10px] font-bold uppercase tracking-[.14em] text-white/40">Модель</span>
-              {activePart && <button onClick={removeActivePart} className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40 hover:text-red-300">Удалить</button>}
+              <div className="flex items-center gap-4">
+                <span className="hidden text-[9px] font-bold uppercase tracking-[.12em] text-white/25 sm:inline">Перетащите CAD сюда</span>
+                {activePart && <button onClick={removeActivePart} className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40 hover:text-red-300">Удалить</button>}
+              </div>
             </div>
             <div className="relative min-h-[650px] bg-[#080b0d]">
               <AnimatePresence mode="wait">
-                {!activePart ? <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-6 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/16 p-8 text-center" onDragOver={(event) => event.preventDefault()} onDrop={onDrop} onClick={() => inputRef.current?.click()}>
+                {!activePart ? <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-6 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/16 p-8 text-center" onClick={() => inputRef.current?.click()}>
                   <div className="flex h-16 w-16 items-center justify-center border border-steel-orange/55 text-3xl text-steel-orange">+</div>
                   <h2 className="mt-6 text-2xl font-semibold">Перетащите CAD-файлы</h2>
                   <p className="mt-3 text-sm text-white/40">DXF · STEP · STP · DWG</p>
@@ -336,6 +371,7 @@ export function ClientManufacturingWorkspace() {
               </AnimatePresence>
               {activePreview && <div className="absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-3">{clientMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
             </div>
+            {isDraggingFiles && <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center border-2 border-dashed border-steel-orange bg-[#080b0d]/95 p-6 backdrop-blur-sm"><div className="max-w-md border border-steel-orange/45 bg-[#101416]/95 px-8 py-7 text-center shadow-2xl"><div className="mx-auto flex h-14 w-14 items-center justify-center border border-steel-orange/60 text-3xl text-steel-orange">+</div><p className="mt-5 text-xl font-semibold">Отпустите CAD-файлы здесь</p><p className="mt-2 text-sm text-white/45">DXF · STEP · STP · DWG · можно несколько файлов сразу</p></div></div>}
           </div>
 
           <aside className="border border-white/10 bg-[#101416]">
