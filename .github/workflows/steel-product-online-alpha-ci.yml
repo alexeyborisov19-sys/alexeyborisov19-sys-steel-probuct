@@ -1,0 +1,55 @@
+name: Steel Product Online Alpha CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/(public)/online-order/**'
+      - 'app/api/online-order/**'
+      - 'components/InstantQuoteWorkspace.tsx'
+      - 'lib/instant-quote/**'
+      - 'tests/instant-quote-*.test.ts'
+      - 'docs/STEEL_PRODUCT_ONLINE_*.md'
+      - '.github/workflows/steel-product-online-alpha-ci.yml'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steel-product-online-alpha-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SITE_URL: 'https://www.steelprodukt.ru'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Next.js build
+        run: npm run build
