@@ -108,6 +108,9 @@ function imagePathForAudit(src) {
   if (url.pathname === "/_next/image") {
     const sourcePath = url.searchParams.get("url");
     if (sourcePath?.startsWith("/")) return sourcePath;
+    // Third-party media availability is intentionally outside this deterministic
+    // first-party SEO audit. Media policy/config regressions validate those URLs.
+    return null;
   }
   return `${url.pathname}${url.search}`;
 }
@@ -289,7 +292,10 @@ for (const publicUrl of urls) {
     ) {
       warnings.push(`${path}: у изображения ${src || "(без src)"} не задан режим загрузки`);
     }
-    if (src.startsWith("/")) imagePaths.add(imagePathForAudit(src));
+    if (src.startsWith("/")) {
+      const sourcePath = imagePathForAudit(src);
+      if (sourcePath) imagePaths.add(sourcePath);
+    }
   }
 
   for (const type of expectedSchemaTypes(path)) {
