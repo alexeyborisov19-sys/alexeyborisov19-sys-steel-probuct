@@ -7,6 +7,7 @@ import {
   type ClientCalculationSignal,
   type ClientProjectCalculationView,
 } from "@/lib/instant-quote/client-calculation-view";
+import { resolveEffectiveFactualInputs } from "@/lib/instant-quote/factual-input-resolution";
 import {
   calculateProjectFactualCost,
   type PartFactualInputs,
@@ -60,15 +61,20 @@ export async function runConfidentialCalculationForClient(
   now = new Date(),
 ): Promise<ClientProjectCalculationView> {
   const basis = await loadPrivateCalculationBasis();
-  const factualByPartId = inputs.factualByPartId ?? {};
+  const explicitFactualByPartId = inputs.factualByPartId ?? {};
   const powderSidesByPartId = inputs.powderSidesByPartId ?? {};
+  const effectiveFactualByPartId = resolveEffectiveFactualInputs(
+    project,
+    explicitFactualByPartId,
+    powderSidesByPartId,
+  );
 
   const calculation = calculateProjectFactualCost(
     project,
     parsedByPartId,
     basis.materialPriceSnapshots,
     basis.rateBook,
-    factualByPartId,
+    effectiveFactualByPartId,
     now,
   );
 
@@ -78,7 +84,7 @@ export async function runConfidentialCalculationForClient(
     const thicknessMm = part.configuration.thicknessMm;
     if (!materialId || !(thicknessMm && thicknessMm > 0) || !part.geometry) continue;
 
-    const factual = factualByPartId[part.id] ?? {};
+    const factual = explicitFactualByPartId[part.id] ?? {};
     productionParametersByPartId[part.id] = deriveProductionParameters({
       materialId,
       thicknessMm,
@@ -95,7 +101,7 @@ export async function runConfidentialCalculationForClient(
   );
   const calculationInputSnapshot: InternalCalculationInputSnapshot = {
     project,
-    factualByPartId,
+    factualByPartId: explicitFactualByPartId,
     powderSidesByPartId,
     unsupportedEntitiesByPartId,
   };
