@@ -12,6 +12,8 @@ export type PartFactualInputs = {
   bendCount?: number;
   weldLengthM?: number;
   powderAreaM2?: number;
+  assemblyMinutes?: number;
+  surfacePreparationAreaM2?: number;
 };
 
 export type ProjectFactualPartResult = {
@@ -122,7 +124,7 @@ export function calculateProjectFactualCost(
       { widthMm: part.geometry.widthMm, heightMm: part.geometry.heightMm },
       now,
     );
-    const manualInputs = factualInputsByPartId[part.id] ?? {};
+    const factualInputs = factualInputsByPartId[part.id] ?? {};
     const calculation = calculateFactualProductionCost({
       materialId,
       thicknessMm,
@@ -133,9 +135,11 @@ export function calculateProjectFactualCost(
       materialPriceStale: selection.stale,
       operations: part.configuration.operations,
       rateBook,
-      bendCount: manualInputs.bendCount,
-      weldLengthM: manualInputs.weldLengthM,
-      powderAreaM2: manualInputs.powderAreaM2,
+      bendCount: factualInputs.bendCount,
+      weldLengthM: factualInputs.weldLengthM,
+      powderAreaM2: factualInputs.powderAreaM2,
+      assemblyMinutes: factualInputs.assemblyMinutes,
+      surfacePreparationAreaM2: factualInputs.surfacePreparationAreaM2,
     });
 
     return {
