@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { arcPoints, type ParsedDxf } from "@/lib/instant-quote/dxf";
+import { arcPoints, polylinePreviewPoints, type ParsedDxf } from "@/lib/instant-quote/dxf";
 
 export function Cad2DViewer({ parsed, animated = false }: { parsed: ParsedDxf; animated?: boolean }) {
   const pad = Math.max(parsed.width, parsed.height, 10) * 0.09;
@@ -41,7 +41,7 @@ export function Cad2DViewer({ parsed, animated = false }: { parsed: ParsedDxf; a
         }
 
         if (shape.kind === "polyline") {
-          const points = [...shape.points, ...(shape.closed ? [shape.points[0]] : [])]
+          const points = polylinePreviewPoints(shape)
             .map((point) => `${point.x},${y(point.y)}`)
             .join(" ");
           return <polyline key={index} points={points} {...common} />;
