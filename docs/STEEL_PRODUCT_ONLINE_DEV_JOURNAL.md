@@ -32,14 +32,17 @@
 - **CI на `5fab1567…`: GREEN в обоих workflow.**
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
-- В начале блока исправлена только изоляция тестового rate-limit state (`9bcb19ce…`), production rate limits не ослаблялись.
-- Новый factual block:
-  - exact STEP boundary surface area измеряется отдельным `server-only` OpenCascade проходом;
-  - это значение не добавлено в browser `NormalizedCadModel` и не входит в client DTO;
-  - server-authoritative physical inputs имеют отдельное происхождение и сохраняются только в confidential calculation/report snapshot;
-  - explicit technologist value имеет приоритет над server-authoritative evidence;
-  - DXF без явно заданных сторон окраски остаётся incomplete/partial;
-  - bent/unverified STEP по-прежнему fail-closed: production geometry и private factual evidence не продвигаются в расчёт.
+- Последующий journal-only checkpoint `605bf1b1…` также прошёл оба workflow полностью GREEN.
+- **Current WIP implementation HEAD before regression gate:** `673d74efd3ad51fe440bc53d0f938e480f6e048c`.
+- WIP не считать новым implementation checkpoint до regression tests + полного green CI.
+- Текущий WIP block:
+  - `PartFactualInputs` проводит `assemblyMinutes` и `surfacePreparationAreaM2` в project factual engine;
+  - internal revision parser/API принимает только эти физические параметры вместе с уже существующими bend/weld/powder inputs;
+  - immutable confidential recalculation сохраняет/очищает эти inputs в snapshot;
+  - production parameters получают assembly/surface-preparation/packaging semantics;
+  - readiness показывает сборку, подготовку поверхности и упаковку отдельными internal checkpoints;
+  - internal revision form/report UI показывает эти значения только в закрытом RBAC-контуре;
+  - публичный client DTO/API этим блоком не расширялся.
 
 > Обновление этого журнала создаёт metadata commit выше implementation checkpoint. При restart сравнивать изменения, а не считать journal-only SHA новой функциональностью.
 
@@ -71,7 +74,7 @@
 
 ### 2.4 Внутренние отчёты
 
-В закрытом admin/RBAC контуре: закупочный металл, заготовка/расход, масса, отход, рез, прожиги, гибы, сварка, окраска, внутренние ставки, подтверждённая себестоимость, missing articles, detailed DFM, версия basis, audit/revision history.
+В закрытом admin/RBAC контуре: закупочный металл, заготовка/расход, масса, отход, рез, прожиги, гибы, сварка, окраска, сборка, подготовка поверхности, упаковка, внутренние ставки, подтверждённая себестоимость, missing articles, detailed DFM, версия basis, audit/revision history.
 
 Хранение: вне `public/`, каталог `0700`, отчёты `0600`.
 
@@ -134,7 +137,7 @@
 - confidential laser batch tiers;
 - confidential pierce line when rate exists;
 - bending/welding/powder;
-- assembly / surface preparation / packaging physical-input semantics;
+- assembly / surface preparation / packaging low-level physical-input semantics;
 - missing physical input отдельно от missing rate;
 - no hidden public 5%/16.5%/setup assumptions;
 - provenance-aware physical input resolution: explicit technologist > server-authoritative CAD evidence > explicit coating-side derivation;
@@ -184,21 +187,23 @@
 
 ## 4. IN PROGRESS
 
-1. Следующий factual gap — довести уже существующие semantics для `assembly` и `surface-preparation` до project/revision input path.
-2. Сейчас low-level factual engine умеет считать эти операции при подтверждённых физических inputs, но project-level `PartFactualInputs` / internal revision request ещё не дают технологу провести эти значения через immutable report recalculation.
-3. Делать только во внутреннем контуре: никаких производственных минут/площадей, ставок или расшифровки клиенту.
+1. **Assembly / surface-preparation revision path реализован, но ещё не закрыт regression gate.**
+2. WIP implementation HEAD до journal commit: `673d74efd3ad51fe440bc53d0f938e480f6e048c`.
+3. Уже проведены только внутренние физические значения `assemblyMinutes` и `surfacePreparationAreaM2` через project calculation, confidential snapshot, immutable revisions, production parameters, completeness и internal form/report UI.
+4. Никакие ставки, supplier prices, cost totals или производственные параметры в client DTO/API не добавлялись.
+5. До нового checkpoint обязательны regression tests и полный CI.
 
 ---
 
 ## 5. NEXT ACTION — начинать отсюда
 
-**NEXT ACTION #1:** прочитать текущие `project-factual-calculation.ts`, `internal-revision-request.ts`, `recalculate-production-report.ts` и внутреннюю revision form/API; подтвердить точные имена уже существующих low-level physical inputs для assembly и surface preparation.
+**NEXT ACTION #1:** добавить regression tests для `assemblyMinutes` / `surfacePreparationAreaM2`: parser accept/reject, project-level `partial → complete`, explicit clear, persistence в immutable snapshot/revision.
 
-**NEXT ACTION #2:** провести через confidential/internal path только физические значения (`assemblyMinutes`, `surfacePreparationAreaM2`) с валидацией и immutable revision lineage. Не давать форме менять ставки, supplier prices, себестоимость или итог.
+**NEXT ACTION #2:** проверить readiness/completeness для assembly, surface preparation и packaging, включая отсутствие физического input отдельно от отсутствующей confidential rate.
 
-**NEXT ACTION #3:** production parameters и completeness должны использовать те же effective factual inputs; missing physical input остаётся `partial`, а не нулём.
+**NEXT ACTION #3:** усилить confidentiality regression: новые internal physical fields не должны появляться в public calculation response/client DTO.
 
-**NEXT ACTION #4:** добавить regression tests на manual override / clear / persistence across revision и confidentiality boundary, затем полный CI и новый green checkpoint.
+**NEXT ACTION #4:** полный CI на итоговом implementation HEAD. Если RED — сначала исправить failure. Если GREEN — обновить `Last implementation checkpoint` и только потом брать следующий factual gap.
 
 ---
 
@@ -242,7 +247,13 @@ Green относится только к SHA, который реально пр
 - `8db1c04d…` + `7b13d786…`: server-authoritative factual provenance сохраняется в закрытом snapshot/revisions, manual technologist value имеет приоритет.
 - `5fab1567…`: regression подтверждает promotion только для production-ready STEP и отсутствие private physical evidence в client response.
 - На `5fab1567…` оба workflow полностью GREEN.
-- Следующий block: internal assembly/surface-preparation physical inputs через revision path.
+
+### 2026-09-14 — WIP internal assembly / surface preparation revision path
+- `75308022…`: project factual inputs проводят `assemblyMinutes` и `surfacePreparationAreaM2` в existing low-level factual engine.
+- `b32df14d…` + `0b08d861…`: internal parser/API принимает только новые физические inputs; rates/cost/total по-прежнему не являются revision input.
+- `03c78609…` + `bf554e14…`: immutable recalculation/confidential production parameters сохраняют assembly/surface-preparation; packaging state также передаётся в internal parameters.
+- `6bdc9ffa…` + `aacc629b…` + `673d74ef…`: internal completeness/form/report UI дополнены для сборки/подготовки поверхности/упаковки.
+- Этот блок **ещё WIP** до regression tests + полного green CI; `673d74ef…` не считать implementation checkpoint.
 
 ---
 
