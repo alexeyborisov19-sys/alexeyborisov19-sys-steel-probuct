@@ -4,37 +4,43 @@ import {
   applyMetalUplift,
   calculateProvisionalPartPrice,
   supplierRubPerTon,
+  type ProvisionalPartPricingInput,
 } from "../lib/instant-quote/pricing";
 import { selectBestStoredPrice, shouldRefreshPriceFeeds } from "../lib/instant-quote/material-price-feed";
+import { TEST_CUTTING_RATES, TEST_PRICING_BASIS } from "./fixtures/protected-pricing";
 
 const marketPrice = {
   materialId: "hot" as const,
   thicknessMm: 2,
   rubPerTon: 60_000,
   rubPerTonFrom3t: 58_000,
-  source: "test",
-  sourceDate: "2026-09-14",
-  fetchedAt: "2026-09-14T00:00:00.000Z",
+  source: "synthetic-test-supplier",
+  sourceDate: "2099-01-01",
+  fetchedAt: "2099-01-01T00:00:00.000Z",
   exactThickness: true,
 };
 
-test("applies exactly five percent to supplier metal price", () => {
-  assert.equal(applyMetalUplift(100_000), 105_000);
+function price(input: ProvisionalPartPricingInput) {
+  return calculateProvisionalPartPrice(input, TEST_PRICING_BASIS, TEST_CUTTING_RATES);
+}
+
+test("applies an explicitly supplied synthetic uplift", () => {
+  assert.equal(applyMetalUplift(100_000, TEST_PRICING_BASIS.materialMarketUpliftPct), 105_000);
 });
 
 test("selects closest thickness and flags an old snapshot as stale", () => {
   const selected = selectBestStoredPrice([
     {
-      sourceId: "atlantik-smolensk",
-      fetchedAt: "2026-09-10T00:00:00.000Z",
-      sourceDate: "2026-09-10",
+      sourceId: "synthetic-supplier",
+      fetchedAt: "2099-01-01T00:00:00.000Z",
+      sourceDate: "2099-01-01",
       status: "ok",
       rows: [
-        { materialId: "hot", thicknessMm: 2, rubPerTon: 62_400, source: "Атлантик", sourceDate: "2026-09-10", fetchedAt: "2026-09-10T00:00:00.000Z" },
-        { materialId: "hot", thicknessMm: 3, rubPerTon: 60_900, source: "Атлантик", sourceDate: "2026-09-10", fetchedAt: "2026-09-10T00:00:00.000Z" },
+        { materialId: "hot", thicknessMm: 2, rubPerTon: 62_400, source: "fixture", sourceDate: "2099-01-01", fetchedAt: "2099-01-01T00:00:00.000Z" },
+        { materialId: "hot", thicknessMm: 3, rubPerTon: 60_900, source: "fixture", sourceDate: "2099-01-01", fetchedAt: "2099-01-01T00:00:00.000Z" },
       ],
     },
-  ], "hot", 2, new Date("2026-09-14T00:00:00.000Z"));
+  ], "hot", 2, new Date("2099-01-05T00:00:00.000Z"));
 
   assert.equal(selected.price?.rubPerTon, 62_400);
   assert.equal(selected.price?.exactThickness, true);
@@ -43,8 +49,8 @@ test("selects closest thickness and flags an old snapshot as stale", () => {
 
 test("price feed wants a refresh when a snapshot is older than a day", () => {
   assert.equal(shouldRefreshPriceFeeds([
-    { sourceId: "atlantik-smolensk", fetchedAt: "2026-09-12T00:00:00.000Z", sourceDate: "2026-09-12", status: "ok", rows: [] },
-  ], new Date("2026-09-14T00:00:00.000Z")), true);
+    { sourceId: "synthetic-supplier", fetchedAt: "2099-01-01T00:00:00.000Z", sourceDate: "2099-01-01", status: "ok", rows: [] },
+  ], new Date("2099-01-03T00:00:00.000Z")), true);
 });
 
 test("supplier tier switches to from-3t price only at three tonnes", () => {
@@ -52,8 +58,8 @@ test("supplier tier switches to from-3t price only at three tonnes", () => {
   assert.deepEqual(supplierRubPerTon(marketPrice, 3_000), { rubPerTon: 58_000, tier: "from-3t" });
 });
 
-test("provisional quote keeps supplier price and plus-five price separately", () => {
-  const price = calculateProvisionalPartPrice({
+test("protected quote keeps supplier price and synthetic uplift separately", () => {
+  const result = price({
     materialId: "hot",
     thicknessMm: 2,
     quantity: 10,
@@ -63,17 +69,17 @@ test("provisional quote keeps supplier price and plus-five price separately", ()
     bendCount: 2,
   });
 
-  assert.equal(price.materialMarketRubPerTon, 60_000);
-  assert.equal(price.materialMarketTier, "under-3t");
-  assert.equal(price.materialPricedRubPerTon, 63_000);
-  assert.equal(price.blankAreaMm2, 125_000);
-  assert.equal(price.materialAllocationStrategy, "bounding-rectangle");
-  assert.equal(price.totalRub, price.unitRub * 10);
-  assert.ok(price.laserRubEach > 0);
+  assert.equal(result.materialMarketRubPerTon, 60_000);
+  assert.equal(result.materialMarketTier, "under-3t");
+  assert.equal(result.materialPricedRubPerTon, 63_000);
+  assert.equal(result.blankAreaMm2, 125_000);
+  assert.equal(result.materialAllocationStrategy, "bounding-rectangle");
+  assert.equal(result.totalRub, result.unitRub * 10);
+  assert.ok(result.laserRubEach > 0);
 });
 
 test("laser uses actual contour while metal stays on the rectangular X by Y blank", () => {
-  const exact = calculateProvisionalPartPrice({
+  const exact = price({
     materialId: "hot",
     thicknessMm: 2,
     quantity: 1,
@@ -88,7 +94,7 @@ test("laser uses actual contour while metal stays on the rectangular X by Y blan
     marketPrice,
     operations: ["laser-cutting"],
   });
-  const noExactArea = calculateProvisionalPartPrice({
+  const noExactArea = price({
     materialId: "hot",
     thicknessMm: 2,
     quantity: 1,
@@ -112,8 +118,8 @@ test("laser uses actual contour while metal stays on the rectangular X by Y blan
   assert.ok(exact.warnings.some((warning) => warning.includes("прямоугольной заготовке")));
 });
 
-test("future nesting can replace the rectangular material allocation without changing laser pricing", () => {
-  const rectangle = calculateProvisionalPartPrice({
+test("future nesting can replace rectangular allocation without changing laser pricing", () => {
+  const rectangle = price({
     materialId: "hot",
     thicknessMm: 2,
     quantity: 10,
@@ -127,7 +133,7 @@ test("future nesting can replace the rectangular material allocation without cha
     marketPrice,
     operations: ["laser-cutting"],
   });
-  const nested = calculateProvisionalPartPrice({
+  const nested = price({
     materialId: "hot",
     thicknessMm: 2,
     quantity: 10,
@@ -151,8 +157,8 @@ test("future nesting can replace the rectangular material allocation without cha
   assert.equal(nested.laserRubEach, rectangle.laserRubEach);
 });
 
-test("large material batch uses supplier from-3t tier before applying plus five percent", () => {
-  const price = calculateProvisionalPartPrice({
+test("large material batch uses supplier from-3t tier before explicit uplift", () => {
+  const result = price({
     materialId: "hot",
     thicknessMm: 10,
     quantity: 200,
@@ -161,13 +167,13 @@ test("large material batch uses supplier from-3t tier before applying plus five 
     operations: ["laser-cutting"],
   });
 
-  assert.ok(price.batchPurchasedMassKg >= 3_000);
-  assert.equal(price.materialMarketTier, "from-3t");
-  assert.equal(price.materialMarketRubPerTon, 58_000);
-  assert.equal(price.materialPricedRubPerTon, 60_900);
+  assert.ok(result.batchPurchasedMassKg >= 3_000);
+  assert.equal(result.materialMarketTier, "from-3t");
+  assert.equal(result.materialMarketRubPerTon, 58_000);
+  assert.equal(result.materialPricedRubPerTon, 60_900);
 });
 
-test("series quantity lowers unit price by amortizing setup and selecting cut tier", () => {
+test("series quantity lowers unit price only under the synthetic protected test basis", () => {
   const common = {
     materialId: "hot" as const,
     thicknessMm: 2,
@@ -176,8 +182,8 @@ test("series quantity lowers unit price by amortizing setup and selecting cut ti
     operations: ["laser-cutting" as const],
   };
 
-  const one = calculateProvisionalPartPrice({ ...common, quantity: 1 });
-  const fifty = calculateProvisionalPartPrice({ ...common, quantity: 50 });
+  const one = price({ ...common, quantity: 1 });
+  const fifty = price({ ...common, quantity: 50 });
 
   assert.ok(fifty.unitRub < one.unitRub);
   assert.equal(one.setupRubBatch, fifty.setupRubBatch);
