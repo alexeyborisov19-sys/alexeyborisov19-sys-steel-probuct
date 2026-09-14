@@ -18,6 +18,8 @@ export type PartFactualRevisionPatch = {
   bendCount?: number | null;
   weldLengthM?: number | null;
   powderAreaM2?: number | null;
+  assemblyMinutes?: number | null;
+  surfacePreparationAreaM2?: number | null;
 };
 
 export type InternalProductionRevisionInput = {
@@ -73,6 +75,16 @@ function mergeFactualInputs(
       const powderAreaM2 = finitePositive(value.powderAreaM2, `${partId}.powderAreaM2`);
       if (powderAreaM2 == null) delete row.powderAreaM2;
       else row.powderAreaM2 = powderAreaM2;
+    }
+    if (Object.prototype.hasOwnProperty.call(value, "assemblyMinutes")) {
+      const assemblyMinutes = finitePositive(value.assemblyMinutes, `${partId}.assemblyMinutes`);
+      if (assemblyMinutes == null) delete row.assemblyMinutes;
+      else row.assemblyMinutes = assemblyMinutes;
+    }
+    if (Object.prototype.hasOwnProperty.call(value, "surfacePreparationAreaM2")) {
+      const surfacePreparationAreaM2 = finitePositive(value.surfacePreparationAreaM2, `${partId}.surfacePreparationAreaM2`);
+      if (surfacePreparationAreaM2 == null) delete row.surfacePreparationAreaM2;
+      else row.surfacePreparationAreaM2 = surfacePreparationAreaM2;
     }
 
     if (Object.keys(row).length) next[partId] = row;
@@ -158,6 +170,9 @@ export async function recalculateInternalProductionReport(
       weldLengthMEach: factual.weldLengthM,
       powderSides: powderSidesByPartId[part.id],
       explicitPowderAreaM2Each: factual.powderAreaM2,
+      assemblyMinutesEach: factual.assemblyMinutes,
+      surfacePreparationAreaM2Each: factual.surfacePreparationAreaM2,
+      packagingSelected: part.configuration.operations.includes("packaging"),
     });
   }
 
