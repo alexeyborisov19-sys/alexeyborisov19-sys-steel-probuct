@@ -30,8 +30,11 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
       geometry: {
         widthMm: parsed.width * scale,
         heightMm: parsed.height * scale,
+        areaMm2: parsed.area == null ? undefined : parsed.area * scale * scale,
         cutLengthMm: parsed.cutLength * scale,
         contourCount: parsed.contours,
+        pierceCount: parsed.pierces ?? undefined,
+        holeCount: parsed.holeCount ?? undefined,
       },
       meshes: [],
       root: null,
@@ -44,6 +47,7 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
       },
       warnings: [
         ...(scale !== 1 ? [`Геометрия автоматически нормализована из «${parsed.units}» в миллиметры.`] : []),
+        ...(parsed.areaStatus !== "exact" ? ["Площадь детали не подтверждена замкнутой топологией; металл пока считается консервативно по габариту."] : []),
         ...parsed.unsupportedEntities.map((entity) => `Неподдерживаемая DXF-геометрия: ${entity}`),
       ],
     };
