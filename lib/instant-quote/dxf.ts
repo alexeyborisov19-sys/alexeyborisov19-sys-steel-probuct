@@ -119,9 +119,7 @@ function numberField(fields: Pair[], code: number) {
 }
 
 function angleWithinSweep(angle: number, start: number, sweep: number) {
-  if (sweep >= 0) {
-    return normalizePositiveDegrees(angle - start) <= sweep + 1e-9;
-  }
+  if (sweep >= 0) return normalizePositiveDegrees(angle - start) <= sweep + 1e-9;
   return normalizePositiveDegrees(start - angle) <= -sweep + 1e-9;
 }
 
@@ -164,7 +162,6 @@ export function bulgeArc(a: Point2D, b: Point2D, bulge: number): CircularArc | n
     y: midpoint.y + leftNormal.y * centerOffset,
   };
   const start = Math.atan2(a.y - c.y, a.x - c.x) * 180 / Math.PI;
-
   return { c, r: radius, start, sweep: sweepRad * 180 / Math.PI };
 }
 
@@ -231,25 +228,37 @@ function adaptiveSimpson(
   fm: number,
   fb: number,
   depth: number,
-): number {
+): number | null {
   const midpoint = (a + b) / 2;
   const leftMidpoint = (a + midpoint) / 2;
   const rightMidpoint = (midpoint + b) / 2;
   const flm = fn(leftMidpoint);
   const frm = fn(rightMidpoint);
+  if (![fa, fm, fb, flm, frm, whole].every(Number.isFinite)) return null;
+
   const left = simpson(fa, flm, fm, midpoint - a);
   const right = simpson(fm, frm, fb, b - midpoint);
   const delta = left + right - whole;
+  if (![left, right, delta].every(Number.isFinite)) return null;
 
-  if (depth <= 0 || Math.abs(delta) <= 15 * tolerance) {
-    return left + right + delta / 15;
+  if (Math.abs(delta) <= 15 * tolerance) {
+    const corrected = left + right + delta / 15;
+    return Number.isFinite(corrected) ? corrected : null;
   }
-  return adaptiveSimpson(fn, a, midpoint, tolerance / 2, left, fa, flm, fm, depth - 1)
-    + adaptiveSimpson(fn, midpoint, b, tolerance / 2, right, fm, frm, fb, depth - 1);
+  if (depth <= 0) return null;
+
+  const leftValue = adaptiveSimpson(fn, a, midpoint, tolerance / 2, left, fa, flm, fm, depth - 1);
+  if (leftValue == null) return null;
+  const rightValue = adaptiveSimpson(fn, midpoint, b, tolerance / 2, right, fm, frm, fb, depth - 1);
+  if (rightValue == null) return null;
+  const total = leftValue + rightValue;
+  return Number.isFinite(total) ? total : null;
 }
 
 export function ellipseArcLength(shape: Extract<DxfShape, { kind: "ellipse" }>) {
   const sweep = ellipseSweep(shape);
+  if (!(sweep > EPSILON) || sweep > TWO_PI + 1e-10) return null;
+
   const a = shape.start;
   const b = shape.start + sweep;
   const midpoint = (a + b) / 2;
@@ -257,8 +266,11 @@ export function ellipseArcLength(shape: Extract<DxfShape, { kind: "ellipse" }>) 
   const fa = fn(a);
   const fm = fn(midpoint);
   const fb = fn(b);
+  if (![fa, fm, fb].every(Number.isFinite)) return null;
+
   const whole = simpson(fa, fm, fb, b - a);
   const majorRadius = Math.hypot(shape.major.x, shape.major.y);
+  if (!Number.isFinite(whole) || !Number.isFinite(majorRadius) || !(majorRadius > EPSILON)) return null;
   const tolerance = Math.max(1e-10, majorRadius * 1e-10);
   return adaptiveSimpson(fn, a, b, tolerance, whole, fa, fm, fb, 22);
 }
@@ -504,17 +516,20 @@ function parseEllipse(fields: Pair[]) {
   const full = Math.abs(start) <= 1e-10 && Math.abs(end - TWO_PI) <= 1e-10;
   if (!full && Math.abs(end - start) <= 1e-12) return { shape: null, issue: "ELLIPSE_PARAMETERS" };
 
-  return {
-    shape: {
-      kind: "ellipse" as const,
-      c: { x: cx!, y: cy! },
-      major: { x: majorX!, y: majorY! },
-      ratio: Math.min(1, ratio!),
-      start,
-      end,
-    },
-    issue: null,
+  const shape = {
+    kind: "ellipse" as const,
+    c: { x: cx!, y: cy! },
+    major: { x: majorX!, y: majorY! },
+    ratio: Math.min(1, ratio!),
+    start,
+    end,
   };
+  const sweep = ellipseSweep(shape);
+  if (!(sweep > EPSILON) || sweep > TWO_PI + 1e-10) return { shape: null, issue: "ELLIPSE_PARAMETERS" };
+  const length = ellipseArcLength(shape);
+  if (length == null || !Number.isFinite(length) || !(length > 0)) return { shape: null, issue: "ELLIPSE_LENGTH_UNAVAILABLE" };
+
+  return { shape, issue: null };
 }
 
 export function parseAsciiDxf(text: string): ParsedDxf {
@@ -620,7 +635,9 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       cutLength += Math.PI * shape.r * 2;
     } else if (shape.kind === "ellipse") {
       pointsForBounds.push(...exactEllipseBounds(shape));
-      cutLength += ellipseArcLength(shape);
+      const ellipseLength = ellipseArcLength(shape);
+      if (ellipseLength == null) throw new Error("Не удалось подтвердить длину DXF ELLIPSE с заданной точностью.");
+      cutLength += ellipseLength;
     } else {
       pointsForBounds.push(...exactArcBounds(shape));
       cutLength += 2 * Math.PI * shape.r * (normalizeArc(shape.start, shape.end) / 360);
