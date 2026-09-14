@@ -166,3 +166,91 @@ test("curved closed polyline keeps exact bounds/length but fails closed on area 
   assert.equal(parsed.closedContours, 1);
   assert.equal(parsed.pierces, null);
 });
+
+test("parses a simple legacy 2D POLYLINE VERTEX sequence without leaking nested entities as unsupported", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "POLYLINE", "70", "0",
+    "0", "VERTEX", "10", "0", "20", "0", "70", "0",
+    "0", "VERTEX", "10", "100", "20", "0", "70", "0",
+    "0", "VERTEX", "10", "100", "20", "50", "70", "0",
+    "0", "SEQEND",
+  ]));
+
+  assert.equal(parsed.contours, 1);
+  approx(parsed.width, 100);
+  approx(parsed.height, 50);
+  approx(parsed.cutLength, 150);
+  assert.equal(parsed.areaStatus, "unavailable");
+  assert.equal(parsed.unsupportedEntities.includes("POLYLINE"), false);
+  assert.equal(parsed.unsupportedEntities.includes("VERTEX"), false);
+  assert.equal(parsed.unsupportedEntities.includes("SEQEND"), false);
+});
+
+test("calculates exact straight topology for a closed legacy 2D POLYLINE", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "POLYLINE", "70", "1",
+    "0", "VERTEX", "10", "0", "20", "0",
+    "0", "VERTEX", "10", "100", "20", "0",
+    "0", "VERTEX", "10", "100", "20", "50",
+    "0", "VERTEX", "10", "0", "20", "50",
+    "0", "SEQEND",
+  ]));
+
+  approx(parsed.cutLength, 300);
+  assert.equal(parsed.areaStatus, "exact");
+  assert.equal(parsed.area, 5000);
+  assert.equal(parsed.closedContours, 1);
+  assert.equal(parsed.pierces, 1);
+  assert.equal(parsed.holeCount, 0);
+  assert.deepEqual(parsed.unsupportedEntities, []);
+});
+
+test("legacy VERTEX bulge uses the same exact arc bounds and length as LWPOLYLINE", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "POLYLINE", "70", "0",
+    "0", "VERTEX", "10", "0", "20", "0", "42", "1",
+    "0", "VERTEX", "10", "100", "20", "0",
+    "0", "SEQEND",
+  ]));
+
+  approx(parsed.cutLength, Math.PI * 50);
+  approx(parsed.minX, 0);
+  approx(parsed.maxX, 100);
+  approx(parsed.minY, -50);
+  approx(parsed.maxY, 0);
+  assert.equal(parsed.areaStatus, "unavailable");
+  assert.deepEqual(parsed.unsupportedEntities, []);
+});
+
+test("legacy closing VERTEX bulge is applied to the last-to-first segment", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "POLYLINE", "70", "1",
+    "0", "VERTEX", "10", "0", "20", "0",
+    "0", "VERTEX", "10", "100", "20", "0",
+    "0", "VERTEX", "10", "100", "20", "100", "42", "1",
+    "0", "SEQEND",
+  ]));
+
+  const closingRadius = Math.hypot(100, 100) / 2;
+  approx(parsed.cutLength, 200 + Math.PI * closingRadius);
+  assert.equal(parsed.areaStatus, "unavailable");
+  assert.equal(parsed.pierces, null);
+  assert.deepEqual(parsed.unsupportedEntities, []);
+});
+
+test("legacy 3D or mesh POLYLINE is fail-closed instead of silently projected into 2D", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LINE", "10", "0", "20", "0", "11", "10", "21", "0",
+    "0", "POLYLINE", "70", "8",
+    "0", "VERTEX", "10", "0", "20", "0", "30", "0", "70", "32",
+    "0", "VERTEX", "10", "100", "20", "0", "30", "20", "70", "32",
+    "0", "SEQEND",
+  ]));
+
+  assert.equal(parsed.shapes.length, 1);
+  assert.equal(parsed.shapes[0].kind, "line");
+  assert.ok(parsed.unsupportedEntities.includes("POLYLINE_COMPLEX"));
+  assert.equal(parsed.unsupportedEntities.includes("VERTEX"), false);
+  assert.equal(parsed.unsupportedEntities.includes("SEQEND"), false);
+  assert.equal(parsed.areaStatus, "unavailable");
+});
