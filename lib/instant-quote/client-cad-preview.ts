@@ -114,7 +114,7 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
     drawing: parsedDxf ? createClientDxfDrawingPreview(parsedDxf) : null,
     status: needsReview ? "needs-review" : "recognized",
     message: needsReview
-      ? "CAD распознан. Требуется внутренняя технологическая проверка."
-      : "CAD распознан.",
+      ? "Модель загружена. Некоторые параметры потребуется уточнить перед окончательным расчётом."
+      : "Модель распознана и готова к настройке.",
   };
 }
