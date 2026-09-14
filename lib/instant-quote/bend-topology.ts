@@ -72,12 +72,22 @@ function finalizeGraph(faceIds: string[], edges: BendTopologyEdge[], issues: str
     };
   }
   if (!edges.length) {
+    const nodes = faceIds.map((faceId) => ({ faceId, bendIds: [] }));
+    if (!faceIds.length) {
+      return {
+        status: "empty",
+        nodes,
+        edges: [],
+        traversalFaceIds: [],
+        issues: [],
+      };
+    }
     return {
       status: "empty",
-      nodes: faceIds.map((faceId) => ({ faceId, bendIds: [] })),
+      nodes,
       edges: [],
       rootFaceId: faceIds[0],
-      traversalFaceIds: faceIds.length ? [faceIds[0]] : [],
+      traversalFaceIds: [faceIds[0]],
       issues: [],
     };
   }
