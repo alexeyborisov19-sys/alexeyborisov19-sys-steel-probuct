@@ -11,6 +11,9 @@ export type CylinderFaceObservation = {
   id: string;
   areaMm2: number;
   radiusMm: number;
+  originMm?: Vector3;
+  axis?: Vector3;
+  angleSpanRad?: number;
 };
 
 export type SheetMetalTopologyObservations = {
@@ -28,7 +31,10 @@ export type SheetMetalThicknessCandidate = {
 
 export type SheetMetalBendCandidate = {
   id: string;
+  faceIds: [string, string];
   radiusMm: number;
+  outerRadiusMm: number;
+  angleDeg: number;
   areaMm2: number;
 };
 
@@ -50,9 +56,17 @@ type PlanePairEvidence = {
   faceIds: [string, string];
 };
 
+type CylinderPairEvidence = {
+  left: CylinderFaceObservation;
+  right: CylinderFaceObservation;
+  score: number;
+  angleRad: number;
+};
+
 const PARALLEL_DOT = 0.9995;
 const MIN_SEPARATION_MM = 0.01;
 const MAX_SHEET_SLENDERNESS = 0.2;
+const MAX_BEND_ANGLE_RAD = Math.PI * 1.05;
 
 function length(vector: Vector3) {
   return Math.hypot(vector[0], vector[1], vector[2]);
@@ -70,6 +84,10 @@ function dot(a: Vector3, b: Vector3) {
 
 function subtract(a: Vector3, b: Vector3): Vector3 {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function scale(vector: Vector3, factor: number): Vector3 {
+  return [vector[0] * factor, vector[1] * factor, vector[2] * factor];
 }
 
 function finitePositive(value: number) {
@@ -170,13 +188,96 @@ function pickThicknessCandidate(faces: PlaneFaceObservation[]): SheetMetalThickn
   };
 }
 
+function perpendicularDistanceBetweenAxes(left: CylinderFaceObservation, right: CylinderFaceObservation) {
+  if (!left.originMm || !right.originMm || !left.axis || !right.axis) return null;
+  const leftAxis = normalized(left.axis);
+  const rightAxis = normalized(right.axis);
+  if (!leftAxis || !rightAxis || Math.abs(dot(leftAxis, rightAxis)) < PARALLEL_DOT) return null;
+
+  const originDelta = subtract(right.originMm, left.originMm);
+  const alongAxis = scale(leftAxis, dot(originDelta, leftAxis));
+  return length(subtract(originDelta, alongAxis));
+}
+
+function collectCylinderPairEvidence(
+  cylinders: CylinderFaceObservation[],
+  thicknessMm: number,
+): CylinderPairEvidence[] {
+  const evidence: CylinderPairEvidence[] = [];
+  const radiusTolerance = Math.max(0.05, thicknessMm * 0.08);
+  const axisTolerance = Math.max(0.05, thicknessMm * 0.08);
+
+  for (let leftIndex = 0; leftIndex < cylinders.length; leftIndex += 1) {
+    const left = cylinders[leftIndex];
+    for (let rightIndex = leftIndex + 1; rightIndex < cylinders.length; rightIndex += 1) {
+      const right = cylinders[rightIndex];
+      const axisDistance = perpendicularDistanceBetweenAxes(left, right);
+      if (axisDistance == null || axisDistance > axisTolerance) continue;
+
+      const radiusDelta = Math.abs(left.radiusMm - right.radiusMm);
+      const radiusError = Math.abs(radiusDelta - thicknessMm);
+      if (radiusError > radiusTolerance) continue;
+
+      const leftAngle = left.angleSpanRad;
+      const rightAngle = right.angleSpanRad;
+      if (!finitePositive(leftAngle ?? 0) || !finitePositive(rightAngle ?? 0)) continue;
+      if ((leftAngle ?? 0) > MAX_BEND_ANGLE_RAD || (rightAngle ?? 0) > MAX_BEND_ANGLE_RAD) continue;
+
+      const meanAngle = ((leftAngle ?? 0) + (rightAngle ?? 0)) / 2;
+      const angleTolerance = Math.max(0.03, meanAngle * 0.05);
+      const angleError = Math.abs((leftAngle ?? 0) - (rightAngle ?? 0));
+      if (angleError > angleTolerance) continue;
+
+      evidence.push({
+        left,
+        right,
+        angleRad: meanAngle,
+        score: radiusError / radiusTolerance + axisDistance / axisTolerance + angleError / angleTolerance,
+      });
+    }
+  }
+
+  return evidence.sort((a, b) => a.score - b.score);
+}
+
+function pickBendCandidates(
+  cylinders: CylinderFaceObservation[],
+  thicknessCandidate?: SheetMetalThicknessCandidate,
+): SheetMetalBendCandidate[] {
+  if (!thicknessCandidate || thicknessCandidate.confidence !== "medium") return [];
+
+  const evidence = collectCylinderPairEvidence(cylinders, thicknessCandidate.thicknessMm);
+  const usedFaceIds = new Set<string>();
+  const bends: SheetMetalBendCandidate[] = [];
+
+  for (const pair of evidence) {
+    if (usedFaceIds.has(pair.left.id) || usedFaceIds.has(pair.right.id)) continue;
+    usedFaceIds.add(pair.left.id);
+    usedFaceIds.add(pair.right.id);
+
+    const inner = pair.left.radiusMm <= pair.right.radiusMm ? pair.left : pair.right;
+    const outer = inner === pair.left ? pair.right : pair.left;
+    bends.push({
+      id: `bend:${inner.id}:${outer.id}`,
+      faceIds: [inner.id, outer.id],
+      radiusMm: inner.radiusMm,
+      outerRadiusMm: outer.radiusMm,
+      angleDeg: Math.round((pair.angleRad * 180 / Math.PI) * 10) / 10,
+      areaMm2: inner.areaMm2 + outer.areaMm2,
+    });
+  }
+
+  return bends;
+}
+
 /**
  * Conservative sheet-metal interpretation of exact BRep face observations.
  *
- * It intentionally returns candidates rather than production facts. A cylinder
- * may be a bend, a rolled wall or a hole; a parallel plane spacing may be sheet
- * thickness or another repeated offset. Downstream pricing must not treat these
- * candidates as an authoritative flat pattern.
+ * It intentionally returns candidates rather than production facts. Parallel
+ * planes provide only a thickness candidate. A bend candidate requires a much
+ * stronger signature: two coaxial partial cylinders whose radius difference
+ * agrees with a medium-confidence thickness candidate. Nothing here is an
+ * authoritative flat pattern or production bend count.
  */
 export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObservations): SheetMetalAnalysis {
   const planarFaces = observations.planarFaces.filter((face) => finitePositive(face.areaMm2));
@@ -184,6 +285,7 @@ export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObserv
     (face) => finitePositive(face.areaMm2) && finitePositive(face.radiusMm),
   );
   const thicknessCandidate = pickThicknessCandidate(planarFaces);
+  const bendCandidates = pickBendCandidates(cylindricalFaces, thicknessCandidate);
   const warnings: string[] = [];
 
   if (!thicknessCandidate) {
@@ -195,9 +297,15 @@ export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObserv
   }
 
   if (cylindricalFaces.length) {
-    warnings.push(
-      `Обнаружено цилиндрических граней: ${cylindricalFaces.length}. Они являются кандидатами на зоны гиба, но могут также относиться к отверстиям или другим цилиндрическим поверхностям.`,
-    );
+    if (bendCandidates.length) {
+      warnings.push(
+        `Цилиндрических граней: ${cylindricalFaces.length}; соосных пар, согласованных с кандидатом толщины: ${bendCandidates.length}. Это кандидаты на гибы, а не подтверждённый bend count.`,
+      );
+    } else {
+      warnings.push(
+        `Обнаружено цилиндрических граней: ${cylindricalFaces.length}, но ни одна не подтверждена как парная зона гиба. Отверстия, трубы и одиночные цилиндрические поверхности не считаются гибами автоматически.`,
+      );
+    }
   }
 
   return {
@@ -207,11 +315,7 @@ export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObserv
     cylindricalFaceCount: cylindricalFaces.length,
     otherFaceCount: Math.max(0, Math.trunc(observations.otherFaceCount)),
     thicknessCandidate,
-    bendCandidates: cylindricalFaces.map((face) => ({
-      id: face.id,
-      radiusMm: face.radiusMm,
-      areaMm2: face.areaMm2,
-    })),
+    bendCandidates,
     warnings,
   };
 }
