@@ -1,5 +1,4 @@
 import type { InstantQuoteProject } from "@/lib/instant-quote/domain";
-import type { ParsedDxf } from "@/lib/instant-quote/dxf";
 import { runVerifiedLaserDfm } from "@/lib/instant-quote/dfm";
 import {
   calculateFactualProductionCost,
@@ -35,7 +34,14 @@ export type ProjectFactualCalculationResult = {
   commercialPriceReady: false;
 };
 
-export type ProjectDxfEvidence = Record<string, Pick<ParsedDxf, "unsupportedEntities">>;
+export type PartCadEvidence = {
+  unsupportedEntities?: string[];
+  reviewReasons?: string[];
+};
+
+export type ProjectCadEvidence = Record<string, PartCadEvidence>;
+/** Backward-compatible name for existing immutable report snapshots. */
+export type ProjectDxfEvidence = ProjectCadEvidence;
 
 function materialIdOf(value: string | null): MaterialId | null {
   if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
@@ -50,21 +56,21 @@ function materialIdOf(value: string | null): MaterialId | null {
  */
 export function calculateProjectFactualCost(
   project: InstantQuoteProject,
-  parsedByPartId: ProjectDxfEvidence,
+  evidenceByPartId: ProjectCadEvidence,
   snapshots: StoredPriceSnapshot[],
   rateBook: FactualRateBook,
   factualInputsByPartId: Record<string, PartFactualInputs> = {},
   now = new Date(),
 ): ProjectFactualCalculationResult {
   const parts = project.parts.map<ProjectFactualPartResult>((part) => {
-    const parsed = parsedByPartId[part.id];
-    if (!parsed || !part.geometry?.widthMm || !part.geometry.heightMm) {
+    const evidence = evidenceByPartId[part.id] ?? {};
+    if (!part.geometry?.widthMm || !part.geometry.heightMm) {
       return {
         partId: part.id,
         status: "missing-geometry",
         calculation: null,
         dfmBlockingReasons: [],
-        dfmReviewReasons: ["Нормализованная геометрия детали ещё не готова."],
+        dfmReviewReasons: ["Нормализованная производственная геометрия детали ещё не готова.", ...(evidence.reviewReasons ?? [])],
       };
     }
 
@@ -76,7 +82,7 @@ export function calculateProjectFactualCost(
         status: "missing-configuration",
         calculation: null,
         dfmBlockingReasons: [],
-        dfmReviewReasons: ["Материал или толщина не заданы."],
+        dfmReviewReasons: ["Материал или толщина не заданы.", ...(evidence.reviewReasons ?? [])],
       };
     }
 
@@ -85,17 +91,20 @@ export function calculateProjectFactualCost(
       thicknessMm,
       materialId,
     );
-    if (parsed.unsupportedEntities.length) {
+    if ((evidence.unsupportedEntities?.length ?? 0) > 0) {
       dfm.push({
         code: "unsupported-dxf-entities",
         title: "Неподдерживаемая геометрия DXF",
-        detail: parsed.unsupportedEntities.join(", "),
+        detail: evidence.unsupportedEntities!.join(", "),
         severity: "manual",
       });
     }
 
     const dfmBlockingReasons = dfm.filter((item) => item.severity === "error").map((item) => item.title);
-    const dfmReviewReasons = dfm.filter((item) => item.severity === "manual" || item.severity === "warning").map((item) => item.title);
+    const dfmReviewReasons = [
+      ...dfm.filter((item) => item.severity === "manual" || item.severity === "warning").map((item) => item.title),
+      ...(evidence.reviewReasons ?? []),
+    ];
     if (dfmBlockingReasons.length) {
       return {
         partId: part.id,
