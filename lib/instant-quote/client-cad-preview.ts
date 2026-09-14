@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import {
   arcPoints,
