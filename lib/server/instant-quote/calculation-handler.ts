@@ -1,5 +1,3 @@
-import "server-only";
-
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
@@ -131,6 +129,11 @@ function storageNotes(requestId: string, stored: QuarantinedUpload[]) {
  * geometry is derived from the uploaded CAD on the server. The only successful
  * response payload is ClientProjectCalculationView; the confidential report is
  * persisted internally by runConfidentialCalculationForClient.
+ *
+ * This module deliberately has no `server-only` package marker so it can be
+ * imported directly by Node unit tests. It remains server-side by architecture:
+ * the public API route imports it, and every confidential dependency it reaches
+ * keeps its own server-only boundary.
  */
 export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculationHandlerDependencies> = {}) {
   const dependencies = { ...defaults, ...overrides };
