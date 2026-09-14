@@ -1,5 +1,5 @@
 import type { CadFormat, PartGeometrySummary } from "@/lib/instant-quote/domain";
-import type { SheetMetalAnalysis } from "@/lib/instant-quote/sheet-metal";
+import type { SheetMetalAnalysis, SheetMetalBoundaryPreview } from "@/lib/instant-quote/sheet-metal";
 
 export type CadVector3 = [number, number, number];
 
@@ -65,6 +65,44 @@ function finitePositive(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
+function validateBoundaryPreview(preview: unknown, errors: string[]) {
+  if (preview == null) return;
+  if (!preview || typeof preview !== "object" || Array.isArray(preview)) {
+    errors.push("STEP flat-pattern preview must be an object.");
+    return;
+  }
+
+  const candidate = preview as Partial<SheetMetalBoundaryPreview>;
+  if (candidate.source !== "brep-edge-sampling") errors.push("STEP flat-pattern preview source is invalid.");
+  if (candidate.displayOnly !== true) errors.push("STEP flat-pattern preview must be explicitly display-only.");
+  if (!Array.isArray(candidate.wires) || candidate.wires.length < 1) {
+    errors.push("STEP flat-pattern preview requires at least one wire.");
+    return;
+  }
+
+  for (const wire of candidate.wires) {
+    if (!wire || typeof wire.id !== "string" || !wire.id) errors.push("Every STEP preview wire requires an id.");
+    if (!Array.isArray(wire?.edges) || wire.edges.length < 1) {
+      errors.push("Every STEP preview wire requires at least one edge.");
+      continue;
+    }
+    for (const edge of wire.edges) {
+      if (!edge || typeof edge.id !== "string" || !edge.id) errors.push("Every STEP preview edge requires an id.");
+      if (typeof edge?.curveKind !== "string" || !edge.curveKind) errors.push("Every STEP preview edge requires a curve kind.");
+      if (!Array.isArray(edge?.pointsMm) || edge.pointsMm.length < 2) {
+        errors.push("Every STEP preview edge requires at least two display points.");
+        continue;
+      }
+      for (const point of edge.pointsMm) {
+        if (!Array.isArray(point) || point.length !== 2 || point.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+          errors.push("STEP preview points must be finite UV pairs.");
+          break;
+        }
+      }
+    }
+  }
+}
+
 function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
   if (sheetMetal == null) return;
   if (!sheetMetal || typeof sheetMetal !== "object" || Array.isArray(sheetMetal)) {
@@ -114,6 +152,7 @@ function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
     if (Array.isArray(analysis.bendCandidates) && analysis.bendCandidates.length > 0) errors.push("Planar-prism flat pattern cannot coexist with bend candidates.");
     const evidenceIds = new Set(analysis.thicknessCandidate?.evidenceFaceIds ?? []);
     if (!evidenceIds.has(flat.faceId) || !evidenceIds.has(flat.oppositeFaceId)) errors.push("Trusted flat-pattern faces must be part of the thickness evidence.");
+    validateBoundaryPreview(flat.preview, errors);
   }
 }
 
