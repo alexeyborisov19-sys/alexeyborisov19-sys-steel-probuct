@@ -177,8 +177,6 @@ jobs:
           JSON
 
           HTTP_CODE="$(curl --silent --show-error --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
-            -H 'Origin: http://127.0.0.1:3012' \
-            -H 'Referer: http://127.0.0.1:3012/online-order' \
             -F "manifest=<$RUNNER_TEMP/manifest.json" \
             -F "files=@$RUNNER_TEMP/smoke.dxf;type=application/dxf" \
             http://127.0.0.1:3012/api/online-order/calculate)"
