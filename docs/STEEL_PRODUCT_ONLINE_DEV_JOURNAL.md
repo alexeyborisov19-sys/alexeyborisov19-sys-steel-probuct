@@ -27,24 +27,22 @@
 - Публикация: **НЕ ДЕЛАТЬ** без отдельного решения владельца
 - Merge в `main`: **НЕ ДЕЛАТЬ** без отдельного решения владельца
 - Оплата / checkout: **НЕ РАЗРАБАТЫВАТЬ на текущем этапе**
-- **Last implementation checkpoint:** `5fab1567b8586a30bd99dda18b7a3a1e96a2534e`
-- Implementation commit: `Test private STEP physical evidence boundary`
-- **CI на `5fab1567…`: GREEN в обоих workflow.**
-  - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
-  - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
-- Последующий journal-only checkpoint `605bf1b1…` также прошёл оба workflow полностью GREEN.
-- **Current WIP implementation HEAD before regression gate:** `673d74efd3ad51fe440bc53d0f938e480f6e048c`.
-- WIP не считать новым implementation checkpoint до regression tests + полного green CI.
-- Текущий WIP block:
-  - `PartFactualInputs` проводит `assemblyMinutes` и `surfacePreparationAreaM2` в project factual engine;
-  - internal revision parser/API принимает только эти физические параметры вместе с уже существующими bend/weld/powder inputs;
-  - immutable confidential recalculation сохраняет/очищает эти inputs в snapshot;
-  - production parameters получают assembly/surface-preparation/packaging semantics;
-  - readiness показывает сборку, подготовку поверхности и упаковку отдельными internal checkpoints;
-  - internal revision form/report UI показывает эти значения только в закрытом RBAC-контуре;
-  - публичный client DTO/API этим блоком не расширялся.
+- **Last implementation checkpoint:** `ae09b1e5b8f04db893eef174455f5af2e2d0991f`
+- Implementation commit: `Guard new internal physical inputs from public client boundary`
+- **CI на `ae09b1e…`: GREEN в обоих workflow.**
+  - `Steel Product Online Alpha CI`: success — TypeScript, Unit tests, Next.js build.
+  - `Verify project package`: success — Lint, Typecheck, Tests, Build, SEO audit.
+- PR #90 остаётся `open`, `draft`, `merged=false`; base остаётся `main`.
+- Закрыт factual block assembly / surface preparation:
+  - `assemblyMinutes` и `surfacePreparationAreaM2` проведены через project factual engine;
+  - internal revision parser/API принимает эти значения только как физические параметры;
+  - immutable confidential revisions сохраняют, изменяют и очищают их;
+  - production parameters и readiness/completeness используют те же factual inputs;
+  - internal form/report UI показывает их только в RBAC-контуре;
+  - packaging учитывается как выбранная операция в internal production parameters/readiness;
+  - confidentiality regression запрещает `assemblyMinutes`, `surfacePreparationAreaM2` и authoritative factual evidence в client workspace/client DTO.
 
-> Обновление этого журнала создаёт metadata commit выше implementation checkpoint. При restart сравнивать изменения, а не считать journal-only SHA новой функциональностью.
+> Обновление журнала создаёт metadata commit выше implementation checkpoint. При restart implementation checkpoint остаётся SHA последней реально проверенной функциональности, пока следующий блок не прошёл CI.
 
 ---
 
@@ -66,7 +64,7 @@
 
 ### 2.3 Конфиденциальность
 
-Клиент НЕ получает: закупочные цены, внутренние ставки, себестоимость, коэффициенты/маржу, нормы, внутреннюю расшифровку реза/прожигов/массы/отхода, detailed internal DFM, report IDs/paths, production evidence.
+Клиент НЕ получает: закупочные цены, внутренние ставки, себестоимость, коэффициенты/маржу, нормы, внутреннюю расшифровку реза/прожигов/массы/отхода, detailed internal DFM, report IDs/paths, production evidence, factual assembly/surface-preparation parameters.
 
 Клиент может получать: свой CAD/preview, безопасные габариты, выбранные материал/толщину/количество/операции, coarse status и в будущем отдельно утверждённую конечную продажную цену/срок.
 
@@ -99,9 +97,10 @@
 - `/online-order` client-safe workspace.
 - multi-part project.
 - DXF/STEP/STP/DWG intake.
-- DXF ASCII parser, базовые LINE/LWPOLYLINE/CIRCLE/ARC, bounds/cut length/preview.
+- DXF ASCII parser: LINE/LWPOLYLINE/CIRCLE/ARC, bounds/cut length/preview.
+- ARC уже использует точные cardinal bounds и фактическую длину дуги; не переписывать без regression evidence.
 - public calculation server заново разбирает CAD; browser production metrics не authoritative.
-- Известные DXF gaps: ARC bbox hardening, bulge 42, POLYLINE/VERTEX, SPLINE, ELLIPSE, INSERT/BLOCK, HATCH, production contour/pierce semantics.
+- Известные DXF gaps: LWPOLYLINE bulge 42, legacy POLYLINE/VERTEX, SPLINE, ELLIPSE, INSERT/BLOCK, HATCH, более строгая production contour/pierce topology.
 
 ### STEP / Sheet Metal Engine
 Уже есть:
@@ -137,7 +136,8 @@
 - confidential laser batch tiers;
 - confidential pierce line when rate exists;
 - bending/welding/powder;
-- assembly / surface preparation / packaging low-level physical-input semantics;
+- assembly / surface preparation / packaging semantics;
+- `assemblyMinutes` + `surfacePreparationAreaM2` проходят project/internal immutable revision path;
 - missing physical input отдельно от missing rate;
 - no hidden public 5%/16.5%/setup assumptions;
 - provenance-aware physical input resolution: explicit technologist > server-authoritative CAD evidence > explicit coating-side derivation;
@@ -163,7 +163,7 @@
 - security/quarantine upload path;
 - private orchestrator server-only/lazy;
 - confidentiality regression tests;
-- regression подтверждает отсутствие `powderAreaM2`, authoritative factual evidence, BRep/DFM/cost fields в public calculation response.
+- regression запрещает internal cost/rate/supplier/report/DFM evidence, `powderAreaM2`, `assemblyMinutes`, `surfacePreparationAreaM2`, `authoritativeFactualByPartId` в client workspace/client DTO.
 
 ### Internal reports
 - private storage/list/detail pages;
@@ -176,7 +176,8 @@
 - lineage (`supersedes`, actor, reason);
 - revision form;
 - server-authoritative factual inputs сохраняются в confidential snapshot и переживают immutable recalculation revisions;
-- manual technologist override остаётся выше automatic CAD evidence.
+- manual technologist override остаётся выше automatic CAD evidence;
+- assembly/surface-preparation physical values поддерживают accept/reject/clear и readiness regression coverage.
 
 ### Continuity
 - этот journal создан;
@@ -187,23 +188,24 @@
 
 ## 4. IN PROGRESS
 
-1. **Assembly / surface-preparation revision path реализован, но ещё не закрыт regression gate.**
-2. WIP implementation HEAD до journal commit: `673d74efd3ad51fe440bc53d0f938e480f6e048c`.
-3. Уже проведены только внутренние физические значения `assemblyMinutes` и `surfacePreparationAreaM2` через project calculation, confidential snapshot, immutable revisions, production parameters, completeness и internal form/report UI.
-4. Никакие ставки, supplier prices, cost totals или производственные параметры в client DTO/API не добавлялись.
-5. До нового checkpoint обязательны regression tests и полный CI.
+1. Следующий CAD accuracy block: **LWPOLYLINE bulge (`DXF group 42`)**.
+2. Сейчас parser обнаруживает bulge, помечает `LWPOLYLINE_BULGE` unsupported и затем считает segment bounds/cut length по прямой хорде. Это занижает фактическую длину криволинейного реза и может дать неверный bbox.
+3. На первом безопасном этапе нужно сделать authoritative curved-segment bounds + cut length и preview без ложного `unsupported` для самой геометрии.
+4. Closed-contour area/pierce topology с bulge нельзя объявлять exact, пока arc-aware containment/topology не доказан тестами. Если точность площади не подтверждена — оставлять `areaStatus=unavailable`, а не аппроксимировать как факт.
 
 ---
 
 ## 5. NEXT ACTION — начинать отсюда
 
-**NEXT ACTION #1:** добавить regression tests для `assemblyMinutes` / `surfacePreparationAreaM2`: parser accept/reject, project-level `partial → complete`, explicit clear, persistence в immutable snapshot/revision.
+**NEXT ACTION #1:** расширить внутреннее представление `LWPOLYLINE` segment metadata так, чтобы bulge относился к исходящей дуге вершины и корректно работал для последнего сегмента закрытого polyline.
 
-**NEXT ACTION #2:** проверить readiness/completeness для assembly, surface preparation и packaging, включая отсутствие физического input отдельно от отсутствующей confidential rate.
+**NEXT ACTION #2:** реализовать математически точное преобразование bulge → circular arc: center/radius/start/end/orientation; использовать его для bbox и cut length. Не подменять дугу хордой.
 
-**NEXT ACTION #3:** усилить confidentiality regression: новые internal physical fields не должны появляться в public calculation response/client DTO.
+**NEXT ACTION #3:** preview должен отображать bulged segment как дугу/достаточно плотную визуальную выборку, но production length/bounds считать аналитически.
 
-**NEXT ACTION #4:** полный CI на итоговом implementation HEAD. Если RED — сначала исправить failure. Если GREEN — обновить `Last implementation checkpoint` и только потом брать следующий factual gap.
+**NEXT ACTION #4:** regression tests: positive/negative bulge, semicircle (`bulge=±1`), arc crossing cardinal directions, closed last segment, zero bulge backward compatibility. Пока topology area не доказана — явно test `areaStatus=unavailable` для bulged closed contour.
+
+**NEXT ACTION #5:** полный CI. Только после GREEN обновить checkpoint и идти к следующему DXF gap (`POLYLINE/VERTEX` или exact bulge topology).
 
 ---
 
@@ -218,7 +220,8 @@
 - ненадёжный METALLSERVIS scraping;
 - придуманные K-factor/bend allowance/rates/tolerances;
 - unverified bent STEP как production-authoritative;
-- неизвестная операция как нулевая стоимость.
+- неизвестная операция как нулевая стоимость;
+- аппроксимированную DXF площадь выдавать как exact production fact.
 
 ---
 
@@ -243,17 +246,19 @@ Green относится только к SHA, который реально пр
 
 ### 2026-09-14 — private STEP coating evidence
 - `9bcb19ce…`: regression suite изолирован от production quote rate-limit state; production limits не менялись.
-- `2cd3b218…` + `b2290e5a…`: exact OpenCascade STEP boundary surface area вынесена в server-only production evidence и передаётся только в confidential calculation.
-- `8db1c04d…` + `7b13d786…`: server-authoritative factual provenance сохраняется в закрытом snapshot/revisions, manual technologist value имеет приоритет.
+- exact OpenCascade STEP boundary surface area вынесена в server-only production evidence и передаётся только в confidential calculation.
+- server-authoritative factual provenance сохраняется в закрытом snapshot/revisions, manual technologist value имеет приоритет.
 - `5fab1567…`: regression подтверждает promotion только для production-ready STEP и отсутствие private physical evidence в client response.
 - На `5fab1567…` оба workflow полностью GREEN.
 
-### 2026-09-14 — WIP internal assembly / surface preparation revision path
+### 2026-09-14 — internal assembly / surface preparation revision path
 - `75308022…`: project factual inputs проводят `assemblyMinutes` и `surfacePreparationAreaM2` в existing low-level factual engine.
-- `b32df14d…` + `0b08d861…`: internal parser/API принимает только новые физические inputs; rates/cost/total по-прежнему не являются revision input.
-- `03c78609…` + `bf554e14…`: immutable recalculation/confidential production parameters сохраняют assembly/surface-preparation; packaging state также передаётся в internal parameters.
+- `b32df14d…` + `0b08d861…`: internal parser/API принимает только новые физические inputs; rates/cost/total не являются revision input.
+- `03c78609…` + `bf554e14…`: immutable recalculation/confidential production parameters сохраняют assembly/surface-preparation; packaging state передаётся в internal parameters.
 - `6bdc9ffa…` + `aacc629b…` + `673d74ef…`: internal completeness/form/report UI дополнены для сборки/подготовки поверхности/упаковки.
-- Этот блок **ещё WIP** до regression tests + полного green CI; `673d74ef…` не считать implementation checkpoint.
+- `7201aa40…` и последующие regression commits закрыли parser/project/readiness/confidentiality checks.
+- `ae09b1e5…`: public client boundary дополнительно запрещает новые internal physical fields.
+- На `ae09b1e5…` оба workflow полностью GREEN; это новый implementation checkpoint.
 
 ---
 
