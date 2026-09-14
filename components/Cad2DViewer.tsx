@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { arcPoints, polylinePreviewPoints, type ParsedDxf } from "@/lib/instant-quote/dxf";
+import { arcPoints, ellipsePreviewPoints, polylinePreviewPoints, type ParsedDxf } from "@/lib/instant-quote/dxf";
 
 export function Cad2DViewer({ parsed, animated = false }: { parsed: ParsedDxf; animated?: boolean }) {
   const pad = Math.max(parsed.width, parsed.height, 10) * 0.09;
@@ -49,6 +49,10 @@ export function Cad2DViewer({ parsed, animated = false }: { parsed: ParsedDxf; a
 
         if (shape.kind === "circle") {
           return <circle key={index} cx={shape.c.x} cy={y(shape.c.y)} r={shape.r} {...common} />;
+        }
+
+        if (shape.kind === "ellipse") {
+          return <polyline key={index} points={ellipsePreviewPoints(shape).map((point) => `${point.x},${y(point.y)}`).join(" ")} {...common} />;
         }
 
         return <polyline key={index} points={arcPoints(shape).map((point) => `${point.x},${y(point.y)}`).join(" ")} {...common} />;
