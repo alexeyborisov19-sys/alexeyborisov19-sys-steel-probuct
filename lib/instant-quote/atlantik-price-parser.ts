@@ -29,11 +29,15 @@ function integerPrice(value: string) {
 }
 
 function parseSheetRow(line: string) {
-  // Examples of supported extracted rows:
+  // Black/galvanized sheet prices in Atlantik's extracted table are normally
+  // formatted as `123 400` (or occasionally as an unspaced integer). Do not
+  // use a greedy thousands pattern here: two adjacent price columns such as
+  // `123 400 121 900` must remain two independent values.
+  // Examples:
   // 2х1250х2500 123 400 121 900 6 123,45
   // 16x1500x6000 123 400 режем кратно 1 м
   const match = line.match(
-    /^(\d+(?:[,.]\d+)?)\s*[xх×]\s*(\d+)\s*[xх×]\s*(\d+)\s+(\d{2,3}(?:\s\d{3})+|\d{4,6})(?:\s+(\d{2,3}(?:\s\d{3})+|\d{4,6}))?(?:\s|$)/i,
+    /^(\d+(?:[,.]\d+)?)\s*[xх×]\s*(\d+)\s*[xх×]\s*(\d+)\s+(\d{2,3}\s\d{3}|\d{4,6})(?:\s+(\d{2,3}\s\d{3}|\d{4,6}))?(?:\s|$)/i,
   );
   if (!match) return null;
 
