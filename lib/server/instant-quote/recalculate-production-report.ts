@@ -124,11 +124,13 @@ export async function recalculateInternalProductionReport(
 
   const validPartIds = new Set(snapshot.project.parts.map((part) => part.id));
   const factualByPartId = mergeFactualInputs(snapshot.factualByPartId, input.factualByPartId, validPartIds);
+  const authoritativeFactualByPartId = snapshot.authoritativeFactualByPartId ?? {};
   const powderSidesByPartId = mergePowderSides(snapshot.powderSidesByPartId, input.powderSidesByPartId, validPartIds);
   const effectiveFactualByPartId = resolveEffectiveFactualInputs(
     snapshot.project,
     factualByPartId,
     powderSidesByPartId,
+    authoritativeFactualByPartId,
   );
   const basis = await loadPrivateCalculationBasis();
   const evidence = evidenceFromSnapshot(snapshot);
@@ -147,7 +149,7 @@ export async function recalculateInternalProductionReport(
     const materialId = asMaterialId(part.configuration.materialId);
     const thicknessMm = part.configuration.thicknessMm;
     if (!materialId || !(thicknessMm && thicknessMm > 0) || !part.geometry) continue;
-    const factual = factualByPartId[part.id] ?? {};
+    const factual = effectiveFactualByPartId[part.id] ?? {};
     productionParametersByPartId[part.id] = deriveProductionParameters({
       materialId,
       thicknessMm,
@@ -162,6 +164,7 @@ export async function recalculateInternalProductionReport(
   const nextSnapshot: InternalCalculationInputSnapshot = {
     project: snapshot.project,
     factualByPartId,
+    authoritativeFactualByPartId,
     powderSidesByPartId,
     unsupportedEntitiesByPartId: snapshot.unsupportedEntitiesByPartId,
   };
