@@ -16,12 +16,23 @@ export type ParsedDxf = {
   maxY: number;
   cutLength: number;
   contours: number;
+  closedContours: number;
+  pierces: number | null;
+  holeCount: number | null;
+  area: number | null;
+  areaStatus: "exact" | "unavailable";
   units: string;
   unitsCode: number | null;
   unsupportedEntities: string[];
 };
 
 type Pair = [number, string];
+
+type ClosedContour = {
+  area: number;
+  sample: Point2D;
+  contains(point: Point2D): boolean;
+};
 
 function distance(a: Point2D, b: Point2D) {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -95,6 +106,88 @@ function exactArcBounds(shape: Extract<DxfShape, { kind: "arc" }>) {
     const rad = deg * Math.PI / 180;
     return { x: shape.c.x + Math.cos(rad) * shape.r, y: shape.c.y + Math.sin(rad) * shape.r };
   });
+}
+
+function polygonArea(points: Point2D[]) {
+  let sum = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(sum) / 2;
+}
+
+function pointInPolygon(point: Point2D, polygon: Point2D[]) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i];
+    const b = polygon[j];
+    const crosses = (a.y > point.y) !== (b.y > point.y)
+      && point.x < ((b.x - a.x) * (point.y - a.y)) / ((b.y - a.y) || Number.EPSILON) + a.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
+  const closed: ClosedContour[] = [];
+  let exact = unsupported.size === 0;
+
+  for (const shape of shapes) {
+    if (shape.kind === "circle") {
+      closed.push({
+        area: Math.PI * shape.r * shape.r,
+        sample: { x: shape.c.x + shape.r * 0.999, y: shape.c.y },
+        contains: (point) => distance(shape.c, point) < shape.r - 1e-8,
+      });
+      continue;
+    }
+
+    if (shape.kind === "polyline" && shape.closed && shape.points.length >= 3) {
+      const area = polygonArea(shape.points);
+      if (!(area > 0)) {
+        exact = false;
+        continue;
+      }
+      closed.push({
+        area,
+        sample: shape.points[0],
+        contains: (point) => pointInPolygon(point, shape.points),
+      });
+      continue;
+    }
+
+    // Open lines/arcs or open polylines mean the parser cannot prove a complete
+    // laser contour topology, so area/pierce metrics must not be presented as exact.
+    exact = false;
+  }
+
+  if (!exact || !closed.length) {
+    return { area: null, pierces: null, holes: null, closedContours: closed.length, status: "unavailable" as const };
+  }
+
+  let netArea = 0;
+  let holes = 0;
+  closed.forEach((contour, index) => {
+    const depth = closed.reduce((count, other, otherIndex) => {
+      if (index === otherIndex) return count;
+      return count + (other.contains(contour.sample) ? 1 : 0);
+    }, 0);
+    if (depth % 2 === 0) netArea += contour.area;
+    else {
+      netArea -= contour.area;
+      holes++;
+    }
+  });
+
+  return {
+    area: Math.max(0, netArea),
+    pierces: closed.length,
+    holes,
+    closedContours: closed.length,
+    status: "exact" as const,
+  };
 }
 
 export function parseAsciiDxf(text: string): ParsedDxf {
@@ -208,6 +301,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
+  const topology = closedContourMetrics(shapes, unsupported);
 
   return {
     shapes,
@@ -219,6 +313,11 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     maxY,
     cutLength,
     contours: shapes.length,
+    closedContours: topology.closedContours,
+    pierces: topology.pierces,
+    holeCount: topology.holes,
+    area: topology.area,
+    areaStatus: topology.status,
     units: units.label,
     unitsCode: units.code,
     unsupportedEntities: [...unsupported].sort(),
