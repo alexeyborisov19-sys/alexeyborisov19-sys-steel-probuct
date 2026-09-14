@@ -144,3 +144,59 @@ test("normalized CAD validator rejects unfold bends that reference unknown panel
   assert.equal(validation.ok, false);
   assert.ok(validation.errors.some((error) => error.includes("known panel ids")));
 });
+
+test("normalized CAD validator accepts finite hashed 3D boundary and paired tangency evidence", () => {
+  const input = model();
+  input.unfoldGeometry!.panels[0].boundary3d = {
+    source: "brep-edge-sampling",
+    displayOnly: true,
+    faceId: "a-top",
+    wires: [
+      {
+        id: "wire-a",
+        edges: [
+          { id: "edge-a", edgeHash: 101, curveKind: "line", pointsMm: [[0, 0, 2], [100, 0, 2]] },
+        ],
+      },
+    ],
+  };
+  input.unfoldGeometry!.bends[0].tangentSegments = [
+    { panelId: panelA, startMm: [0, 0, 1], endMm: [100, 0, 1], sourceEdgeHashes: [101, 201] },
+    { panelId: panelB, startMm: [0, 1, 0], endMm: [100, 1, 0], sourceEdgeHashes: [102, 202] },
+  ];
+
+  assert.deepEqual(validateNormalizedCadModel(input), { ok: true, errors: [] });
+});
+
+test("normalized CAD validator rejects a 3D boundary without a usable BRep edge hash", () => {
+  const input = model();
+  input.unfoldGeometry!.panels[0].boundary3d = {
+    source: "brep-edge-sampling",
+    displayOnly: true,
+    faceId: "a-top",
+    wires: [
+      {
+        id: "wire-a",
+        edges: [
+          { id: "edge-a", edgeHash: -1, curveKind: "line", pointsMm: [[0, 0, 2], [100, 0, 2]] },
+        ],
+      },
+    ],
+  };
+
+  const validation = validateNormalizedCadModel(input);
+  assert.equal(validation.ok, false);
+  assert.ok(validation.errors.some((error) => /edge hash/i.test(error)));
+});
+
+test("normalized CAD validator rejects tangency evidence that does not cover both connected panels", () => {
+  const input = model();
+  input.unfoldGeometry!.bends[0].tangentSegments = [
+    { panelId: panelA, startMm: [0, 0, 1], endMm: [100, 0, 1], sourceEdgeHashes: [101, 201] },
+    { panelId: panelA, startMm: [0, 2, 1], endMm: [100, 2, 1], sourceEdgeHashes: [102, 202] },
+  ];
+
+  const validation = validateNormalizedCadModel(input);
+  assert.equal(validation.ok, false);
+  assert.ok(validation.errors.some((error) => /exactly its two connected panels/i.test(error)));
+});
