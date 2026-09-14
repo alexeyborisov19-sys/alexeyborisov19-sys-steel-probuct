@@ -5,12 +5,11 @@ import type { ChangeEvent, DragEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { runVerifiedLaserDfm, type DfmResult } from "@/lib/instant-quote/dfm";
 import { arcPoints, parseAsciiDxf, type ParsedDxf } from "@/lib/instant-quote/dxf";
+import { dxfCadAdapter } from "@/lib/instant-quote/dxf-adapter";
 import { createEmptyProject, type ManufacturingOperation } from "@/lib/instant-quote/domain";
 import { selectBestStoredPrice } from "@/lib/instant-quote/material-price-feed";
-import {
-  calculateProvisionalPartPrice,
-  type MaterialId,
-} from "@/lib/instant-quote/pricing";
+import { calculateProjectProvisionalPricing } from "@/lib/instant-quote/project-pricing";
+import type { MaterialId } from "@/lib/instant-quote/pricing";
 import { FALLBACK_METAL_PRICE_SNAPSHOTS } from "@/lib/instant-quote/price-seed";
 import {
   addPartToProject,
@@ -30,7 +29,7 @@ const thicknessOptions = [0.5, 0.7, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10,
 const MATERIAL_OPTIONS: Array<{ id: MaterialId; label: string; note: string }> = [
   { id: "hot", label: "Сталь г/к", note: "чёрная сталь" },
   { id: "cold", label: "Сталь х/к", note: "чёрная сталь" },
-  { id: "zinc", label: "Оцинковка", note: "требует отдельной DFM-базы" },
+  { id: "zinc", label: "Оцинковка", note: "DFM review" },
 ];
 
 const OPERATION_OPTIONS: Array<{ id: ManufacturingOperation; label: string }> = [
@@ -49,16 +48,16 @@ function money(n: number) {
   return `${Math.ceil(n).toLocaleString("ru-RU")} ₽`;
 }
 
+function materialIdOf(value: string | null): MaterialId {
+  if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
+  return "hot";
+}
+
 function severityTone(severity: DfmResult["severity"]) {
   if (severity === "pass") return "border-emerald-400/25 bg-emerald-400/5 text-emerald-300";
   if (severity === "error") return "border-red-400/30 bg-red-400/5 text-red-300";
   if (severity === "warning") return "border-amber-400/30 bg-amber-400/5 text-amber-300";
   return "border-white/12 bg-white/[.025] text-white/65";
-}
-
-function materialIdOf(value: string | null): MaterialId {
-  if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
-  return "hot";
 }
 
 function DxfGeometry({ parsed, animated = false }: { parsed: ParsedDxf; animated?: boolean }) {
@@ -93,7 +92,9 @@ function DxfGeometry({ parsed, animated = false }: { parsed: ParsedDxf; animated
               y2={y(shape.b.y)}
               {...common}
             />
-          ) : <line key={index} x1={shape.a.x} y1={y(shape.a.y)} x2={shape.b.x} y2={y(shape.b.y)} {...common} />;
+          ) : (
+            <line key={index} x1={shape.a.x} y1={y(shape.a.y)} x2={shape.b.x} y2={y(shape.b.y)} {...common} />
+          );
         }
         if (shape.kind === "polyline") {
           const points = [...shape.points, ...(shape.closed ? [shape.points[0]] : [])]
@@ -108,6 +109,14 @@ function DxfGeometry({ parsed, animated = false }: { parsed: ParsedDxf; animated
       })}
     </svg>
   );
+}
+
+function pricingStatusLabel(status: string) {
+  if (status === "blocked") return "DFM BLOCK";
+  if (status === "missing-price") return "НЕТ ЦЕНЫ";
+  if (status === "missing-geometry") return "CAD REVIEW";
+  if (status === "manual") return "REVIEW";
+  return "РАССЧИТАНО";
 }
 
 export function InstantQuoteWorkspace() {
@@ -126,63 +135,43 @@ export function InstantQuoteWorkspace() {
   const materialId = materialIdOf(activePart?.configuration.materialId ?? null);
   const thickness = activePart?.configuration.thicknessMm ?? 1;
   const quantity = activePart?.configuration.quantity ?? 1;
-  const isAnalyzing = activePart ? Boolean(analyzingByPartId[activePart.id]) : false;
   const message = activePart ? messageByPartId[activePart.id] ?? null : null;
+  const isAnalyzing = activePart ? Boolean(analyzingByPartId[activePart.id]) : false;
+
+  const projectPricing = useMemo(
+    () => calculateProjectProvisionalPricing(project, parsedByPartId, FALLBACK_METAL_PRICE_SNAPSHOTS),
+    [parsedByPartId, project],
+  );
+  const activePricing = activePart
+    ? projectPricing.parts.find((item) => item.partId === activePart.id) ?? null
+    : null;
+  const provisionalPrice = activePricing?.price ?? null;
+
+  const selectedPrice = useMemo(() => {
+    if (!activePart) return null;
+    return selectBestStoredPrice(FALLBACK_METAL_PRICE_SNAPSHOTS, materialId, thickness);
+  }, [activePart, materialId, thickness]);
 
   const dfm = useMemo(() => {
-    if (!parsed) return [];
-    const results = runVerifiedLaserDfm(parsed, thickness);
-    if (materialId === "zinc") {
-      results.push({
-        code: "zinc-capability-review",
-        title: "Оцинкованная сталь — отдельная технологическая проверка",
-        detail: "Автоматический диапазон толщин для оцинкованного листа пока не утверждён в технологической базе. Габарит и единицы проверены, совместимость материала подтверждает технолог.",
-        severity: "manual",
-      });
-    }
+    if (!activePart?.geometry?.widthMm || !activePart.geometry.heightMm || !parsed) return [];
+    const results = runVerifiedLaserDfm(
+      { width: activePart.geometry.widthMm, height: activePart.geometry.heightMm, units: "мм" },
+      thickness,
+      materialId,
+    );
     if (parsed.unsupportedEntities.length) {
       results.push({
         code: "unsupported-dxf-entities",
         title: "В DXF есть геометрия, требующая расширенного парсера",
-        detail: `Обнаружено: ${parsed.unsupportedEntities.join(", ")}. Предварительный контур показан, но автоматический заказ требует проверки.` ,
+        detail: `Обнаружено: ${parsed.unsupportedEntities.join(", ")}. Предварительный контур показан, но автоматический запуск требует проверки.`,
         severity: "manual",
       });
     }
     return results;
-  }, [materialId, parsed, thickness]);
+  }, [activePart, materialId, parsed, thickness]);
 
   const blocking = dfm.some((item) => item.severity === "error");
   const manual = dfm.some((item) => item.severity === "manual" || item.severity === "warning");
-
-  const selectedPrice = useMemo(() => {
-    if (!activePart) return null;
-    return selectBestStoredPrice(
-      FALLBACK_METAL_PRICE_SNAPSHOTS,
-      materialId,
-      thickness,
-    );
-  }, [activePart, materialId, thickness]);
-
-  const provisionalPrice = useMemo(() => {
-    if (!activePart?.geometry || !parsed || parsed.units !== "мм" || blocking || !selectedPrice?.price) return null;
-    return calculateProvisionalPartPrice({
-      materialId,
-      thicknessMm: thickness,
-      quantity,
-      geometry: activePart.geometry,
-      marketPrice: selectedPrice.price,
-      operations: activePart.configuration.operations,
-      materialUsageFactor: 1.15,
-    });
-  }, [activePart, blocking, materialId, parsed, quantity, selectedPrice, thickness]);
-
-  const projectTotal = useMemo(() => {
-    return project.parts.reduce((sum, part) => {
-      if (part.id === activePart?.id && provisionalPrice) return sum + provisionalPrice.totalRub;
-      if (part.quote.kind === "calculated") return sum + part.quote.totalRub;
-      return sum;
-    }, 0);
-  }, [activePart?.id, project.parts, provisionalPrice]);
 
   const ingestFiles = async (files: File[]) => {
     if (!files.length) return;
@@ -190,12 +179,15 @@ export function InstantQuoteWorkspace() {
     const jobs: Array<{ file: File; partId: string }> = [];
 
     files.forEach((file, index) => {
-      const now = new Date(Date.now() + index);
       try {
-        nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, now);
+        nextProject = addPartToProject(
+          nextProject,
+          { fileName: file.name, fileSizeBytes: file.size },
+          new Date(Date.now() + index),
+        );
         if (nextProject.activePartId) jobs.push({ file, partId: nextProject.activePartId });
       } catch {
-        // unsupported files are skipped; the input accept list already prevents the common case
+        // Input accept already prevents the common unsupported-file case.
       }
     });
 
@@ -208,25 +200,36 @@ export function InstantQuoteWorkspace() {
         setProject((current) => setPartState(current, partId, "manual-review"));
         setMessageByPartId((current) => ({
           ...current,
-          [partId]: "Файл добавлен в проект. STEP/STP и DWG будут обрабатываться authoritative CAD-модулем; в текущей Alpha полностью разбирается DXF.",
+          [partId]: "Файл сохранён в проекте. STEP/STP и DWG ждут authoritative CAD-модуль; в текущем срезе полностью анализируется DXF.",
         }));
         return;
       }
 
       setAnalyzingByPartId((current) => ({ ...current, [partId]: true }));
       setMessageByPartId((current) => ({ ...current, [partId]: "" }));
+
       try {
-        const result = parseAsciiDxf(await file.text());
-        setParsedByPartId((current) => ({ ...current, [partId]: result }));
-        setProject((current) => {
-          const withGeometry = updatePartGeometry(current, partId, {
-            widthMm: result.width,
-            heightMm: result.height,
-            cutLengthMm: result.cutLength,
-            contourCount: result.contours,
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const sourceText = new TextDecoder("utf-8").decode(bytes);
+        const sourceParsed = parseAsciiDxf(sourceText);
+        setParsedByPartId((current) => ({ ...current, [partId]: sourceParsed }));
+
+        try {
+          const normalized = await dxfCadAdapter.analyze({ fileName: file.name, format: "dxf", bytes });
+          setProject((current) => {
+            const withGeometry = updatePartGeometry(current, partId, normalized.geometry);
+            return setPartState(withGeometry, partId, normalized.warnings.length ? "manual-review" : "configurable");
           });
-          return setPartState(withGeometry, partId, "configurable");
-        });
+          if (normalized.warnings.length) {
+            setMessageByPartId((current) => ({ ...current, [partId]: normalized.warnings.join(" ") }));
+          }
+        } catch (normalizationError) {
+          setProject((current) => setPartState(current, partId, "manual-review"));
+          setMessageByPartId((current) => ({
+            ...current,
+            [partId]: normalizationError instanceof Error ? normalizationError.message : "Нужна проверка единиц CAD.",
+          }));
+        }
       } catch (error) {
         setProject((current) => setPartState(current, partId, "manual-review"));
         setMessageByPartId((current) => ({
@@ -289,8 +292,8 @@ export function InstantQuoteWorkspace() {
 
   const stages = [
     ["01", "CAD", project.parts.length > 0],
-    ["02", "Геометрия", Boolean(parsed)],
-    ["03", "DFM", Boolean(parsed && !blocking)],
+    ["02", "Геометрия", Boolean(activePart?.geometry)],
+    ["03", "DFM", Boolean(activePart?.geometry && !blocking)],
     ["04", "Конфигурация", Boolean(activePart?.configuration.materialId && activePart.configuration.thicknessMm)],
     ["05", "Цена", Boolean(provisionalPrice)],
   ] as const;
@@ -304,7 +307,7 @@ export function InstantQuoteWorkspace() {
             <div>
               <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.18em] text-steel-orange"><span className="h-px w-8 bg-steel-orange" /> Steel Product Online</div>
               <h1 className="mt-4 max-w-5xl text-3xl font-semibold leading-[1.03] tracking-tight sm:text-5xl lg:text-6xl">CAD → проверка → цена → производство</h1>
-              <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/55 sm:text-base">Закрытая Alpha: несколько деталей в проекте, DXF-геометрия, DFM и предварительный производственный расчёт на одной рабочей поверхности.</p>
+              <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/55 sm:text-base">Закрытая Alpha: многодетальный заказ, нормализованная CAD-геометрия, DFM и предварительная экономика производства.</p>
             </div>
             <div className="grid grid-cols-5 gap-px overflow-hidden border border-white/10 bg-white/10">
               {stages.map(([number, label, done]) => (
@@ -319,7 +322,7 @@ export function InstantQuoteWorkspace() {
       </section>
 
       <section className="container py-5 lg:py-7">
-        <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)_380px]">
+        <div className="grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)_390px]">
           <aside className="order-2 border border-white/10 bg-[#101416] xl:order-1">
             <div className="border-b border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/35">Проект</p>
@@ -327,12 +330,19 @@ export function InstantQuoteWorkspace() {
                 <strong className="truncate text-sm">{project.title}</strong>
                 <span className="whitespace-nowrap text-[10px] text-white/30">{project.parts.length} поз.</span>
               </div>
-              {projectTotal > 0 && <p className="mt-3 text-xs text-white/45">В расчёте: <strong className="text-white">{money(projectTotal)}</strong></p>}
+              {projectPricing.totalRub > 0 && (
+                <div className="mt-3 border-t border-white/10 pt-3">
+                  <p className="text-[9px] font-bold uppercase tracking-[.12em] text-white/30">Предварительно по проекту</p>
+                  <p className="mt-1 text-lg font-semibold">{money(projectPricing.totalRub)}</p>
+                  <p className="mt-1 text-[9px] text-white/30">рассчитано {projectPricing.calculatedParts} / {projectPricing.totalParts} поз.</p>
+                </div>
+              )}
             </div>
 
             <div className="max-h-[610px] overflow-y-auto">
               {project.parts.map((part, index) => {
                 const itemParsed = parsedByPartId[part.id];
+                const partPricing = projectPricing.parts.find((item) => item.partId === part.id);
                 const active = part.id === activePart?.id;
                 return (
                   <button
@@ -345,9 +355,9 @@ export function InstantQuoteWorkspace() {
                         {itemParsed ? <DxfGeometry parsed={itemParsed} /> : <span className="text-[10px] font-bold uppercase tracking-[.12em] text-white/25">{part.format}</span>}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[9px] font-bold uppercase tracking-[.14em] text-steel-orange">#{String(index + 1).padStart(2, "0")}</p>
+                        <div className="flex items-center justify-between gap-2"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-steel-orange">#{String(index + 1).padStart(2, "0")}</p><span className="text-[8px] font-bold uppercase tracking-[.08em] text-white/25">{pricingStatusLabel(partPricing?.status ?? part.state)}</span></div>
                         <p className="mt-1 truncate text-xs font-semibold">{part.fileName}</p>
-                        <p className="mt-1 text-[9px] uppercase tracking-[.1em] text-white/32">{part.state.replaceAll("-", " ")} · ×{part.configuration.quantity}</p>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-[9px] text-white/32"><span>×{part.configuration.quantity}</span>{partPricing?.price && <strong className="text-white/60">{money(partPricing.price.totalRub)}</strong>}</div>
                       </div>
                     </div>
                   </button>
@@ -373,153 +383,70 @@ export function InstantQuoteWorkspace() {
               </div>
             </div>
 
-            <div className="relative min-h-[650px] overflow-hidden bg-[#080b0d]">
+            <div className="relative min-h-[660px] overflow-hidden bg-[#080b0d]">
               <div className="pointer-events-none absolute inset-0 opacity-[.16]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px)", backgroundSize: "24px 24px" }} />
               <AnimatePresence mode="wait">
                 {!activePart ? (
                   <motion.div key="drop" initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} className="absolute inset-5 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/16 bg-black/15 p-8 text-center sm:inset-8" onDragOver={(event) => event.preventDefault()} onDrop={onDrop} onClick={() => inputRef.current?.click()}>
                     <motion.div animate={{ y: [0, -7, 0] }} transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }} className="relative flex h-20 w-20 items-center justify-center border border-steel-orange/55 text-4xl font-light text-steel-orange">+<span className="absolute -bottom-px -right-px h-5 w-5 border-l border-t border-steel-orange" /></motion.div>
                     <h2 className="mt-7 text-2xl font-semibold sm:text-3xl">Перетащите CAD-файлы</h2>
-                    <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">Можно загрузить сразу несколько деталей. DXF разбирается локально; STEP/STP и DWG уже входят в проектную модель и ждут следующего CAD-движка.</p>
+                    <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">Можно загрузить сразу несколько деталей. DXF проходит нормализацию единиц и DFM; STEP/STP и DWG уже входят в проектную модель и ждут следующего CAD-движка.</p>
                     <div className="mt-7 flex flex-wrap justify-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-white/35">{["DXF", "STEP", "STP", "DWG"].map((ext) => <span key={ext} className="border border-white/10 px-3 py-2">{ext}</span>)}</div>
                   </motion.div>
                 ) : isAnalyzing ? (
                   <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-full max-w-md px-8 text-center">
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">Geometry engine</p>
-                      <h2 className="mt-4 text-2xl font-semibold">Разбираем геометрию</h2>
-                      <div className="relative mt-7 h-px overflow-hidden bg-white/10"><motion.span className="absolute inset-y-0 w-1/3 bg-steel-orange" animate={{ x: ["-100%", "300%"] }} transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }} /></div>
-                      <p className="mt-4 text-xs text-white/35">Контуры · габариты · длина реза · единицы · unsupported entities</p>
-                    </div>
+                    <div className="w-full max-w-md px-8 text-center"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">Geometry engine</p><h2 className="mt-4 text-2xl font-semibold">Разбираем и нормализуем CAD</h2><div className="relative mt-7 h-px overflow-hidden bg-white/10"><motion.span className="absolute inset-y-0 w-1/3 bg-steel-orange" animate={{ x: ["-100%", "300%"] }} transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }} /></div><p className="mt-4 text-xs text-white/35">Контуры · габариты · единицы → mm · длина реза · DFM</p></div>
                   </motion.div>
-                ) : message && !parsed ? (
-                  <motion.div key="message" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center">
-                    <div className="max-w-xl border border-white/10 bg-[#101416] p-7">
-                      <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">CAD intake</p>
-                      <h2 className="mt-3 text-xl font-semibold">Позиция сохранена в проекте</h2>
-                      <p className="mt-4 text-sm leading-relaxed text-white/50">{message}</p>
-                    </div>
-                  </motion.div>
-                ) : tab === "model" && parsed ? (
+                ) : !parsed ? (
+                  <motion.div key="message" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><div className="max-w-xl border border-white/10 bg-[#101416] p-7"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">CAD intake</p><h2 className="mt-3 text-xl font-semibold">Позиция сохранена в проекте</h2><p className="mt-4 text-sm leading-relaxed text-white/50">{message ?? "Для этого формата будет подключён authoritative CAD adapter."}</p></div></motion.div>
+                ) : tab === "model" ? (
                   <motion.div key={`model-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-5 sm:p-8">
                     <DxfGeometry parsed={parsed} animated />
                     <motion.div className="pointer-events-none absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-steel-orange/65 to-transparent" animate={{ top: ["12%", "88%", "12%"] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }} />
-                    <div className="absolute left-5 top-5 flex gap-2">
-                      <span className="border border-white/10 bg-black/55 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-white/45">2D Geometry · live</span>
-                      {parsed.unsupportedEntities.length > 0 && <span className="border border-amber-400/25 bg-black/55 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-amber-300">review</span>}
-                    </div>
+                    <div className="absolute left-5 top-5 flex flex-wrap gap-2"><span className="border border-white/10 bg-black/55 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-white/45">2D Geometry · source {parsed.units}</span>{activePart.geometry && <span className="border border-emerald-400/20 bg-black/55 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">normalized mm</span>}{parsed.unsupportedEntities.length > 0 && <span className="border border-amber-400/25 bg-black/55 px-3 py-2 text-[10px] font-bold uppercase tracking-[.14em] text-amber-300">review</span>}</div>
+                    {message && <div className="absolute right-5 top-5 max-w-[48%] border border-amber-400/20 bg-black/70 p-3 text-[9px] leading-relaxed text-amber-100/70">{message}</div>}
                     <div className="absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-4">
-                      {[["X", `${fmt(parsed.width)} ${parsed.units}`], ["Y", `${fmt(parsed.height)} ${parsed.units}`], ["Рез", `${fmt(parsed.cutLength)} ${parsed.units}`], ["Объекты", String(parsed.contours)]].map(([label, value]) => (
-                        <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>
-                      ))}
+                      {activePart.geometry ? [["X", `${fmt(activePart.geometry.widthMm ?? 0)} мм`], ["Y", `${fmt(activePart.geometry.heightMm ?? 0)} мм`], ["Рез", `${fmt(activePart.geometry.cutLengthMm ?? 0)} мм`], ["Объекты", String(activePart.geometry.contourCount ?? 0)]] : [["X source", `${fmt(parsed.width)} ${parsed.units}`], ["Y source", `${fmt(parsed.height)} ${parsed.units}`], ["Рез source", `${fmt(parsed.cutLength)} ${parsed.units}`], ["Объекты", String(parsed.contours)]]}.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}
                     </div>
                   </motion.div>
-                ) : parsed ? (
+                ) : (
                   <motion.div key={`dfm-${activePart.id}`} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="relative p-5 sm:p-8">
-                    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-                      <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Design for manufacturability</p><h2 className="mt-2 text-2xl font-semibold">Автоматическая проверка</h2></div>
-                      <span className={`border px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] ${blocking ? "border-red-400/30 text-red-300" : manual ? "border-amber-400/25 text-amber-300" : "border-emerald-400/25 text-emerald-300"}`}>{blocking ? "Есть блокировка" : manual ? "Нужна проверка" : "Проверка пройдена"}</span>
-                    </div>
-                    <div className="grid gap-3">
-                      {dfm.map((item, index) => (
-                        <motion.article key={item.code} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }} className={`border p-4 ${severityTone(item.severity)}`}>
-                          <div className="flex gap-3"><span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center border border-current text-[9px] font-bold">{item.severity === "pass" ? "✓" : item.severity === "error" ? "!" : "?"}</span><div><h3 className="text-sm font-semibold text-white">{item.title}</h3><p className="mt-2 text-xs leading-relaxed opacity-75">{item.detail}</p></div></div>
-                        </motion.article>
-                      ))}
-                    </div>
+                    <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Design for manufacturability</p><h2 className="mt-2 text-2xl font-semibold">Автоматическая проверка</h2></div><span className={`border px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] ${blocking ? "border-red-400/30 text-red-300" : manual ? "border-amber-400/25 text-amber-300" : "border-emerald-400/25 text-emerald-300"}`}>{blocking ? "Есть блокировка" : manual ? "Нужна проверка" : "Проверка пройдена"}</span></div>
+                    <div className="grid gap-3">{dfm.length ? dfm.map((item, index) => <motion.article key={item.code} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }} className={`border p-4 ${severityTone(item.severity)}`}><div className="flex gap-3"><span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center border border-current text-[9px] font-bold">{item.severity === "pass" ? "✓" : item.severity === "error" ? "!" : "?"}</span><div><h3 className="text-sm font-semibold text-white">{item.title}</h3><p className="mt-2 text-xs leading-relaxed opacity-75">{item.detail}</p></div></div></motion.article>) : <div className="border border-amber-400/20 p-4 text-sm text-amber-200/70">Сначала нужно подтвердить и нормализовать геометрию CAD.</div>}</div>
                   </motion.div>
-                ) : null}
+                )}
               </AnimatePresence>
             </div>
           </div>
 
           <aside className="order-3 border border-white/10 bg-[#101416]">
-            <div className="border-b border-white/10 p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Конфигуратор</p>
-              <h2 className="mt-2 text-xl font-semibold">Маршрут изготовления</h2>
-              <p className="mt-2 text-xs leading-relaxed text-white/38">Изменения пересчитывают предварительную цену сразу. Неподтверждённые параметры остаются на review технолога.</p>
-            </div>
+            <div className="border-b border-white/10 p-5"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Конфигуратор</p><h2 className="mt-2 text-xl font-semibold">Маршрут изготовления</h2><p className="mt-2 text-xs leading-relaxed text-white/38">Каждая позиция имеет собственный материал, толщину, количество, операции и preliminary quote.</p></div>
 
-            {activePart ? (
-              <>
-                <div className="space-y-5 p-5">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Материал</label>
-                    <div className="mt-2 grid grid-cols-3 gap-1">
-                      {MATERIAL_OPTIONS.map((option) => (
-                        <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-left transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.075]" : "border-white/10 bg-[#0b0e10] hover:border-white/20"}`}>
-                          <span className="block text-[11px] font-semibold">{option.label}</span><span className="mt-1 block text-[8px] leading-tight text-white/30">{option.note}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {activePart ? <>
+              <div className="space-y-5 p-5">
+                <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-left transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.075]" : "border-white/10 bg-[#0b0e10] hover:border-white/20"}`}><span className="block text-[11px] font-semibold">{option.label}</span><span className="mt-1 block text-[8px] leading-tight text-white/30">{option.note}</span></button>)}</div></div>
+                <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none focus:border-steel-orange">{thicknessOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
+                <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Количество</label><div className="mt-2 grid grid-cols-[44px_1fr_44px] border border-white/12 bg-[#090c0e]"><button onClick={() => updateQuantity(quantity - 1)} className="border-r border-white/10 text-white/50 hover:text-steel-orange">−</button><input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="bg-transparent px-3 py-3 text-center text-sm outline-none" /><button onClick={() => updateQuantity(quantity + 1)} className="border-l border-white/10 text-white/50 hover:text-steel-orange">+</button></div>{provisionalPrice && <p className="mt-2 text-[10px] text-white/32">Лазер: {fmt(provisionalPrice.laserRubPerM, 1)} ₽/м · материал партии {fmt(provisionalPrice.batchPurchasedMassKg, 1)} кг</p>}</div>
+                <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Операции</p><div className="mt-2 grid gap-2">{OPERATION_OPTIONS.map((option) => { const enabled = activePart.configuration.operations.includes(option.id); return <button key={option.id} onClick={() => toggleOperation(option.id)} className={`flex items-center justify-between border px-4 py-3 text-left text-sm transition ${enabled ? "border-steel-orange/45 bg-steel-orange/[.07]" : "border-white/10 bg-[#0b0e10] hover:border-white/20"}`}><span>{option.label}</span><span className={`flex h-5 w-5 items-center justify-center border text-[10px] ${enabled ? "border-steel-orange bg-steel-orange text-black" : "border-white/15 text-transparent"}`}>✓</span></button>; })}</div></div>
+              </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Толщина, мм</label>
-                    <select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none focus:border-steel-orange">
-                      {thicknessOptions.map((value) => <option key={value} value={value}>{value}</option>)}
-                    </select>
-                  </div>
+              <div className="border-t border-white/10 p-5">
+                <div className="relative overflow-hidden border border-steel-orange/30 bg-steel-orange/[.045] p-4">
+                  <motion.span className="absolute bottom-0 left-0 h-px bg-steel-orange" animate={{ width: provisionalPrice ? ["28%", "100%", "28%"] : ["10%", "52%", "10%"] }} transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }} />
+                  <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">Preliminary pricing</p><p className="mt-1 text-[9px] uppercase tracking-[.1em] text-white/30">не оферта · закрытая alpha</p></div>{selectedPrice && <span className={`border px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] ${selectedPrice.stale ? "border-amber-400/25 text-amber-300" : "border-emerald-400/25 text-emerald-300"}`}>{selectedPrice.stale ? "прайс устарел" : "прайс актуален"}</span>}</div>
 
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Количество</label>
-                    <div className="mt-2 grid grid-cols-[44px_1fr_44px] border border-white/12 bg-[#090c0e]">
-                      <button onClick={() => updateQuantity(quantity - 1)} className="border-r border-white/10 text-white/50 hover:text-steel-orange">−</button>
-                      <input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="bg-transparent px-3 py-3 text-center text-sm outline-none" />
-                      <button onClick={() => updateQuantity(quantity + 1)} className="border-l border-white/10 text-white/50 hover:text-steel-orange">+</button>
-                    </div>
-                    {provisionalPrice && <p className="mt-2 text-[10px] text-white/32">Тариф лазера сейчас: {fmt(provisionalPrice.laserRubPerM, 1)} ₽/м по общему метражу партии.</p>}
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Операции</p>
-                    <div className="mt-2 grid gap-2">
-                      {OPERATION_OPTIONS.map((option) => {
-                        const enabled = activePart.configuration.operations.includes(option.id);
-                        return (
-                          <button key={option.id} onClick={() => toggleOperation(option.id)} className={`flex items-center justify-between border px-4 py-3 text-left text-sm transition ${enabled ? "border-steel-orange/45 bg-steel-orange/[.07]" : "border-white/10 bg-[#0b0e10] hover:border-white/20"}`}>
-                            <span>{option.label}</span><span className={`flex h-5 w-5 items-center justify-center border text-[10px] ${enabled ? "border-steel-orange bg-steel-orange text-black" : "border-white/15 text-transparent"}`}>✓</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {provisionalPrice ? <>
+                    <div className="mt-4 flex items-end justify-between gap-3"><div><p className="text-3xl font-semibold">{money(provisionalPrice.totalRub)}</p><p className="mt-1 text-xs text-white/45">{money(provisionalPrice.unitRub)} / шт.</p></div><span className="text-xs text-white/30">× {quantity}</span></div>
+                    <div className="mt-4 space-y-2 border-t border-white/10 pt-3 text-[10px] text-white/45"><div className="flex justify-between gap-3"><span>Металл +5%</span><strong className="text-white/75">{money(provisionalPrice.materialRubEach)} / шт.</strong></div><div className="flex justify-between gap-3"><span>Лазер</span><strong className="text-white/75">{money(provisionalPrice.laserRubEach)} / шт.</strong></div><div className="flex justify-between gap-3"><span>Операции</span><strong className="text-white/75">{money(provisionalPrice.operationsRubEach)} / шт.</strong></div><div className="flex justify-between gap-3"><span>Подготовка позиции</span><strong className="text-white/75">{money(provisionalPrice.setupRubEach)} / шт.</strong></div></div>
+                    {selectedPrice?.price && <div className="mt-4 border-t border-white/10 pt-3 text-[9px] leading-relaxed text-white/32">Металл: {fmt(provisionalPrice.materialMarketRubPerTon)} ₽/т ({provisionalPrice.materialMarketTier === "from-3t" ? "тариф поставщика от 3 т" : "тариф поставщика до 3 т"}) → {fmt(provisionalPrice.materialPricedRubPerTon)} ₽/т с +5%. Источник: {selectedPrice.price.source}, прайс {selectedPrice.price.sourceDate}.</div>}
+                    {provisionalPrice.warnings.length > 0 && <div className="mt-3 border border-amber-400/20 bg-amber-400/[.04] p-3 text-[9px] leading-relaxed text-amber-200/75">{provisionalPrice.warnings.join(" ")}</div>}
+                  </> : <div className="mt-4"><p className="text-xl font-semibold">Цена пока не рассчитана</p><p className="mt-2 text-[10px] leading-relaxed text-white/32">Нужны нормализованная геометрия, цена металла и отсутствие блокирующей DFM-ошибки.</p></div>}
                 </div>
 
-                <div className="border-t border-white/10 p-5">
-                  <div className="relative overflow-hidden border border-steel-orange/30 bg-steel-orange/[.045] p-4">
-                    <motion.span className="absolute bottom-0 left-0 h-px bg-steel-orange" animate={{ width: provisionalPrice ? ["28%", "100%", "28%"] : ["10%", "52%", "10%"] }} transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }} />
-                    <div className="flex items-start justify-between gap-3">
-                      <div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-steel-orange">Preliminary pricing</p><p className="mt-1 text-[9px] uppercase tracking-[.1em] text-white/30">не оферта · закрытая alpha</p></div>
-                      {selectedPrice && <span className={`border px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] ${selectedPrice.stale ? "border-amber-400/25 text-amber-300" : "border-emerald-400/25 text-emerald-300"}`}>{selectedPrice.stale ? "price stale" : "price live"}</span>}
-                    </div>
-
-                    {provisionalPrice ? (
-                      <>
-                        <div className="mt-4 flex items-end justify-between gap-3"><div><p className="text-3xl font-semibold">{money(provisionalPrice.totalRub)}</p><p className="mt-1 text-xs text-white/45">{money(provisionalPrice.unitRub)} / шт.</p></div><span className="text-xs text-white/30">× {quantity}</span></div>
-                        <div className="mt-4 space-y-2 border-t border-white/10 pt-3 text-[10px] text-white/45">
-                          <div className="flex justify-between gap-3"><span>Металл +5%</span><strong className="text-white/75">{money(provisionalPrice.materialRubEach)} / шт.</strong></div>
-                          <div className="flex justify-between gap-3"><span>Лазер</span><strong className="text-white/75">{money(provisionalPrice.laserRubEach)} / шт.</strong></div>
-                          <div className="flex justify-between gap-3"><span>Операции</span><strong className="text-white/75">{money(provisionalPrice.operationsRubEach)} / шт.</strong></div>
-                          <div className="flex justify-between gap-3"><span>Подготовка позиции</span><strong className="text-white/75">{money(provisionalPrice.setupRubEach)} / шт.</strong></div>
-                        </div>
-                        {selectedPrice?.price && <div className="mt-4 border-t border-white/10 pt-3 text-[9px] leading-relaxed text-white/32">Металл: {fmt(selectedPrice.price.rubPerTon)} ₽/т → {fmt(provisionalPrice.materialPricedRubPerTon)} ₽/т с +5%. Источник: {selectedPrice.price.source}, {selectedPrice.price.sourceDate}.</div>}
-                        {provisionalPrice.warnings.length > 0 && <div className="mt-3 border border-amber-400/20 bg-amber-400/[.04] p-3 text-[9px] leading-relaxed text-amber-200/75">{provisionalPrice.warnings.join(" ")}</div>}
-                      </>
-                    ) : (
-                      <div className="mt-4"><p className="text-xl font-semibold">Цена пока не рассчитана</p><p className="mt-2 text-[10px] leading-relaxed text-white/32">Нужны DXF в миллиметрах, цена металла и отсутствие блокирующей DFM-ошибки.</p></div>
-                    )}
-                  </div>
-
-                  <button disabled={!provisionalPrice || selectedPrice?.stale || blocking} className="mt-3 w-full bg-steel-orange px-4 py-4 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30">
-                    {blocking ? "Исправьте DFM-ошибки" : selectedPrice?.stale ? "Нужен свежий прайс металла" : "Продолжить к заказу"}
-                  </button>
-                  {manual && !blocking && <p className="mt-3 text-[10px] leading-relaxed text-white/32">Часть правил требует review технолога. Предварительная цена может отображаться, но автоматический запуск производства будет заблокирован до подтверждения.</p>}
-                </div>
-              </>
-            ) : (
-              <div className="p-5 text-sm leading-relaxed text-white/35">Добавьте CAD-файл, чтобы открыть конфигуратор детали.</div>
-            )}
+                <button disabled={!provisionalPrice || selectedPrice?.stale || blocking} className="mt-3 w-full bg-steel-orange px-4 py-4 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30">{blocking ? "Исправьте DFM-ошибки" : selectedPrice?.stale ? "Нужен свежий прайс металла" : manual ? "Отправить на проверку" : "Продолжить к заказу"}</button>
+                {manual && !blocking && <p className="mt-3 text-[10px] leading-relaxed text-white/32">Предварительная цена доступна, но позиция должна пройти review технолога до автоматического запуска производства.</p>}
+              </div>
+            </> : <div className="p-5 text-sm leading-relaxed text-white/35">Добавьте CAD-файл, чтобы открыть конфигуратор детали.</div>}
           </aside>
         </div>
       </section>
