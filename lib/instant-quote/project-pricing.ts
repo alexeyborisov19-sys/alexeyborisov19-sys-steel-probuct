@@ -4,7 +4,9 @@ import { runVerifiedLaserDfm } from "@/lib/instant-quote/dfm";
 import { selectBestStoredPrice, type StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
 import {
   calculateProvisionalPartPrice,
+  type CuttingRate,
   type MaterialId,
+  type PricingBasis,
   type ProvisionalPartPrice,
 } from "@/lib/instant-quote/pricing";
 
@@ -37,6 +39,11 @@ export type ProjectPricingResult = {
   hasReviewParts: boolean;
 };
 
+export type ProtectedPricingContext = {
+  basis: PricingBasis;
+  cuttingRates: CuttingRate[];
+};
+
 function materialIdOf(value: string | null): MaterialId | null {
   if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
   return null;
@@ -46,6 +53,7 @@ export function calculateProjectProvisionalPricing(
   project: InstantQuoteProject,
   parsedByPartId: Record<string, ParsedDxf>,
   snapshots: StoredPriceSnapshot[],
+  pricing: ProtectedPricingContext,
   now = new Date(),
 ): ProjectPricingResult {
   const parts = project.parts.map<ProjectPartPricingResult>((part) => {
@@ -114,10 +122,8 @@ export function calculateProjectProvisionalPricing(
       geometry: part.geometry,
       marketPrice: selection.price,
       operations: part.configuration.operations,
-      // Current provisional business rule: metal is charged by the X×Y rectangular blank.
-      // No extra 15% multiplier is added on top of that rectangle.
       materialUsageFactor: 1,
-    });
+    }, pricing.basis, pricing.cuttingRates);
 
     if (selection.stale) reviewReasons.push("Прайс металла требует обновления.");
 
