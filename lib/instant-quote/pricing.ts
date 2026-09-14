@@ -1,4 +1,5 @@
 import type { ManufacturingOperation, PartGeometrySummary } from "@/lib/instant-quote/domain";
+import { calculateBoundingRectangleBlank } from "@/lib/instant-quote/blanking";
 
 export type MaterialId = "cold" | "hot" | "zinc" | "inox" | "alu" | "copper" | "brass";
 
@@ -145,8 +146,8 @@ export type ProvisionalPartPricingInput = {
   weldLengthM?: number;
   powderSides?: 1 | 2;
   assemblyMinutes?: number;
-  // Reserved for future shop-specific allowance around the bounding blank.
-  // 1.0 means the current rule: metal = exact X×Y rectangular blank around the part.
+  // Reserved for a future shop-specific allowance around the blank.
+  // 1.0 means current rule: metal = exact X×Y rectangular blank around the part.
   materialUsageFactor?: number;
 };
 
@@ -155,6 +156,8 @@ export type ProvisionalPartPrice = {
   materialMarketTier: "under-3t" | "from-3t";
   materialPricedRubPerTon: number;
   netAreaMm2: number;
+  blankWidthMm: number;
+  blankHeightMm: number;
   blankAreaMm2: number;
   netMassKg: number;
   blankMassKg: number;
@@ -181,9 +184,8 @@ export function calculateProvisionalPartPrice(
 ): ProvisionalPartPrice {
   const quantity = Math.max(1, Math.floor(input.quantity || 1));
   const density = basis.densityKgM3[input.materialId];
-  const bboxAreaMm2 = Math.max(0, (input.geometry.widthMm ?? 0) * (input.geometry.heightMm ?? 0));
-  const hasExactPlanarArea = Boolean(input.geometry.areaMm2 && input.geometry.areaMm2 > 0);
-  const netAreaMm2 = hasExactPlanarArea ? input.geometry.areaMm2! : bboxAreaMm2;
+  const blank = calculateBoundingRectangleBlank(input.geometry);
+  const netAreaMm2 = blank.netAreaMm2 ?? blank.areaMm2;
   const netAreaM2 = netAreaMm2 / 1_000_000;
   const thicknessM = input.thicknessMm / 1000;
 
@@ -192,16 +194,12 @@ export function calculateProvisionalPartPrice(
     ? input.geometry.volumeMm3 / 1_000_000_000 * density
     : netAreaM2 * thicknessM * density;
 
-  // Purchased metal is deliberately NOT based on net contour area.
+  // Purchased metal is deliberately NOT based on the net contour area.
   // Until true sheet nesting is connected, Steel Product prices the rectangular X×Y blank around the part.
-  const blankAreaMm2 = bboxAreaMm2;
-  const blankMassKg = blankAreaMm2 / 1_000_000 * thicknessM * density;
+  const blankMassKg = blank.areaMm2 / 1_000_000 * thicknessM * density;
   const usageFactor = Math.max(1, input.materialUsageFactor ?? 1);
   const purchasedMassKg = blankMassKg * usageFactor;
   const batchPurchasedMassKg = purchasedMassKg * quantity;
-  const blankWastePct = hasExactPlanarArea && blankAreaMm2 > 0
-    ? Math.max(0, (blankAreaMm2 - netAreaMm2) / blankAreaMm2 * 100)
-    : null;
 
   const supplierTier = supplierRubPerTon(input.marketPrice, batchPurchasedMassKg);
   const materialPricedRubPerTon = applyMetalUplift(supplierTier.rubPerTon, basis.materialMarketUpliftPct);
@@ -236,7 +234,7 @@ export function calculateProvisionalPartPrice(
   const warnings: string[] = [];
   if (!input.marketPrice.exactThickness) warnings.push("Цена металла выбрана по ближайшей толщине прайса.");
   warnings.push("Металл рассчитан по прямоугольной заготовке X×Y вокруг детали; настоящий листовой nesting позже уточнит распределение обрези по партии.");
-  if (!hasExactPlanarArea && !(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
+  if (blank.netAreaMm2 == null && !(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
     warnings.push("Чистая площадь детали не подтверждена; нетто-масса временно равна массе габаритной заготовки.");
   }
   if (usageFactor > 1) warnings.push(`К прямоугольной заготовке дополнительно применён коэффициент расхода ${usageFactor.toFixed(3)}.`);
@@ -247,12 +245,14 @@ export function calculateProvisionalPartPrice(
     materialMarketTier: supplierTier.tier,
     materialPricedRubPerTon,
     netAreaMm2,
-    blankAreaMm2,
+    blankWidthMm: blank.widthMm,
+    blankHeightMm: blank.heightMm,
+    blankAreaMm2: blank.areaMm2,
     netMassKg,
     blankMassKg,
     purchasedMassKg,
     batchPurchasedMassKg,
-    blankWastePct,
+    blankWastePct: blank.wastePct,
     materialRubEach,
     laserRubEach,
     laserRubPerM,
