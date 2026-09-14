@@ -20,6 +20,7 @@ import { loadPrivateCalculationBasis } from "@/lib/server/instant-quote/private-
 import {
   createInternalProductionReport,
   writeInternalProductionReport,
+  type InternalCalculationInputSnapshot,
 } from "@/lib/server/instant-quote/private-production-report";
 
 export type ConfidentialCalculationInputs = {
@@ -60,6 +61,7 @@ export async function runConfidentialCalculationForClient(
 ): Promise<ClientProjectCalculationView> {
   const basis = await loadPrivateCalculationBasis();
   const factualByPartId = inputs.factualByPartId ?? {};
+  const powderSidesByPartId = inputs.powderSidesByPartId ?? {};
 
   const calculation = calculateProjectFactualCost(
     project,
@@ -83,10 +85,20 @@ export async function runConfidentialCalculationForClient(
       quantity: part.configuration.quantity,
       geometry: part.geometry,
       weldLengthMEach: factual.weldLengthM,
-      powderSides: inputs.powderSidesByPartId?.[part.id],
+      powderSides: powderSidesByPartId[part.id],
       explicitPowderAreaM2Each: factual.powderAreaM2,
     });
   }
+
+  const unsupportedEntitiesByPartId = Object.fromEntries(
+    Object.entries(parsedByPartId).map(([partId, parsed]) => [partId, [...parsed.unsupportedEntities]]),
+  );
+  const calculationInputSnapshot: InternalCalculationInputSnapshot = {
+    project,
+    factualByPartId,
+    powderSidesByPartId,
+    unsupportedEntitiesByPartId,
+  };
 
   const report = createInternalProductionReport({
     projectId: project.id,
@@ -94,6 +106,7 @@ export async function runConfidentialCalculationForClient(
     calculation,
     productionParametersByPartId,
     internalNotes: inputs.internalNotes,
+    calculationInputSnapshot,
     now,
   });
   await writeInternalProductionReport(report);
