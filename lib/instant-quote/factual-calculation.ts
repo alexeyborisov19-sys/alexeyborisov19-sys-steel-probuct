@@ -17,6 +17,11 @@ export type FactualRate = {
 export type LaserFactualRate = FactualRate & {
   materialId: MaterialId;
   thicknessMm: number;
+  /** Optional confidential series tiers. Base `rateRub` is used below 100 m. */
+  from100mRubPerM?: number;
+  from500mRubPerM?: number;
+  /** Optional confidential charge for one actual laser pierce. */
+  pierceRubEach?: number;
 };
 
 /**
@@ -34,6 +39,7 @@ export type FactualRateBook = {
 export type FactualCalculationLineCode =
   | "material"
   | "laser-cutting"
+  | "laser-piercing"
   | "bending"
   | "welding"
   | "powder-coating";
@@ -138,6 +144,12 @@ function exactLaserRate(rateBook: FactualRateBook, materialId: MaterialId, thick
   ) ?? null;
 }
 
+function effectiveLaserRubPerM(rate: LaserFactualRate, totalBatchCutM: number) {
+  if (totalBatchCutM >= 500 && positiveFinite(rate.from500mRubPerM)) return rate.from500mRubPerM;
+  if (totalBatchCutM >= 100 && positiveFinite(rate.from100mRubPerM)) return rate.from100mRubPerM;
+  return rate.rateRub;
+}
+
 function addLine(
   lines: FactualCalculationLine[],
   input: Omit<FactualCalculationLine, "amountRubEach" | "amountRubBatch"> & { quantityBatch: number },
@@ -227,6 +239,8 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
   }
 
   const cutLengthMmEach = Math.max(0, input.geometry.cutLengthMm ?? 0);
+  const cutLengthMEach = cutLengthMmEach / 1000;
+  const totalBatchCutM = cutLengthMEach * quantity;
   const pierceCountEach = Math.max(0, input.geometry.pierceCount ?? input.geometry.contourCount ?? 0);
   if (input.operations.includes("laser-cutting")) {
     const laserRate = exactLaserRate(input.rateBook, input.materialId, input.thicknessMm);
@@ -243,20 +257,33 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
       addLine(lines, {
         code: "laser-cutting",
         label: "Лазерная резка",
-        quantity: cutLengthMmEach / 1000,
+        quantity: cutLengthMEach,
         unit: "м/шт",
-        rateRub: laserRate.rateRub,
+        rateRub: effectiveLaserRubPerM(laserRate, totalBatchCutM),
         quantityBatch: quantity,
         source: laserRate.source,
       });
     }
-    if (pierceCountEach > 0) {
-      missing.push({
-        code: "laser-pierce-policy",
-        label: "Пробивки лазера",
-        reason: `CAD определил ${pierceCountEach} пробивок на деталь, но отдельная фактическая ставка/правило включения пробивки пока не утверждены.`,
-        blocking: false,
-      });
+
+    if (pierceCountEach > 0 && laserRate) {
+      if (positiveFinite(laserRate.pierceRubEach)) {
+        addLine(lines, {
+          code: "laser-piercing",
+          label: "Прожиги лазера",
+          quantity: pierceCountEach,
+          unit: "прожиг/шт",
+          rateRub: laserRate.pierceRubEach,
+          quantityBatch: quantity,
+          source: laserRate.source,
+        });
+      } else {
+        missing.push({
+          code: "laser-pierce-policy",
+          label: "Пробивки лазера",
+          reason: `CAD определил ${pierceCountEach} пробивок на деталь, но закрытая ставка прожига для этой толщины не утверждена.`,
+          blocking: false,
+        });
+      }
     }
   }
 
