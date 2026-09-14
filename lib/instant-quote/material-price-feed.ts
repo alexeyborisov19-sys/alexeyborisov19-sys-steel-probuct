@@ -108,7 +108,11 @@ export function selectBestStoredPrice(
 ): PriceSelection {
   const sourcePriority = new Map(enabledPriceSources().map((source) => [source.id, source.priority]));
   const candidates = snapshots
-    .filter((snapshot) => snapshot.status !== "failed" && sourcePriority.has(snapshot.sourceId))
+    // Snapshot trust is established before selection (private basis validation or
+    // the server-side feed pipeline). Keep known supplier priority, but do not
+    // discard an already validated private/manual source solely because it is
+    // absent from the public automatic-feed registry.
+    .filter((snapshot) => snapshot.status !== "failed")
     .flatMap((snapshot) => snapshot.rows
       .filter((row) => row.materialId === materialId && row.rubPerTon > 0)
       .map((row) => ({
