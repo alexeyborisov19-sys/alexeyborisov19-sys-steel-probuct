@@ -1,5 +1,6 @@
 import "server-only";
 
+import { resolveEffectiveFactualInputs } from "@/lib/instant-quote/factual-input-resolution";
 import type { PartFactualInputs, ProjectDxfEvidence } from "@/lib/instant-quote/project-factual-calculation";
 import { calculateProjectFactualCost } from "@/lib/instant-quote/project-factual-calculation";
 import { deriveProductionParameters, type ProductionParameterSummary } from "@/lib/instant-quote/production-parameters";
@@ -124,6 +125,11 @@ export async function recalculateInternalProductionReport(
   const validPartIds = new Set(snapshot.project.parts.map((part) => part.id));
   const factualByPartId = mergeFactualInputs(snapshot.factualByPartId, input.factualByPartId, validPartIds);
   const powderSidesByPartId = mergePowderSides(snapshot.powderSidesByPartId, input.powderSidesByPartId, validPartIds);
+  const effectiveFactualByPartId = resolveEffectiveFactualInputs(
+    snapshot.project,
+    factualByPartId,
+    powderSidesByPartId,
+  );
   const basis = await loadPrivateCalculationBasis();
   const evidence = evidenceFromSnapshot(snapshot);
 
@@ -132,7 +138,7 @@ export async function recalculateInternalProductionReport(
     evidence,
     basis.materialPriceSnapshots,
     basis.rateBook,
-    factualByPartId,
+    effectiveFactualByPartId,
     now,
   );
 
