@@ -150,7 +150,7 @@ export const realProjects: RealProject[] = [
     imageCredit: localVisualCredit,
     imageSourceUrl: "https://www.mk-smolensk.ru/social/2026/03/12/vasiliy-anokhin-novyy-korpus-detskoy-oblastnoy-bolnicy-gotov-na-73.html",
     supply: ["металлические изделия", "фасадные элементы"],
-    description: "Поставка металлических изделий для нового лечебного корпуса. В официальных материалах объекта отдельно отражён этап устройства фасада. В подборке источников сохранены несколько реальных фотографий разных стадий строительства, но они не загружаются на сайт без подтверждённого права публикации.",
+    description: "Поставка металлических изделий для нового лечебного корпуса. В официальных материалах объекта отдельно отражён этап устройства фасада. Фотографии разных стадий строительства опубликованы с указанием правообладателя и ссылкой на публикацию-первоисточник.",
     sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
     sourceLabel: "Управление капитального строительства Смоленской области",
     featured: true,
