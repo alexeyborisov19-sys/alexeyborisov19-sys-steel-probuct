@@ -19,7 +19,9 @@ test("confidential calculation orchestrator returns only client-safe DTO", async
   const service = await source("lib/server/instant-quote/run-confidential-calculation.ts");
   assert.match(service, /import\s+["']server-only["']/);
   assert.match(service, /writeInternalProductionReport\(report\)/);
-  assert.match(service, /return createClientCalculationView\(project, signals\)/);
+  assert.match(service, /const result = createClientCalculationView\(project, signals\)/);
+  assert.match(service, /calculationStage\("CLIENT_RESULT_OK"\)/);
+  assert.match(service, /return result;/);
   assert.doesNotMatch(service, /return\s+\{[^}]*reportId/);
   assert.doesNotMatch(service, /return\s+\{[^}]*fileName/);
 });

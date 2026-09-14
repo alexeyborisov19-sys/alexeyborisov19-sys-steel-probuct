@@ -91,12 +91,24 @@ export function ClientManufacturingWorkspace() {
   const [statusByPartId, setStatusByPartId] = useState<Record<string, string>>({});
   const [isCalculating, setIsCalculating] = useState(false);
   const [projectCalculationMessage, setProjectCalculationMessage] = useState<string | null>(null);
+  const [calculation, setCalculation] = useState<ClientProjectCalculationView | null>(null);
 
   const activePart = useMemo(
     () => project.parts.find((part) => part.id === project.activePartId) ?? null,
     [project],
   );
   const activePreview = activePart ? previewsByPartId[activePart.id] ?? null : null;
+  const activeCalculation = activePart
+    ? calculation?.parts.find((part) => part.partId === activePart.id) ?? null
+    : null;
+  const approvedProjectTotalRub = useMemo(() => {
+    if (!calculation || calculation.parts.length === 0) return null;
+    const approved = calculation.parts.filter(
+      (part) => part.price.status === "approved" && typeof part.price.totalRub === "number",
+    );
+    if (approved.length !== calculation.parts.length) return null;
+    return approved.reduce((sum, part) => sum + (part.price.totalRub ?? 0), 0);
+  }, [calculation]);
   const isAnalyzing = activePart ? Boolean(analyzingByPartId[activePart.id]) : false;
   const materialId = materialIdOf(activePart?.configuration.materialId ?? null);
   const thickness = activePart?.configuration.thicknessMm ?? 1;
@@ -111,6 +123,7 @@ export function ClientManufacturingWorkspace() {
       [partId]: "Параметры изменены. Нажмите «Рассчитать проект», чтобы обновить результат.",
     }));
     setProjectCalculationMessage(null);
+    setCalculation(null);
   };
 
   const ingestFiles = async (files: File[]) => {
@@ -131,6 +144,7 @@ export function ClientManufacturingWorkspace() {
 
     setProject(nextProject);
     setProjectCalculationMessage(null);
+    setCalculation(null);
     setFilesByPartId((current) => {
       const next = { ...current };
       for (const job of jobs) next[job.partId] = job.file;
@@ -226,11 +240,13 @@ export function ClientManufacturingWorkspace() {
     setFilesByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setStatusByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setProjectCalculationMessage(null);
+    setCalculation(null);
   };
 
   const calculateProject = async () => {
     if (!canCalculate) return;
     setIsCalculating(true);
+    setCalculation(null);
     setProjectCalculationMessage("Проверяем CAD и рассчитываем проект…");
 
     try {
@@ -249,18 +265,20 @@ export function ClientManufacturingWorkspace() {
         throw new Error(payload?.message || "Не удалось выполнить расчёт. Попробуйте ещё раз.");
       }
 
-      const calculation = payload.calculation;
+      const calculationResult = payload.calculation;
+      setCalculation(calculationResult);
       setStatusByPartId((current) => {
         const next = { ...current };
-        for (const part of calculation.parts) next[part.partId] = part.message;
+        for (const part of calculationResult.parts) next[part.partId] = part.message;
         return next;
       });
       setProjectCalculationMessage(
-        calculation.parts.every((part) => part.status === "ready")
+        calculationResult.parts.every((part) => part.status === "ready")
           ? "Расчёт проекта завершён."
           : "Проект обработан. Для некоторых позиций потребуется уточнение параметров.",
       );
     } catch (error) {
+      setCalculation(null);
       setProjectCalculationMessage(error instanceof Error ? error.message : "Не удалось выполнить расчёт. Попробуйте ещё раз.");
     } finally {
       setIsCalculating(false);
@@ -334,6 +352,7 @@ export function ClientManufacturingWorkspace() {
                   {isCalculating ? "Выполняется расчёт…" : "Рассчитать проект"}
                 </button>
                 {projectCalculationMessage && <p className="mt-3 text-xs leading-relaxed text-white/50">{projectCalculationMessage}</p>}
+                {activeCalculation?.price.status === "approved" && typeof activeCalculation.price.totalRub === "number" && <div className="mt-4 border border-steel-orange/40 bg-steel-orange/[.08] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Стоимость позиции</p><p className="mt-2 text-2xl font-semibold">{fmt(activeCalculation.price.totalRub)} ₽</p>{approvedProjectTotalRub != null && calculation && calculation.parts.length > 1 && <p className="mt-2 text-xs text-white/50">Итого по проекту: {fmt(approvedProjectTotalRub)} ₽</p>}</div>}
                 <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Статус проекта</p><p className="mt-3 text-sm leading-relaxed text-white/60">{statusByPartId[activePart.id] ?? "Проверьте параметры изделия и запустите расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/30">Расчёт на сайте является предварительным и зависит от качества исходной CAD-модели. Оплата пока не подключена.</p></div>
               </div>
             </> : <div className="p-5 text-sm text-white/35">Добавьте CAD-файл.</div>}
