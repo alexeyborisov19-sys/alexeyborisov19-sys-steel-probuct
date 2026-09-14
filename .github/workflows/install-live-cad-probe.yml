@@ -35,10 +35,11 @@ jobs:
           const shape = kernel.makeBox(120, 80, 1);
           try {
             const step = kernel.exportStep(shape);
-            const bytes = step instanceof Uint8Array ? step : new Uint8Array(step);
-            if (bytes.byteLength < 100) throw new Error('Generated STEP is unexpectedly small');
-            await writeFile('/tmp/steelprodukt-live-probe.step', bytes);
-            console.log(`Generated STEP: ${bytes.byteLength} bytes`);
+            if (typeof step !== 'string' || step.length < 100 || !step.includes('ISO-10303-21')) {
+              throw new Error('Generated STEP text is invalid');
+            }
+            await writeFile('/tmp/steelprodukt-live-probe.step', step, 'utf8');
+            console.log(`Generated STEP: ${Buffer.byteLength(step, 'utf8')} bytes`);
           } finally {
             kernel.release(shape);
             kernel.dispose?.();
