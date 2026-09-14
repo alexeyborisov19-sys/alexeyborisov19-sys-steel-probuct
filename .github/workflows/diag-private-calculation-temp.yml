@@ -1,4 +1,4 @@
-name: Temporary private calculation diagnostic
+name: Temporary packaged calculation API smoke
 
 on:
   pull_request:
@@ -9,65 +9,133 @@ permissions:
   contents: read
 
 concurrency:
-  group: temp-private-calculation-${{ github.event.pull_request.number }}
+  group: temp-packaged-calculation-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  diagnose:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+  packaged-calculation-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+      NEXT_PUBLIC_YM_COUNTER_ID: "112542227"
+      NEXT_PUBLIC_YM_WEBVISOR: "true"
+      STEEL_PRODUCT_METAL_MULTIPLIER: "1.2"
+      STEEL_PRODUCT_DRAW_PCT: "10"
+      STEEL_PRODUCT_FINAL_PCT: "20"
+      STEEL_PRODUCT_FIXED_ADD_RUB: "0"
+      STEEL_PRODUCT_FIXED_ADD_ENABLED: "false"
+      STEEL_PRODUCT_ROUND_STEP_RUB: "10"
+      CLAMAV_ENABLED: "false"
+      TRUST_NGINX_PROXY: "false"
     steps:
-      - name: Configure Beget access
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          install -m 700 -d ~/.ssh
-          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+      - name: Checkout PR
+        uses: actions/checkout@v5
 
-      - name: Read deployed calculation build identity
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_USER: ${{ secrets.BEGET_USER }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
-        run: |
-          set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
-            "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
-          set -euo pipefail
-          cd "$APP_PATH"
-          BUILD_COMMIT="$(cat .next/BUILD_COMMIT 2>/dev/null || true)"
-          if [ -n "$BUILD_COMMIT" ]; then
-            echo "PRODUCTION_BUILD_COMMIT=$BUILD_COMMIT"
-          else
-            echo "PRODUCTION_BUILD_COMMIT=MISSING"
-          fi
-          if grep -q 'BASIS_START' lib/server/instant-quote/run-confidential-calculation.ts 2>/dev/null; then
-            echo "SOURCE_STAGE_TRACE=PRESENT"
-          else
-            echo "SOURCE_STAGE_TRACE=ABSENT"
-          fi
-          if grep -Rqs 'BASIS_START' .next/server 2>/dev/null; then
-            echo "BUNDLE_STAGE_TRACE=PRESENT"
-          else
-            echo "BUNDLE_STAGE_TRACE=ABSENT"
-          fi
-          REMOTE
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
 
-      - name: Submit live DXF smoke without exposing internals
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build production Next.js bundle
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Run real calculation API against packaged server
+        env:
+          NODE_ENV: production
         run: |
           set -euo pipefail
-          cat > /tmp/smoke.dxf <<'DXF'
+          BASIS="$RUNNER_TEMP/calculation-basis.json"
+          REPORT_ROOT="$RUNNER_TEMP/reports"
+          QUARANTINE="$RUNNER_TEMP/quarantine"
+          mkdir -p "$REPORT_ROOT" "$QUARANTINE"
+
+          cat > "$BASIS" <<'JSON'
+          {
+            "version": "ci-synthetic-v1",
+            "rateBook": {
+              "laserRubPerM": [
+                {
+                  "materialId": "zinc",
+                  "thicknessMm": 1,
+                  "rateRub": 100,
+                  "pierceRubEach": 5,
+                  "source": {
+                    "id": "ci-synthetic",
+                    "label": "CI synthetic rate",
+                    "confirmedAt": "2026-09-15T00:00:00.000Z",
+                    "note": "Synthetic test data only"
+                  }
+                }
+              ],
+              "bendRubEach": null,
+              "weldRubPerM": null,
+              "powderRubPerM2": null,
+              "assemblyRubPerHour": null,
+              "surfacePreparationRubPerM2": null,
+              "packagingRubEach": null
+            },
+            "materialPriceSnapshots": [
+              {
+                "sourceId": "ci-synthetic",
+                "fetchedAt": "2026-09-15T00:00:00.000Z",
+                "sourceDate": "2026-09-15T00:00:00.000Z",
+                "status": "ok",
+                "rows": [
+                  {
+                    "materialId": "zinc",
+                    "thicknessMm": 1,
+                    "rubPerTon": 100000,
+                    "source": "CI synthetic material price",
+                    "sourceDate": "2026-09-15T00:00:00.000Z",
+                    "fetchedAt": "2026-09-15T00:00:00.000Z",
+                    "size": "1x1000x2000",
+                    "exactThickness": true
+                  }
+                ]
+              }
+            ]
+          }
+          JSON
+          chmod 600 "$BASIS"
+
+          export STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH="$BASIS"
+          export STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT="$REPORT_ROOT"
+          export UPLOAD_QUARANTINE_PATH="$QUARANTINE"
+
+          npm run start -- -H 127.0.0.1 -p 3012 > "$RUNNER_TEMP/server.log" 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent --show-error http://127.0.0.1:3012/robots.txt >/dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat "$RUNNER_TEMP/server.log"
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
+          cat > "$RUNNER_TEMP/smoke.dxf" <<'DXF'
           0
           SECTION
           2
           HEADER
+          9
+          $INSUNITS
+          70
+          4
           0
           ENDSEC
           0
@@ -103,33 +171,37 @@ jobs:
           0
           EOF
           DXF
-          cat > /tmp/manifest.json <<'JSON'
-          {"title":"Production calculation smoke","parts":[{"clientPartId":"smoke-part","fileIndex":0,"materialId":"zinc","thicknessMm":1,"quantity":1,"operations":[]}]}
+          cat > "$RUNNER_TEMP/manifest.json" <<'JSON'
+          {"title":"Packaged calculation smoke","parts":[{"clientPartId":"smoke-part","fileIndex":0,"materialId":"zinc","thicknessMm":1,"quantity":2,"operations":[]}]}
           JSON
-          HTTP_CODE="$(curl --silent --show-error --output /tmp/response.json --write-out '%{http_code}' \
-            -H 'Origin: https://www.steelprodukt.ru' \
-            -H 'Referer: https://www.steelprodukt.ru/online-order' \
-            -F 'manifest=</tmp/manifest.json' \
-            -F 'files=@/tmp/smoke.dxf;type=application/dxf' \
-            https://www.steelprodukt.ru/api/online-order/calculate)"
-          echo "HTTP=$HTTP_CODE"
+
+          HTTP_CODE="$(curl --silent --show-error --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+            -H 'Origin: http://127.0.0.1:3012' \
+            -F "manifest=<$RUNNER_TEMP/manifest.json" \
+            -F "files=@$RUNNER_TEMP/smoke.dxf;type=application/dxf" \
+            http://127.0.0.1:3012/api/online-order/calculate)"
+          echo "PACKAGED_CALCULATION_HTTP=$HTTP_CODE"
+
           python3 - <<'PY'
-          import json
-          with open('/tmp/response.json', encoding='utf-8') as f:
+          import json, os
+          response_path=os.path.join(os.environ['RUNNER_TEMP'],'response.json')
+          with open(response_path, encoding='utf-8') as f:
               data=json.load(f)
-          safe={"ok":data.get("ok"),"code":data.get("code")}
-          calc=data.get("calculation") or {}
-          parts=calc.get("parts") or []
-          if parts:
-              safe["status"]=parts[0].get("status")
-              price=parts[0].get("price") or {}
-              safe["priceStatus"]=price.get("status")
-              safe["positiveApprovedPrice"]=isinstance(price.get("totalRub"),(int,float)) and price.get("totalRub",0)>0
-          print(json.dumps(safe,ensure_ascii=False))
-          forbidden={'rateRub','confirmedDirectCostRubEach','confirmedDirectCostRubBatch','supplier','materialPrice','basisVersion','internalReport','pierceCount','cutLengthMm'}
-          raw=json.dumps(data,ensure_ascii=False)
-          leaked=[key for key in forbidden if key in raw]
+          parts=((data.get('calculation') or {}).get('parts') or [])
+          if not data.get('ok') or len(parts) != 1:
+              raise SystemExit('Packaged calculation API did not return one successful part')
+          part=parts[0]
+          price=part.get('price') or {}
+          if part.get('status') != 'ready':
+              raise SystemExit(f"Unexpected part status: {part.get('status')}")
+          if price.get('status') != 'approved' or not isinstance(price.get('totalRub'), (int,float)) or price['totalRub'] <= 0:
+              raise SystemExit('Approved positive total was not returned')
+          raw=json.dumps(data, ensure_ascii=False).lower()
+          forbidden=['raterub','rubperton','directcost','internalsubtotal','supplier','cutlength','piercecount','masskg','waste','blankarea','reportid','basisversion']
+          leaked=[token for token in forbidden if token in raw]
           if leaked:
               raise SystemExit('Confidential fields leaked: '+','.join(leaked))
+          print(json.dumps({'ok':True,'status':part.get('status'),'priceStatus':price.get('status'),'positiveApprovedPrice':True}))
           PY
-          echo "LIVE_SMOKE_COMPLETED=true"
+          test "$HTTP_CODE" = "200"
+          test "$(find "$REPORT_ROOT" -maxdepth 1 -type f -name '*.json' | wc -l)" -ge 1
