@@ -175,7 +175,10 @@ export function calculateProvisionalPartPrice(
 ): ProvisionalPartPrice {
   const quantity = Math.max(1, Math.floor(input.quantity || 1));
   const density = basis.densityKgM3[input.materialId];
-  const areaM2 = Math.max(0, (input.geometry.widthMm ?? 0) * (input.geometry.heightMm ?? 0) / 1_000_000);
+  const bboxAreaMm2 = Math.max(0, (input.geometry.widthMm ?? 0) * (input.geometry.heightMm ?? 0));
+  const hasExactPlanarArea = Boolean(input.geometry.areaMm2 && input.geometry.areaMm2 > 0);
+  const planarAreaMm2 = hasExactPlanarArea ? input.geometry.areaMm2! : bboxAreaMm2;
+  const areaM2 = planarAreaMm2 / 1_000_000;
   const thicknessM = input.thicknessMm / 1000;
   const netMassKg = input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0
     ? input.geometry.volumeMm3 / 1_000_000_000 * density
@@ -192,7 +195,7 @@ export function calculateProvisionalPartPrice(
   const cutLengthM = Math.max(0, (input.geometry.cutLengthMm ?? 0) / 1000);
   const totalBatchCutM = cutLengthM * quantity;
   const laserRubPerM = cuttingRubPerM(cut, totalBatchCutM);
-  const pierces = Math.max(0, input.geometry.contourCount ?? 0);
+  const pierces = Math.max(0, input.geometry.pierceCount ?? input.geometry.contourCount ?? 0);
   const laserRubEach = input.operations.includes("laser-cutting")
     ? cutLengthM * laserRubPerM + pierces * cut.pierceRub
     : 0;
@@ -215,7 +218,11 @@ export function calculateProvisionalPartPrice(
 
   const warnings: string[] = [];
   if (!input.marketPrice.exactThickness) warnings.push("Цена металла выбрана по ближайшей толщине прайса.");
-  if (!(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) warnings.push("Масса рассчитана по габаритному прямоугольнику; после nesting цена металла будет уточнена.");
+  if (!(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0) && !hasExactPlanarArea) {
+    warnings.push("Точная площадь контура не подтверждена; масса рассчитана по габаритному прямоугольнику.");
+  } else if (!(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
+    warnings.push("Нетто-масса рассчитана по замкнутым DXF-контурам; расход заготовки будет уточнён настоящим nesting.");
+  }
   if (input.operations.includes("welding") && !(input.weldLengthM && input.weldLengthM > 0)) warnings.push("Сварка включена, но длина шва не определена.");
 
   return {
