@@ -29,25 +29,23 @@
 
 ### Последняя проверенная точка
 
-- **Last functional implementation SHA:** `72cc5ecc4bfd7e5abe326c265e3f43201f034f01`
-- Functional commit: `Test safe legacy DXF POLYLINE VERTEX support`
-- **Last GREEN verified tree HEAD:** `5e38668d7d4c603c1e5c72213f8cc984e65868b7`
-- CI на `5e38668…` полностью GREEN:
+- **Last functional implementation SHA:** `f0436d73f43bd2a9d0b303aeedf26b25b7e381bf`
+- Functional commit: `Test fail-closed DXF ellipse length convergence and parameter sweep`
+- **Last GREEN verified tree HEAD:** `b984da3e54c624b5b5fca0fcf094723c495f7de6`
+- CI на `b984da3e…` полностью GREEN:
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
 
-### Текущий WIP — DXF ELLIPSE
+### Закрытый последний block — DXF ELLIPSE
 
-- Autodesk DXF contract проверен: center `10/20`, major-axis vector `11/21`, minor/major ratio `40`, start/end parameters `41/42`; full ellipse = `0..2π`.
-- `671ad8426efaa6ed737d046f06c8c9b453181a91`: добавлен `ellipse` shape, exact parametric point, analytic extrema/bounds, exact full area `πab`, controlled adaptive-Simpson cut length.
-- `95ffc444fb2a411be4cecdd21cd338214d42c89a`: preview sampling вынесен отдельно от production math.
-- `c16e0162a60b76945afc4e8e6a6c2d0e6ccf8c36`: regression fixtures: axis-aligned full ellipse, rotated bounds, partial/wrapped parameters, exact ellipse hole topology, preview separation, non-planar и invalid-ratio fail-closed.
-- `aa6bee60540e86ca5fdff0e811b2c259bd164c7c`: integration hardening — adaptive Simpson больше не возвращает недоказанное число при depth exhaustion/non-finite math; отсутствие доказанной tolerance даёт fail-closed.
-- `f0436d73f43bd2a9d0b303aeedf26b25b7e381bf`: regression на zero wrapped sweep и `ELLIPSE_LENGTH_UNAVAILABLE` для non-finite/non-converged production length.
-- Non-XY extrusion и major-axis Z не проецируются молча в XY; дают internal unsupported evidence.
-- Full ellipse area/topology считается exact только для доказанного `0..2π`; partial ellipse остаётся open topology.
-- **Current WIP functional HEAD:** `f0436d73f43bd2a9d0b303aeedf26b25b7e381bf`.
-- WIP CI ещё не зафиксирован как GREEN. До gate следующий functional layer не начинать.
+- Autodesk DXF contract: center `10/20`, major-axis vector `11/21`, minor/major ratio `40`, start/end parameters `41/42`; full ellipse = `0..2π`.
+- `671ad842…`: ellipse shape, exact parameterization, analytic extrema/bounds, exact full area `πab`, controlled adaptive-Simpson cut length.
+- `95ffc444…`: preview sampling отдельно от production math.
+- `c16e0162…`: full/rotated/partial/wrapped/hole/non-planar/invalid-ratio regression suite.
+- `aa6bee60…`: numerical integration fails closed при non-finite math или recursion depth exhaustion без доказанной tolerance.
+- `f0436d73…`: zero wrapped sweep и unavailable-length regressions.
+- Non-XY extrusion / major-axis Z не проецируются молча в XY.
+- Full ellipse участвует в exact closed topology; partial ellipse остаётся open topology.
 
 ---
 
@@ -63,7 +61,7 @@
 - автоматический release без внутренних gates.
 
 ### Конфиденциальность
-Клиенту не показывать: закупочные цены, ставки, себестоимость, нормы, массу/отход/рез/прожиги как внутреннюю калькуляцию, detailed internal DFM, production evidence, report IDs/paths, factual assembly/surface-preparation inputs.
+Клиенту не показывать: закупочные цены, ставки, себестоимость, нормы, внутреннюю массу/отход/рез/прожиги, detailed internal DFM, production evidence, report IDs/paths, factual assembly/surface-preparation inputs.
 
 Клиентский boundary содержит только безопасный CAD/preview, безопасные габариты, выбранную конфигурацию, coarse status и в будущем отдельно утверждённую продажную цену/срок.
 
@@ -79,11 +77,10 @@
 ## 3. DONE — не создавать заново
 
 ### Public/client safety
-- client-safe `/online-order` workspace;
-- safe client DTO;
+- client-safe `/online-order` workspace и DTO;
 - public calculation server повторно анализирует CAD;
 - private economics/DFM/report evidence не импортируются в client boundary;
-- confidentiality regression запрещает `powderAreaM2`, `assemblyMinutes`, `surfacePreparationAreaM2`, `authoritativeFactualByPartId`, cost/rate/supplier/report/DFM evidence в client workspace/DTO.
+- confidentiality regression закрывает internal physical/economic fields.
 
 ### STEP
 - OpenCascade analysis;
@@ -97,8 +94,7 @@
 - private runtime rate book + supplier snapshot basis;
 - factual project aggregation;
 - bending/welding/powder/assembly/surface-preparation/packaging;
-- `assemblyMinutes` + `surfacePreparationAreaM2` через internal immutable revisions;
-- internal reports/RBAC/CSRF/revision lineage;
+- internal immutable revisions, RBAC/CSRF/report lineage;
 - manual technologist override выше automatic evidence.
 
 ### Supplier feed
@@ -111,7 +107,9 @@
 - legacy simple 2D POLYLINE/VERTEX/SEQEND;
 - exact straight closed-polyline area/hole topology;
 - exact ARC bbox/length;
-- exact LWPOLYLINE/legacy bulge bbox/length + curved preview;
+- exact polyline bulge bbox/length + curved preview;
+- safe ELLIPSE full/partial geometry with analytic bounds and controlled length;
+- exact full-ellipse area/containment/hole topology;
 - bulged closed area/pierce остаётся fail-closed;
 - 3D/polyface/mesh legacy POLYLINE остаётся fail-closed.
 
@@ -119,38 +117,29 @@
 
 ## 4. IN PROGRESS
 
-### ELLIPSE
+### SPLINE — только доказуемый linear planar subset
 
-Реализовано в WIP:
-- 2D parameterization `P(t) = C + A cos(t) + B sin(t)`, где `A` — major vector, `B` — перпендикулярный minor vector с ratio;
-- full/partial parameter sweep с wrap через `2π`;
-- analytic X/Y extrema для production bbox;
-- cut length через adaptive Simpson integration параметрической скорости с absolute error tolerance, не через preview sampling;
-- integration fail-closed при non-finite math или исчерпании recursion depth без доказанной tolerance;
-- exact full area `πab` и containment для hole topology;
-- partial ellipse не считается closed contour;
-- non-planar/invalid ellipse не становится production geometry;
-- preview имеет отдельный sampling helper.
+Autodesk contract подтверждён: flags `70`, degree `71`, knot count `72`, control-point count `73`, knots `40`, control points `10/20/30`, optional weights `41`, normal `210/220/230`.
 
-Regression WIP:
-- full axis-aligned `a=100,b=50`, reference circumference `484.4224110273838`;
-- rotated full ellipse bbox;
-- partial circular ellipse `r·Δt`;
-- wrapped parameter range;
-- ellipse hole внутри closed rectangle;
-- preview endpoints;
-- non-planar major-axis Z and invalid ratio fail-closed;
-- zero wrapped sweep fail-closed;
-- non-finite/unproven arc-length integration => `ELLIPSE_LENGTH_UNAVAILABLE`.
+Первый безопасный scope:
+- только open, non-periodic, non-rational SPLINE;
+- degree = 1;
+- planar/linear flags должны подтверждать линейный 2D spline;
+- control-point Z = 0; normal только +Z/default;
+- knot count и control-point count должны совпадать с фактическими данными;
+- поддерживать только корректный open-clamped degree-1 knot vector: первые/последние 2 knots равны, внутренние knots строго возрастают;
+- такой spline геометрически совпадает с последовательностью control-point line segments и может быть нормализован в open straight polyline;
+- любые closed/periodic/rational/nonlinear/3D/malformed варианты — fail-closed, не sampling.
 
 ---
 
 ## 5. NEXT ACTION
 
-1. Полный CI на journal-only tree поверх `f0436d73…`.
-2. Если RED — исправить только ELLIPSE block и записать failure/fix.
-3. Если GREEN — `f0436d73…` становится новым functional checkpoint; journal tree — новым GREEN verified tree.
-4. После GREEN оценить следующий gap: SPLINE только как строго ограниченный subset либо exact bulged closed topology; не начинать до gate.
+1. Добавить parser `SPLINE` для strict linear planar subset с отдельными internal issue codes.
+2. Не использовать fit points как замену control points и не реконструировать nonlinear spline приблизительно.
+3. Regression: valid degree-1 open-clamped spline, rotated/general control points, invalid knot count/order, degree>1, rational/periodic/closed, non-zero Z/non-planar normal.
+4. Preview должен переиспользовать normalized polyline; production length/bounds — exact straight segments.
+5. Записать WIP в журнал и выполнить полный CI до следующего layer.
 
 ---
 
@@ -164,6 +153,7 @@ Regression WIP:
 - unverified bent STEP как production-authoritative;
 - unknown operation как zero cost;
 - 3D/polyface DXF трактовать как 2D contour;
+- nonlinear/rational spline аппроксимировать и выдавать как factual production contour;
 - approximate curved area/pierces/cut length выдавать как exact factual values.
 
 ---
@@ -186,22 +176,25 @@ Green относится к конкретному проверенному SHA.
 - `ae09b1e5…` — historical green functional checkpoint.
 
 ### 2026-09-14 — DXF LWPOLYLINE bulge
-- `e2d3bb9c…` analytic bulge geometry; `2a0a6089…` preview; `9e163240…` regressions;
-- RED: old snapshot fixture lacked `bulges[]`; `f8f97fc2…` fixed fixture only;
-- `155c19c…` both workflows GREEN.
+- analytic bulge geometry/preview/regressions;
+- snapshot fixture-only CI fix;
+- `155c19c…` verified GREEN tree.
 
 ### 2026-09-14 — legacy POLYLINE/VERTEX
-- `1f8b1202…` safe simple 2D parser + complex/3D fail-closed;
+- `1f8b1202…` safe simple 2D parser;
 - `72cc5ecc…` regression;
-- `5e38668…` both workflows fully GREEN.
+- `5e38668…` verified GREEN tree.
 
-### 2026-09-14 — WIP ELLIPSE
+### 2026-09-14 — DXF ELLIPSE
 - `671ad842…` analytic geometry/topology + controlled length integration;
 - `95ffc444…` separate preview;
 - `c16e0162…` base regression suite;
-- `aa6bee60…` numerical integration now fails closed unless tolerance is actually met;
-- `f0436d73…` regressions for zero sweep and unavailable length;
-- CI pending на момент записи.
+- `aa6bee60…` hard fail-closed integration tolerance;
+- `f0436d73…` edge-case regressions;
+- `b984da3e…` both workflows fully GREEN — current verified checkpoint.
+
+### 2026-09-14 — next WIP
+- open strict degree-1 planar SPLINE subset only; nonlinear/rational/periodic remain unsupported.
 
 ---
 
