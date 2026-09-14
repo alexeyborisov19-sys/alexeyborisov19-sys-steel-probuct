@@ -233,7 +233,7 @@ test("marks stale supplier pricing as incomplete instead of silently using it", 
   assert.equal(result.confirmedDirectCostRubEach, 0);
 });
 
-test("reports unknown operation rates instead of importing public defaults", () => {
+test("reports missing physical inputs separately from missing confidential operation rates", () => {
   const result = calculateFactualProductionCost({
     materialId: "cold",
     thicknessMm: 1,
@@ -245,5 +245,8 @@ test("reports unknown operation rates instead of importing public defaults", () 
   });
 
   assert.equal(result.status, "partial");
-  assert.equal(result.missing.filter((item) => item.code === "operation-rate").length, 3);
+  assert.ok(result.missing.some((item) => item.code === "assembly-time" && item.label === "Сборка"));
+  assert.ok(result.missing.some((item) => item.code === "surface-preparation-area" && item.label === "Подготовка поверхности"));
+  assert.ok(result.missing.some((item) => item.code === "operation-rate" && item.label === "Упаковка"));
+  assert.equal(result.missing.filter((item) => item.code === "operation-rate").length, 1);
 });
