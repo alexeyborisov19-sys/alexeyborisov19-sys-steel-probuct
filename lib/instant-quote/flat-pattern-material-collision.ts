@@ -117,6 +117,37 @@ function segmentsIntersect(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2) {
   return false;
 }
 
+function isOnlyAllowedTangencyEndpointContact(
+  stripStart: Vector2,
+  stripEnd: Vector2,
+  panelStart: Vector2,
+  panelEnd: Vector2,
+  expected: [Vector2, Vector2],
+) {
+  if (!segmentsIntersect(stripStart, stripEnd, panelStart, panelEnd)) return true;
+
+  const stripVector = subtract(stripEnd, stripStart);
+  const panelVector = subtract(panelEnd, panelStart);
+  const c1 = cross(stripVector, subtract(panelStart, stripStart));
+  const c2 = cross(stripVector, subtract(panelEnd, stripStart));
+  const c3 = cross(panelVector, subtract(stripStart, panelStart));
+  const c4 = cross(panelVector, subtract(stripEnd, panelStart));
+  const properCrossing = ((c1 > GEOMETRY_EPSILON && c2 < -GEOMETRY_EPSILON)
+    || (c1 < -GEOMETRY_EPSILON && c2 > GEOMETRY_EPSILON))
+    && ((c3 > GEOMETRY_EPSILON && c4 < -GEOMETRY_EPSILON)
+      || (c3 < -GEOMETRY_EPSILON && c4 > GEOMETRY_EPSILON));
+  if (properCrossing) return false;
+
+  const contactPoints: Vector2[] = [];
+  if (pointOnSegment(stripStart, panelStart, panelEnd)) contactPoints.push(stripStart);
+  if (pointOnSegment(stripEnd, panelStart, panelEnd)) contactPoints.push(stripEnd);
+  if (pointOnSegment(panelStart, stripStart, stripEnd)) contactPoints.push(panelStart);
+  if (pointOnSegment(panelEnd, stripStart, stripEnd)) contactPoints.push(panelEnd);
+  if (!contactPoints.length) return false;
+
+  return contactPoints.every((point) => close(point, expected[0]) || close(point, expected[1]));
+}
+
 function segmentCollinearWithExpected(
   start: Vector2,
   end: Vector2,
@@ -258,7 +289,9 @@ function adjacentPanelStripCheck(region: PanelMaterialRegion2D, strip: BendStrip
     if ((region.panelId === strip.parentPanelId && stripIndex === 0)
       || (region.panelId === strip.childPanelId && stripIndex === 2)) continue;
     const [stripStart, stripEnd] = stripSegments[stripIndex];
-    if (allPanelSegments.some(([panelStart, panelEnd]) => segmentsIntersect(stripStart, stripEnd, panelStart, panelEnd))) {
+    if (allPanelSegments.some(([panelStart, panelEnd]) =>
+      segmentsIntersect(stripStart, stripEnd, panelStart, panelEnd)
+      && !isOnlyAllowedTangencyEndpointContact(stripStart, stripEnd, panelStart, panelEnd, expected))) {
       return { contactFound, overlap: true };
     }
   }
