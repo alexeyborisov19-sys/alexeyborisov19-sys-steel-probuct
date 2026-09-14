@@ -20,7 +20,7 @@ test("STEP carries BRep candidates without promoting them into production geomet
           source: "brep" as const,
           status: "candidate" as const,
           planarFaceCount: 2,
-          cylindricalFaceCount: 1,
+          cylindricalFaceCount: 2,
           otherFaceCount: 0,
           thicknessCandidate: {
             thicknessMm: 2,
@@ -28,7 +28,16 @@ test("STEP carries BRep candidates without promoting them into production geomet
             evidencePairs: 1,
             evidenceFaceIds: ["face-top", "face-bottom"],
           },
-          bendCandidates: [{ id: "face-bend", radiusMm: 3, areaMm2: 250 }],
+          bendCandidates: [
+            {
+              id: "bend:face-inner:face-outer",
+              faceIds: ["face-inner", "face-outer"] as [string, string],
+              radiusMm: 3,
+              outerRadiusMm: 5,
+              angleDeg: 90,
+              areaMm2: 500,
+            },
+          ],
           warnings: ["candidate only"],
         },
       };
@@ -43,6 +52,7 @@ test("STEP carries BRep candidates without promoting them into production geomet
 
   assert.equal(model.sheetMetal?.thicknessCandidate?.thicknessMm, 2);
   assert.equal(model.sheetMetal?.bendCandidates.length, 1);
+  assert.equal(model.sheetMetal?.bendCandidates[0].angleDeg, 90);
   assert.equal(model.geometry.thicknessMm, undefined);
   assert.equal(model.geometry.bendCount, undefined);
   assert.ok(model.warnings.includes("candidate only"));
