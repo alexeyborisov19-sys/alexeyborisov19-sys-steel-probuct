@@ -5,6 +5,7 @@ export type PlaneFaceObservation = {
   areaMm2: number;
   centerMm: Vector3;
   normal: Vector3;
+  edgeHashes?: number[];
 };
 
 export type CylinderFaceObservation = {
@@ -14,6 +15,7 @@ export type CylinderFaceObservation = {
   originMm?: Vector3;
   axis?: Vector3;
   angleSpanRad?: number;
+  edgeHashes?: number[];
 };
 
 export type SheetMetalTopologyObservations = {
@@ -32,6 +34,7 @@ export type SheetMetalThicknessCandidate = {
 export type SheetMetalBendCandidate = {
   id: string;
   faceIds: [string, string];
+  planarNeighborFaceIds: string[];
   radiusMm: number;
   outerRadiusMm: number;
   angleDeg: number;
@@ -59,6 +62,7 @@ type PlanePairEvidence = {
 type CylinderPairEvidence = {
   left: CylinderFaceObservation;
   right: CylinderFaceObservation;
+  planarNeighborFaceIds: string[];
   score: number;
   angleRad: number;
 };
@@ -199,13 +203,25 @@ function perpendicularDistanceBetweenAxes(left: CylinderFaceObservation, right: 
   return length(subtract(originDelta, alongAxis));
 }
 
+function sharedEdgeHashes(left: { edgeHashes?: number[] }, right: { edgeHashes?: number[] }) {
+  if (!left.edgeHashes?.length || !right.edgeHashes?.length) return [];
+  const rightHashes = new Set(right.edgeHashes);
+  return left.edgeHashes.filter((hash) => rightHashes.has(hash));
+}
+
+function planarNeighbors(cylinder: CylinderFaceObservation, planes: PlaneFaceObservation[]) {
+  return planes.filter((plane) => sharedEdgeHashes(cylinder, plane).length > 0).map((plane) => plane.id);
+}
+
 function collectCylinderPairEvidence(
   cylinders: CylinderFaceObservation[],
+  planes: PlaneFaceObservation[],
   thicknessMm: number,
 ): CylinderPairEvidence[] {
   const evidence: CylinderPairEvidence[] = [];
   const radiusTolerance = Math.max(0.05, thicknessMm * 0.08);
   const axisTolerance = Math.max(0.05, thicknessMm * 0.08);
+  const topologyAvailable = cylinders.some((face) => face.edgeHashes?.length) && planes.some((face) => face.edgeHashes?.length);
 
   for (let leftIndex = 0; leftIndex < cylinders.length; leftIndex += 1) {
     const left = cylinders[leftIndex];
@@ -228,9 +244,15 @@ function collectCylinderPairEvidence(
       const angleError = Math.abs((leftAngle ?? 0) - (rightAngle ?? 0));
       if (angleError > angleTolerance) continue;
 
+      const leftNeighbors = planarNeighbors(left, planes);
+      const rightNeighbors = planarNeighbors(right, planes);
+      if (topologyAvailable && (leftNeighbors.length < 2 || rightNeighbors.length < 2)) continue;
+      const planarNeighborFaceIds = [...new Set([...leftNeighbors, ...rightNeighbors])];
+
       evidence.push({
         left,
         right,
+        planarNeighborFaceIds,
         angleRad: meanAngle,
         score: radiusError / radiusTolerance + axisDistance / axisTolerance + angleError / angleTolerance,
       });
@@ -242,11 +264,12 @@ function collectCylinderPairEvidence(
 
 function pickBendCandidates(
   cylinders: CylinderFaceObservation[],
+  planes: PlaneFaceObservation[],
   thicknessCandidate?: SheetMetalThicknessCandidate,
 ): SheetMetalBendCandidate[] {
   if (!thicknessCandidate || thicknessCandidate.confidence !== "medium") return [];
 
-  const evidence = collectCylinderPairEvidence(cylinders, thicknessCandidate.thicknessMm);
+  const evidence = collectCylinderPairEvidence(cylinders, planes, thicknessCandidate.thicknessMm);
   const usedFaceIds = new Set<string>();
   const bends: SheetMetalBendCandidate[] = [];
 
@@ -260,6 +283,7 @@ function pickBendCandidates(
     bends.push({
       id: `bend:${inner.id}:${outer.id}`,
       faceIds: [inner.id, outer.id],
+      planarNeighborFaceIds: pair.planarNeighborFaceIds,
       radiusMm: inner.radiusMm,
       outerRadiusMm: outer.radiusMm,
       angleDeg: Math.round((pair.angleRad * 180 / Math.PI) * 10) / 10,
@@ -274,9 +298,10 @@ function pickBendCandidates(
  * Conservative sheet-metal interpretation of exact BRep face observations.
  *
  * It intentionally returns candidates rather than production facts. Parallel
- * planes provide only a thickness candidate. A bend candidate requires a much
- * stronger signature: two coaxial partial cylinders whose radius difference
- * agrees with a medium-confidence thickness candidate. Nothing here is an
+ * planes provide only a thickness candidate. A bend candidate requires two
+ * coaxial partial cylinders whose radius difference agrees with a medium-
+ * confidence thickness candidate. When edge hashes are available, each bend
+ * surface must also connect to planar neighbours. Nothing here is an
  * authoritative flat pattern or production bend count.
  */
 export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObservations): SheetMetalAnalysis {
@@ -285,7 +310,7 @@ export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObserv
     (face) => finitePositive(face.areaMm2) && finitePositive(face.radiusMm),
   );
   const thicknessCandidate = pickThicknessCandidate(planarFaces);
-  const bendCandidates = pickBendCandidates(cylindricalFaces, thicknessCandidate);
+  const bendCandidates = pickBendCandidates(cylindricalFaces, planarFaces, thicknessCandidate);
   const warnings: string[] = [];
 
   if (!thicknessCandidate) {
@@ -299,11 +324,11 @@ export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObserv
   if (cylindricalFaces.length) {
     if (bendCandidates.length) {
       warnings.push(
-        `Цилиндрических граней: ${cylindricalFaces.length}; соосных пар, согласованных с кандидатом толщины: ${bendCandidates.length}. Это кандидаты на гибы, а не подтверждённый bend count.`,
+        `Цилиндрических граней: ${cylindricalFaces.length}; соосных топологических пар, согласованных с кандидатом толщины: ${bendCandidates.length}. Это кандидаты на гибы, а не подтверждённый bend count.`,
       );
     } else {
       warnings.push(
-        `Обнаружено цилиндрических граней: ${cylindricalFaces.length}, но ни одна не подтверждена как парная зона гиба. Отверстия, трубы и одиночные цилиндрические поверхности не считаются гибами автоматически.`,
+        `Обнаружено цилиндрических граней: ${cylindricalFaces.length}, но ни одна не подтверждена как парная топологическая зона гиба. Отверстия, трубы и одиночные цилиндрические поверхности не считаются гибами автоматически.`,
       );
     }
   }
