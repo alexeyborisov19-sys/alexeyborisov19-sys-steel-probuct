@@ -8,6 +8,7 @@ on:
       - 'app/(public)/online-order/**'
       - 'app/api/online-order/**'
       - 'components/InstantQuoteWorkspace.tsx'
+      - 'components/CadMeshViewer.tsx'
       - 'lib/instant-quote/**'
       - 'tests/instant-quote-*.test.ts'
       - 'docs/STEEL_PRODUCT_ONLINE_*.md'
