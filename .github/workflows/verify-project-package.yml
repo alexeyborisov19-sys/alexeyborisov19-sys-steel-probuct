@@ -105,7 +105,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Check required private keys without reading values
+      - name: Validate private policy and smoke prerequisites without reading values
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -117,35 +117,64 @@ jobs:
             "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
           set -euo pipefail
           ENV_FILE="$APP_PATH/.env.production"
+          BASIS_FILE="/var/lib/steelprodukt/production/calculation-basis.json"
+          REPORT_ROOT="/var/lib/steelprodukt/production/reports"
           test -f "$ENV_FILE"
-          missing=0
-          for key in \
-            STEEL_PRODUCT_METAL_MULTIPLIER \
-            STEEL_PRODUCT_DRAW_PCT \
-            STEEL_PRODUCT_FINAL_PCT \
-            STEEL_PRODUCT_FIXED_ADD_RUB \
-            STEEL_PRODUCT_FIXED_ADD_ENABLED \
-            STEEL_PRODUCT_ROUND_STEP_RUB
-          do
-            if grep -Eq "^${key}=.+$" "$ENV_FILE"; then
-              echo "${key}=SET"
-            else
-              echo "${key}=MISSING"
-              missing=1
-            fi
-          done
 
-          if [ -r /var/lib/steelprodukt/production/calculation-basis.json ]; then
-            echo "PRIVATE_CALCULATION_BASIS=READABLE"
+          node - "$ENV_FILE" "$BASIS_FILE" <<'NODE'
+          const fs = require('node:fs');
+          const [envFile, basisFile] = process.argv.slice(2);
+          const env = new Map();
+          for (const rawLine of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+            const line = rawLine.trim();
+            if (!line || line.startsWith('#')) continue;
+            const idx = line.indexOf('=');
+            if (idx < 1) continue;
+            let value = line.slice(idx + 1).trim();
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+            env.set(line.slice(0, idx), value);
+          }
+
+          const numeric = [
+            ['STEEL_PRODUCT_METAL_MULTIPLIER', 'positive'],
+            ['STEEL_PRODUCT_DRAW_PCT', 'nonnegative'],
+            ['STEEL_PRODUCT_FINAL_PCT', 'nonnegative'],
+            ['STEEL_PRODUCT_FIXED_ADD_RUB', 'nonnegative'],
+            ['STEEL_PRODUCT_ROUND_STEP_RUB', 'positive'],
+          ];
+          let ok = true;
+          for (const [name, mode] of numeric) {
+            const value = Number(env.get(name));
+            const valid = Number.isFinite(value) && (mode === 'positive' ? value > 0 : value >= 0);
+            console.log(`${name}=${valid ? 'VALID' : 'INVALID'}`);
+            if (!valid) ok = false;
+          }
+          const fixed = env.get('STEEL_PRODUCT_FIXED_ADD_ENABLED');
+          const fixedValid = fixed === 'true' || fixed === 'false';
+          console.log(`STEEL_PRODUCT_FIXED_ADD_ENABLED=${fixedValid ? 'VALID' : 'INVALID'}`);
+          if (!fixedValid) ok = false;
+
+          const basis = JSON.parse(fs.readFileSync(basisFile, 'utf8'));
+          const laserRows = Array.isArray(basis?.rateBook?.laserRubPerM) ? basis.rateBook.laserRubPerM : [];
+          const zincLaser = laserRows.some((row) => row?.materialId === 'zinc' && Number(row?.thicknessMm) === 1 && Number(row?.rateRub) > 0);
+          const snapshots = Array.isArray(basis?.materialPriceSnapshots) ? basis.materialPriceSnapshots : [];
+          const zincMaterial = snapshots.some((snapshot) => snapshot?.status !== 'failed' && Array.isArray(snapshot?.rows) && snapshot.rows.some((row) => row?.materialId === 'zinc' && Number(row?.thicknessMm) === 1 && Number(row?.rubPerTon) > 0));
+          console.log(`SMOKE_ZINC_1_LASER_RATE=${zincLaser ? 'AVAILABLE' : 'UNAVAILABLE'}`);
+          console.log(`SMOKE_ZINC_1_MATERIAL_PRICE=${zincMaterial ? 'AVAILABLE' : 'UNAVAILABLE'}`);
+          if (!zincLaser || !zincMaterial) ok = false;
+          if (!ok) process.exit(1);
+          NODE
+
+          if sudo -iu nodejs test -r "$BASIS_FILE"; then
+            echo "PRIVATE_CALCULATION_BASIS=READABLE_BY_RUNTIME"
           else
-            echo "PRIVATE_CALCULATION_BASIS=UNAVAILABLE"
-            missing=1
+            echo "PRIVATE_CALCULATION_BASIS=UNAVAILABLE_TO_RUNTIME"
+            exit 1
           fi
-          if [ -d /var/lib/steelprodukt/production/reports ] && [ -w /var/lib/steelprodukt/production/reports ]; then
-            echo "PRIVATE_REPORT_ROOT=WRITABLE"
+          if sudo -iu nodejs test -w "$REPORT_ROOT"; then
+            echo "PRIVATE_REPORT_ROOT=WRITABLE_BY_RUNTIME"
           else
-            echo "PRIVATE_REPORT_ROOT=UNAVAILABLE"
-            missing=1
+            echo "PRIVATE_REPORT_ROOT=UNAVAILABLE_TO_RUNTIME"
+            exit 1
           fi
-          exit "$missing"
           REMOTE
