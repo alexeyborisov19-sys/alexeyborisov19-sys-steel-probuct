@@ -28,6 +28,7 @@ function quote(): ProvisionalQuoteSnapshot {
         materialMarketRubPerTon: 60_000,
         materialMarketTier: "under-3t",
         materialPricedRubPerTon: 63_000,
+        materialAllocationStrategy: "bounding-rectangle",
         netAreaMm2: 10_000,
         blankWidthMm: 100,
         blankHeightMm: 100,
