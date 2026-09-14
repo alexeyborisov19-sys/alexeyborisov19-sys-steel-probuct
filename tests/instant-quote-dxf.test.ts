@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseAsciiDxf } from "../lib/instant-quote/dxf";
+import { bulgeArc, parseAsciiDxf, polylinePreviewPoints } from "../lib/instant-quote/dxf";
 
 function dxf(entities: string[]) {
   return [
@@ -11,6 +11,10 @@ function dxf(entities: string[]) {
     ...entities,
     "0", "ENDSEC", "0", "EOF",
   ].join("\n");
+}
+
+function approx(actual: number, expected: number, tolerance = 1e-6) {
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected} ± ${tolerance}`);
 }
 
 test("parses basic line geometry in millimetres", () => {
@@ -70,7 +74,85 @@ test("subtracts an internal circle as a hole", () => {
   assert.equal(parsed.holeCount, 1);
 });
 
-test("flags LWPOLYLINE bulges for manual review instead of silently trusting them", () => {
+test("converts positive semicircle bulge into exact clockwise-facing lower geometry per DXF sweep", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LWPOLYLINE", "70", "0",
+    "10", "0", "20", "0", "42", "1",
+    "10", "100", "20", "0",
+  ]));
+
+  assert.equal(parsed.unsupportedEntities.includes("LWPOLYLINE_BULGE"), false);
+  approx(parsed.cutLength, Math.PI * 50);
+  approx(parsed.minX, 0);
+  approx(parsed.maxX, 100);
+  approx(parsed.minY, -50);
+  approx(parsed.maxY, 0);
+  approx(parsed.height, 50);
+  assert.equal(parsed.areaStatus, "unavailable");
+
+  const polyline = parsed.shapes.find((shape) => shape.kind === "polyline");
+  assert.ok(polyline && polyline.kind === "polyline");
+  const preview = polylinePreviewPoints(polyline);
+  assert.ok(preview.some((point) => point.y < -49));
+});
+
+test("negative semicircle bulge mirrors the arc above the chord", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LWPOLYLINE", "70", "0",
+    "10", "0", "20", "0", "42", "-1",
+    "10", "100", "20", "0",
+  ]));
+
+  approx(parsed.cutLength, Math.PI * 50);
+  approx(parsed.minY, 0);
+  approx(parsed.maxY, 50);
+  approx(parsed.height, 50);
+});
+
+test("bulge conversion preserves signed sweep and exact radius", () => {
+  const quarterBulge = Math.tan(Math.PI / 8);
+  const positive = bulgeArc({ x: 0, y: 0 }, { x: 100, y: 0 }, quarterBulge);
+  const negative = bulgeArc({ x: 0, y: 0 }, { x: 100, y: 0 }, -quarterBulge);
+  assert.ok(positive);
+  assert.ok(negative);
+  approx(positive.sweep, 90);
+  approx(negative.sweep, -90);
+  approx(positive.r, 100 / Math.sqrt(2));
+  approx(negative.r, 100 / Math.sqrt(2));
+});
+
+test("uses bulge on the last vertex for the closing segment of a closed LWPOLYLINE", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LWPOLYLINE", "70", "1",
+    "10", "0", "20", "0",
+    "10", "100", "20", "0",
+    "10", "100", "20", "100", "42", "1",
+  ]));
+
+  const closingRadius = Math.hypot(100, 100) / 2;
+  approx(parsed.cutLength, 200 + Math.PI * closingRadius);
+  assert.equal(parsed.closedContours, 1);
+  assert.equal(parsed.areaStatus, "unavailable");
+  assert.equal(parsed.area, null);
+  assert.equal(parsed.pierces, null);
+  assert.equal(parsed.holeCount, null);
+});
+
+test("zero bulge remains backward-compatible with exact straight closed topology", () => {
+  const parsed = parseAsciiDxf(dxf([
+    "0", "LWPOLYLINE", "70", "1",
+    "10", "0", "20", "0", "42", "0",
+    "10", "100", "20", "0", "42", "0",
+    "10", "100", "20", "50", "42", "0",
+    "10", "0", "20", "50", "42", "0",
+  ]));
+
+  assert.equal(parsed.areaStatus, "exact");
+  assert.equal(parsed.area, 5000);
+  approx(parsed.cutLength, 300);
+});
+
+test("curved closed polyline keeps exact bounds/length but fails closed on area topology", () => {
   const parsed = parseAsciiDxf(dxf([
     "0", "LWPOLYLINE", "70", "1",
     "10", "0", "20", "0", "42", "0.5",
@@ -78,6 +160,9 @@ test("flags LWPOLYLINE bulges for manual review instead of silently trusting the
     "10", "100", "20", "100",
   ]));
 
-  assert.ok(parsed.unsupportedEntities.includes("LWPOLYLINE_BULGE"));
+  assert.equal(parsed.unsupportedEntities.includes("LWPOLYLINE_BULGE"), false);
   assert.equal(parsed.areaStatus, "unavailable");
+  assert.equal(parsed.area, null);
+  assert.equal(parsed.closedContours, 1);
+  assert.equal(parsed.pierces, null);
 });
