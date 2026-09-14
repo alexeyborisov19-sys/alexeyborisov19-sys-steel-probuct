@@ -3,13 +3,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { ChangeEvent, DragEvent } from "react";
 import { useMemo, useRef, useState } from "react";
-import { Cad2DViewer } from "@/components/Cad2DViewer";
+import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
-import { analyzeCadBytes } from "@/lib/instant-quote/cad-dispatcher";
-import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
-import { parseAsciiDxf, type ParsedDxf } from "@/lib/instant-quote/dxf";
+import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-types";
 import { createEmptyProject, type ManufacturingOperation } from "@/lib/instant-quote/domain";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import {
@@ -48,8 +46,18 @@ type CalculationApiResponse = {
   calculation?: ClientProjectCalculationView;
 };
 
+type CadAnalysisApiResponse = {
+  ok?: boolean;
+  error?: string;
+  preview?: ClientCadPreview;
+};
+
 function fmt(value: number) {
   return value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+}
+
+function fmtMetric(value: number | null) {
+  return value == null ? "—" : `${fmt(value)} мм`;
 }
 
 function materialIdOf(value: string | null): MaterialId {
@@ -63,11 +71,20 @@ function isClientCalculationView(value: unknown): value is ClientProjectCalculat
   return candidate.kind === "client-calculation" && Array.isArray(candidate.parts) && candidate.paymentEnabled === false;
 }
 
+function isClientCadPreview(value: unknown): value is ClientCadPreview {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<ClientCadPreview>;
+  return candidate.kind === "client-cad-preview"
+    && candidate.units === "mm"
+    && (candidate.status === "recognized" || candidate.status === "needs-review")
+    && Boolean(candidate.cad && typeof candidate.cad === "object")
+    && Array.isArray(candidate.meshes);
+}
+
 export function ClientManufacturingWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [project, setProject] = useState(() => createEmptyProject());
-  const [modelsByPartId, setModelsByPartId] = useState<Record<string, NormalizedCadModel>>({});
-  const [parsedByPartId, setParsedByPartId] = useState<Record<string, ParsedDxf>>({});
+  const [previewsByPartId, setPreviewsByPartId] = useState<Record<string, ClientCadPreview>>({});
   const [filesByPartId, setFilesByPartId] = useState<Record<string, File>>({});
   const [analyzingByPartId, setAnalyzingByPartId] = useState<Record<string, boolean>>({});
   const [statusByPartId, setStatusByPartId] = useState<Record<string, string>>({});
@@ -78,8 +95,7 @@ export function ClientManufacturingWorkspace() {
     () => project.parts.find((part) => part.id === project.activePartId) ?? null,
     [project],
   );
-  const activeModel = activePart ? modelsByPartId[activePart.id] ?? null : null;
-  const activeParsed = activePart ? parsedByPartId[activePart.id] ?? null : null;
+  const activePreview = activePart ? previewsByPartId[activePart.id] ?? null : null;
   const isAnalyzing = activePart ? Boolean(analyzingByPartId[activePart.id]) : false;
   const materialId = materialIdOf(activePart?.configuration.materialId ?? null);
   const thickness = activePart?.configuration.thicknessMm ?? 1;
@@ -129,21 +145,33 @@ export function ClientManufacturingWorkspace() {
 
       setAnalyzingByPartId((current) => ({ ...current, [partId]: true }));
       try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        if (format === "dxf") {
-          const parsed = parseAsciiDxf(new TextDecoder("utf-8").decode(bytes));
-          setParsedByPartId((current) => ({ ...current, [partId]: parsed }));
+        const formData = new FormData();
+        formData.set("file", file);
+        const response = await fetch("/api/online-order/cad/analyze", {
+          method: "POST",
+          body: formData,
+          credentials: "same-origin",
+        });
+        const payload = await response.json().catch(() => null) as CadAnalysisApiResponse | null;
+        if (!response.ok || !payload?.ok || !isClientCadPreview(payload.preview)) {
+          throw new Error(payload?.error || "CAD analysis failed.");
         }
-        const model = await analyzeCadBytes(file.name, format, bytes);
-        setModelsByPartId((current) => ({ ...current, [partId]: model }));
+
+        const preview = payload.preview;
+        setPreviewsByPartId((current) => ({ ...current, [partId]: preview }));
         setProject((current) => {
-          const withGeometry = updatePartGeometry(current, partId, model.geometry);
-          return setPartState(withGeometry, partId, model.warnings.length ? "manual-review" : "configurable");
+          const geometry = {
+            ...(preview.cad.widthMm == null ? {} : { widthMm: preview.cad.widthMm }),
+            ...(preview.cad.heightMm == null ? {} : { heightMm: preview.cad.heightMm }),
+            ...(preview.cad.depthMm == null ? {} : { depthMm: preview.cad.depthMm }),
+          };
+          const withGeometry = updatePartGeometry(current, partId, geometry);
+          return setPartState(withGeometry, partId, preview.status === "needs-review" ? "manual-review" : "configurable");
         });
         setStatusByPartId((current) => ({
           ...current,
-          [partId]: model.warnings.length
-            ? "CAD распознан. Деталь направлена на внутреннюю технологическую проверку."
+          [partId]: preview.status === "needs-review"
+            ? preview.message
             : "CAD распознан. Конфигурация готова к внутреннему расчёту.",
         }));
       } catch {
@@ -190,8 +218,7 @@ export function ClientManufacturingWorkspace() {
     if (!activePart) return;
     const id = activePart.id;
     setProject((current) => removePartFromProject(current, id));
-    setModelsByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
-    setParsedByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
+    setPreviewsByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setFilesByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setStatusByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setProjectCalculationMessage(null);
@@ -233,10 +260,10 @@ export function ClientManufacturingWorkspace() {
     }
   };
 
-  const clientMetrics = activeModel ? [
-    ["X", `${fmt(activeModel.geometry.widthMm ?? 0)} мм`],
-    ["Y", `${fmt(activeModel.geometry.heightMm ?? 0)} мм`],
-    ["Z", `${fmt(activeModel.geometry.depthMm ?? 0)} мм`],
+  const clientMetrics = activePreview ? [
+    ["X", fmtMetric(activePreview.cad.widthMm)],
+    ["Y", fmtMetric(activePreview.cad.heightMm)],
+    ["Z", fmtMetric(activePreview.cad.depthMm)],
   ] : [];
 
   return (
@@ -280,9 +307,9 @@ export function ClientManufacturingWorkspace() {
                   <div className="flex h-16 w-16 items-center justify-center border border-steel-orange/55 text-3xl text-steel-orange">+</div>
                   <h2 className="mt-6 text-2xl font-semibold">Перетащите CAD-файлы</h2>
                   <p className="mt-3 text-sm text-white/40">DXF · STEP · STP · DWG</p>
-                </motion.div> : isAnalyzing ? <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center text-center"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD analysis</p><h2 className="mt-3 text-xl font-semibold">Обрабатываем модель</h2><p className="mt-3 text-xs text-white/35">В клиентский интерфейс производственные параметры не передаются.</p></div></motion.div> : activeModel?.meshes.length ? <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activeModel.meshes} className="h-full" /></motion.div> : activeParsed ? <motion.div key={`dxf-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-6"><Cad2DViewer parsed={activeParsed} animated /></motion.div> : <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><p className="max-w-lg text-sm leading-relaxed text-white/50">{statusByPartId[activePart.id] ?? "Файл принят в проект."}</p></motion.div>}
+                </motion.div> : isAnalyzing ? <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center text-center"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD analysis</p><h2 className="mt-3 text-xl font-semibold">Обрабатываем модель</h2><p className="mt-3 text-xs text-white/35">Производственный анализ выполняется только на сервере.</p></div></motion.div> : activePreview?.meshes.length ? <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activePreview.meshes} className="h-full" /></motion.div> : activePreview?.drawing ? <motion.div key={`dxf-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-6"><ClientCad2DPreview drawing={activePreview.drawing} animated /></motion.div> : <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><p className="max-w-lg text-sm leading-relaxed text-white/50">{statusByPartId[activePart.id] ?? "Файл принят в проект."}</p></motion.div>}
               </AnimatePresence>
-              {activeModel && <div className="absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-3">{clientMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
+              {activePreview && <div className="absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-3">{clientMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
             </div>
           </div>
 
