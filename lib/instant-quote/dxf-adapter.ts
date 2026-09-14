@@ -24,13 +24,19 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
       throw new Error("В DXF не указаны поддерживаемые единицы измерения. Подтвердите единицы перед автоматическим расчётом.");
     }
 
+    const widthMm = parsed.width * scale;
+    const heightMm = parsed.height * scale;
+
     return {
       format: "dxf",
       units: "mm",
       geometry: {
-        widthMm: parsed.width * scale,
-        heightMm: parsed.height * scale,
+        widthMm,
+        heightMm,
         areaMm2: parsed.area == null ? undefined : parsed.area * scale * scale,
+        // Current commercial rule: material is billed by the rectangular blank around the part.
+        // A future nesting engine can replace this with nestedAllocatedAreaMm2.
+        blankAreaMm2: widthMm * heightMm,
         cutLengthMm: parsed.cutLength * scale,
         contourCount: parsed.contours,
         pierceCount: parsed.pierces ?? undefined,
@@ -47,7 +53,7 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
       },
       warnings: [
         ...(scale !== 1 ? [`Геометрия автоматически нормализована из «${parsed.units}» в миллиметры.`] : []),
-        ...(parsed.areaStatus !== "exact" ? ["Площадь детали не подтверждена замкнутой топологией; металл пока считается консервативно по габариту."] : []),
+        ...(parsed.areaStatus !== "exact" ? ["Чистая площадь детали не подтверждена замкнутой топологией; это влияет на массу изделия, но металл всё равно считается по прямоугольной заготовке."] : []),
         ...parsed.unsupportedEntities.map((entity) => `Неподдерживаемая DXF-геометрия: ${entity}`),
       ],
     };
