@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClientCadPreview } from "@/lib/instant-quote/client-cad-preview";
 import { analyzeCad, cadFormatFromFileName, CadAdapterUnavailableError } from "@/lib/instant-quote/cad-router";
 import { validateNormalizedCadModel } from "@/lib/instant-quote/cad-model";
 
@@ -34,10 +35,10 @@ export async function POST(request: Request) {
     });
     const validation = validateNormalizedCadModel(model);
     if (!validation.ok) {
-      return NextResponse.json({ ok: false, error: "Normalized CAD model validation failed.", details: validation.errors }, { status: 422 });
+      return NextResponse.json({ ok: false, error: "Normalized CAD model validation failed." }, { status: 422 });
     }
 
-    return NextResponse.json({ ok: true, model });
+    return NextResponse.json({ ok: true, preview: createClientCadPreview(model) });
   } catch (error) {
     if (error instanceof CadAdapterUnavailableError) {
       return NextResponse.json(
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "CAD analysis failed." },
+      { ok: false, error: "CAD analysis failed." },
       { status: 422 },
     );
   }
