@@ -34,7 +34,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Copy staged calculator to temporary path
+      - name: Copy staged server modules to temporary paths
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -44,6 +44,12 @@ jobs:
           scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" \
             lib/server/instant-quote/run-confidential-calculation.ts \
             "$BEGET_USER@$BEGET_HOST:/tmp/run-confidential-calculation.diag.ts"
+          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" \
+            lib/server/instant-quote/private-calculation-basis.ts \
+            "$BEGET_USER@$BEGET_HOST:/tmp/private-calculation-basis.diag.ts"
+          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" \
+            lib/server/instant-quote/private-production-report.ts \
+            "$BEGET_USER@$BEGET_HOST:/tmp/private-production-report.diag.ts"
 
       - name: Run synthetic calculation without touching production reports
         env:
@@ -63,17 +69,20 @@ jobs:
 
           DIAG_ROOT="$(mktemp -d /tmp/steelprodukt-calc-diag.XXXXXX)"
           REPORT_ROOT="$DIAG_ROOT/reports"
-          STUB_MODULES="$DIAG_ROOT/node_modules"
-          trap 'rm -rf "$DIAG_ROOT" /tmp/run-confidential-calculation.diag.ts /tmp/calc-diag-runner.mjs' EXIT
-
+          trap 'rm -rf "$DIAG_ROOT" /tmp/run-confidential-calculation.diag.ts /tmp/private-calculation-basis.diag.ts /tmp/private-production-report.diag.ts /tmp/calc-diag-runner.mjs' EXIT
           install -d -m 0700 -o nodejs -g nodejs "$REPORT_ROOT"
-          install -d -m 0755 "$STUB_MODULES/server-only"
-          printf 'module.exports = {};\n' > "$STUB_MODULES/server-only/index.js"
-          chmod 0644 "$STUB_MODULES/server-only/index.js"
 
-          chown nodejs:nodejs /tmp/run-confidential-calculation.diag.ts
-          chmod 0600 /tmp/run-confidential-calculation.diag.ts
-          sed -i '/^import "server-only";/d' /tmp/run-confidential-calculation.diag.ts
+          for file in \
+            /tmp/run-confidential-calculation.diag.ts \
+            /tmp/private-calculation-basis.diag.ts \
+            /tmp/private-production-report.diag.ts
+          do
+            chown nodejs:nodejs "$file"
+            chmod 0600 "$file"
+            sed -i '/^import "server-only";/d' "$file"
+          done
+          sed -i 's|from "@/lib/server/instant-quote/private-calculation-basis"|from "/tmp/private-calculation-basis.diag.ts"|' /tmp/run-confidential-calculation.diag.ts
+          sed -i 's|from "@/lib/server/instant-quote/private-production-report"|from "/tmp/private-production-report.diag.ts"|' /tmp/run-confidential-calculation.diag.ts
 
           cat > /tmp/calc-diag-runner.mjs <<'NODE'
           import { runConfidentialCalculationForClient } from '/tmp/run-confidential-calculation.diag.ts';
@@ -152,7 +161,6 @@ jobs:
           chmod 0600 /tmp/calc-diag-runner.mjs
 
           sudo -iu nodejs env \
-            NODE_PATH="$STUB_MODULES" \
             STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH="$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH" \
             STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT="$REPORT_ROOT" \
             STEEL_PRODUCT_METAL_MULTIPLIER="$STEEL_PRODUCT_METAL_MULTIPLIER" \
