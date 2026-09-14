@@ -10,6 +10,8 @@ export type InternalRevisionFormPart = {
   weldLengthM?: number;
   powderAreaM2?: number;
   powderSides?: 1 | 2;
+  assemblyMinutes?: number;
+  surfacePreparationAreaM2?: number;
 };
 
 type RowState = {
@@ -17,6 +19,8 @@ type RowState = {
   weldLengthM: string;
   powderAreaM2: string;
   powderSides: string;
+  assemblyMinutes: string;
+  surfacePreparationAreaM2: string;
 };
 
 function rowFromPart(part: InternalRevisionFormPart): RowState {
@@ -25,6 +29,8 @@ function rowFromPart(part: InternalRevisionFormPart): RowState {
     weldLengthM: part.weldLengthM == null ? "" : String(part.weldLengthM),
     powderAreaM2: part.powderAreaM2 == null ? "" : String(part.powderAreaM2),
     powderSides: part.powderSides == null ? "" : String(part.powderSides),
+    assemblyMinutes: part.assemblyMinutes == null ? "" : String(part.assemblyMinutes),
+    surfacePreparationAreaM2: part.surfacePreparationAreaM2 == null ? "" : String(part.surfacePreparationAreaM2),
   };
 }
 
@@ -75,6 +81,10 @@ export function InternalCalculationRevisionForm({
       if (current.weldLengthM !== original.weldLengthM) patch.weldLengthM = parsedValue(current.weldLengthM);
       if (current.powderAreaM2 !== original.powderAreaM2) patch.powderAreaM2 = parsedValue(current.powderAreaM2);
       if (current.powderSides !== original.powderSides) patch.powderSides = parsedValue(current.powderSides);
+      if (current.assemblyMinutes !== original.assemblyMinutes) patch.assemblyMinutes = parsedValue(current.assemblyMinutes);
+      if (current.surfacePreparationAreaM2 !== original.surfacePreparationAreaM2) {
+        patch.surfacePreparationAreaM2 = parsedValue(current.surfacePreparationAreaM2);
+      }
       if (Object.keys(patch).length > 0) bodyParts[part.partId] = patch;
     }
 
@@ -121,18 +131,20 @@ export function InternalCalculationRevisionForm({
     </div>
 
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] text-left text-sm">
+      <table className="w-full min-w-[1280px] text-left text-sm">
         <thead className="border-b border-white/10 text-[10px] uppercase tracking-[.12em] text-white/35">
-          <tr><th className="p-2">Позиция</th><th className="p-2">Гибов / шт.</th><th className="p-2">Сварной шов, м / шт.</th><th className="p-2">Площадь окраски, м² / шт.</th><th className="p-2">Сторон окраски</th></tr>
+          <tr><th className="p-2">Позиция</th><th className="p-2">Гибов / шт.</th><th className="p-2">Сварной шов, м / шт.</th><th className="p-2">Площадь окраски, м² / шт.</th><th className="p-2">Сторон окраски</th><th className="p-2">Сборка, мин / шт.</th><th className="p-2">Подготовка поверхности, м² / шт.</th></tr>
         </thead>
         <tbody>{parts.map((part) => {
           const row = rows[part.partId];
           return <tr key={part.partId} className="border-b border-white/[.06]">
             <td className="p-2"><div className="font-semibold">{part.label}</div><div className="mt-1 text-xs text-white/35">{part.partId}</div></td>
             <td className="p-2"><input type="number" min={0} step={1} value={row.bendCount} onChange={(event) => update(part.partId, "bendCount", event.target.value)} className="w-full border border-white/10 bg-black/20 px-3 py-2 outline-none focus:border-steel-orange/60" /></td>
-            <td className="p-2"><input type="number" min={0} step="0.001" value={row.weldLengthM} onChange={(event) => update(part.partId, "weldLengthM", event.target.value)} className="w-full border border-white/10 bg-black/20 px-3 py-2 outline-none focus:border-steel-orange/60" /></td>
-            <td className="p-2"><input type="number" min={0} step="0.001" value={row.powderAreaM2} onChange={(event) => update(part.partId, "powderAreaM2", event.target.value)} className="w-full border border-white/10 bg-black/20 px-3 py-2 outline-none focus:border-steel-orange/60" /></td>
+            <td className="p-2"><input type="number" min="0.001" step="0.001" value={row.weldLengthM} onChange={(event) => update(part.partId, "weldLengthM", event.target.value)} className="w-full border border-white/10 bg-black/20 px-3 py-2 outline-none focus:border-steel-orange/60" /></td>
+            <td className="p-2"><input type="number" min="0.000001" step="0.001" value={row.powderAreaM2} onChange={(event) => update(part.partId, "powderAreaM2", event.target.value)} className="w-full border border-white/10 bg-black/20 px-3 py-2 outline-none focus:border-steel-orange/60" /></td>
             <td className="p-2"><select value={row.powderSides} onChange={(event) => update(part.partId, "powderSides", event.target.value)} className="w-full border border-white/10 bg-[#111416] px-3 py-2 outline-none focus:border-steel-orange/60"><option value="">—</option><option value="1">1</option><option value="2">2</option></select></td>
+            <td className="p-2"><input type="number" min="0.001" step="0.1" value={row.assemblyMinutes} onChange={(event) => update(part.partId, "assemblyMinutes", event.target.value)} className="w-full border border-white/10 bg-black/20 px-3 py-2 outline-none focus:border-steel-orange/60" /></td>
+            <td className="p-2"><input type="number" min="0.000001" step="0.001" value={row.surfacePreparationAreaM2} onChange={(event) => update(part.partId, "surfacePreparationAreaM2", event.target.value)} className="w-full border border-white/10 bg-black/20 px-3 py-2 outline-none focus:border-steel-orange/60" /></td>
           </tr>;
         })}</tbody>
       </table>
