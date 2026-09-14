@@ -1,0 +1,131 @@
+name: Temporary live calculation route diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Configure Beget access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Read active build commit only
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ACTIVE="$(ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "cat '$BEGET_APP_PATH/.next/BUILD_COMMIT' 2>/dev/null || true")"
+          if [ -z "$ACTIVE" ]; then
+            echo 'ACTIVE_BUILD_COMMIT=MISSING'
+          else
+            echo "ACTIVE_BUILD_COMMIT=$ACTIVE"
+          fi
+
+      - name: Probe live calculation and read safe failure category
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/smoke.dxf <<'DXF'
+          0
+          SECTION
+          2
+          HEADER
+          0
+          ENDSEC
+          0
+          SECTION
+          2
+          ENTITIES
+          0
+          LWPOLYLINE
+          8
+          0
+          90
+          4
+          70
+          1
+          10
+          0
+          20
+          0
+          10
+          100
+          20
+          0
+          10
+          100
+          20
+          100
+          10
+          0
+          20
+          100
+          0
+          ENDSEC
+          0
+          EOF
+          DXF
+          cat > /tmp/manifest.json <<'JSON'
+          {"title":"Safe route diagnostic","parts":[{"clientPartId":"smoke-part","fileIndex":0,"materialId":"zinc","thicknessMm":1,"quantity":1,"operations":[]}]}
+          JSON
+
+          HTTP_CODE="$(curl --silent --show-error -D /tmp/headers.txt --output /tmp/response.json --write-out '%{http_code}' \
+            -H 'Origin: https://www.steelprodukt.ru' \
+            -H 'Referer: https://www.steelprodukt.ru/online-order' \
+            -F 'manifest=</tmp/manifest.json' \
+            -F 'files=@/tmp/smoke.dxf;type=application/dxf' \
+            https://www.steelprodukt.ru/api/online-order/calculate)"
+          REQUEST_ID="$(awk 'BEGIN{IGNORECASE=1} /^x-request-id:/ {gsub("\r",""); print $2}' /tmp/headers.txt | tail -n 1)"
+          echo "LIVE_HTTP=$HTTP_CODE"
+          python3 - <<'PY'
+          import json
+          with open('/tmp/response.json', encoding='utf-8') as f:
+              data=json.load(f)
+          part=((data.get('calculation') or {}).get('parts') or [{}])[0]
+          print(json.dumps({
+              'ok': data.get('ok'),
+              'code': data.get('code'),
+              'status': part.get('status'),
+              'priceStatus': (part.get('price') or {}).get('status'),
+              'positiveApprovedPrice': isinstance((part.get('price') or {}).get('totalRub'), (int,float)) and (part.get('price') or {}).get('totalRub',0) > 0,
+          }, ensure_ascii=False))
+          PY
+
+          if [ -n "$REQUEST_ID" ]; then
+            SAFE_CODE="$(ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs bash -lc 'pm2 logs steelprodukt --nostream --lines 300 2>/dev/null'" \
+              | grep -F "$REQUEST_ID" \
+              | sed -n 's/.*"code":"\([A-Z_]*\)".*/\1/p' \
+              | tail -n 1 || true)"
+            SAFE_STAGES="$(ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs bash -lc 'pm2 logs steelprodukt --nostream --lines 300 2>/dev/null'" \
+              | grep '"event":"online_calc_stage"' \
+              | sed -n 's/.*"stage":"\([A-Z_]*\)".*/\1/p' \
+              | tail -n 20 \
+              | paste -sd, - || true)"
+            echo "LIVE_SAFE_CODE=${SAFE_CODE:-NONE}"
+            echo "LIVE_STAGE_TRACE=${SAFE_STAGES:-NONE}"
+          else
+            echo 'LIVE_SAFE_CODE=NO_REQUEST_ID'
+          fi
