@@ -35,12 +35,13 @@ const MATERIAL_OPTIONS: Array<{ id: MaterialId; label: string; note: string }> =
   { id: "zinc", label: "Оцинковка", note: "DFM review" },
 ];
 
+// Public configurator exposes only operations confirmed by the company's
+// manufacturing source of truth. Laser cutting is the base route below.
 const OPERATION_OPTIONS: Array<{ id: ManufacturingOperation; label: string }> = [
   { id: "bending", label: "Гибка" },
-  { id: "threading", label: "Резьба" },
-  { id: "countersink", label: "Зенковка" },
   { id: "welding", label: "Сварка" },
   { id: "assembly", label: "Сборка" },
+  { id: "surface-preparation", label: "Подготовка поверхности" },
   { id: "powder-coating", label: "Порошковая окраска" },
   { id: "packaging", label: "Упаковка" },
 ];
@@ -75,8 +76,21 @@ function severityTone(severity: DfmResult["severity"]) {
   return "border-white/12 bg-white/[.025] text-white/65";
 }
 
-function stepDfm(model: NormalizedCadModel): DfmResult[] {
+function trustedPlanarFlat(model: NormalizedCadModel) {
+  const flat = model.sheetMetal?.flatPatternCandidate;
+  return flat?.source === "planar-prism" && flat.confidence === "high" ? flat : null;
+}
+
+function stepThicknessMatches(model: NormalizedCadModel, selectedThicknessMm: number) {
+  const detected = model.sheetMetal?.thicknessCandidate?.thicknessMm;
+  if (!(detected && detected > 0)) return false;
+  return Math.abs(selectedThicknessMm - detected) <= Math.max(0.05, detected * 0.02);
+}
+
+function stepDfm(model: NormalizedCadModel, selectedThicknessMm: number, materialId: MaterialId): DfmResult[] {
   const geometry = model.geometry;
+  const flat = trustedPlanarFlat(model);
+  const detectedThickness = model.sheetMetal?.thicknessCandidate?.thicknessMm;
   const results: DfmResult[] = [
     {
       code: "step-read",
@@ -90,17 +104,70 @@ function stepDfm(model: NormalizedCadModel): DfmResult[] {
     results.push({
       code: "step-volume",
       title: "Замкнутый объём получен",
-      detail: `OpenCascade определил объём ${fmt(geometry.volumeMm3)} мм³. Он будет использоваться после подтверждения материала и листовой структуры.`,
+      detail: `OpenCascade определил объём ${fmt(geometry.volumeMm3)} мм³.`,
       severity: "pass",
     });
   }
 
-  results.push({
-    code: "step-unfold",
-    title: "Нужна листовая развёртка",
-    detail: "До автоматического распознавания толщины, гибов и flat pattern 3D STEP не получает фиктивную длину лазерного реза и коммерческую цену.",
-    severity: "manual",
-  });
+  if (flat) {
+    results.push({
+      code: "step-flat-pattern",
+      title: "Плоская листовая геометрия подтверждена",
+      detail: `BRep-проверка подтвердила planar-prism: ${fmt(flat.widthMm)} × ${fmt(flat.heightMm)} мм, контур реза ${fmt(flat.cutLengthMm)} мм, контуров ${flat.contourCount}. Объём согласован с площадью и толщиной.`,
+      severity: "pass",
+    });
+
+    if (detectedThickness && stepThicknessMatches(model, selectedThicknessMm)) {
+      results.push({
+        code: "step-thickness-match",
+        title: "Толщина STEP совпадает с конфигурацией",
+        detail: `BRep-кандидат толщины ${fmt(detectedThickness)} мм; выбрано ${fmt(selectedThicknessMm)} мм.`,
+        severity: "pass",
+      });
+    } else {
+      results.push({
+        code: "step-thickness-mismatch",
+        title: "Толщина конфигурации не совпадает с STEP",
+        detail: detectedThickness
+          ? `OpenCascade определил ${fmt(detectedThickness)} мм, а в конфигураторе выбрано ${fmt(selectedThicknessMm)} мм. Автоматическая цена заблокирована.`
+          : "Не удалось подтвердить толщину STEP для выбранной конфигурации.",
+        severity: "error",
+      });
+    }
+
+    results.push(
+      ...runVerifiedLaserDfm(
+        { width: flat.widthMm, height: flat.heightMm, units: "мм" },
+        selectedThicknessMm,
+        materialId,
+      ),
+    );
+  } else {
+    if (detectedThickness) {
+      results.push({
+        code: "step-thickness-candidate",
+        title: "Кандидат толщины найден",
+        detail: `BRep-анализ оценивает толщину как ${fmt(detectedThickness)} мм, но без подтверждённой развёртки это ещё не производственный параметр.`,
+        severity: "manual",
+      });
+    }
+
+    if ((model.sheetMetal?.bendCandidates.length ?? 0) > 0) {
+      results.push({
+        code: "step-bend-candidates",
+        title: "Обнаружены кандидаты зон гиба",
+        detail: `Найдено ${model.sheetMetal?.bendCandidates.length ?? 0} BRep-зон, похожих на гиб. Для автоматической развёртки ещё нужна утверждённая технологическая таблица bend allowance / K-factor.`,
+        severity: "manual",
+      });
+    }
+
+    results.push({
+      code: "step-unfold",
+      title: "Нужна подтверждённая листовая развёртка",
+      detail: "3D STEP не получает фиктивную длину лазерного реза или коммерческую цену, пока Sheet Metal Engine не подтвердит flat pattern.",
+      severity: "manual",
+    });
+  }
 
   for (const [index, warning] of model.warnings.entries()) {
     results.push({ code: `step-warning-${index}`, title: "Проверка STEP", detail: warning, severity: "manual" });
@@ -146,7 +213,7 @@ export function ManufacturingWorkspace() {
 
   const dfm = useMemo<DfmResult[]>(() => {
     if (!activeModel || !activePart) return [];
-    if (activeModel.format === "step" || activeModel.format === "stp") return stepDfm(activeModel);
+    if (activeModel.format === "step" || activeModel.format === "stp") return stepDfm(activeModel, thickness, materialId);
 
     const width = activeModel.geometry.widthMm ?? 0;
     const height = activeModel.geometry.heightMm ?? 0;
@@ -205,14 +272,22 @@ export function ManufacturingWorkspace() {
         setModelsByPartId((current) => ({ ...current, [partId]: model }));
         setProject((current) => {
           const withGeometry = updatePartGeometry(current, partId, model.geometry);
-          const state = model.format === "step" || model.format === "stp" || model.warnings.length
+          const stepModel = model.format === "step" || model.format === "stp";
+          const trustedFlat = stepModel && Boolean(trustedPlanarFlat(model));
+          const state = model.warnings.length || (stepModel && !trustedFlat)
             ? "manual-review"
             : "configurable";
           return setPartState(withGeometry, partId, state);
         });
 
         const parts: string[] = [];
-        if (model.format === "step" || model.format === "stp") parts.push("STEP распознан OpenCascade и готов к 3D-просмотру.");
+        if (model.format === "step" || model.format === "stp") {
+          parts.push(
+            trustedPlanarFlat(model)
+              ? "STEP распознан OpenCascade. Плоская листовая геометрия подтверждена BRep-проверкой."
+              : "STEP распознан OpenCascade и готов к 3D-просмотру. Для сложной листовой геометрии требуется технологическая проверка.",
+          );
+        }
         parts.push(...model.warnings);
         if (parts.length) setMessageByPartId((current) => ({ ...current, [partId]: parts.join(" ") }));
       } catch (error) {
@@ -271,6 +346,23 @@ export function ManufacturingWorkspace() {
   ] as const;
 
   const isStep = activeModel?.format === "step" || activeModel?.format === "stp";
+  const activeFlat = activeModel ? trustedPlanarFlat(activeModel) : null;
+  const isTrustedPlanarStep = Boolean(isStep && activeFlat);
+  const detectedStepThickness = activeModel?.sheetMetal?.thicknessCandidate?.thicknessMm;
+  const bendCandidateCount = activeModel?.sheetMetal?.bendCandidates.length ?? 0;
+  const modelMetrics = isTrustedPlanarStep && activeFlat
+    ? [
+        ["X", `${fmt(activeFlat.widthMm)} мм`],
+        ["Y", `${fmt(activeFlat.heightMm)} мм`],
+        ["Рез", `${fmt(activeFlat.cutLengthMm)} мм`],
+        ["Контуры", String(activeFlat.contourCount)],
+      ]
+    : [
+        ["X", `${fmt(activeModel?.geometry.widthMm ?? 0)} мм`],
+        ["Y", `${fmt(activeModel?.geometry.heightMm ?? 0)} мм`],
+        [isStep ? "Z" : "Рез", isStep ? `${fmt(activeModel?.geometry.depthMm ?? 0)} мм` : `${fmt(activeModel?.geometry.cutLengthMm ?? 0)} мм`],
+        [isStep ? "Тела" : "Прожиги", String(isStep ? activeModel?.geometry.bodyCount ?? 0 : activeModel?.geometry.pierceCount ?? 0)],
+      ];
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#090c0e] text-white">
@@ -337,11 +429,11 @@ export function ManufacturingWorkspace() {
                     <div className="mt-7 flex flex-wrap justify-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-white/35">{["DXF", "STEP", "STP", "DWG"].map((ext) => <span key={ext} className="border border-white/10 px-3 py-2">{ext}</span>)}</div>
                   </motion.div>
                 ) : isAnalyzing ? (
-                  <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center"><div className="w-full max-w-md px-8 text-center"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD geometry engine</p><h2 className="mt-4 text-2xl font-semibold">{activePart.format === "step" || activePart.format === "stp" ? "OpenCascade разбирает STEP" : "Разбираем и нормализуем CAD"}</h2><div className="relative mt-7 h-px overflow-hidden bg-white/10"><motion.span className="absolute inset-y-0 w-1/3 bg-steel-orange" animate={{ x: ["-100%", "300%"] }} transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }} /></div><p className="mt-4 text-xs text-white/35">геометрия · единицы · mesh · габариты · DFM</p></div></motion.div>
+                  <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center"><div className="w-full max-w-md px-8 text-center"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD geometry engine</p><h2 className="mt-4 text-2xl font-semibold">{activePart.format === "step" || activePart.format === "stp" ? "OpenCascade разбирает STEP" : "Разбираем и нормализуем CAD"}</h2><div className="relative mt-7 h-px overflow-hidden bg-white/10"><motion.span className="absolute inset-y-0 w-1/3 bg-steel-orange" animate={{ x: ["-100%", "300%"] }} transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }} /></div><p className="mt-4 text-xs text-white/35">геометрия · единицы · BRep · габариты · DFM</p></div></motion.div>
                 ) : tab === "dfm" ? (
                   <motion.div key={`dfm-${activePart.id}`} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="relative p-5 sm:p-8">
                     <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Design for manufacturability</p><h2 className="mt-2 text-2xl font-semibold">Автоматическая проверка</h2></div><span className={`border px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] ${blocking ? "border-red-400/30 text-red-300" : manual ? "border-amber-400/25 text-amber-300" : "border-emerald-400/25 text-emerald-300"}`}>{blocking ? "Есть блокировка" : manual ? "Нужна проверка" : "Проверка пройдена"}</span></div>
-                    <div className="grid gap-3">{dfm.length ? dfm.map((item, index) => <motion.article key={item.code} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={`border p-4 ${severityTone(item.severity)}`}><div className="flex gap-3"><span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center border border-current text-[9px] font-bold">{item.severity === "pass" ? "✓" : item.severity === "error" ? "!" : "?"}</span><div><h3 className="text-sm font-semibold text-white">{item.title}</h3><p className="mt-2 text-xs leading-relaxed opacity-75">{item.detail}</p></div></div></motion.article>) : <div className="border border-amber-400/20 p-4 text-sm text-amber-200/70">CAD ещё не готов к DFM.</div>}</div>
+                    <div className="grid gap-3">{dfm.length ? dfm.map((item, index) => <motion.article key={`${item.code}-${index}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={`border p-4 ${severityTone(item.severity)}`}><div className="flex gap-3"><span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center border border-current text-[9px] font-bold">{item.severity === "pass" ? "✓" : item.severity === "error" ? "!" : "?"}</span><div><h3 className="text-sm font-semibold text-white">{item.title}</h3><p className="mt-2 text-xs leading-relaxed opacity-75">{item.detail}</p></div></div></motion.article>) : <div className="border border-amber-400/20 p-4 text-sm text-amber-200/70">CAD ещё не готов к DFM.</div>}</div>
                   </motion.div>
                 ) : activeModel?.meshes.length ? (
                   <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activeModel.meshes} className="h-full" />{message && <div className="absolute right-5 top-16 max-w-[46%] border border-amber-400/20 bg-black/75 p-3 text-[9px] leading-relaxed text-amber-100/70">{message}</div>}</motion.div>
@@ -352,7 +444,7 @@ export function ManufacturingWorkspace() {
                 )}
               </AnimatePresence>
 
-              {tab === "model" && activeModel && <div className="pointer-events-none absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-4">{[["X", `${fmt(activeModel.geometry.widthMm ?? 0)} мм`], ["Y", `${fmt(activeModel.geometry.heightMm ?? 0)} мм`], [isStep ? "Z" : "Рез", isStep ? `${fmt(activeModel.geometry.depthMm ?? 0)} мм` : `${fmt(activeModel.geometry.cutLengthMm ?? 0)} мм`], [isStep ? "Тела" : "Прожиги", String(isStep ? activeModel.geometry.bodyCount ?? 0 : activeModel.geometry.pierceCount ?? 0)]].map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
+              {tab === "model" && activeModel && <div className="pointer-events-none absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-4">{modelMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
             </div>
           </div>
 
@@ -361,7 +453,9 @@ export function ManufacturingWorkspace() {
 
             {activePart ? <>
               <div className="space-y-5 p-5">
-                {isStep && <div className="border border-steel-orange/20 bg-steel-orange/[.04] p-3 text-[10px] leading-relaxed text-white/48"><strong className="text-steel-orange">STEP 3D:</strong> материал и толщина пока задаются пользователем. Следующий sheet-metal engine будет определять толщину и гибы автоматически.</div>}
+                {isStep && <div className={`border p-3 text-[10px] leading-relaxed ${isTrustedPlanarStep ? "border-emerald-400/20 bg-emerald-400/[.04] text-white/52" : "border-steel-orange/20 bg-steel-orange/[.04] text-white/48"}`}>
+                  {isTrustedPlanarStep ? <><strong className="text-emerald-300">STEP лист:</strong> плоская листовая геометрия подтверждена. BRep-толщина {detectedStepThickness ? `${fmt(detectedStepThickness)} мм` : "требует проверки"}; выбранная толщина должна совпадать с CAD.</> : <><strong className="text-steel-orange">STEP 3D:</strong> BRep-анализ выполнен{detectedStepThickness ? `; кандидат толщины ${fmt(detectedStepThickness)} мм` : ""}{bendCandidateCount ? `; кандидатов зон гиба ${bendCandidateCount}` : ""}. До подтверждённой развёртки цена не рассчитывается автоматически.</>}
+                </div>}
                 <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-left transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.075]" : "border-white/10 bg-[#0b0e10] hover:border-white/20"}`}><span className="block text-[11px] font-semibold">{option.label}</span><span className="mt-1 block text-[8px] leading-tight text-white/30">{option.note}</span></button>)}</div></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none focus:border-steel-orange">{thicknessOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Количество</label><div className="mt-2 grid grid-cols-[44px_1fr_44px] border border-white/12 bg-[#090c0e]"><button onClick={() => updateQuantity(quantity - 1)} className="border-r border-white/10 text-white/50 hover:text-steel-orange">−</button><input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="bg-transparent px-3 py-3 text-center text-sm outline-none" /><button onClick={() => updateQuantity(quantity + 1)} className="border-l border-white/10 text-white/50 hover:text-steel-orange">+</button></div>{provisionalPrice && <p className="mt-2 text-[10px] text-white/32">Лазер: {fmt(provisionalPrice.laserRubPerM, 1)} ₽/м · материал партии {fmt(provisionalPrice.batchPurchasedMassKg, 1)} кг</p>}</div>
@@ -378,9 +472,9 @@ export function ManufacturingWorkspace() {
                     <div className="mt-4 space-y-2 border-t border-white/10 pt-3 text-[10px] text-white/45"><div className="flex justify-between gap-3"><span>Металл +5%</span><strong className="text-white/75">{money(provisionalPrice.materialRubEach)} / шт.</strong></div><div className="flex justify-between gap-3"><span>Лазер по контуру</span><strong className="text-white/75">{money(provisionalPrice.laserRubEach)} / шт.</strong></div><div className="flex justify-between gap-3"><span>Операции</span><strong className="text-white/75">{money(provisionalPrice.operationsRubEach)} / шт.</strong></div><div className="flex justify-between gap-3"><span>Подготовка позиции</span><strong className="text-white/75">{money(provisionalPrice.setupRubEach)} / шт.</strong></div></div>
                     <div className="mt-4 grid grid-cols-3 gap-px bg-white/10 text-center"><div className="bg-[#0b0e10] p-2"><p className="text-[8px] uppercase tracking-[.08em] text-white/25">чистая площадь</p><p className="mt-1 text-[10px] font-semibold">{fmt(provisionalPrice.netAreaMm2 / 1_000_000, 3)} м²</p></div><div className="bg-[#0b0e10] p-2"><p className="text-[8px] uppercase tracking-[.08em] text-white/25">заготовка</p><p className="mt-1 text-[10px] font-semibold">{fmt(provisionalPrice.blankAreaMm2 / 1_000_000, 3)} м²</p></div><div className="bg-[#0b0e10] p-2"><p className="text-[8px] uppercase tracking-[.08em] text-white/25">обрезь</p><p className="mt-1 text-[10px] font-semibold">{provisionalPrice.blankWastePct == null ? "—" : `${fmt(provisionalPrice.blankWastePct, 1)}%`}</p></div></div>
                     {selectedPrice?.price && <div className="mt-4 border-t border-white/10 pt-3 text-[9px] leading-relaxed text-white/32">Металл: {fmt(provisionalPrice.materialMarketRubPerTon)} ₽/т ({provisionalPrice.materialMarketTier === "from-3t" ? "от 3 т" : "до 3 т"}) → {fmt(provisionalPrice.materialPricedRubPerTon)} ₽/т с +5%. Источник: {selectedPrice.price.source}, прайс {selectedPrice.price.sourceDate}.</div>}
-                  </> : <div className="mt-4"><p className="text-xl font-semibold">{isStep ? "3D готово — цена после развёртки" : "Цена пока не рассчитана"}</p><p className="mt-2 text-[10px] leading-relaxed text-white/36">{activePricing?.reviewReasons.join(" ") || "Нужны нормализованная геометрия, цена металла и отсутствие блокирующей DFM-ошибки."}</p></div>}
+                  </> : <div className="mt-4"><p className="text-xl font-semibold">{isStep && !isTrustedPlanarStep ? "3D готово — цена после развёртки" : "Цена пока не рассчитана"}</p><p className="mt-2 text-[10px] leading-relaxed text-white/36">{activePricing?.blockingReasons.concat(activePricing?.reviewReasons ?? []).join(" ") || "Нужны нормализованная геометрия, цена металла и отсутствие блокирующей DFM-ошибки."}</p></div>}
                 </div>
-                <button disabled={!provisionalPrice || selectedPrice?.stale || blocking} className="mt-3 w-full bg-steel-orange px-4 py-4 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30">{isStep && !provisionalPrice ? "Нужна развёртка STEP" : blocking ? "Исправьте DFM-ошибки" : selectedPrice?.stale ? "Нужен свежий прайс металла" : manual ? "Отправить на проверку" : "Продолжить к заказу"}</button>
+                <button disabled={!provisionalPrice || selectedPrice?.stale || blocking} className="mt-3 w-full bg-steel-orange px-4 py-4 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30">{isStep && !isTrustedPlanarStep ? "Нужна развёртка STEP" : blocking ? "Исправьте DFM-ошибки" : selectedPrice?.stale ? "Нужен свежий прайс металла" : manual ? "Отправить на проверку" : "Продолжить к заказу"}</button>
               </div>
             </> : <div className="p-5 text-sm leading-relaxed text-white/35">Добавьте CAD-файл, чтобы открыть конфигуратор детали.</div>}
           </aside>
