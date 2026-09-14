@@ -307,7 +307,6 @@ export function buildSampledFlatPatternContourCandidate(input: {
     ].filter(Boolean));
   }
 
-  const panelById = new Map(boundary.panels.map((panel) => [panel.panelId, panel]));
   const outerWireByPanel = new Map<string, string>();
   const segments: PrimitiveSegment[] = [];
   const errors: string[] = [];
