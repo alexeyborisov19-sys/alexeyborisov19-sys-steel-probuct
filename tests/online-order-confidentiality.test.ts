@@ -8,8 +8,10 @@ async function source(path: string) {
 
 test("public online-order route uses only the client-safe workspace", async () => {
   const page = await source("app/(public)/online-order/page.tsx");
-  assert.match(page, /ClientManufacturingWorkspace/);
-  assert.doesNotMatch(page, /ManufacturingWorkspace[^A-Za-z]/);
+  assert.match(page, /from\s+["']@\/components\/ClientManufacturingWorkspace["']/);
+  assert.match(page, /<ClientManufacturingWorkspace\s*\/>/);
+  assert.doesNotMatch(page, /from\s+["']@\/components\/ManufacturingWorkspace["']/);
+  assert.doesNotMatch(page, /<ManufacturingWorkspace\s*\/>/);
 });
 
 test("client workspace does not import private economics or detailed DFM engines", async () => {
