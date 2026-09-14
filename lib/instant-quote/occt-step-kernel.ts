@@ -12,7 +12,11 @@ import {
 import type { StepKernelPort, StepKernelResult } from "@/lib/instant-quote/step-adapter";
 import {
   buildStepUnfoldGeometryEvidence,
+  type BRepBoundaryEdge3D,
+  type BRepBoundaryWire3D,
+  type BRepPanelBoundaryPreview3D,
   type CylinderAxisSegmentObservation,
+  type PlanarFaceBoundary3DObservation,
   type StepUnfoldGeometryEvidence,
 } from "@/lib/instant-quote/unfold-geometry";
 
@@ -136,6 +140,35 @@ function sampleEdgeInFaceUv(
   };
 }
 
+function sampleEdgeInWorld3d(
+  kernel: OcctKernelInstance,
+  edge: OcctShapeHandle,
+  wireIndex: number,
+  edgeIndex: number,
+): BRepBoundaryEdge3D | null {
+  const curveKind = kernel.curveType(edge);
+  const parameters = kernel.curveParameters(edge);
+  const lengthMm = kernel.curveLength(edge);
+  if (![parameters.first, parameters.last, lengthMm].every(Number.isFinite) || !(lengthMm > 0)) return null;
+
+  const segmentCount = displaySampleCount(curveKind, lengthMm);
+  const pointsMm: Vector3[] = [];
+  for (let sampleIndex = 0; sampleIndex <= segmentCount; sampleIndex += 1) {
+    const ratio = sampleIndex / segmentCount;
+    const parameter = parameters.first + (parameters.last - parameters.first) * ratio;
+    const point = kernel.curvePointAtParam(edge, parameter);
+    if (!finiteVec3(point)) return null;
+    pointsMm.push([point.x, point.y, point.z]);
+  }
+
+  if (pointsMm.length < 2) return null;
+  return {
+    id: `wire-${wireIndex}-edge-${edgeIndex}-${kernel.hashCode(edge, HASH_UPPER_BOUND)}`,
+    curveKind,
+    pointsMm,
+  };
+}
+
 /**
  * Display-only approximation of exact BRep edges in the planar face's own UV
  * coordinate system. Exact commercial cut length still comes from BRep length;
@@ -175,6 +208,45 @@ function collectBoundaryPreview(
   return { source: "brep-edge-sampling", displayOnly: true, wires: previewWires };
 }
 
+function collectBoundaryPreview3d(
+  kernel: OcctKernelInstance,
+  face: OcctShapeHandle,
+  faceId: string,
+): BRepPanelBoundaryPreview3D | undefined {
+  const wires = kernel.getSubShapes(face, "wire");
+  const previewWires: BRepBoundaryWire3D[] = [];
+
+  try {
+    for (let wireIndex = 0; wireIndex < wires.length; wireIndex += 1) {
+      const wire = wires[wireIndex];
+      const edges = kernel.getSubShapes(wire, "edge");
+      const previewEdges: BRepBoundaryEdge3D[] = [];
+      try {
+        for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex += 1) {
+          const preview = sampleEdgeInWorld3d(kernel, edges[edgeIndex], wireIndex, edgeIndex);
+          if (!preview) return undefined;
+          previewEdges.push(preview);
+        }
+      } finally {
+        edges.forEach((edge) => kernel.release(edge));
+      }
+
+      if (!previewEdges.length) return undefined;
+      previewWires.push({ id: `wire-${wireIndex}`, edges: previewEdges });
+    }
+  } finally {
+    wires.forEach((wire) => kernel.release(wire));
+  }
+
+  if (!previewWires.length) return undefined;
+  return {
+    source: "brep-edge-sampling",
+    displayOnly: true,
+    faceId,
+    wires: previewWires,
+  };
+}
+
 function collectSheetMetalAnalysis(
   kernel: OcctKernelInstance,
   shape: OcctShapeHandle,
@@ -182,6 +254,7 @@ function collectSheetMetalAnalysis(
 ): { sheetMetal: SheetMetalAnalysis; unfoldGeometry?: StepUnfoldGeometryEvidence } {
   const faces = kernel.getSubShapes(shape, "face");
   const planarFaces: PlaneFaceObservation[] = [];
+  const planarBoundaries: PlanarFaceBoundary3DObservation[] = [];
   const cylindricalFaces: CylinderFaceObservation[] = [];
   const cylinderAxes: CylinderAxisSegmentObservation[] = [];
   let otherFaceCount = 0;
@@ -225,6 +298,12 @@ function collectSheetMetalAnalysis(
           boundaryPreview = collectBoundaryPreview(kernel, face, bounds);
         } catch {
           // Preview sampling is non-authoritative. Exact BRep measurements remain usable.
+        }
+        try {
+          const boundary3d = collectBoundaryPreview3d(kernel, face, faceId);
+          if (boundary3d) planarBoundaries.push({ faceId, preview: boundary3d });
+        } catch {
+          // World-space preview is display-only and cannot invalidate exact BRep measurements.
         }
 
         planarFaces.push({
@@ -284,7 +363,7 @@ function collectSheetMetalAnalysis(
     { volumeMm3 },
   );
   const unfoldGeometry = sheetMetal.thicknessCandidate?.confidence === "medium"
-    ? buildStepUnfoldGeometryEvidence({ sheetMetal, planarFaces, cylinderAxes })
+    ? buildStepUnfoldGeometryEvidence({ sheetMetal, planarFaces, cylinderAxes, planarBoundaries })
     : undefined;
 
   return { sheetMetal, unfoldGeometry };
