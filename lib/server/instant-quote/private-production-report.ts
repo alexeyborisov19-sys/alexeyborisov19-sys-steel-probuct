@@ -13,6 +13,8 @@ export type InternalCalculationInputSnapshot = {
   factualByPartId: Record<string, PartFactualInputs>;
   powderSidesByPartId: Record<string, 1 | 2>;
   unsupportedEntitiesByPartId: Record<string, string[]>;
+  /** Server-derived physical inputs. Never customer-provided and never public. */
+  authoritativeFactualByPartId?: Record<string, PartFactualInputs>;
 };
 
 export type InternalProductionReportRevision = {
