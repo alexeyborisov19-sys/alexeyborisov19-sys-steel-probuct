@@ -1,4 +1,5 @@
 import type { CadFormat, PartGeometrySummary } from "@/lib/instant-quote/domain";
+import type { SheetMetalAnalysis } from "@/lib/instant-quote/sheet-metal";
 
 export type CadVector3 = [number, number, number];
 
@@ -33,6 +34,7 @@ export type NormalizedCadModel = {
   meshes: CadMeshPrimitive[];
   root: CadAssemblyNode | null;
   features: SheetMetalFeature[];
+  sheetMetal?: SheetMetalAnalysis;
   metadata: {
     sourceFileName: string;
     sourceBytes: number;
@@ -57,6 +59,38 @@ export interface CadAnalysisAdapter {
 
 function finiteNonNegative(value: unknown) {
   return value == null || (typeof value === "number" && Number.isFinite(value) && value >= 0);
+}
+
+function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
+  if (sheetMetal == null) return;
+  if (!sheetMetal || typeof sheetMetal !== "object" || Array.isArray(sheetMetal)) {
+    errors.push("Sheet-metal analysis must be an object.");
+    return;
+  }
+
+  const analysis = sheetMetal as Partial<SheetMetalAnalysis>;
+  if (analysis.source !== "brep") errors.push("Sheet-metal analysis source must be BRep.");
+  if (analysis.status !== "candidate" && analysis.status !== "insufficient") errors.push("Sheet-metal analysis status is invalid.");
+  if (!Number.isInteger(analysis.planarFaceCount) || (analysis.planarFaceCount ?? -1) < 0) errors.push("Planar face count is invalid.");
+  if (!Number.isInteger(analysis.cylindricalFaceCount) || (analysis.cylindricalFaceCount ?? -1) < 0) errors.push("Cylindrical face count is invalid.");
+  if (!Number.isInteger(analysis.otherFaceCount) || (analysis.otherFaceCount ?? -1) < 0) errors.push("Other face count is invalid.");
+  if (!Array.isArray(analysis.bendCandidates)) errors.push("Sheet-metal bend candidates must be an array.");
+  else {
+    for (const candidate of analysis.bendCandidates) {
+      if (!candidate || typeof candidate.id !== "string" || !candidate.id) errors.push("Every bend candidate requires an id.");
+      if (typeof candidate?.radiusMm !== "number" || !Number.isFinite(candidate.radiusMm) || candidate.radiusMm <= 0) errors.push("Bend-candidate radius must be finite and positive.");
+      if (typeof candidate?.areaMm2 !== "number" || !Number.isFinite(candidate.areaMm2) || candidate.areaMm2 <= 0) errors.push("Bend-candidate area must be finite and positive.");
+    }
+  }
+  if (!Array.isArray(analysis.warnings) || analysis.warnings.some((warning) => typeof warning !== "string")) errors.push("Sheet-metal warnings must be a string array.");
+
+  if (analysis.thicknessCandidate != null) {
+    const candidate = analysis.thicknessCandidate;
+    if (typeof candidate.thicknessMm !== "number" || !Number.isFinite(candidate.thicknessMm) || candidate.thicknessMm <= 0) errors.push("Thickness candidate must be finite and positive.");
+    if (candidate.confidence !== "low" && candidate.confidence !== "medium") errors.push("Thickness-candidate confidence is invalid.");
+    if (!Number.isInteger(candidate.evidencePairs) || candidate.evidencePairs < 1) errors.push("Thickness candidate requires evidence pairs.");
+    if (!Array.isArray(candidate.evidenceFaceIds) || candidate.evidenceFaceIds.some((id) => typeof id !== "string" || !id)) errors.push("Thickness candidate evidence face ids are invalid.");
+  }
 }
 
 export function validateNormalizedCadModel(input: unknown) {
@@ -92,6 +126,7 @@ export function validateNormalizedCadModel(input: unknown) {
   }
 
   if (!Array.isArray(model.features)) errors.push("Normalized CAD features must be an array.");
+  validateSheetMetalAnalysis(model.sheetMetal, errors);
   if (!Array.isArray(model.warnings) || model.warnings.some((warning) => typeof warning !== "string")) errors.push("Normalized CAD warnings must be a string array.");
 
   if (!model.metadata || typeof model.metadata !== "object") {
