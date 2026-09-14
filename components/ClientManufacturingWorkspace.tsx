@@ -7,6 +7,8 @@ import { Cad2DViewer } from "@/components/Cad2DViewer";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
 import { analyzeCadBytes } from "@/lib/instant-quote/cad-dispatcher";
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
+import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import { parseAsciiDxf, type ParsedDxf } from "@/lib/instant-quote/dxf";
 import { createEmptyProject, type ManufacturingOperation } from "@/lib/instant-quote/domain";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
@@ -40,6 +42,12 @@ const OPERATION_OPTIONS: Array<{ id: ManufacturingOperation; label: string }> = 
   { id: "packaging", label: "Упаковка" },
 ];
 
+type CalculationApiResponse = {
+  ok?: boolean;
+  message?: string;
+  calculation?: ClientProjectCalculationView;
+};
+
 function fmt(value: number) {
   return value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
 }
@@ -49,13 +57,22 @@ function materialIdOf(value: string | null): MaterialId {
   return "hot";
 }
 
+function isClientCalculationView(value: unknown): value is ClientProjectCalculationView {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<ClientProjectCalculationView>;
+  return candidate.kind === "client-calculation" && Array.isArray(candidate.parts) && candidate.paymentEnabled === false;
+}
+
 export function ClientManufacturingWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [project, setProject] = useState(() => createEmptyProject());
   const [modelsByPartId, setModelsByPartId] = useState<Record<string, NormalizedCadModel>>({});
   const [parsedByPartId, setParsedByPartId] = useState<Record<string, ParsedDxf>>({});
+  const [filesByPartId, setFilesByPartId] = useState<Record<string, File>>({});
   const [analyzingByPartId, setAnalyzingByPartId] = useState<Record<string, boolean>>({});
   const [statusByPartId, setStatusByPartId] = useState<Record<string, string>>({});
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [projectCalculationMessage, setProjectCalculationMessage] = useState<string | null>(null);
 
   const activePart = useMemo(
     () => project.parts.find((part) => part.id === project.activePartId) ?? null,
@@ -67,6 +84,17 @@ export function ClientManufacturingWorkspace() {
   const materialId = materialIdOf(activePart?.configuration.materialId ?? null);
   const thickness = activePart?.configuration.thicknessMm ?? 1;
   const quantity = activePart?.configuration.quantity ?? 1;
+  const allFilesPresent = project.parts.length > 0 && project.parts.every((part) => Boolean(filesByPartId[part.id]));
+  const anyAnalyzing = Object.values(analyzingByPartId).some(Boolean);
+  const canCalculate = allFilesPresent && !anyAnalyzing && !isCalculating;
+
+  const markConfigurationChanged = (partId: string) => {
+    setStatusByPartId((current) => ({
+      ...current,
+      [partId]: "Параметры изменены. Запустите внутренний расчёт повторно.",
+    }));
+    setProjectCalculationMessage(null);
+  };
 
   const ingestFiles = async (files: File[]) => {
     if (!files.length) return;
@@ -85,6 +113,12 @@ export function ClientManufacturingWorkspace() {
     });
 
     setProject(nextProject);
+    setProjectCalculationMessage(null);
+    setFilesByPartId((current) => {
+      const next = { ...current };
+      for (const job of jobs) next[job.partId] = job.file;
+      return next;
+    });
 
     await Promise.all(jobs.map(async ({ file, partId, format }) => {
       if (format === "dwg") {
@@ -132,18 +166,25 @@ export function ClientManufacturingWorkspace() {
   };
 
   const updateQuantity = (value: number) => {
-    if (activePart) setProject((current) => setPartQuantity(current, activePart.id, value));
+    if (!activePart) return;
+    setProject((current) => setPartQuantity(current, activePart.id, value));
+    markConfigurationChanged(activePart.id);
   };
   const updateMaterial = (value: MaterialId) => {
-    if (activePart) setProject((current) => setPartMaterial(current, activePart.id, value));
+    if (!activePart) return;
+    setProject((current) => setPartMaterial(current, activePart.id, value));
+    markConfigurationChanged(activePart.id);
   };
   const updateThickness = (value: number) => {
-    if (activePart) setProject((current) => setPartThickness(current, activePart.id, value));
+    if (!activePart) return;
+    setProject((current) => setPartThickness(current, activePart.id, value));
+    markConfigurationChanged(activePart.id);
   };
   const toggleOperation = (operation: ManufacturingOperation) => {
     if (!activePart) return;
     const enabled = !activePart.configuration.operations.includes(operation);
     setProject((current) => togglePartOperation(current, activePart.id, operation, enabled));
+    markConfigurationChanged(activePart.id);
   };
   const removeActivePart = () => {
     if (!activePart) return;
@@ -151,7 +192,45 @@ export function ClientManufacturingWorkspace() {
     setProject((current) => removePartFromProject(current, id));
     setModelsByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setParsedByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
+    setFilesByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setStatusByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
+    setProjectCalculationMessage(null);
+  };
+
+  const calculateProject = async () => {
+    if (!canCalculate) return;
+    setIsCalculating(true);
+    setProjectCalculationMessage("Передаём исходные CAD во внутренний защищённый расчёт…");
+
+    try {
+      const formData = createCalculationFormData(project, filesByPartId);
+      const response = await fetch("/api/online-order/calculate", {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      });
+      const payload = await response.json().catch(() => null) as CalculationApiResponse | null;
+
+      if (!response.ok || !payload?.ok || !isClientCalculationView(payload.calculation)) {
+        throw new Error(payload?.message || "Внутренний расчёт сейчас недоступен.");
+      }
+
+      const calculation = payload.calculation;
+      setStatusByPartId((current) => {
+        const next = { ...current };
+        for (const part of calculation.parts) next[part.partId] = part.message;
+        return next;
+      });
+      setProjectCalculationMessage(
+        calculation.parts.every((part) => part.status === "ready")
+          ? "Внутренний расчёт проекта завершён."
+          : "Проект принят. Для части позиций требуется внутренняя технологическая проверка.",
+      );
+    } catch (error) {
+      setProjectCalculationMessage(error instanceof Error ? error.message : "Внутренний расчёт сейчас недоступен.");
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const clientMetrics = activeModel ? [
@@ -217,7 +296,11 @@ export function ClientManufacturingWorkspace() {
                 <div><p className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Операции</p><div className="mt-2 grid gap-2">{OPERATION_OPTIONS.map((option) => { const enabled = activePart.configuration.operations.includes(option.id); return <button key={option.id} onClick={() => toggleOperation(option.id)} className={`flex items-center justify-between border px-4 py-3 text-left text-sm ${enabled ? "border-steel-orange/45 bg-steel-orange/[.06]" : "border-white/10"}`}><span>{option.label}</span><span>{enabled ? "✓" : ""}</span></button>; })}</div></div>
               </div>
               <div className="border-t border-white/10 p-5">
-                <div className="border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Результат расчёта</p><p className="mt-3 text-sm leading-relaxed text-white/55">{statusByPartId[activePart.id] ?? "После анализа конфигурация будет передана во внутренний расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/30">Себестоимость, внутренние ставки, нормы и производственная расшифровка клиентскому интерфейсу не передаются. Оплата на этом этапе не подключена.</p></div>
+                <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">
+                  {isCalculating ? "Выполняется расчёт…" : "Рассчитать проект"}
+                </button>
+                {projectCalculationMessage && <p className="mt-3 text-xs leading-relaxed text-white/45">{projectCalculationMessage}</p>}
+                <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Результат расчёта</p><p className="mt-3 text-sm leading-relaxed text-white/55">{statusByPartId[activePart.id] ?? "После анализа конфигурация будет передана во внутренний расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/30">Себестоимость, внутренние ставки, нормы и производственная расшифровка клиентскому интерфейсу не передаются. Оплата на этом этапе не подключена.</p></div>
               </div>
             </> : <div className="p-5 text-sm text-white/35">Добавьте CAD-файл.</div>}
           </aside>
