@@ -45,13 +45,22 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
       const bounds = calculateMeshBounds(result.meshes);
       if (!bounds) throw new Error("Не удалось определить габариты STEP-модели.");
 
+      const flatPattern = result.sheetMetal?.flatPatternCandidate?.confidence === "high"
+        ? result.sheetMetal.flatPatternCandidate
+        : null;
+
       return {
         format: request.format,
         units: "mm",
         geometry: {
-          widthMm: bounds.size[0],
-          heightMm: bounds.size[1],
+          widthMm: flatPattern?.widthMm ?? bounds.size[0],
+          heightMm: flatPattern?.heightMm ?? bounds.size[1],
           depthMm: bounds.size[2],
+          areaMm2: flatPattern?.areaMm2,
+          blankAreaMm2: flatPattern?.blankAreaMm2,
+          cutLengthMm: flatPattern?.cutLengthMm,
+          contourCount: flatPattern?.contourCount,
+          pierceCount: flatPattern?.contourCount,
           bodyCount: result.bodyCount ?? result.meshes.length,
           volumeMm3: result.volumeMm3,
         },
@@ -66,7 +75,13 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
           parserVersion: result.parserVersion,
           analyzedAt: new Date().toISOString(),
         },
-        warnings: [...(result.warnings ?? []), ...(result.sheetMetal?.warnings ?? [])],
+        // A high-confidence planar-prism flat pattern has already reconciled
+        // opposite faces, thickness evidence, boundary length and solid volume.
+        // Keep the raw sheet-metal diagnostics on model.sheetMetal, but do not
+        // turn superseded candidate-only messages into commercial-review flags.
+        warnings: flatPattern
+          ? [...(result.warnings ?? [])]
+          : [...(result.warnings ?? []), ...(result.sheetMetal?.warnings ?? [])],
       };
     },
   };
