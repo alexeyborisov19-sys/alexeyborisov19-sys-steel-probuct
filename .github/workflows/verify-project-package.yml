@@ -133,22 +133,13 @@ jobs:
           set +a
 
           DIAG_ROOT="$(mktemp -d /tmp/steelprodukt-calc-diag.XXXXXX)"
-          trap 'rm -rf "$DIAG_ROOT" /tmp/run-confidential-calculation.diag.ts' EXIT
+          trap 'rm -rf "$DIAG_ROOT" /tmp/run-confidential-calculation.diag.ts /tmp/calc-diag-runner.mjs' EXIT
           chown nodejs:nodejs "$DIAG_ROOT" /tmp/run-confidential-calculation.diag.ts
           chmod 0700 "$DIAG_ROOT"
           chmod 0600 /tmp/run-confidential-calculation.diag.ts
           sed -i '/^import "server-only";/d' /tmp/run-confidential-calculation.diag.ts
 
-          sudo -iu nodejs env \
-            STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH="$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH" \
-            STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT="$DIAG_ROOT" \
-            STEEL_PRODUCT_METAL_MULTIPLIER="$STEEL_PRODUCT_METAL_MULTIPLIER" \
-            STEEL_PRODUCT_DRAW_PCT="$STEEL_PRODUCT_DRAW_PCT" \
-            STEEL_PRODUCT_FINAL_PCT="$STEEL_PRODUCT_FINAL_PCT" \
-            STEEL_PRODUCT_FIXED_ADD_RUB="$STEEL_PRODUCT_FIXED_ADD_RUB" \
-            STEEL_PRODUCT_FIXED_ADD_ENABLED="$STEEL_PRODUCT_FIXED_ADD_ENABLED" \
-            STEEL_PRODUCT_ROUND_STEP_RUB="$STEEL_PRODUCT_ROUND_STEP_RUB" \
-            bash -lc "cd '$APP_PATH' && node --conditions=react-server --import tsx --input-type=module <<'NODE'
+          cat > /tmp/calc-diag-runner.mjs <<'NODE'
           import { runConfidentialCalculationForClient } from '/tmp/run-confidential-calculation.diag.ts';
 
           const now = new Date();
@@ -215,5 +206,18 @@ jobs:
             console.log(JSON.stringify({ event: 'diag_result', ok: false, code }));
             process.exit(1);
           }
-          NODE"
+          NODE
+          chown nodejs:nodejs /tmp/calc-diag-runner.mjs
+          chmod 0600 /tmp/calc-diag-runner.mjs
+
+          sudo -iu nodejs env \
+            STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH="$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH" \
+            STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT="$DIAG_ROOT" \
+            STEEL_PRODUCT_METAL_MULTIPLIER="$STEEL_PRODUCT_METAL_MULTIPLIER" \
+            STEEL_PRODUCT_DRAW_PCT="$STEEL_PRODUCT_DRAW_PCT" \
+            STEEL_PRODUCT_FINAL_PCT="$STEEL_PRODUCT_FINAL_PCT" \
+            STEEL_PRODUCT_FIXED_ADD_RUB="$STEEL_PRODUCT_FIXED_ADD_RUB" \
+            STEEL_PRODUCT_FIXED_ADD_ENABLED="$STEEL_PRODUCT_FIXED_ADD_ENABLED" \
+            STEEL_PRODUCT_ROUND_STEP_RUB="$STEEL_PRODUCT_ROUND_STEP_RUB" \
+            bash -lc "cd '$APP_PATH' && node --conditions=react-server --import tsx /tmp/calc-diag-runner.mjs"
           REMOTE
