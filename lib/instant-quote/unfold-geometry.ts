@@ -10,12 +10,36 @@ export type CylinderAxisSegmentObservation = {
   endMm: Vector3;
 };
 
+export type BRepBoundaryEdge3D = {
+  id: string;
+  curveKind: string;
+  pointsMm: Vector3[];
+};
+
+export type BRepBoundaryWire3D = {
+  id: string;
+  edges: BRepBoundaryEdge3D[];
+};
+
+export type BRepPanelBoundaryPreview3D = {
+  source: "brep-edge-sampling";
+  displayOnly: true;
+  faceId: string;
+  wires: BRepBoundaryWire3D[];
+};
+
+export type PlanarFaceBoundary3DObservation = {
+  faceId: string;
+  preview: BRepPanelBoundaryPreview3D;
+};
+
 export type BRepPanelRegionEvidence = {
   id: string;
   sourceFaceIds: [string, string];
   centerMm: Vector3;
   normal: Vector3;
   areaMm2: number;
+  boundary3d?: BRepPanelBoundaryPreview3D;
 };
 
 export type BRepBendGeometryEvidence = {
@@ -102,7 +126,11 @@ function panelPairScore(left: PlaneFaceObservation, right: PlaneFaceObservation,
   return areaError + thicknessError + tangentialError;
 }
 
-function buildPanelRegions(planarFaces: PlaneFaceObservation[], thicknessMm: number) {
+function buildPanelRegions(
+  planarFaces: PlaneFaceObservation[],
+  thicknessMm: number,
+  boundaries: PlanarFaceBoundary3DObservation[],
+) {
   const candidates: Array<{ leftIndex: number; rightIndex: number; score: number }> = [];
   for (let leftIndex = 0; leftIndex < planarFaces.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < planarFaces.length; rightIndex += 1) {
@@ -112,6 +140,7 @@ function buildPanelRegions(planarFaces: PlaneFaceObservation[], thicknessMm: num
   }
   candidates.sort((a, b) => a.score - b.score);
 
+  const boundaryByFaceId = new Map(boundaries.map((item) => [item.faceId, item.preview]));
   const used = new Set<number>();
   const panels: BRepPanelRegionEvidence[] = [];
   for (const candidate of candidates) {
@@ -124,12 +153,14 @@ function buildPanelRegions(planarFaces: PlaneFaceObservation[], thicknessMm: num
     used.add(candidate.leftIndex);
     used.add(candidate.rightIndex);
     const sourceFaceIds = [left.id, right.id].sort() as [string, string];
+    const boundary3d = boundaryByFaceId.get(left.id) ?? boundaryByFaceId.get(right.id);
     panels.push({
       id: `panel:${sourceFaceIds[0]}:${sourceFaceIds[1]}`,
       sourceFaceIds,
       centerMm: scale(add(left.centerMm, right.centerMm), 0.5),
       normal,
       areaMm2: (left.areaMm2 + right.areaMm2) / 2,
+      boundary3d,
     });
   }
 
@@ -169,13 +200,16 @@ function axisOverlap(
  * bend-unfold planner. This is deliberately stricter than DFM bend detection:
  * each sheet panel must be a matched pair of opposite planar skins and each
  * bend must resolve to exactly two such panels plus an overlapping finite axis.
+ * Optional panel boundaries are sampled BRep display evidence only; pricing
+ * never reads them.
  */
 export function buildStepUnfoldGeometryEvidence(input: {
   sheetMetal: SheetMetalAnalysis;
   planarFaces: PlaneFaceObservation[];
   cylinderAxes: CylinderAxisSegmentObservation[];
+  planarBoundaries?: PlanarFaceBoundary3DObservation[];
 }): StepUnfoldGeometryEvidence {
-  const { sheetMetal, planarFaces, cylinderAxes } = input;
+  const { sheetMetal, planarFaces, cylinderAxes, planarBoundaries = [] } = input;
   const thickness = sheetMetal.thicknessCandidate;
   const issues: string[] = [];
 
@@ -189,7 +223,7 @@ export function buildStepUnfoldGeometryEvidence(input: {
     };
   }
 
-  const panels = buildPanelRegions(planarFaces, thickness.thicknessMm);
+  const panels = buildPanelRegions(planarFaces, thickness.thicknessMm, planarBoundaries);
   const panelByFaceId = new Map<string, BRepPanelRegionEvidence>();
   panels.forEach((panel) => panel.sourceFaceIds.forEach((faceId) => panelByFaceId.set(faceId, panel)));
   const axisByFaceId = new Map(cylinderAxes.map((axis) => [axis.faceId, axis]));
