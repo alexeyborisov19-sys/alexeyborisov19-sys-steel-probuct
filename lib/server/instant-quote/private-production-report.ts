@@ -4,8 +4,24 @@ import { chmod, mkdir, readFile, readdir, rename, stat, writeFile } from "node:f
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { summarizeProjectCalculationCompleteness, type CalculationCompletenessStatus } from "@/lib/instant-quote/calculation-completeness";
-import type { ProjectFactualCalculationResult } from "@/lib/instant-quote/project-factual-calculation";
+import type { InstantQuoteProject } from "@/lib/instant-quote/domain";
+import type { PartFactualInputs, ProjectFactualCalculationResult } from "@/lib/instant-quote/project-factual-calculation";
 import type { ProductionParameterSummary } from "@/lib/instant-quote/production-parameters";
+
+export type InternalCalculationInputSnapshot = {
+  project: InstantQuoteProject;
+  factualByPartId: Record<string, PartFactualInputs>;
+  powderSidesByPartId: Record<string, 1 | 2>;
+  unsupportedEntitiesByPartId: Record<string, string[]>;
+};
+
+export type InternalProductionReportRevision = {
+  supersedesReportId: string;
+  changedAt: string;
+  changedByUserId: string;
+  changedByDisplayName: string;
+  reason: string;
+};
 
 export type InternalProductionReport = {
   classification: "internal-production-confidential";
@@ -17,10 +33,15 @@ export type InternalProductionReport = {
   calculation: ProjectFactualCalculationResult;
   productionParametersByPartId: Record<string, ProductionParameterSummary>;
   internalNotes: string[];
+  /** Added after schema v1 launch; absent on legacy reports. */
+  calculationInputSnapshot?: InternalCalculationInputSnapshot;
+  /** Present only on recalculated revisions. */
+  revision?: InternalProductionReportRevision;
 };
 
 export type InternalProductionReportListItem = {
   fileName: string;
+  reportId: string;
   projectId: string;
   generatedAt: string;
   basisVersion: string;
@@ -31,6 +52,8 @@ export type InternalProductionReportListItem = {
   confirmedDirectCostRub: number;
   readinessScorePct: number;
   readinessStatus: CalculationCompletenessStatus;
+  isRevision: boolean;
+  supersedesReportId: string | null;
   bytes: number;
 };
 
@@ -71,6 +94,8 @@ export function createInternalProductionReport(input: {
   calculation: ProjectFactualCalculationResult;
   productionParametersByPartId: Record<string, ProductionParameterSummary>;
   internalNotes?: string[];
+  calculationInputSnapshot?: InternalCalculationInputSnapshot;
+  revision?: InternalProductionReportRevision;
   now?: Date;
 }): InternalProductionReport {
   const now = input.now ?? new Date();
@@ -84,6 +109,8 @@ export function createInternalProductionReport(input: {
     calculation: input.calculation,
     productionParametersByPartId: input.productionParametersByPartId,
     internalNotes: [...(input.internalNotes ?? [])],
+    calculationInputSnapshot: input.calculationInputSnapshot,
+    revision: input.revision,
   };
 }
 
@@ -145,6 +172,7 @@ export async function listInternalProductionReports(limit = 200): Promise<Intern
       );
       rows.push({
         fileName,
+        reportId: report.reportId,
         projectId: report.projectId,
         generatedAt: report.generatedAt,
         basisVersion: report.basisVersion,
@@ -155,6 +183,8 @@ export async function listInternalProductionReports(limit = 200): Promise<Intern
         confirmedDirectCostRub: report.calculation.confirmedDirectCostRub,
         readinessScorePct: readiness.scorePct,
         readinessStatus: readiness.status,
+        isRevision: Boolean(report.revision),
+        supersedesReportId: report.revision?.supersedesReportId ?? null,
         bytes: fileStat.size,
       });
     } catch {
