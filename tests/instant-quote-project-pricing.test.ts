@@ -5,8 +5,9 @@ import { addPartToProject, setPartQuantity, setPartThickness, updatePartGeometry
 import { calculateProjectProvisionalPricing } from "../lib/instant-quote/project-pricing";
 import type { ParsedDxf } from "../lib/instant-quote/dxf";
 import type { StoredPriceSnapshot } from "../lib/instant-quote/material-price-feed";
+import { TEST_PRICING_CONTEXT } from "./fixtures/protected-pricing";
 
-const now = new Date("2026-09-14T12:00:00.000Z");
+const now = new Date("2099-01-01T12:00:00.000Z");
 
 function parsed(width: number, height: number, cutLength: number): ParsedDxf {
   return {
@@ -32,26 +33,26 @@ function parsed(width: number, height: number, cutLength: number): ParsedDxf {
 
 const snapshots: StoredPriceSnapshot[] = [
   {
-    sourceId: "atlantik-smolensk",
-    fetchedAt: "2026-09-14T09:00:00.000Z",
-    sourceDate: "2026-09-10",
+    sourceId: "synthetic-supplier",
+    fetchedAt: "2099-01-01T09:00:00.000Z",
+    sourceDate: "2099-01-01",
     status: "ok",
     rows: [
-      { materialId: "hot", thicknessMm: 1, rubPerTon: 70_000, rubPerTonFrom3t: 69_000, source: "Атлантик", sourceDate: "2026-09-10", fetchedAt: "2026-09-14T09:00:00.000Z" },
-      { materialId: "hot", thicknessMm: 2, rubPerTon: 68_900, rubPerTonFrom3t: 68_400, source: "Атлантик", sourceDate: "2026-09-10", fetchedAt: "2026-09-14T09:00:00.000Z" },
+      { materialId: "hot", thicknessMm: 1, rubPerTon: 100_000, rubPerTonFrom3t: 99_000, source: "fixture", sourceDate: "2099-01-01", fetchedAt: "2099-01-01T09:00:00.000Z" },
+      { materialId: "hot", thicknessMm: 2, rubPerTon: 98_000, rubPerTonFrom3t: 97_000, source: "fixture", sourceDate: "2099-01-01", fetchedAt: "2099-01-01T09:00:00.000Z" },
     ],
   },
 ];
 
-test("sums provisional prices for all DXF parts in a project", () => {
+test("sums provisional prices for all DXF parts with protected pricing context", () => {
   let project = createEmptyProject(now);
-  project = addPartToProject(project, { fileName: "a.dxf", fileSizeBytes: 100 }, new Date("2026-09-14T12:00:01.000Z"));
+  project = addPartToProject(project, { fileName: "a.dxf", fileSizeBytes: 100 }, now);
   const a = project.activePartId!;
   project = setPartThickness(project, a, 1, now);
   project = setPartQuantity(project, a, 10, now);
   project = updatePartGeometry(project, a, { widthMm: 500, heightMm: 300, cutLengthMm: 1800, contourCount: 1 }, now);
 
-  project = addPartToProject(project, { fileName: "b.dxf", fileSizeBytes: 100 }, new Date("2026-09-14T12:00:02.000Z"));
+  project = addPartToProject(project, { fileName: "b.dxf", fileSizeBytes: 100 }, new Date("2099-01-01T12:00:02.000Z"));
   const b = project.activePartId!;
   project = setPartThickness(project, b, 2, now);
   project = setPartQuantity(project, b, 5, now);
@@ -61,6 +62,7 @@ test("sums provisional prices for all DXF parts in a project", () => {
     project,
     { [a]: parsed(500, 300, 1800), [b]: parsed(700, 400, 2400) },
     snapshots,
+    TEST_PRICING_CONTEXT,
     now,
   );
 
@@ -81,6 +83,7 @@ test("a blocked oversize part does not contribute a misleading price", () => {
     project,
     { [id]: parsed(3100, 1000, 8000) },
     snapshots,
+    TEST_PRICING_CONTEXT,
     now,
   );
 
