@@ -61,6 +61,10 @@ function finiteNonNegative(value: unknown) {
   return value == null || (typeof value === "number" && Number.isFinite(value) && value >= 0);
 }
 
+function finitePositive(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
 function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
   if (sheetMetal == null) return;
   if (!sheetMetal || typeof sheetMetal !== "object" || Array.isArray(sheetMetal)) {
@@ -78,15 +82,19 @@ function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
   else {
     for (const candidate of analysis.bendCandidates) {
       if (!candidate || typeof candidate.id !== "string" || !candidate.id) errors.push("Every bend candidate requires an id.");
-      if (typeof candidate?.radiusMm !== "number" || !Number.isFinite(candidate.radiusMm) || candidate.radiusMm <= 0) errors.push("Bend-candidate radius must be finite and positive.");
-      if (typeof candidate?.areaMm2 !== "number" || !Number.isFinite(candidate.areaMm2) || candidate.areaMm2 <= 0) errors.push("Bend-candidate area must be finite and positive.");
+      if (!finitePositive(candidate?.radiusMm)) errors.push("Bend-candidate inner radius must be finite and positive.");
+      if (!finitePositive(candidate?.outerRadiusMm)) errors.push("Bend-candidate outer radius must be finite and positive.");
+      if (finitePositive(candidate?.radiusMm) && finitePositive(candidate?.outerRadiusMm) && candidate.outerRadiusMm <= candidate.radiusMm) errors.push("Bend-candidate outer radius must exceed the inner radius.");
+      if (!finitePositive(candidate?.angleDeg) || candidate.angleDeg > 189) errors.push("Bend-candidate angle must be finite, positive and within the conservative supported range.");
+      if (!finitePositive(candidate?.areaMm2)) errors.push("Bend-candidate area must be finite and positive.");
+      if (!Array.isArray(candidate?.faceIds) || candidate.faceIds.length !== 2 || candidate.faceIds.some((id) => typeof id !== "string" || !id)) errors.push("Bend candidate must reference exactly two BRep faces.");
     }
   }
   if (!Array.isArray(analysis.warnings) || analysis.warnings.some((warning) => typeof warning !== "string")) errors.push("Sheet-metal warnings must be a string array.");
 
   if (analysis.thicknessCandidate != null) {
     const candidate = analysis.thicknessCandidate;
-    if (typeof candidate.thicknessMm !== "number" || !Number.isFinite(candidate.thicknessMm) || candidate.thicknessMm <= 0) errors.push("Thickness candidate must be finite and positive.");
+    if (!finitePositive(candidate.thicknessMm)) errors.push("Thickness candidate must be finite and positive.");
     if (candidate.confidence !== "low" && candidate.confidence !== "medium") errors.push("Thickness-candidate confidence is invalid.");
     if (!Number.isInteger(candidate.evidencePairs) || candidate.evidencePairs < 1) errors.push("Thickness candidate requires evidence pairs.");
     if (!Array.isArray(candidate.evidenceFaceIds) || candidate.evidenceFaceIds.some((id) => typeof id !== "string" || !id)) errors.push("Thickness candidate evidence face ids are invalid.");
