@@ -3,6 +3,7 @@ import "server-only";
 import { chmod, mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { summarizeProjectCalculationCompleteness, type CalculationCompletenessStatus } from "@/lib/instant-quote/calculation-completeness";
 import type { ProjectFactualCalculationResult } from "@/lib/instant-quote/project-factual-calculation";
 import type { ProductionParameterSummary } from "@/lib/instant-quote/production-parameters";
 
@@ -28,6 +29,8 @@ export type InternalProductionReportListItem = {
   partialParts: number;
   blockedParts: number;
   confirmedDirectCostRub: number;
+  readinessScorePct: number;
+  readinessStatus: CalculationCompletenessStatus;
   bytes: number;
 };
 
@@ -136,6 +139,10 @@ export async function listInternalProductionReports(limit = 200): Promise<Intern
       const [raw, fileStat] = await Promise.all([readFile(fullPath, "utf8"), stat(fullPath)]);
       if (!fileStat.isFile()) continue;
       const report = assertReport(JSON.parse(raw) as unknown);
+      const readiness = summarizeProjectCalculationCompleteness(
+        report.calculation,
+        report.productionParametersByPartId,
+      );
       rows.push({
         fileName,
         projectId: report.projectId,
@@ -146,6 +153,8 @@ export async function listInternalProductionReports(limit = 200): Promise<Intern
         partialParts: report.calculation.partialParts,
         blockedParts: report.calculation.blockedParts,
         confirmedDirectCostRub: report.calculation.confirmedDirectCostRub,
+        readinessScorePct: readiness.scorePct,
+        readinessStatus: readiness.status,
         bytes: fileStat.size,
       });
     } catch {
