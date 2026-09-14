@@ -4,46 +4,74 @@ export type PriceFeedSource = {
   id: string;
   label: string;
   url: string;
-  format: "pdf" | "xlsx";
+  format: "pdf" | "xlsx" | "html" | "api";
   priority: number;
   materials: MaterialId[];
+  enabled: boolean;
+  role: "primary" | "secondary" | "fallback" | "planned";
+  region?: string;
+  note?: string;
 };
 
-// Trusted supplier sources already used by the internal calculator.
-// Fetching/parsing is server-side in the future production implementation;
-// the browser must never depend on public CORS proxies for commercial pricing.
+// Steel Product Online supplier policy:
+// 1) Prefer local, directly retrievable supplier data for real quotes.
+// 2) Use only official supplier endpoints for automatic commercial pricing.
+// 3) Never depend on third-party price aggregators for the authoritative quote.
+// 4) Keep the latest successful snapshot when an upstream source is unavailable.
 export const TRUSTED_METAL_PRICE_SOURCES: PriceFeedSource[] = [
   {
     id: "atlantik-smolensk",
     label: "Атлантик Компани, Смоленск",
     url: "https://atlantik-company.com/price.pdf",
     format: "pdf",
-    priority: 10,
+    priority: 1,
     materials: ["hot", "cold", "zinc", "inox"],
+    enabled: true,
+    role: "primary",
+    region: "Смоленск",
+    note: "Основной источник: прямой официальный PDF-прайс, пригодный для серверного парсинга.",
+  },
+  {
+    id: "metallservis-official",
+    label: "МЕТАЛЛСЕРВИС",
+    url: "https://mc.ru",
+    format: "html",
+    priority: 5,
+    materials: ["hot", "cold", "zinc", "inox", "alu", "copper", "brass"],
+    enabled: false,
+    role: "planned",
+    region: "Россия",
+    note: "Подключить как второй приоритет после подтверждения стабильного официального машинного endpoint/API или файла прайса. Сторонние агрегаторы не использовать как источник коммерческой цены.",
   },
   {
     id: "union-black",
     label: "ЮНИОН — чёрный металлопрокат",
     url: "https://pkfu.ru/download-price-list/metalloprokat.xlsx",
     format: "xlsx",
-    priority: 20,
+    priority: 30,
     materials: ["hot", "cold", "zinc"],
+    enabled: true,
+    role: "fallback",
   },
   {
     id: "union-inox",
     label: "ЮНИОН — нержавеющий металлопрокат",
     url: "https://pkfu.ru/download-price-list/nerzhaveyka.xlsx",
     format: "xlsx",
-    priority: 20,
+    priority: 30,
     materials: ["inox"],
+    enabled: true,
+    role: "fallback",
   },
   {
     id: "union-nonferrous",
     label: "ЮНИОН — цветной металлопрокат",
     url: "https://pkfu.ru/download-price-list/cvetmet.xlsx",
     format: "xlsx",
-    priority: 20,
+    priority: 30,
     materials: ["alu", "copper", "brass"],
+    enabled: true,
+    role: "fallback",
   },
 ];
 
@@ -63,6 +91,10 @@ export type PriceSelection = {
   stale: boolean;
 };
 
+export function enabledPriceSources() {
+  return TRUSTED_METAL_PRICE_SOURCES.filter((source) => source.enabled);
+}
+
 export function snapshotAgeHours(snapshot: StoredPriceSnapshot, now = new Date()) {
   return Math.max(0, (now.getTime() - new Date(snapshot.fetchedAt).getTime()) / 3_600_000);
 }
@@ -74,9 +106,9 @@ export function selectBestStoredPrice(
   now = new Date(),
   staleAfterHours = 72,
 ): PriceSelection {
-  const sourcePriority = new Map(TRUSTED_METAL_PRICE_SOURCES.map((source) => [source.id, source.priority]));
+  const sourcePriority = new Map(enabledPriceSources().map((source) => [source.id, source.priority]));
   const candidates = snapshots
-    .filter((snapshot) => snapshot.status !== "failed")
+    .filter((snapshot) => snapshot.status !== "failed" && sourcePriority.has(snapshot.sourceId))
     .flatMap((snapshot) => snapshot.rows
       .filter((row) => row.materialId === materialId && row.rubPerTon > 0)
       .map((row) => ({
@@ -110,6 +142,8 @@ export function shouldRefreshPriceFeeds(
   now = new Date(),
   refreshEveryHours = 24,
 ) {
-  if (!snapshots.length) return true;
-  return snapshots.some((snapshot) => snapshot.status === "failed" || snapshotAgeHours(snapshot, now) >= refreshEveryHours);
+  const enabledIds = new Set(enabledPriceSources().map((source) => source.id));
+  const activeSnapshots = snapshots.filter((snapshot) => enabledIds.has(snapshot.sourceId));
+  if (!activeSnapshots.length) return true;
+  return activeSnapshots.some((snapshot) => snapshot.status === "failed" || snapshotAgeHours(snapshot, now) >= refreshEveryHours);
 }
