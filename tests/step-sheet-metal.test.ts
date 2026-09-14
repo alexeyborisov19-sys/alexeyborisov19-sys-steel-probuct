@@ -19,7 +19,7 @@ test("STEP carries BRep candidates without promoting them into production geomet
         sheetMetal: {
           source: "brep" as const,
           status: "candidate" as const,
-          planarFaceCount: 2,
+          planarFaceCount: 4,
           cylindricalFaceCount: 2,
           otherFaceCount: 0,
           thicknessCandidate: {
@@ -32,6 +32,7 @@ test("STEP carries BRep candidates without promoting them into production geomet
             {
               id: "bend:face-inner:face-outer",
               faceIds: ["face-inner", "face-outer"] as [string, string],
+              planarNeighborFaceIds: ["plane-a", "plane-b", "plane-c", "plane-d"],
               radiusMm: 3,
               outerRadiusMm: 5,
               angleDeg: 90,
