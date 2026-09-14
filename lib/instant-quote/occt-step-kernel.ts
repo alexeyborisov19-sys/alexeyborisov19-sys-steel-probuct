@@ -54,7 +54,29 @@ function deriveCylinderAxis(
   };
 }
 
-function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeHandle): SheetMetalAnalysis {
+function measureFaceBoundary(kernel: OcctKernelInstance, face: OcctShapeHandle) {
+  const edges = kernel.getSubShapes(face, "edge");
+  let boundaryLengthMm = 0;
+  try {
+    for (const edge of edges) {
+      const edgeLength = kernel.getLength(edge);
+      if (!Number.isFinite(edgeLength) || edgeLength <= 0) return null;
+      boundaryLengthMm += edgeLength;
+    }
+  } finally {
+    edges.forEach((edge) => kernel.release(edge));
+  }
+
+  const wireCount = kernel.subShapeCount(face, "wire");
+  if (!(boundaryLengthMm > 0) || !Number.isInteger(wireCount) || wireCount < 1) return null;
+  return { boundaryLengthMm, wireCount };
+}
+
+function collectSheetMetalAnalysis(
+  kernel: OcctKernelInstance,
+  shape: OcctShapeHandle,
+  volumeMm3?: number,
+): SheetMetalAnalysis {
   const faces = kernel.getSubShapes(shape, "face");
   const planarFaces: PlaneFaceObservation[] = [];
   const cylindricalFaces: CylinderFaceObservation[] = [];
@@ -93,12 +115,16 @@ function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeH
           continue;
         }
 
+        const boundary = measureFaceBoundary(kernel, face);
         planarFaces.push({
           id: faceId,
           areaMm2,
           centerMm: [center.x, center.y, center.z],
           normal: [normal.x, normal.y, normal.z],
           edgeHashes,
+          uvSizeMm: [Math.abs(bounds.uMax - bounds.uMin), Math.abs(bounds.vMax - bounds.vMin)],
+          boundaryLengthMm: boundary?.boundaryLengthMm,
+          wireCount: boundary?.wireCount,
         });
         continue;
       }
@@ -133,7 +159,10 @@ function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeH
     }
   }
 
-  return analyzeSheetMetalTopology({ planarFaces, cylindricalFaces, otherFaceCount });
+  return analyzeSheetMetalTopology(
+    { planarFaces, cylindricalFaces, otherFaceCount },
+    { volumeMm3 },
+  );
 }
 
 /**
@@ -186,7 +215,7 @@ class OcctStepKernel implements StepKernelPort {
       let sheetMetal: SheetMetalAnalysis | undefined;
       const warnings: string[] = [];
       try {
-        sheetMetal = collectSheetMetalAnalysis(kernel, shape);
+        sheetMetal = collectSheetMetalAnalysis(kernel, shape, volumeMm3);
       } catch {
         warnings.push("BRep-анализ листовой геометрии не завершён; STEP остаётся доступен для 3D-просмотра и ручной технологической проверки.");
       }
