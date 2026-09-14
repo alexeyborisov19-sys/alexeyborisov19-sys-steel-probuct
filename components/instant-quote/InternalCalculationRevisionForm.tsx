@@ -28,6 +28,10 @@ function rowFromPart(part: InternalRevisionFormPart): RowState {
   };
 }
 
+function parsedValue(value: string) {
+  return value.trim() === "" ? null : Number(value);
+}
+
 export function InternalCalculationRevisionForm({
   fileName,
   csrfToken,
@@ -38,7 +42,10 @@ export function InternalCalculationRevisionForm({
   parts: InternalRevisionFormPart[];
 }) {
   const router = useRouter();
-  const initial = useMemo(() => Object.fromEntries(parts.map((part) => [part.partId, rowFromPart(part)])), [parts]);
+  const initial = useMemo<Record<string, RowState>>(
+    () => Object.fromEntries(parts.map((part) => [part.partId, rowFromPart(part)])),
+    [parts],
+  );
   const [rows, setRows] = useState<Record<string, RowState>>(initial);
   const [reason, setReason] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -59,15 +66,21 @@ export function InternalCalculationRevisionForm({
       return;
     }
 
-    const bodyParts: Record<string, Record<string, number | string | null>> = {};
+    const bodyParts: Record<string, Record<string, number | null>> = {};
     for (const part of parts) {
-      const row = rows[part.partId];
-      bodyParts[part.partId] = {
-        bendCount: row.bendCount.trim() === "" ? null : Number(row.bendCount),
-        weldLengthM: row.weldLengthM.trim() === "" ? null : Number(row.weldLengthM),
-        powderAreaM2: row.powderAreaM2.trim() === "" ? null : Number(row.powderAreaM2),
-        powderSides: row.powderSides.trim() === "" ? null : Number(row.powderSides),
-      };
+      const current = rows[part.partId];
+      const original = initial[part.partId];
+      const patch: Record<string, number | null> = {};
+      if (current.bendCount !== original.bendCount) patch.bendCount = parsedValue(current.bendCount);
+      if (current.weldLengthM !== original.weldLengthM) patch.weldLengthM = parsedValue(current.weldLengthM);
+      if (current.powderAreaM2 !== original.powderAreaM2) patch.powderAreaM2 = parsedValue(current.powderAreaM2);
+      if (current.powderSides !== original.powderSides) patch.powderSides = parsedValue(current.powderSides);
+      if (Object.keys(patch).length > 0) bodyParts[part.partId] = patch;
+    }
+
+    if (Object.keys(bodyParts).length === 0) {
+      setError("Измените хотя бы один технологический параметр.");
+      return;
     }
 
     setBusy(true);
