@@ -41,13 +41,16 @@ jobs:
           set -a
           . ./.env.production
           set +a
+          sed '/^import "server-only";/d' lib/server/instant-quote/private-calculation-basis.ts > /tmp/private-calculation-basis.diag.ts
+          chown nodejs:nodejs /tmp/private-calculation-basis.diag.ts
           sudo -iu nodejs env \
             STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH="$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH" \
-            STEEL_PRODUCT_METAL_MULTIPLIER="$STEEL_PRODUCT_METAL_MULTIPLIER" \
-            STEEL_PRODUCT_DRAW_PCT="$STEEL_PRODUCT_DRAW_PCT" \
-            STEEL_PRODUCT_FINAL_PCT="$STEEL_PRODUCT_FINAL_PCT" \
-            STEEL_PRODUCT_FIXED_ADD_RUB="$STEEL_PRODUCT_FIXED_ADD_RUB" \
-            STEEL_PRODUCT_FIXED_ADD_ENABLED="$STEEL_PRODUCT_FIXED_ADD_ENABLED" \
-            STEEL_PRODUCT_ROUND_STEP_RUB="$STEEL_PRODUCT_ROUND_STEP_RUB" \
-            bash -lc "cd '$APP_PATH' && node --import tsx --input-type=module -e \"import('./lib/server/instant-quote/private-calculation-basis.ts').then(async m => { const b=await m.loadPrivateCalculationBasis(); console.log(JSON.stringify({ok:true,version:b.version,laserRows:b.rateBook.laserRubPerM.length,snapshots:b.materialPriceSnapshots.length,materialRows:b.materialPriceSnapshots.reduce((n,s)=>n+s.rows.length,0)})); }).catch(e => { console.error('BASIS_ERROR='+(e instanceof Error ? e.message : String(e))); process.exit(1); })\""
+            bash -lc "cd '$APP_PATH' && node --import tsx --input-type=module -e \"import('/tmp/private-calculation-basis.diag.ts').then(async m => { const b=await m.loadPrivateCalculationBasis(); console.log(JSON.stringify({ok:true,version:b.version,laserRows:b.rateBook.laserRubPerM.length,snapshots:b.materialPriceSnapshots.length,materialRows:b.materialPriceSnapshots.reduce((n,s)=>n+s.rows.length,0)})); }).catch(e => { console.error('BASIS_ERROR='+(e instanceof Error ? e.message : String(e))); process.exit(1); })\""
+          rm -f /tmp/private-calculation-basis.diag.ts
+          for name in STEEL_PRODUCT_METAL_MULTIPLIER STEEL_PRODUCT_DRAW_PCT STEEL_PRODUCT_FINAL_PCT STEEL_PRODUCT_FIXED_ADD_RUB STEEL_PRODUCT_FIXED_ADD_ENABLED STEEL_PRODUCT_ROUND_STEP_RUB STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT; do
+            test -n "${!name:-}" || { echo "ENV_MISSING=$name"; exit 1; }
+          done
+          test -d "$STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT"
+          sudo -iu nodejs test -w "$STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT"
+          echo "Protected pricing environment and report root validated."
           REMOTE
