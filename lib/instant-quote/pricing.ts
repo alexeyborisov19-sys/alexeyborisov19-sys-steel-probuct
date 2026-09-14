@@ -36,8 +36,12 @@ export type PricingBasis = {
   setupRubPerUniquePart: number;
 };
 
+/**
+ * Compatibility-only public basis. It deliberately contains no commercial or
+ * production rates. A protected server caller must pass an explicit basis.
+ */
 export const PROVISIONAL_PRICING_BASIS: PricingBasis = {
-  materialMarketUpliftPct: 5,
+  materialMarketUpliftPct: 0,
   densityKgM3: {
     cold: 7800,
     hot: 7800,
@@ -48,21 +52,21 @@ export const PROVISIONAL_PRICING_BASIS: PricingBasis = {
     brass: 8500,
   },
   operationRates: {
-    bendRubEach: 25,
-    weldRubM: 1800,
-    pressRubEach: 12,
-    countersinkRubEach: 35,
-    drillRubEach: 15,
-    threadRubEach: 25,
-    shotRubM2: 350,
-    powderRubM2: 450,
-    grindRubM2: 250,
-    assemblyRubHour: 900,
-    packagingRubEach: 40,
+    bendRubEach: 0,
+    weldRubM: 0,
+    pressRubEach: 0,
+    countersinkRubEach: 0,
+    drillRubEach: 0,
+    threadRubEach: 0,
+    shotRubM2: 0,
+    powderRubM2: 0,
+    grindRubM2: 0,
+    assemblyRubHour: 0,
+    packagingRubEach: 0,
   },
-  engineeringPctOfWorks: 5,
-  provisionalCommercialPct: 16.5,
-  setupRubPerUniquePart: 1000,
+  engineeringPctOfWorks: 0,
+  provisionalCommercialPct: 0,
+  setupRubPerUniquePart: 0,
 };
 
 export type CuttingRate = {
@@ -73,33 +77,12 @@ export type CuttingRate = {
   pierceRub: number;
 };
 
-export const PROVISIONAL_STEEL_CUTTING_RATES: CuttingRate[] = [
-  { thicknessMm: 0.8, baseRubPerM: 62.8, from100mRubPerM: 39.6, from500mRubPerM: 35.5, pierceRub: 1.4 },
-  { thicknessMm: 1, baseRubPerM: 50, from100mRubPerM: 39.6, from500mRubPerM: 35.5, pierceRub: 1.4 },
-  { thicknessMm: 1.5, baseRubPerM: 64.2, from100mRubPerM: 45.1, from500mRubPerM: 41, pierceRub: 1.4 },
-  { thicknessMm: 2, baseRubPerM: 66.9, from100mRubPerM: 51.9, from500mRubPerM: 46.5, pierceRub: 1.4 },
-  { thicknessMm: 2.5, baseRubPerM: 75.1, from100mRubPerM: 64.2, from500mRubPerM: 57.4, pierceRub: 1.4 },
-  { thicknessMm: 3, baseRubPerM: 88.8, from100mRubPerM: 73.8, from500mRubPerM: 66.9, pierceRub: 1.4 },
-  { thicknessMm: 4, baseRubPerM: 102.4, from100mRubPerM: 83.3, from500mRubPerM: 75.1, pierceRub: 2.8 },
-  { thicknessMm: 5, baseRubPerM: 122.9, from100mRubPerM: 97, from500mRubPerM: 88.8, pierceRub: 2.8 },
-  { thicknessMm: 6, baseRubPerM: 157, from100mRubPerM: 112, from500mRubPerM: 102.4, pierceRub: 2.8 },
-  { thicknessMm: 8, baseRubPerM: 218.4, from100mRubPerM: 143.4, from500mRubPerM: 129.7, pierceRub: 2.8 },
-  { thicknessMm: 10, baseRubPerM: 273, from100mRubPerM: 227.5, from500mRubPerM: 171.6, pierceRub: 6.5 },
-  { thicknessMm: 12, baseRubPerM: 338, from100mRubPerM: 260, from500mRubPerM: 214.5, pierceRub: 6.5 },
-  { thicknessMm: 14, baseRubPerM: 361.1, from100mRubPerM: 361.1, from500mRubPerM: 361.1, pierceRub: 8.6 },
-  { thicknessMm: 16, baseRubPerM: 480.5, from100mRubPerM: 480.5, from500mRubPerM: 480.5, pierceRub: 8.6 },
-  { thicknessMm: 18, baseRubPerM: 524.2, from100mRubPerM: 524.2, from500mRubPerM: 524.2, pierceRub: 12 },
-  { thicknessMm: 20, baseRubPerM: 600.6, from100mRubPerM: 600.6, from500mRubPerM: 600.6, pierceRub: 12 },
-  { thicknessMm: 25, baseRubPerM: 760.1, from100mRubPerM: 760.1, from500mRubPerM: 760.1, pierceRub: 18 },
-  { thicknessMm: 30, baseRubPerM: 912.1, from100mRubPerM: 912.1, from500mRubPerM: 912.1, pierceRub: 21.6 },
-  { thicknessMm: 40, baseRubPerM: 1216.2, from100mRubPerM: 1216.2, from500mRubPerM: 1216.2, pierceRub: 28.8 },
-];
+/** Real cutting rates are private runtime data, not repository data. */
+export const PROVISIONAL_STEEL_CUTTING_RATES: CuttingRate[] = [];
 
-export function applyMetalUplift(
-  rubPerTon: number,
-  upliftPct = PROVISIONAL_PRICING_BASIS.materialMarketUpliftPct,
-) {
+export function applyMetalUplift(rubPerTon: number, upliftPct = 0) {
   if (!Number.isFinite(rubPerTon) || rubPerTon <= 0) throw new Error("Invalid metal market price");
+  if (!Number.isFinite(upliftPct) || upliftPct < 0) throw new Error("Invalid metal uplift");
   return rubPerTon * (1 + upliftPct / 100);
 }
 
@@ -115,8 +98,8 @@ export function nearestMarketPrice(
   );
 }
 
-export function nearestCuttingRate(thicknessMm: number, rows = PROVISIONAL_STEEL_CUTTING_RATES) {
-  if (!rows.length) throw new Error("Cutting rate table is empty");
+export function nearestCuttingRate(thicknessMm: number, rows: CuttingRate[] = []) {
+  if (!rows.length) throw new Error("Protected cutting rate table is required");
   return rows.reduce((best, row) =>
     Math.abs(row.thicknessMm - thicknessMm) < Math.abs(best.thicknessMm - thicknessMm) ? row : best,
   );
@@ -146,8 +129,6 @@ export type ProvisionalPartPricingInput = {
   weldLengthM?: number;
   powderSides?: 1 | 2;
   assemblyMinutes?: number;
-  // Optional shop-specific factor on top of the resolved stock allocation.
-  // Keep 1.0 until a real rule is approved.
   materialUsageFactor?: number;
 };
 
@@ -179,24 +160,34 @@ export type ProvisionalPartPrice = {
   warnings: string[];
 };
 
+function positive(value: number, label: string) {
+  if (!Number.isFinite(value) || value <= 0) throw new Error(`Protected ${label} rate is required`);
+  return value;
+}
+
+/**
+ * Legacy arithmetic retained only for protected server-side callers and tests.
+ * No real rate is embedded here. Public code must not call this with the empty
+ * compatibility basis/table.
+ */
 export function calculateProvisionalPartPrice(
   input: ProvisionalPartPricingInput,
   basis: PricingBasis = PROVISIONAL_PRICING_BASIS,
+  cuttingRates: CuttingRate[] = PROVISIONAL_STEEL_CUTTING_RATES,
 ): ProvisionalPartPrice {
+  if (basis === PROVISIONAL_PRICING_BASIS) throw new Error("Protected pricing basis is required");
+  if (!input.marketPrice.exactThickness) throw new Error("Exact protected material price is required");
+
   const quantity = Math.max(1, Math.floor(input.quantity || 1));
   const density = basis.densityKgM3[input.materialId];
   const blank = resolveMaterialStockPlan(input.geometry);
   const netAreaMm2 = blank.netAreaMm2 ?? blank.areaMm2;
   const netAreaM2 = netAreaMm2 / 1_000_000;
   const thicknessM = input.thicknessMm / 1000;
-
-  // Net mass describes the finished part and may use the real closed-contour area.
   const netMassKg = input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0
     ? input.geometry.volumeMm3 / 1_000_000_000 * density
     : netAreaM2 * thicknessM * density;
 
-  // Purchased metal is independent from the laser toolpath.
-  // Alpha: bounding rectangle around the part. Future: actual allocated sheet area from nesting.
   const blankMassKg = blank.areaMm2 / 1_000_000 * thicknessM * density;
   const usageFactor = Math.max(1, input.materialUsageFactor ?? 1);
   const purchasedMassKg = blankMassKg * usageFactor;
@@ -206,44 +197,48 @@ export function calculateProvisionalPartPrice(
   const materialPricedRubPerTon = applyMetalUplift(supplierTier.rubPerTon, basis.materialMarketUpliftPct);
   const materialRubEach = purchasedMassKg * materialPricedRubPerTon / 1000;
 
-  // Laser is always tied to the actual toolpath: contour length + pierces.
-  const cut = nearestCuttingRate(input.thicknessMm);
   const cutLengthM = Math.max(0, (input.geometry.cutLengthMm ?? 0) / 1000);
   const totalBatchCutM = cutLengthM * quantity;
-  const laserRubPerM = cuttingRubPerM(cut, totalBatchCutM);
   const pierces = Math.max(0, input.geometry.pierceCount ?? input.geometry.contourCount ?? 0);
-  const laserRubEach = input.operations.includes("laser-cutting")
-    ? cutLengthM * laserRubPerM + pierces * cut.pierceRub
-    : 0;
+  let laserRubPerM = 0;
+  let laserRubEach = 0;
+  if (input.operations.includes("laser-cutting")) {
+    const cut = nearestCuttingRate(input.thicknessMm, cuttingRates);
+    laserRubPerM = positive(cuttingRubPerM(cut, totalBatchCutM), "laser");
+    laserRubEach = cutLengthM * laserRubPerM + pierces * Math.max(0, cut.pierceRub);
+  }
 
   let operationsRubEach = 0;
   const r = basis.operationRates;
-  if (input.operations.includes("bending")) operationsRubEach += Math.max(0, input.bendCount ?? input.geometry.bendCount ?? 0) * r.bendRubEach;
-  if (input.operations.includes("welding")) operationsRubEach += Math.max(0, input.weldLengthM ?? 0) * r.weldRubM;
-  if (input.operations.includes("powder-coating")) operationsRubEach += netAreaM2 * (input.powderSides ?? 2) * r.powderRubM2;
-  if (input.operations.includes("assembly")) operationsRubEach += Math.max(0, input.assemblyMinutes ?? 0) / 60 * r.assemblyRubHour;
-  if (input.operations.includes("packaging")) operationsRubEach += r.packagingRubEach;
+  if (input.operations.includes("bending")) {
+    operationsRubEach += Math.max(0, input.bendCount ?? input.geometry.bendCount ?? 0) * positive(r.bendRubEach, "bending");
+  }
+  if (input.operations.includes("welding")) {
+    if (!(input.weldLengthM && input.weldLengthM > 0)) throw new Error("Actual weld length is required");
+    operationsRubEach += input.weldLengthM * positive(r.weldRubM, "welding");
+  }
+  if (input.operations.includes("powder-coating")) {
+    if (!input.powderSides) throw new Error("Explicit powder coating sides are required");
+    operationsRubEach += netAreaM2 * input.powderSides * positive(r.powderRubM2, "powder coating");
+  }
+  if (input.operations.includes("assembly")) {
+    if (!(input.assemblyMinutes && input.assemblyMinutes > 0)) throw new Error("Actual assembly minutes are required");
+    operationsRubEach += input.assemblyMinutes / 60 * positive(r.assemblyRubHour, "assembly");
+  }
+  if (input.operations.includes("packaging")) operationsRubEach += positive(r.packagingRubEach, "packaging");
 
   const worksRubEach = laserRubEach + operationsRubEach;
-  const engineeringRubEach = worksRubEach * basis.engineeringPctOfWorks / 100;
-  const setupRubBatch = basis.setupRubPerUniquePart;
+  const engineeringRubEach = worksRubEach * Math.max(0, basis.engineeringPctOfWorks) / 100;
+  const setupRubBatch = Math.max(0, basis.setupRubPerUniquePart);
   const setupRubEach = setupRubBatch / quantity;
   const internalSubtotalRubEach = materialRubEach + worksRubEach + engineeringRubEach + setupRubEach;
-  const provisionalCommercialRubEach = internalSubtotalRubEach * basis.provisionalCommercialPct / 100;
+  const provisionalCommercialRubEach = internalSubtotalRubEach * Math.max(0, basis.provisionalCommercialPct) / 100;
   const unitRub = internalSubtotalRubEach + provisionalCommercialRubEach;
 
   const warnings: string[] = [];
-  if (!input.marketPrice.exactThickness) warnings.push("Цена металла выбрана по ближайшей толщине прайса.");
-  if (blank.strategy === "bounding-rectangle") {
-    warnings.push("Металл рассчитан по прямоугольной заготовке X×Y вокруг детали; листовой nesting позже уточнит распределение обрези по партии.");
-  } else {
-    warnings.push("Металл рассчитан по площади листа, выделенной этой позиции результатом nesting.");
-  }
-  if (blank.netAreaMm2 == null && !(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
-    warnings.push("Чистая площадь детали не подтверждена; нетто-масса временно равна массе расчётной заготовки.");
-  }
-  if (usageFactor > 1) warnings.push(`К расчётной площади металла дополнительно применён коэффициент расхода ${usageFactor.toFixed(3)}.`);
-  if (input.operations.includes("welding") && !(input.weldLengthM && input.weldLengthM > 0)) warnings.push("Сварка включена, но длина шва не определена.");
+  if (blank.strategy === "bounding-rectangle") warnings.push("Расход металла пока основан на прямоугольной заготовке; nesting может уточнить его.");
+  if (blank.netAreaMm2 == null && !(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) warnings.push("Чистая площадь детали не подтверждена.");
+  if (usageFactor > 1) warnings.push("Применён утверждённый внутренний коэффициент расхода металла.");
 
   return {
     materialMarketRubPerTon: supplierTier.rubPerTon,
