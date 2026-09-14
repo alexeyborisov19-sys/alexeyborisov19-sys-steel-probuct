@@ -35,6 +35,8 @@ export type ProjectFactualCalculationResult = {
   commercialPriceReady: false;
 };
 
+export type ProjectDxfEvidence = Record<string, Pick<ParsedDxf, "unsupportedEntities">>;
+
 function materialIdOf(value: string | null): MaterialId | null {
   if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
   return null;
@@ -48,7 +50,7 @@ function materialIdOf(value: string | null): MaterialId | null {
  */
 export function calculateProjectFactualCost(
   project: InstantQuoteProject,
-  parsedByPartId: Record<string, ParsedDxf>,
+  parsedByPartId: ProjectDxfEvidence,
   snapshots: StoredPriceSnapshot[],
   rateBook: FactualRateBook,
   factualInputsByPartId: Record<string, PartFactualInputs> = {},
