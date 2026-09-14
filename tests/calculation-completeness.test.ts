@@ -34,6 +34,8 @@ function factual(overrides: Partial<FactualCalculationResult> = {}): FactualCalc
       bendCountEach: null,
       weldLengthMEach: null,
       powderAreaM2Each: null,
+      assemblyMinutesEach: null,
+      surfacePreparationAreaM2Each: null,
     },
     lines: [
       {
@@ -102,6 +104,9 @@ const parameters: ProductionParameterSummary = {
   bending: { bendCountEach: null, bendCountBatch: null },
   welding: { weldLengthMEach: null, weldLengthMBatch: null },
   coating: { powderSides: null, powderAreaM2Each: null, powderAreaM2Batch: null },
+  assembly: { minutesEach: null, minutesBatch: null, hoursBatch: null },
+  surfacePreparation: { areaM2Each: null, areaM2Batch: null },
+  packaging: { selected: false, unitsBatch: null },
   issues: [],
 };
 
