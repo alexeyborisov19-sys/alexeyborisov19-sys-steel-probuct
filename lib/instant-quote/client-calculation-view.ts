@@ -37,10 +37,14 @@ export type ClientProjectCalculationView = {
   paymentEnabled: false;
 };
 
+function rub(value: number) {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(value);
+}
+
 /**
  * The only DTO allowed to cross from calculation infrastructure to a public
  * client. It is intentionally constructed from customer-owned configuration,
- * CAD bounding dimensions and a coarse status signal only.
+ * CAD bounding dimensions, a coarse status signal and an approved sale total.
  *
  * Never add supplier prices, production rates, direct cost, toolpath lengths,
  * pierces, mass, stock allocation, waste, machine rules, detailed DFM reasons
@@ -62,6 +66,9 @@ export function createClientCalculationView(
       const approvedSalePrice = signal?.approvedSalePriceRub;
       const hasApprovedSalePrice = Number.isFinite(approvedSalePrice) && (approvedSalePrice ?? 0) > 0;
       const status = signal?.status ?? "pending";
+      const price = hasApprovedSalePrice
+        ? { status: "approved" as const, totalRub: approvedSalePrice! }
+        : { status: "not-published" as const };
 
       return {
         partId: part.id,
@@ -79,16 +86,16 @@ export function createClientCalculationView(
           heightMm: part.geometry?.heightMm ?? null,
           depthMm: part.geometry?.depthMm ?? null,
         },
-        price: hasApprovedSalePrice
-          ? { status: "approved", totalRub: approvedSalePrice! }
-          : { status: "not-published" },
-        message: status === "blocked"
-          ? "Для этой детали требуется уточнение перед расчётом."
-          : status === "needs-review"
-            ? "Деталь проходит внутреннюю технологическую проверку."
-            : status === "ready"
-              ? "Внутренний расчёт завершён."
-              : "Деталь принята в расчёт.",
+        price,
+        message: hasApprovedSalePrice
+          ? `Расчёт завершён. Стоимость позиции: ${rub(approvedSalePrice!)} ₽.`
+          : status === "blocked"
+            ? "Для этой детали требуется уточнение перед расчётом."
+            : status === "needs-review"
+              ? "Модель распознана, но для итоговой цены требуется уточнение производственных данных."
+              : status === "ready"
+                ? "Расчёт завершён."
+                : "Деталь принята в расчёт.",
       };
     }),
   };
