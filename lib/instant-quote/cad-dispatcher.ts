@@ -1,4 +1,5 @@
-import type { CadFormat, NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import type { CadFormat } from "@/lib/instant-quote/domain";
 import { dxfCadAdapter } from "@/lib/instant-quote/dxf-adapter";
 import { occtStepKernel } from "@/lib/instant-quote/occt-step-kernel";
 import { createStepCadAdapter } from "@/lib/instant-quote/step-adapter";
