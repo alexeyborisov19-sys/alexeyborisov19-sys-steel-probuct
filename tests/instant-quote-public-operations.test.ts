@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const workspace = readFileSync(new URL("../components/ManufacturingWorkspace.tsx", import.meta.url), "utf8");
+const workspace = readFileSync(new URL("../components/ClientManufacturingWorkspace.tsx", import.meta.url), "utf8");
 
 test("public online-order configurator exposes only verified operation claims", () => {
   assert.doesNotMatch(workspace, /id:\s*"threading"/);
