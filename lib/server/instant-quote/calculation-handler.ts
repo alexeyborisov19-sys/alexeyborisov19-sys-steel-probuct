@@ -22,20 +22,32 @@ import {
   type UploadInspection,
   type QuarantinedUpload,
 } from "@/lib/security/uploads";
-import { runConfidentialCalculationForClient } from "@/lib/server/instant-quote/run-confidential-calculation";
 
 const ROUTE = "online-calculation";
+
+type RunCalculation = (
+  project: InstantQuoteProject,
+  parsedByPartId: Record<string, ParsedDxf>,
+  inputs?: { internalNotes?: string[] },
+  now?: Date,
+) => Promise<ClientProjectCalculationView>;
 
 export type OnlineCalculationHandlerDependencies = {
   inspectUploads: typeof inspectUploads;
   quarantineUploads: typeof quarantineUploads;
-  runCalculation: typeof runConfidentialCalculationForClient;
+  runCalculation: RunCalculation;
 };
 
 const defaults: OnlineCalculationHandlerDependencies = {
   inspectUploads,
   quarantineUploads,
-  runCalculation: runConfidentialCalculationForClient,
+  runCalculation: async (...args) => {
+    // Keep the confidential boundary out of the public handler's eager module
+    // graph. Production requests load it on demand; unit tests can inject a
+    // safe calculation stub without resolving private server-only modules.
+    const { runConfidentialCalculationForClient } = await import("@/lib/server/instant-quote/run-confidential-calculation");
+    return runConfidentialCalculationForClient(...args);
+  },
 };
 
 function response(status: number, requestId: string, body: Record<string, unknown>) {
@@ -128,12 +140,7 @@ function storageNotes(requestId: string, stored: QuarantinedUpload[]) {
  * Secure public calculation endpoint handler. All authoritative production
  * geometry is derived from the uploaded CAD on the server. The only successful
  * response payload is ClientProjectCalculationView; the confidential report is
- * persisted internally by runConfidentialCalculationForClient.
- *
- * This module deliberately has no `server-only` package marker so it can be
- * imported directly by Node unit tests. It remains server-side by architecture:
- * the public API route imports it, and every confidential dependency it reaches
- * keeps its own server-only boundary.
+ * persisted internally by the lazily loaded confidential calculation boundary.
  */
 export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculationHandlerDependencies> = {}) {
   const dependencies = { ...defaults, ...overrides };
@@ -169,9 +176,6 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       const inspections = await dependencies.inspectUploads(files);
       const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
 
-      // Restrict the first authoritative server calculation route to formats in
-      // the public workspace. STEP/STP/DWG are quarantined and reported as
-      // needing internal review until a server-side CAD worker is authoritative.
       for (const item of manifest.parts) {
         const format = normalizeCadFormat(inspections[item.fileIndex].safeName);
         if (!format) throw new CalculationManifestError("Неподдерживаемый формат CAD.");
@@ -185,7 +189,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
 
       const now = new Date();
       const { project, parsedByPartId } = await buildAuthoritativeProject(manifestRaw, inspections, now);
-      const clientView: ClientProjectCalculationView = await dependencies.runCalculation(
+      const clientView = await dependencies.runCalculation(
         project,
         parsedByPartId,
         { internalNotes: storageNotes(requestId, quarantined) },
