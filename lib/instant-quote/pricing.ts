@@ -1,5 +1,5 @@
 import type { ManufacturingOperation, PartGeometrySummary } from "@/lib/instant-quote/domain";
-import { calculateBoundingRectangleBlank } from "@/lib/instant-quote/blanking";
+import { resolveMaterialStockPlan, type BlankStrategy } from "@/lib/instant-quote/blanking";
 
 export type MaterialId = "cold" | "hot" | "zinc" | "inox" | "alu" | "copper" | "brass";
 
@@ -146,8 +146,8 @@ export type ProvisionalPartPricingInput = {
   weldLengthM?: number;
   powderSides?: 1 | 2;
   assemblyMinutes?: number;
-  // Reserved for a future shop-specific allowance around the blank.
-  // 1.0 means current rule: metal = exact X×Y rectangular blank around the part.
+  // Optional shop-specific factor on top of the resolved stock allocation.
+  // Keep 1.0 until a real rule is approved.
   materialUsageFactor?: number;
 };
 
@@ -155,6 +155,7 @@ export type ProvisionalPartPrice = {
   materialMarketRubPerTon: number;
   materialMarketTier: "under-3t" | "from-3t";
   materialPricedRubPerTon: number;
+  materialAllocationStrategy: BlankStrategy;
   netAreaMm2: number;
   blankWidthMm: number;
   blankHeightMm: number;
@@ -184,7 +185,7 @@ export function calculateProvisionalPartPrice(
 ): ProvisionalPartPrice {
   const quantity = Math.max(1, Math.floor(input.quantity || 1));
   const density = basis.densityKgM3[input.materialId];
-  const blank = calculateBoundingRectangleBlank(input.geometry);
+  const blank = resolveMaterialStockPlan(input.geometry);
   const netAreaMm2 = blank.netAreaMm2 ?? blank.areaMm2;
   const netAreaM2 = netAreaMm2 / 1_000_000;
   const thicknessM = input.thicknessMm / 1000;
@@ -194,8 +195,8 @@ export function calculateProvisionalPartPrice(
     ? input.geometry.volumeMm3 / 1_000_000_000 * density
     : netAreaM2 * thicknessM * density;
 
-  // Purchased metal is deliberately NOT based on the net contour area.
-  // Until true sheet nesting is connected, Steel Product prices the rectangular X×Y blank around the part.
+  // Purchased metal is independent from the laser toolpath.
+  // Alpha: bounding rectangle around the part. Future: actual allocated sheet area from nesting.
   const blankMassKg = blank.areaMm2 / 1_000_000 * thicknessM * density;
   const usageFactor = Math.max(1, input.materialUsageFactor ?? 1);
   const purchasedMassKg = blankMassKg * usageFactor;
@@ -205,7 +206,7 @@ export function calculateProvisionalPartPrice(
   const materialPricedRubPerTon = applyMetalUplift(supplierTier.rubPerTon, basis.materialMarketUpliftPct);
   const materialRubEach = purchasedMassKg * materialPricedRubPerTon / 1000;
 
-  // Laser remains tied to real toolpath: actual contour length + actual pierces.
+  // Laser is always tied to the actual toolpath: contour length + pierces.
   const cut = nearestCuttingRate(input.thicknessMm);
   const cutLengthM = Math.max(0, (input.geometry.cutLengthMm ?? 0) / 1000);
   const totalBatchCutM = cutLengthM * quantity;
@@ -233,17 +234,22 @@ export function calculateProvisionalPartPrice(
 
   const warnings: string[] = [];
   if (!input.marketPrice.exactThickness) warnings.push("Цена металла выбрана по ближайшей толщине прайса.");
-  warnings.push("Металл рассчитан по прямоугольной заготовке X×Y вокруг детали; настоящий листовой nesting позже уточнит распределение обрези по партии.");
-  if (blank.netAreaMm2 == null && !(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
-    warnings.push("Чистая площадь детали не подтверждена; нетто-масса временно равна массе габаритной заготовки.");
+  if (blank.strategy === "bounding-rectangle") {
+    warnings.push("Металл рассчитан по прямоугольной заготовке X×Y вокруг детали; листовой nesting позже уточнит распределение обрези по партии.");
+  } else {
+    warnings.push("Металл рассчитан по площади листа, выделенной этой позиции результатом nesting.");
   }
-  if (usageFactor > 1) warnings.push(`К прямоугольной заготовке дополнительно применён коэффициент расхода ${usageFactor.toFixed(3)}.`);
+  if (blank.netAreaMm2 == null && !(input.geometry.volumeMm3 && input.geometry.volumeMm3 > 0)) {
+    warnings.push("Чистая площадь детали не подтверждена; нетто-масса временно равна массе расчётной заготовки.");
+  }
+  if (usageFactor > 1) warnings.push(`К расчётной площади металла дополнительно применён коэффициент расхода ${usageFactor.toFixed(3)}.`);
   if (input.operations.includes("welding") && !(input.weldLengthM && input.weldLengthM > 0)) warnings.push("Сварка включена, но длина шва не определена.");
 
   return {
     materialMarketRubPerTon: supplierTier.rubPerTon,
     materialMarketTier: supplierTier.tier,
     materialPricedRubPerTon,
+    materialAllocationStrategy: blank.strategy,
     netAreaMm2,
     blankWidthMm: blank.widthMm,
     blankHeightMm: blank.heightMm,
