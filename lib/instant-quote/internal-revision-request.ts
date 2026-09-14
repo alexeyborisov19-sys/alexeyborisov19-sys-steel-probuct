@@ -3,6 +3,8 @@ export type InternalPartRevisionRequest = {
   weldLengthM?: number | null;
   powderAreaM2?: number | null;
   powderSides?: 1 | 2 | null;
+  assemblyMinutes?: number | null;
+  surfacePreparationAreaM2?: number | null;
 };
 
 export type InternalCalculationRevisionRequest = {
@@ -55,6 +57,12 @@ export function parseInternalCalculationRevisionRequest(value: unknown): Interna
     const bendCount = optionalNumber(patch.bendCount, `${id}.bendCount`, { min: 0, max: 10000, integer: true });
     const weldLengthM = optionalNumber(patch.weldLengthM, `${id}.weldLengthM`, { min: 0.001, max: 100000 });
     const powderAreaM2 = optionalNumber(patch.powderAreaM2, `${id}.powderAreaM2`, { min: 0.000001, max: 1_000_000 });
+    const assemblyMinutes = optionalNumber(patch.assemblyMinutes, `${id}.assemblyMinutes`, { min: 0.001, max: 1_000_000 });
+    const surfacePreparationAreaM2 = optionalNumber(
+      patch.surfacePreparationAreaM2,
+      `${id}.surfacePreparationAreaM2`,
+      { min: 0.000001, max: 1_000_000 },
+    );
 
     let powderSides: 1 | 2 | null | undefined;
     if (patch.powderSides === undefined) powderSides = undefined;
@@ -70,6 +78,8 @@ export function parseInternalCalculationRevisionRequest(value: unknown): Interna
     if (weldLengthM !== undefined) clean.weldLengthM = weldLengthM;
     if (powderAreaM2 !== undefined) clean.powderAreaM2 = powderAreaM2;
     if (powderSides !== undefined) clean.powderSides = powderSides;
+    if (assemblyMinutes !== undefined) clean.assemblyMinutes = assemblyMinutes;
+    if (surfacePreparationAreaM2 !== undefined) clean.surfacePreparationAreaM2 = surfacePreparationAreaM2;
     if (Object.keys(clean).length === 0) throw new Error(`No revision values supplied for ${id}`);
     parts[id] = clean;
   }
