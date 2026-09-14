@@ -2,7 +2,10 @@ import { NextRequest } from "next/server";
 import { summarizeProjectCalculationCompleteness } from "@/lib/instant-quote/calculation-completeness";
 import { parseInternalCalculationRevisionRequest } from "@/lib/instant-quote/internal-revision-request";
 import { pdStage4Mutation } from "@/lib/pd-admin/http/stage4-route";
-import { recalculateInternalProductionReport } from "@/lib/server/instant-quote/recalculate-production-report";
+import {
+  recalculateInternalProductionReport,
+  type PartFactualRevisionPatch,
+} from "@/lib/server/instant-quote/recalculate-production-report";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,14 +16,16 @@ export async function POST(request: NextRequest, { params }: Params) {
   const { fileName } = await params;
   return pdStage4Mutation(request, "VIEW_DASHBOARD", async (context, body) => {
     const parsed = parseInternalCalculationRevisionRequest(body);
-    const factualByPartId: Record<string, { bendCount?: number | null; weldLengthM?: number | null; powderAreaM2?: number | null }> = {};
+    const factualByPartId: Record<string, PartFactualRevisionPatch> = {};
     const powderSidesByPartId: Record<string, 1 | 2 | null> = {};
 
     for (const [partId, patch] of Object.entries(parsed.parts)) {
-      const factual: { bendCount?: number | null; weldLengthM?: number | null; powderAreaM2?: number | null } = {};
+      const factual: PartFactualRevisionPatch = {};
       if (Object.prototype.hasOwnProperty.call(patch, "bendCount")) factual.bendCount = patch.bendCount;
       if (Object.prototype.hasOwnProperty.call(patch, "weldLengthM")) factual.weldLengthM = patch.weldLengthM;
       if (Object.prototype.hasOwnProperty.call(patch, "powderAreaM2")) factual.powderAreaM2 = patch.powderAreaM2;
+      if (Object.prototype.hasOwnProperty.call(patch, "assemblyMinutes")) factual.assemblyMinutes = patch.assemblyMinutes;
+      if (Object.prototype.hasOwnProperty.call(patch, "surfacePreparationAreaM2")) factual.surfacePreparationAreaM2 = patch.surfacePreparationAreaM2;
       if (Object.keys(factual).length) factualByPartId[partId] = factual;
       if (Object.prototype.hasOwnProperty.call(patch, "powderSides")) powderSidesByPartId[partId] = patch.powderSides ?? null;
     }
