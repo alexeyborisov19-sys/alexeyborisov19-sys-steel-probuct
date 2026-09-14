@@ -4,6 +4,7 @@ import {
   type CylinderFaceObservation,
   type PlaneFaceObservation,
   type SheetMetalAnalysis,
+  type Vector3,
 } from "@/lib/instant-quote/sheet-metal";
 import type { StepKernelPort, StepKernelResult } from "@/lib/instant-quote/step-adapter";
 
@@ -14,6 +15,43 @@ const HASH_UPPER_BOUND = 0x7fffffff;
 
 function finiteVec3(vector: { x: number; y: number; z: number }) {
   return Number.isFinite(vector.x) && Number.isFinite(vector.y) && Number.isFinite(vector.z);
+}
+
+function normalizeVector(vector: Vector3): Vector3 | null {
+  const magnitude = Math.hypot(vector[0], vector[1], vector[2]);
+  if (!(magnitude > 1e-9) || !Number.isFinite(magnitude)) return null;
+  return [vector[0] / magnitude, vector[1] / magnitude, vector[2] / magnitude];
+}
+
+function deriveCylinderAxis(
+  kernel: OcctKernelInstance,
+  face: OcctShapeHandle,
+  bounds: { uMin: number; uMax: number; vMin: number; vMax: number },
+  radiusMm: number,
+) {
+  const uMid = (bounds.uMin + bounds.uMax) / 2;
+  const vMid = (bounds.vMin + bounds.vMax) / 2;
+  const vSpan = Math.abs(bounds.vMax - bounds.vMin);
+  if (!(vSpan > 1e-8)) return null;
+
+  const point = kernel.pointOnSurface(face, uMid, vMid);
+  const normal = kernel.surfaceNormal(face, uMid, vMid);
+  const lower = kernel.pointOnSurface(face, uMid, vMid - vSpan * 0.25);
+  const upper = kernel.pointOnSurface(face, uMid, vMid + vSpan * 0.25);
+  if (![point, normal, lower, upper].every(finiteVec3)) return null;
+
+  const radial = normalizeVector([normal.x, normal.y, normal.z]);
+  const axis = normalizeVector([upper.x - lower.x, upper.y - lower.y, upper.z - lower.z]);
+  if (!radial || !axis) return null;
+
+  return {
+    axis,
+    originMm: [
+      point.x - radial[0] * radiusMm,
+      point.y - radial[1] * radiusMm,
+      point.z - radial[2] * radiusMm,
+    ] as Vector3,
+  };
 }
 
 function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeHandle): SheetMetalAnalysis {
@@ -69,20 +107,14 @@ function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeH
         const cylinder = kernel.getFaceCylinderData(face);
         const bounds = kernel.uvBounds(face);
         const angleSpanRad = Math.abs(bounds.uMax - bounds.uMin);
-        if (
-          cylinder &&
-          Number.isFinite(cylinder.radius) &&
-          cylinder.radius > 0 &&
-          cylinder.origin.every(Number.isFinite) &&
-          cylinder.direction.every(Number.isFinite) &&
-          Number.isFinite(angleSpanRad)
-        ) {
+        if (cylinder && Number.isFinite(cylinder.radius) && cylinder.radius > 0 && Number.isFinite(angleSpanRad)) {
+          const axisData = deriveCylinderAxis(kernel, face, bounds, cylinder.radius);
           cylindricalFaces.push({
             id: faceId,
             areaMm2,
             radiusMm: cylinder.radius,
-            originMm: [cylinder.origin[0], cylinder.origin[1], cylinder.origin[2]],
-            axis: [cylinder.direction[0], cylinder.direction[1], cylinder.direction[2]],
+            originMm: axisData?.originMm,
+            axis: axisData?.axis,
             angleSpanRad,
             edgeHashes,
           });
