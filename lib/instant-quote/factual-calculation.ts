@@ -9,6 +9,28 @@ export type FactualRateSource = {
   note: string;
 };
 
+export type FactualRate = {
+  rateRub: number;
+  source: FactualRateSource;
+};
+
+export type LaserFactualRate = FactualRate & {
+  materialId: MaterialId;
+  thicknessMm: number;
+};
+
+/**
+ * Runtime-only rate book. Real values must be loaded from a protected server
+ * source and must never be committed to the public repository or sent to a
+ * client bundle/API response.
+ */
+export type FactualRateBook = {
+  laserRubPerM: LaserFactualRate[];
+  bendRubEach: FactualRate | null;
+  weldRubPerM: FactualRate | null;
+  powderRubPerM2: FactualRate | null;
+};
+
 export type FactualCalculationLineCode =
   | "material"
   | "laser-cutting"
@@ -55,6 +77,7 @@ export type FactualCalculationInput = {
   materialPriceSourceId?: string | null;
   materialPriceStale?: boolean;
   operations: ManufacturingOperation[];
+  rateBook: FactualRateBook;
   bendCount?: number;
   weldLengthM?: number;
   powderAreaM2?: number;
@@ -87,13 +110,6 @@ export type FactualCalculationResult = {
   commercialPriceReady: false;
 };
 
-const PRICING_BASIS_SOURCE: FactualRateSource = {
-  id: "steelprodukt-pricing-basis-2026-09-13",
-  label: "SteelProdukt Pricing Basis 2026-09-13",
-  confirmedAt: "2026-09-13",
-  note: "Подтверждённая внутренняя база ставок; без автоматической наценки, overhead и setup.",
-};
-
 const MATERIAL_DENSITY_KG_M3: Record<MaterialId, number> = {
   cold: 7800,
   hot: 7800,
@@ -103,19 +119,6 @@ const MATERIAL_DENSITY_KG_M3: Record<MaterialId, number> = {
   copper: 8900,
   brass: 8500,
 };
-
-const CONFIRMED_BEND_RUB_EACH = 25;
-const CONFIRMED_WELD_RUB_M = 1800;
-const CONFIRMED_POWDER_RUB_M2 = 450;
-
-/**
- * Only the currently confirmed 1.0 mm carbon-steel laser rate is authoritative.
- * Legacy Alpha tables remain outside this engine until each row is approved.
- */
-function confirmedLaserRubPerM(materialId: MaterialId, thicknessMm: number) {
-  if ((materialId === "cold" || materialId === "hot") && Math.abs(thicknessMm - 1) < 0.01) return 50;
-  return null;
-}
 
 function positiveFinite(value: number | undefined): value is number {
   return value !== undefined && Number.isFinite(value) && value > 0;
@@ -127,6 +130,12 @@ function nonNegativeFinite(value: number | undefined): value is number {
 
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function exactLaserRate(rateBook: FactualRateBook, materialId: MaterialId, thicknessMm: number) {
+  return rateBook.laserRubPerM.find(
+    (row) => row.materialId === materialId && Math.abs(row.thicknessMm - thicknessMm) < 0.01,
+  ) ?? null;
 }
 
 function addLine(
@@ -147,13 +156,12 @@ function addLine(
 }
 
 /**
- * Calculates only cost articles for which both the physical parameter and the
- * production rate are confirmed. Unknown rates/inputs are returned explicitly
- * in `missing`; they are never replaced with Alpha defaults or hidden markups.
+ * Internal factual engine. It returns direct-cost details and production
+ * parameters intended only for protected server-side reporting.
  *
- * This is a direct production-cost subtotal, not a sale price. Commercial
- * markup, overhead, engineering percentage, setup fees and payment logic are
- * intentionally outside this engine until separately approved.
+ * Unknown rates/inputs are explicit in `missing`; the engine never imports a
+ * public fallback tariff, nearest thickness, hidden markup, overhead, setup or
+ * commercial uplift.
  */
 export function calculateFactualProductionCost(input: FactualCalculationInput): FactualCalculationResult {
   const quantity = Math.max(1, Math.floor(Number.isFinite(input.quantity) ? input.quantity : 1));
@@ -210,7 +218,7 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
           id: input.materialPriceSourceId ?? input.marketPrice.source,
           label: input.marketPrice.source,
           confirmedAt: input.marketPrice.sourceDate,
-          note: `Официальный прайс поставщика, ${input.marketPrice.thicknessMm} мм. Без автоматической 5% надбавки.`,
+          note: `Закрытый прайс поставщика, ${input.marketPrice.thicknessMm} мм.`,
         },
       });
     } else {
@@ -221,12 +229,12 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
   const cutLengthMmEach = Math.max(0, input.geometry.cutLengthMm ?? 0);
   const pierceCountEach = Math.max(0, input.geometry.pierceCount ?? input.geometry.contourCount ?? 0);
   if (input.operations.includes("laser-cutting")) {
-    const laserRate = confirmedLaserRubPerM(input.materialId, input.thicknessMm);
-    if (laserRate == null) {
+    const laserRate = exactLaserRate(input.rateBook, input.materialId, input.thicknessMm);
+    if (!laserRate || !positiveFinite(laserRate.rateRub)) {
       missing.push({
         code: "laser-rate",
         label: "Лазерная резка",
-        reason: `Для ${input.materialId}, ${input.thicknessMm} мм пока нет утверждённой ставки в фактическом контуре.`,
+        reason: `Для ${input.materialId}, ${input.thicknessMm} мм нет утверждённой закрытой ставки.`,
         blocking: false,
       });
     } else if (cutLengthMmEach <= 0) {
@@ -237,9 +245,9 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
         label: "Лазерная резка",
         quantity: cutLengthMmEach / 1000,
         unit: "м/шт",
-        rateRub: laserRate,
+        rateRub: laserRate.rateRub,
         quantityBatch: quantity,
-        source: PRICING_BASIS_SOURCE,
+        source: laserRate.source,
       });
     }
     if (pierceCountEach > 0) {
@@ -260,15 +268,17 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
   if (input.operations.includes("bending")) {
     if (bendCountEach == null) {
       missing.push({ code: "bend-count", label: "Гибка", reason: "Количество гибов не подтверждено геометрией или технологом.", blocking: false });
+    } else if (!input.rateBook.bendRubEach || !positiveFinite(input.rateBook.bendRubEach.rateRub)) {
+      missing.push({ code: "operation-rate", label: "Гибка", reason: "Нет утверждённой закрытой ставки гибки.", blocking: false });
     } else {
       addLine(lines, {
         code: "bending",
         label: "Гибка",
         quantity: bendCountEach,
         unit: "гиб/шт",
-        rateRub: CONFIRMED_BEND_RUB_EACH,
+        rateRub: input.rateBook.bendRubEach.rateRub,
         quantityBatch: quantity,
-        source: PRICING_BASIS_SOURCE,
+        source: input.rateBook.bendRubEach.source,
       });
     }
   }
@@ -277,15 +287,17 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
   if (input.operations.includes("welding")) {
     if (weldLengthMEach == null) {
       missing.push({ code: "weld-length", label: "Сварка", reason: "Нужна фактическая длина сварного шва на деталь.", blocking: false });
+    } else if (!input.rateBook.weldRubPerM || !positiveFinite(input.rateBook.weldRubPerM.rateRub)) {
+      missing.push({ code: "operation-rate", label: "Сварка", reason: "Нет утверждённой закрытой ставки сварки.", blocking: false });
     } else {
       addLine(lines, {
         code: "welding",
         label: "Сварка",
         quantity: weldLengthMEach,
         unit: "м/шт",
-        rateRub: CONFIRMED_WELD_RUB_M,
+        rateRub: input.rateBook.weldRubPerM.rateRub,
         quantityBatch: quantity,
-        source: PRICING_BASIS_SOURCE,
+        source: input.rateBook.weldRubPerM.source,
       });
     }
   }
@@ -299,15 +311,17 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
         reason: "Нужна фактическая окрашиваемая площадь; количество сторон автоматически не предполагаем.",
         blocking: false,
       });
+    } else if (!input.rateBook.powderRubPerM2 || !positiveFinite(input.rateBook.powderRubPerM2.rateRub)) {
+      missing.push({ code: "operation-rate", label: "Порошковая окраска", reason: "Нет утверждённой закрытой ставки окраски.", blocking: false });
     } else {
       addLine(lines, {
         code: "powder-coating",
         label: "Порошковая окраска",
         quantity: powderAreaM2Each,
         unit: "м²/шт",
-        rateRub: CONFIRMED_POWDER_RUB_M2,
+        rateRub: input.rateBook.powderRubPerM2.rateRub,
         quantityBatch: quantity,
-        source: PRICING_BASIS_SOURCE,
+        source: input.rateBook.powderRubPerM2.source,
       });
     }
   }
