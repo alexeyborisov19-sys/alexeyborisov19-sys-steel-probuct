@@ -54,6 +54,10 @@ function normalUsable(normal: Vector3) {
   return finiteVector(normal) && Math.hypot(normal[0], normal[1], normal[2]) > 1e-8;
 }
 
+function closeEnough(left: number, right: number) {
+  return Math.abs(left - right) <= Math.max(0.05, Math.max(Math.abs(left), Math.abs(right)) * 0.02);
+}
+
 /**
  * Produces the deterministic parent/child sequence required by a future 3D→2D
  * transform engine. It does not rotate panels or construct a commercial flat
@@ -211,7 +215,36 @@ export function buildBendUnfoldPlanFromModel(input: {
     };
   }
 
-  if (Math.abs(evidence.thicknessMm - confirmedThicknessMm) > Math.max(0.05, evidence.thicknessMm * 0.02)) {
+  const consistencyErrors: string[] = [];
+  if (model.format !== "step" && model.format !== "stp") {
+    consistencyErrors.push("Production unfold geometry is valid only for STEP/STP models.");
+  }
+
+  const thicknessCandidate = model.sheetMetal?.thicknessCandidate;
+  if (!thicknessCandidate || thicknessCandidate.confidence !== "medium") {
+    consistencyErrors.push("Production unfold requires a medium-confidence BRep thickness candidate from the same STEP analysis.");
+  } else if (!closeEnough(thicknessCandidate.thicknessMm, evidence.thicknessMm)) {
+    consistencyErrors.push(`BRep thickness candidate ${thicknessCandidate.thicknessMm} mm does not match unfold evidence thickness ${evidence.thicknessMm} mm.`);
+  }
+
+  const detectedBendIds = new Set(model.sheetMetal?.bendCandidates.map((bend) => bend.id) ?? []);
+  for (const bend of evidence.bends) {
+    if (!detectedBendIds.has(bend.bendId)) {
+      consistencyErrors.push(`Unfold evidence bend ${bend.bendId} is not present in the STEP BRep bend candidates.`);
+    }
+  }
+
+  if (consistencyErrors.length) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: consistencyErrors,
+    };
+  }
+
+  if (!closeEnough(evidence.thicknessMm, confirmedThicknessMm)) {
     return {
       status: "blocked",
       rootFaceId: graph.rootFaceId,
