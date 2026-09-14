@@ -42,6 +42,11 @@ async function analyzeViaWorker(request: CadAnalysisRequest): Promise<Normalized
 
   const base = assertSafeWorkerUrl(endpoint);
   const analyzeUrl = new URL("./analyze", base.toString().endsWith("/") ? base : new URL(`${base.toString()}/`));
+  const body = request.bytes.buffer.slice(
+    request.bytes.byteOffset,
+    request.bytes.byteOffset + request.bytes.byteLength,
+  ) as ArrayBuffer;
+
   const response = await fetch(analyzeUrl, {
     method: "POST",
     headers: {
@@ -51,7 +56,7 @@ async function analyzeViaWorker(request: CadAnalysisRequest): Promise<Normalized
       "x-cad-file-name": encodeURIComponent(request.fileName),
       "x-cad-contract": "steel-product-normalized-cad-v1",
     },
-    body: request.bytes,
+    body,
     cache: "no-store",
     signal: AbortSignal.timeout(CAD_WORKER_TIMEOUT_MS),
   });
