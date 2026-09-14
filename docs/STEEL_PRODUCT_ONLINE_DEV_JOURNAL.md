@@ -29,34 +29,36 @@
 
 ### Последняя полностью проверенная точка
 
-- **Last functional implementation SHA:** `f0436d73f43bd2a9d0b303aeedf26b25b7e381bf`
-- Functional commit: `Test fail-closed DXF ellipse length convergence and parameter sweep`
-- **Last GREEN verified tree HEAD:** `b984da3e54c624b5b5fca0fcf094723c495f7de6`
-- CI на `b984da3e…` полностью GREEN:
+- **Last functional implementation SHA:** `fb54a1e0d140662608a85e92b8b3bf92c898f965`
+- Functional block: strict exact-safe linear planar DXF SPLINE subset + regressions.
+- **Last GREEN verified tree HEAD:** `961c43c0bacbbb93f2e35a8fcc6641ca8aa87b72`
+- CI на `961c43c…` полностью GREEN:
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
+- SEO gate больше не зависит от доступности third-party image origin: first-party assets проверяются детерминированно, remote Next Image optimizer dependency не используется как availability oracle.
 
-### Текущий WIP — strict linear planar DXF SPLINE + CI tooling fix
+### Текущий WIP — pre-release stabilization
 
-- Autodesk DXF SPLINE contract подтверждён: flags `70`, degree `71`, knot count `72`, control-point count `73`, knots `40`, optional weights `41`, control points `10/20/30`, normal `210/220/230`.
-- `d8e9ad7b423154db609365d3800a2d988dcbf6ab`: parser поддерживает только exact-safe subset: open, non-periodic, non-rational, planar+linear flags, degree 1, control-point Z=0, normal +Z/default, корректные declared counts и open-clamped degree-1 knot vector.
-- Supported spline нормализуется в open straight polyline по control points; bounds/length/preview переиспользуют уже проверенную exact polyline логику.
-- Fit points не используются для реконструкции; nonlinear/closed/periodic/rational/3D/malformed spline не дискретизируется приблизительно.
-- Internal fail-closed codes: `SPLINE_UNSUPPORTED`, `SPLINE_NONPLANAR`, `SPLINE_INVALID`, `SPLINE_KNOTS`.
-- `fb54a1e0d140662608a85e92b8b3bf92c898f965`: regression suite: valid control polygon, unit weights, knot-count mismatch, duplicate/interior knot order, degree>1, closed/periodic/rational flags, non-unit weights, non-zero Z, non-+Z normal, malformed/mismatched control points.
-- **Current WIP functional HEAD:** `fb54a1e0d140662608a85e92b8b3bf92c898f965`.
+Цель текущего блока: не добавлять feature creep, а довести ветку до версии, готовой к проверке владельцем перед публикацией.
 
-### CI RED / fixes
+Открытый regression-only gap:
+- malformed legacy `POLYLINE/VERTEX/SEQEND` sequences: missing `SEQEND`, unexpected nested entity, invalid/missing vertex coordinates, too few valid vertices;
+- тесты должны подтверждать fail-closed и точные issue codes, не менять production geometry semantics.
+
+После этого — только предрелизные gates: confidentiality boundary, candidate-build/rollback regressions, supported/fail-closed CAD matrix, full CI и Draft PR state.
+
+### История RED / fixes текущего геометрического блока
 
 - Journal tree `eb50b7a0437e18b41e647536324639b622da8d77`:
   - `Steel Product Online Alpha CI`: полностью GREEN.
   - `Verify project package`: Lint ✅, Typecheck ✅, **557 tests ✅**, Build ✅, SEO audit ❌.
 - Первый RED не связан со SPLINE/business logic. SEO audit дважды принудительно вызывал `/_next/image` для внешних `static.mk.ru` URL; third-party origin ответил 504/non-image Content-Type.
-- `f508be1fa2791113acaa3d0bac525af513b3602f`: SEO image availability audit теперь детерминированно проверяет first-party/local source assets; локальные Next Image URL по-прежнему разворачиваются к исходному `/...`, а remote optimizer dependency не вызывается. Отдельные media-policy tests продолжают контролировать third-party media boundary/config.
+- `f508be1fa2791113acaa3d0bac525af513b3602f`: SEO image availability audit теперь детерминированно проверяет first-party/local source assets; локальные Next Image URL разворачиваются к исходному `/...`, remote optimizer dependency не вызывается.
 - `2071ce5fa61c8a21f8850dc762d4b36ec4934d5b`: добавлен regression для remote optimizer skip/local source unwrap.
-- Journal tree `e6b3e30a1d945a7fa48cde1e9ab33dbe3237b0a9`: lint/typecheck прошли, но новый regression упал на unit-test stage до build/SEO. Production SEO-audit и SPLINE при этом не менялись.
-- `eee04cb9541fdf2e54e79d230a973c43e8350d57`: **test-only fix** — regression читает `scripts/audit-seo.mjs` через `process.cwd()`/`node:path` и проверяет устойчивый контракт helper/collector без зависимости от `import.meta.url` и хрупкого regex. Production audit не изменён.
-- Новый полный CI на journal-only tree после `eee04cb9…` обязателен; SPLINE ещё не считать GREEN до обоих workflow success, включая фактический SEO audit.
+- Journal tree `e6b3e30a1d945a7fa48cde1e9ab33dbe3237b0a9`: lint/typecheck прошли, но новый regression упал на unit-test stage до build/SEO; production audit и SPLINE не менялись.
+- `eee04cb9541fdf2e54e79d230a973c43e8350d57`: test-only stabilization regression contract; production audit не изменён.
+- `0c6e10bbc996978016a0dd2e3a671cc987d29839`: дополнительный test-contract fix для фактической collector-логики `sourcePath`.
+- `961c43c0bacbbb93f2e35a8fcc6641ca8aa87b72`: оба workflow полностью GREEN, включая фактический SEO audit. SPLINE block закрыт.
 
 ---
 
@@ -121,6 +123,8 @@
 - exact polyline bulge bbox/length + curved preview;
 - safe ELLIPSE full/partial geometry with analytic bounds and controlled length;
 - exact full-ellipse area/containment/hole topology;
+- strict open non-periodic non-rational planar+linear degree-1 SPLINE subset normalized to exact straight polyline;
+- malformed/nonlinear/closed/periodic/rational/3D SPLINE остаётся fail-closed;
 - bulged closed area/pierce остаётся fail-closed;
 - 3D/polyface/mesh legacy POLYLINE остаётся fail-closed.
 
@@ -128,31 +132,28 @@
 
 ## 4. IN PROGRESS
 
-### SPLINE — strict exact linear planar subset
+### Pre-release stabilization
 
-Scope реализован и покрыт тестами, но block ещё не DONE до полного CI после SEO tooling fix.
+Никаких новых рискованных geometry features до test-ready checkpoint.
 
-Поддерживается только:
-- flags planar + linear;
-- degree = 1;
-- open, non-periodic, non-rational;
-- control-point Z = 0; normal +Z/default;
-- finite counts/coordinates/knots;
-- `knotCount = controlCount + 2`;
-- first/last double knots и строго возрастающие interior domain knots;
-- отсутствующие weights либо все weights = 1.
-
-Все остальные SPLINE варианты fail-closed и не превращаются в sampling-based production contour.
+Проверить и закрыть:
+- malformed legacy POLYLINE regression-only matrix;
+- client confidentiality boundary на `/online-order` и public calculation DTO;
+- candidate-build/rollback gate;
+- supported/fail-closed CAD matrix;
+- полный lint/typecheck/tests/build/SEO на финальном stabilization HEAD;
+- Draft PR #90 остаётся open + draft + unmerged.
 
 ---
 
 ## 5. NEXT ACTION
 
-1. Полный CI на journal-only tree после `eee04cb9…` и этой journal записи.
-2. Если RED — получить конкретный job/step и исправить только фактический failure; записать RED/fix.
-3. Если GREEN — `fb54a1e0…` становится новым functional checkpoint; exact journal tree становится новым GREEN verified tree; SPLINE переносится в DONE.
-4. После GREEN перейти не к feature creep, а к pre-release stabilization для версии проверки перед публикацией: confidentiality boundary, candidate-build regressions, supported/fail-closed CAD matrix, full build/SEO и Draft PR state.
-5. Regression-only malformed legacy POLYLINE hardening выполнять только если он остаётся реально незакрытым и не требует нового рискованного geometry layer.
+1. Добавить regression-only tests для malformed legacy POLYLINE: missing `SEQEND`, unexpected entity, invalid/missing X/Y vertex, too few valid vertices; использовать отдельный valid LINE, чтобы inspect `unsupportedEntities`, а не получать generic no-shapes throw.
+2. Не менять parser, если существующая fail-closed логика уже проходит эти regressions; production code менять только при фактическом тестовом доказательстве дефекта.
+3. Записать WIP и прогнать полный CI.
+4. После GREEN пройти pre-release stabilization checklist: confidentiality, candidate build/rollback, supported/fail-closed CAD matrix, PR state.
+5. Сделать финальный journal checkpoint и ещё один полный CI на точном pre-release HEAD.
+6. Не deploy/publish и не merge — результатом должна быть версия **готова к проверке перед публикацией**.
 
 ---
 
@@ -204,18 +205,16 @@ Green относится к конкретному проверенному SHA.
 - `c16e0162…` base regression suite;
 - `aa6bee60…` hard fail-closed integration tolerance;
 - `f0436d73…` edge-case regressions;
-- `b984da3e…` both workflows fully GREEN — current verified checkpoint.
+- `b984da3e…` both workflows fully GREEN.
 
-### 2026-09-14 — WIP strict linear SPLINE
+### 2026-09-14 — strict linear SPLINE
 - `d8e9ad7b…` exact-safe degree-1 planar parser normalized to open polyline;
 - `fb54a1e0…` supported/fail-closed regression suite;
 - `eb50b7a…`: Alpha CI GREEN; Verify RED only on SEO audit after 557 tests and build succeeded;
 - cause: flaky third-party `static.mk.ru` via Next optimizer, not SPLINE/business logic;
 - `f508be1f…`: deterministic first-party-only image availability audit;
-- `2071ce5f…`: initial regression for remote optimizer skip/local source unwrap;
-- `e6b3e30…`: post-fix gate RED on new regression test before build/SEO;
-- `eee04cb9…`: test-only stabilization of that regression; production audit unchanged;
-- full post-fix CI pending.
+- `2071ce5f…`, `eee04cb9…`, `0c6e10b…`: regression/test-contract hardening without weakening production checks;
+- `961c43c…`: both workflows fully GREEN including SEO — SPLINE DONE and current verified checkpoint.
 
 ---
 
