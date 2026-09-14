@@ -3,6 +3,16 @@ import test from "node:test";
 import { applyMetalUplift, calculateProvisionalPartPrice } from "../lib/instant-quote/pricing";
 import { selectBestStoredPrice, shouldRefreshPriceFeeds } from "../lib/instant-quote/material-price-feed";
 
+const marketPrice = {
+  materialId: "hot" as const,
+  thicknessMm: 2,
+  rubPerTon: 60_000,
+  source: "test",
+  sourceDate: "2026-09-14",
+  fetchedAt: "2026-09-14T00:00:00.000Z",
+  exactThickness: true,
+};
+
 test("applies exactly five percent to supplier metal price", () => {
   assert.equal(applyMetalUplift(100_000), 105_000);
 });
@@ -38,15 +48,7 @@ test("provisional quote keeps market price and plus-five price separately", () =
     thicknessMm: 2,
     quantity: 10,
     geometry: { widthMm: 500, heightMm: 250, cutLengthMm: 1_500, contourCount: 3 },
-    marketPrice: {
-      materialId: "hot",
-      thicknessMm: 2,
-      rubPerTon: 60_000,
-      source: "test",
-      sourceDate: "2026-09-14",
-      fetchedAt: "2026-09-14T00:00:00.000Z",
-      exactThickness: true,
-    },
+    marketPrice,
     operations: ["laser-cutting", "bending", "packaging"],
     bendCount: 2,
     materialUsageFactor: 1,
@@ -56,4 +58,22 @@ test("provisional quote keeps market price and plus-five price separately", () =
   assert.equal(price.materialPricedRubPerTon, 63_000);
   assert.equal(price.totalRub, price.unitRub * 10);
   assert.ok(price.laserRubEach > 0);
+});
+
+test("series quantity lowers unit price by amortizing setup and selecting cut tier", () => {
+  const common = {
+    materialId: "hot" as const,
+    thicknessMm: 2,
+    geometry: { widthMm: 500, heightMm: 250, cutLengthMm: 10_000, contourCount: 3 },
+    marketPrice,
+    operations: ["laser-cutting" as const],
+    materialUsageFactor: 1,
+  };
+
+  const one = calculateProvisionalPartPrice({ ...common, quantity: 1 });
+  const fifty = calculateProvisionalPartPrice({ ...common, quantity: 50 });
+
+  assert.ok(fifty.unitRub < one.unitRub);
+  assert.equal(one.setupRubBatch, fifty.setupRubBatch);
+  assert.ok(fifty.laserRubPerM < one.laserRubPerM);
 });
