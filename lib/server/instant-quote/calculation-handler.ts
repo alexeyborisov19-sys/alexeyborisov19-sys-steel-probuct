@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
+import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { dxfCadAdapter } from "@/lib/instant-quote/dxf-adapter";
 import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
 import {
@@ -33,15 +34,46 @@ type RunCalculation = (
   now?: Date,
 ) => Promise<ClientProjectCalculationView>;
 
+type StepServerAnalysis = {
+  model: NormalizedCadModel;
+  productionReady: boolean;
+};
+
+type AnalyzeStep = (inspection: UploadInspection, format: "step" | "stp") => Promise<StepServerAnalysis>;
+
 export type OnlineCalculationHandlerDependencies = {
   inspectUploads: typeof inspectUploads;
   quarantineUploads: typeof quarantineUploads;
   runCalculation: RunCalculation;
+  analyzeStep: AnalyzeStep;
 };
+
+async function analyzePlanarStep(inspection: UploadInspection, format: "step" | "stp"): Promise<StepServerAnalysis> {
+  const [{ createStepCadAdapter }, { occtStepKernel }] = await Promise.all([
+    import("@/lib/instant-quote/step-adapter"),
+    import("@/lib/instant-quote/occt-step-kernel"),
+  ]);
+  const adapter = createStepCadAdapter(occtStepKernel);
+  const bytes = new Uint8Array(
+    inspection.buffer.buffer,
+    inspection.buffer.byteOffset,
+    inspection.buffer.byteLength,
+  );
+  const model = await adapter.analyze({ fileName: inspection.safeName, format, bytes });
+  const flat = model.sheetMetal?.flatPatternCandidate;
+  const productionReady = flat?.confidence === "high"
+    && (model.geometry.areaMm2 ?? 0) > 0
+    && (model.geometry.blankAreaMm2 ?? 0) > 0
+    && (model.geometry.cutLengthMm ?? 0) > 0
+    && (model.geometry.contourCount ?? 0) > 0;
+
+  return { model, productionReady };
+}
 
 const defaults: OnlineCalculationHandlerDependencies = {
   inspectUploads,
   quarantineUploads,
+  analyzeStep: analyzePlanarStep,
   runCalculation: async (...args) => {
     // Keep the confidential boundary out of the public handler's eager module
     // graph. Production requests load it on demand; unit tests can inject a
@@ -68,32 +100,11 @@ function parseDxfInspection(inspection: UploadInspection) {
   return parseAsciiDxf(inspection.buffer.toString("utf8"));
 }
 
-async function analyzePlanarStep(inspection: UploadInspection, format: "step" | "stp") {
-  const [{ createStepCadAdapter }, { occtStepKernel }] = await Promise.all([
-    import("@/lib/instant-quote/step-adapter"),
-    import("@/lib/instant-quote/occt-step-kernel"),
-  ]);
-  const adapter = createStepCadAdapter(occtStepKernel);
-  const bytes = new Uint8Array(
-    inspection.buffer.buffer,
-    inspection.buffer.byteOffset,
-    inspection.buffer.byteLength,
-  );
-  const model = await adapter.analyze({ fileName: inspection.safeName, format, bytes });
-  const flat = model.sheetMetal?.flatPatternCandidate;
-  const productionReady = flat?.confidence === "high"
-    && (model.geometry.areaMm2 ?? 0) > 0
-    && (model.geometry.blankAreaMm2 ?? 0) > 0
-    && (model.geometry.cutLengthMm ?? 0) > 0
-    && (model.geometry.contourCount ?? 0) > 0;
-
-  return { model, productionReady };
-}
-
 async function buildAuthoritativeProject(
   manifestRaw: string,
   inspections: UploadInspection[],
   now: Date,
+  analyzeStep: AnalyzeStep,
 ): Promise<{ project: InstantQuoteProject; evidenceByPartId: ProjectCadEvidence; analysisNotes: string[] }> {
   const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
   const projectId = serverProjectId(now);
@@ -123,7 +134,7 @@ async function buildAuthoritativeProject(
       state = model.warnings.length ? "manual-review" : "configurable";
     } else if (format === "step" || format === "stp") {
       try {
-        const { model, productionReady } = await analyzePlanarStep(inspection, format);
+        const { model, productionReady } = await analyzeStep(inspection, format);
         if (productionReady) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
@@ -240,7 +251,12 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       }
 
       const now = new Date();
-      const { project, evidenceByPartId, analysisNotes } = await buildAuthoritativeProject(manifestRaw, inspections, now);
+      const { project, evidenceByPartId, analysisNotes } = await buildAuthoritativeProject(
+        manifestRaw,
+        inspections,
+        now,
+        dependencies.analyzeStep,
+      );
       const clientView = await dependencies.runCalculation(
         project,
         evidenceByPartId,
