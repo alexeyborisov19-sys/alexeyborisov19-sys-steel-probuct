@@ -117,7 +117,14 @@ test("prices actual laser pierces as a separate confidential line when rate exis
 test("keeps pierces partial when the private basis has no approved pierce rate", () => {
   const rateBookWithoutPierces: FactualRateBook = {
     ...fixtureRateBook,
-    laserRubPerM: fixtureRateBook.laserRubPerM.map(({ pierceRubEach: _pierceRubEach, ...row }) => row),
+    laserRubPerM: fixtureRateBook.laserRubPerM.map((row) => ({
+      materialId: row.materialId,
+      thicknessMm: row.thicknessMm,
+      rateRub: row.rateRub,
+      from100mRubPerM: row.from100mRubPerM,
+      from500mRubPerM: row.from500mRubPerM,
+      source: row.source,
+    })),
   };
   const result = calculateFactualProductionCost({
     materialId: "cold",
