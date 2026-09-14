@@ -7,11 +7,16 @@ type ProjectPhotoGalleryProps = {
   tall?: boolean;
 };
 
-const nonPhotographicProjectMedia = new Set([
+const excludedProjectMedia = new Set([
+  // Architectural renders / visualisations, not real object photography.
   "https://images.cdn-cian.ru/images/0/542/096/solovinaya-roshca-novyy-kvartal-smolensk-jk-690245038-6.jpg",
   "https://images.cdn-cian.ru/images/apartkompleks-yuniti-smolensk-jk-1894417700-10.jpg",
   "https://images.cdn-cian.ru/images/po-ul-25-sentyabrya-smolensk-jk-2005676224-7.jpg",
   "https://vostokstroy67.ru/images/vostok-new/images/3.jpg",
+  // Real photos, but their MK.ru hotlinks are unstable through Next Image (HTTP 504 in CI).
+  // The affected projects retain multiple verified photos from other sources.
+  "https://static.mk.ru/upload/entities/2026/03/11/18/articles/facebookPicture/80/5c/4a/c0/cc7a5ba438db3b358c287acc43ba3192.jpg",
+  "https://static.mk.ru/upload/entities/2026/07/17/03/articles/detailPicture/d3/96/9a/4b/e673b06bc81f6b5e798062f0d56217f9.jpg",
 ]);
 
 const residentialFallback: ProjectPhoto = {
@@ -22,7 +27,7 @@ const residentialFallback: ProjectPhoto = {
 };
 
 export function ProjectPhotoGallery({ photos, className = "", tall = false }: ProjectPhotoGalleryProps) {
-  const verifiedPhotos = photos.filter((photo) => !nonPhotographicProjectMedia.has(photo.src));
+  const verifiedPhotos = photos.filter((photo) => !excludedProjectMedia.has(photo.src));
   const visiblePhotos = verifiedPhotos.length ? verifiedPhotos : [residentialFallback];
 
   return (
