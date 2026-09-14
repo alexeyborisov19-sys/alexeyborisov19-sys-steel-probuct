@@ -32,24 +32,19 @@
 - **Last functional implementation SHA:** `f8f97fc2a5ed77a36dab76e209d08f9227528e44`
 - Functional commit: `Update snapshot fixture for DXF bulge metadata`
 - **Last GREEN verified tree HEAD:** `155c19c555d4788d8a5af35f684ebdd231211482`
-- HEAD включает functional tree `f8f97fc2…` + journal metadata.
 - CI на `155c19c…` полностью GREEN:
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
 
-### Закрытый последний block — DXF LWPOLYLINE bulge
+### Текущий WIP — legacy POLYLINE / VERTEX
 
-- `DxfShape.polyline` хранит `bulges[]`, где bulge вершины относится к исходящему сегменту.
-- Bulge переводится аналитически в signed circular arc по DXF `bulge = tan(includedAngle/4)`.
-- Positive/negative sweep поддерживаются.
-- Production bbox использует точные cardinal extrema дуги.
-- Production cut length использует `radius × |sweep|`, а не хорду.
-- Closing bulge закрытого LWPOLYLINE относится к последнему→первому сегменту.
-- Preview рисует curved sampling, но sampling не участвует в production length/bounds.
-- Сам факт bulge больше не делает геометрию `unsupported`.
-- **Fail-closed:** exact area/pierce topology для bulged closed contour пока не объявляется фактом; `areaStatus=unavailable` до отдельного arc-aware topology proof.
-- Regression: positive/negative semicircle, signed quarter arc, closing bulge, zero-bulge compatibility, fail-closed area topology.
-- Первый CI на `9e163240…` дал TypeScript RED только из-за legacy test fixture без нового `bulges[]`; `f8f97fc2…` исправил fixture. Production logic для обхода теста не ослаблялась.
+- `1f8b12025fd6e1940a62f7ef55359ee9c2768609`: parser поддерживает безопасный legacy `POLYLINE → VERTEX* → SEQEND` subset.
+- `72cc5ecc4bfd7e5abe326c265e3f43201f034f01`: regression fixtures для open/closed, vertex bulge, closing bulge и complex 3D/mesh fail-closed.
+- Обычный 2D legacy path нормализуется в тот же `{ points, bulges, closed }`, что LWPOLYLINE.
+- `POLYLINE` flags curve-fit/spline-fit/3D/mesh/polyface и complex `VERTEX` flags не promoted в production geometry.
+- Non-zero vertex Z не flatten-ится молча в 2D.
+- Complex sequence создаёт internal unsupported evidence (`POLYLINE_COMPLEX` / sequence issue), а не производственный контур.
+- CI для этого WIP ещё не зафиксирован как GREEN. До gate следующий функциональный слой не начинать.
 
 ---
 
@@ -123,28 +118,33 @@
 
 ## 4. IN PROGRESS
 
-### Следующий DXF compatibility block — legacy `POLYLINE / VERTEX / SEQEND`
+### Legacy `POLYLINE / VERTEX / SEQEND`
 
-Причина приоритета: старый DXF формат хранит polyline как отдельный `POLYLINE` entity, затем серию `VERTEX`, затем `SEQEND`. Текущий parser рассматривает эти entities как unsupported, хотя геометрически многие из них эквивалентны LWPOLYLINE.
+Реализовано в WIP:
+- stateful sequence parse `POLYLINE → VERTEX* → SEQEND`;
+- simple 2D vertices читают X/Y и optional bulge group 42;
+- open/closed берётся из `POLYLINE group 70 bit 1`;
+- normalized shape переиспользует существующий analytic segment engine, поэтому bbox/cut length/bulge preview не имеют отдельной legacy-формулы;
+- closing vertex bulge поддерживается;
+- nested VERTEX/SEQEND не появляются как ложные top-level unsupported entities;
+- 3D/polyface/polygon mesh/curve-fit/spline-fit и complex vertices fail-closed;
+- invalid/missing sequence/vertices не объявляются production geometry.
 
-Цель первого безопасного этапа:
-- поддержать только доказуемый 2D legacy polyline subset;
-- flags closed/open брать из `POLYLINE group 70`;
-- X/Y брать из `VERTEX 10/20`;
-- vertex bulge (`VERTEX group 42`) использовать через уже проверенную bulge-геометрию;
-- 3D/polyface/polygon-mesh variants не интерпретировать как простой контур — оставлять manual/unsupported;
-- production bbox/cut length переиспользуют тот же segment engine, а не отдельную формулу.
+Regression WIP:
+- simple open 2D path;
+- closed rectangle: exact area/pierce/hole semantics;
+- legacy vertex semicircle bulge: exact bbox/cut length;
+- closing bulge;
+- 3D/mesh complex sequence исключается из shapes и оставляет unsupported evidence.
 
 ---
 
 ## 5. NEXT ACTION
 
-1. Разобрать flags DXF legacy `POLYLINE` и определить fail-closed masks для 3D/polyface/mesh.
-2. Реализовать stateful parse `POLYLINE → VERTEX* → SEQEND` только для простого 2D subset.
-3. Нормализовать его в тот же `{points, bulges, closed}` shape, что LWPOLYLINE.
-4. Regression fixtures: open/closed, vertex bulge, last closing bulge, unsupported 3D/polyface flags, malformed sequence.
-5. Полный CI; при RED сначала исправить failure и записать его в журнал.
-6. После GREEN выбрать следующий gap: exact bulged closed topology либо SPLINE/ELLIPSE.
+1. Запустить/проверить полный CI на текущем WIP tree после journal commit.
+2. Если RED — локализовать и исправить только текущий legacy POLYLINE block; записать failure/fix в журнал.
+3. Если GREEN — `72cc5ecc…` становится новым functional checkpoint, а проверенный journal tree — новым GREEN verified tree.
+4. После GREEN выбрать следующий малый DXF gap: exact bulged closed topology либо ELLIPSE/SPLINE; никаких новых слоёв до gate.
 
 ---
 
@@ -187,6 +187,11 @@ Green относится к конкретному проверенному SHA.
 - `f8f97fc2…` — fixture updated, без ослабления production logic;
 - `155c19c…` — verified tree: оба workflow полностью GREEN;
 - curved closed area/pierce topology намеренно остаётся fail-closed.
+
+### 2026-09-14 — WIP legacy POLYLINE/VERTEX
+- `1f8b1202…` — safe simple 2D legacy sequence parser + complex/3D fail-closed masks;
+- `72cc5ecc…` — regression tests open/closed/bulge/closing-bulge/3D-mesh rejection;
+- CI pending на момент записи.
 
 ---
 
