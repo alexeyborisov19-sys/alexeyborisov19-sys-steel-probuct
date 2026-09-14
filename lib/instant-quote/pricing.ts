@@ -6,6 +6,7 @@ export type MaterialMarketPrice = {
   materialId: MaterialId;
   thicknessMm: number;
   rubPerTon: number;
+  rubPerTonFrom3t?: number;
   source: string;
   sourceDate: string;
   fetchedAt: string;
@@ -34,10 +35,7 @@ export type PricingBasis = {
   setupRubPerUniquePart: number;
 };
 
-// Provisional internal basis migrated from the metalworking calculator dated 2026-09-14.
-// Values are isolated so the future admin/ERP layer can replace them without touching the CAD logic.
 export const PROVISIONAL_PRICING_BASIS: PricingBasis = {
-  // Rule approved for Steel Product Online: supplier/market metal price + 5%.
   materialMarketUpliftPct: 5,
   densityKgM3: {
     cold: 7800,
@@ -63,8 +61,6 @@ export const PROVISIONAL_PRICING_BASIS: PricingBasis = {
   },
   engineeringPctOfWorks: 5,
   provisionalCommercialPct: 16.5,
-  // Old calculator had 1,000 RUB per part. The new engine treats it as one setup charge
-  // per unique line item and amortizes it across quantity, which produces sensible series pricing.
   setupRubPerUniquePart: 1000,
 };
 
@@ -76,7 +72,6 @@ export type CuttingRate = {
   pierceRub: number;
 };
 
-// Steel laser rates migrated from the current internal metalworking calculator.
 export const PROVISIONAL_STEEL_CUTTING_RATES: CuttingRate[] = [
   { thicknessMm: 0.8, baseRubPerM: 62.8, from100mRubPerM: 39.6, from500mRubPerM: 35.5, pierceRub: 1.4 },
   { thicknessMm: 1, baseRubPerM: 50, from100mRubPerM: 39.6, from500mRubPerM: 35.5, pierceRub: 1.4 },
@@ -132,6 +127,13 @@ export function cuttingRubPerM(rate: CuttingRate, totalBatchCutM: number) {
   return rate.baseRubPerM;
 }
 
+export function supplierRubPerTon(price: MaterialMarketPrice, totalPurchasedMassKg: number) {
+  if (totalPurchasedMassKg >= 3000 && price.rubPerTonFrom3t && price.rubPerTonFrom3t > 0) {
+    return { rubPerTon: price.rubPerTonFrom3t, tier: "from-3t" as const };
+  }
+  return { rubPerTon: price.rubPerTon, tier: "under-3t" as const };
+}
+
 export type ProvisionalPartPricingInput = {
   materialId: MaterialId;
   thicknessMm: number;
@@ -143,15 +145,16 @@ export type ProvisionalPartPricingInput = {
   weldLengthM?: number;
   powderSides?: 1 | 2;
   assemblyMinutes?: number;
-  // Temporary until true nesting exists. Actual nesting should replace this factor.
   materialUsageFactor?: number;
 };
 
 export type ProvisionalPartPrice = {
   materialMarketRubPerTon: number;
+  materialMarketTier: "under-3t" | "from-3t";
   materialPricedRubPerTon: number;
   netMassKg: number;
   purchasedMassKg: number;
+  batchPurchasedMassKg: number;
   materialRubEach: number;
   laserRubEach: number;
   laserRubPerM: number;
@@ -179,8 +182,10 @@ export function calculateProvisionalPartPrice(
     : areaM2 * thicknessM * density;
   const usageFactor = Math.max(1, input.materialUsageFactor ?? 1.15);
   const purchasedMassKg = netMassKg * usageFactor;
+  const batchPurchasedMassKg = purchasedMassKg * quantity;
 
-  const materialPricedRubPerTon = applyMetalUplift(input.marketPrice.rubPerTon, basis.materialMarketUpliftPct);
+  const supplierTier = supplierRubPerTon(input.marketPrice, batchPurchasedMassKg);
+  const materialPricedRubPerTon = applyMetalUplift(supplierTier.rubPerTon, basis.materialMarketUpliftPct);
   const materialRubEach = purchasedMassKg * materialPricedRubPerTon / 1000;
 
   const cut = nearestCuttingRate(input.thicknessMm);
@@ -214,10 +219,12 @@ export function calculateProvisionalPartPrice(
   if (input.operations.includes("welding") && !(input.weldLengthM && input.weldLengthM > 0)) warnings.push("Сварка включена, но длина шва не определена.");
 
   return {
-    materialMarketRubPerTon: input.marketPrice.rubPerTon,
+    materialMarketRubPerTon: supplierTier.rubPerTon,
+    materialMarketTier: supplierTier.tier,
     materialPricedRubPerTon,
     netMassKg,
     purchasedMassKg,
+    batchPurchasedMassKg,
     materialRubEach,
     laserRubEach,
     laserRubPerM,
