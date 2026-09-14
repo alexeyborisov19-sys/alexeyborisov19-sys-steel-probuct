@@ -6,8 +6,9 @@ import type { StoredPriceSnapshot } from "../lib/instant-quote/material-price-fe
 import { calculateProjectProvisionalPricing } from "../lib/instant-quote/project-pricing";
 import { addPartToProject, setPartQuantity, setPartThickness, updatePartGeometry } from "../lib/instant-quote/project";
 import { createProvisionalQuoteSnapshot } from "../lib/instant-quote/quote-snapshot";
+import { TEST_PRICING_CONTEXT } from "./fixtures/protected-pricing";
 
-const now = new Date("2026-09-14T12:00:00.000Z");
+const now = new Date("2099-01-01T12:00:00.000Z");
 
 function parsed(): ParsedDxf {
   return {
@@ -42,17 +43,17 @@ function parsed(): ParsedDxf {
 
 function snapshots(fetchedAt: string): StoredPriceSnapshot[] {
   return [{
-    sourceId: "atlantik-smolensk",
+    sourceId: "synthetic-supplier",
     fetchedAt,
-    sourceDate: "2026-09-14",
+    sourceDate: "2099-01-01",
     status: "ok",
     rows: [{
       materialId: "hot",
       thicknessMm: 2,
-      rubPerTon: 60_000,
-      rubPerTonFrom3t: 59_000,
-      source: "Атлантик Компани",
-      sourceDate: "2026-09-14",
+      rubPerTon: 100_000,
+      rubPerTonFrom3t: 99_000,
+      source: "Synthetic supplier fixture",
+      sourceDate: "2099-01-01",
       fetchedAt,
     }],
   }];
@@ -76,9 +77,15 @@ function projectFixture() {
   return { project, id };
 }
 
-test("quote snapshot preserves supplier source while incomplete feature DFM keeps automatic ordering gated", () => {
+test("quote snapshot preserves source metadata while incomplete feature DFM keeps automatic ordering gated", () => {
   const { project, id } = projectFixture();
-  const pricing = calculateProjectProvisionalPricing(project, { [id]: parsed() }, snapshots(now.toISOString()), now);
+  const pricing = calculateProjectProvisionalPricing(
+    project,
+    { [id]: parsed() },
+    snapshots(now.toISOString()),
+    TEST_PRICING_CONTEXT,
+    now,
+  );
   const quote = createProvisionalQuoteSnapshot(project, pricing, now);
 
   assert.equal(quote.kind, "provisional");
@@ -87,17 +94,23 @@ test("quote snapshot preserves supplier source while incomplete feature DFM keep
   assert.equal(quote.calculatedParts, 1);
   assert.ok(quote.totalRub > 0);
   assert.ok(quote.pricingFormulaVersion.includes("provisional"));
-  assert.equal(quote.lines[0].priceSource?.sourceId, "atlantik-smolensk");
-  assert.equal(quote.lines[0].priceSource?.source, "Атлантик Компани");
+  assert.equal(quote.lines[0].priceSource?.sourceId, "synthetic-supplier");
+  assert.equal(quote.lines[0].priceSource?.source, "Synthetic supplier fixture");
   assert.equal(quote.lines[0].status, "manual");
   assert.ok(quote.lines[0].reviewReasons.some((reason) => reason.includes("Feature")));
   assert.equal(quote.automaticOrderReady, false);
 });
 
-test("stale supplier price remains reproducible and also blocks automatic order readiness", () => {
+test("stale supplier fixture remains reproducible and blocks automatic order readiness", () => {
   const { project, id } = projectFixture();
-  const oldFetchedAt = "2026-09-01T12:00:00.000Z";
-  const pricing = calculateProjectProvisionalPricing(project, { [id]: parsed() }, snapshots(oldFetchedAt), now);
+  const oldFetchedAt = "2098-12-01T12:00:00.000Z";
+  const pricing = calculateProjectProvisionalPricing(
+    project,
+    { [id]: parsed() },
+    snapshots(oldFetchedAt),
+    TEST_PRICING_CONTEXT,
+    now,
+  );
   const quote = createProvisionalQuoteSnapshot(project, pricing, now);
 
   assert.equal(quote.lines[0].priceSource?.fetchedAt, oldFetchedAt);
