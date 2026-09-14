@@ -3,6 +3,7 @@ import type { PublicCalculationManifest } from "@/lib/instant-quote/calculation-
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 
 const PUBLIC_OPERATIONS = new Set<ManufacturingOperation>([
+  "laser-cutting",
   "bending",
   "welding",
   "assembly",
