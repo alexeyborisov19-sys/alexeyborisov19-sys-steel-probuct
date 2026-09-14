@@ -1,6 +1,7 @@
 import "server-only";
 
-import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FactualRate, FactualRateBook } from "@/lib/instant-quote/factual-calculation";
 import type { StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
@@ -163,4 +164,42 @@ function privateBasisPath() {
 export async function loadPrivateCalculationBasis(): Promise<PrivateCalculationBasis> {
   const raw = await readFile(privateBasisPath(), "utf8");
   return parseBasis(JSON.parse(raw) as unknown);
+}
+
+/**
+ * Atomically replaces one validated supplier snapshot while preserving every
+ * other private rate/source. A failed refresh must never call this function, so
+ * the last known good snapshot remains available.
+ */
+export async function replacePrivateMaterialPriceSnapshot(nextSnapshot: StoredPriceSnapshot) {
+  if (nextSnapshot.status === "failed") throw new Error("Refusing to replace private prices with a failed snapshot");
+
+  const basisPath = privateBasisPath();
+  const raw = await readFile(basisPath, "utf8");
+  const root = JSON.parse(raw) as Record<string, unknown>;
+  const current = parseBasis(root);
+  const mergedSnapshots = [
+    ...current.materialPriceSnapshots.filter((item) => item.sourceId !== nextSnapshot.sourceId),
+    nextSnapshot,
+  ];
+  const candidate: Record<string, unknown> = {
+    ...root,
+    materialPriceSnapshots: mergedSnapshots,
+  };
+
+  // Validate the entire candidate before touching the source file.
+  const validated = parseBasis(candidate);
+  const directory = path.dirname(basisPath);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  await chmod(directory, 0o700);
+  const tempPath = `${basisPath}.${randomUUID()}.tmp`;
+  await writeFile(tempPath, `${JSON.stringify(candidate, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+    flag: "wx",
+  });
+  await chmod(tempPath, 0o600);
+  await rename(tempPath, basisPath);
+  await chmod(basisPath, 0o600);
+  return validated;
 }
