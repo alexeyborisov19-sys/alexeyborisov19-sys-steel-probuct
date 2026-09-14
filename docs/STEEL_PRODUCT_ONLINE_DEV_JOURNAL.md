@@ -36,16 +36,15 @@
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
 
-### Закрытый последний block — legacy POLYLINE / VERTEX
+### Текущий WIP — DXF ELLIPSE
 
-- `1f8b1202…`: safe parser `POLYLINE → VERTEX* → SEQEND` для простого 2D subset.
-- `72cc5ecc…`: regression open/closed/bulge/closing-bulge/3D-mesh rejection.
-- 2D legacy path нормализуется в тот же `{points, bulges, closed}`, что LWPOLYLINE.
-- bbox/cut length/bulge preview переиспользуют уже проверенный analytic segment engine.
-- curve-fit/spline-fit/3D/mesh/polyface flags и complex vertices не promoted в production geometry.
-- Non-zero vertex Z не flatten-ится молча в 2D.
-- Nested VERTEX/SEQEND не становятся ложными top-level unsupported entities.
-- Complex sequence оставляет unsupported evidence и fail-closed semantics.
+- Autodesk DXF contract проверен: center `10/20`, major-axis vector `11/21`, minor/major ratio `40`, start/end parameters `41/42`; full ellipse = `0..2π`.
+- `671ad8426efaa6ed737d046f06c8c9b453181a91`: добавлен `ellipse` shape, exact parametric point, analytic extrema/bounds, exact full area `πab`, controlled adaptive-Simpson cut length.
+- `95ffc444fb2a411be4cecdd21cd338214d42c89a`: preview sampling вынесен отдельно от production math.
+- `c16e0162a60b76945afc4e8e6a6c2d0e6ccf8c36`: regression fixtures: axis-aligned full ellipse, rotated bounds, partial/wrapped parameters, exact ellipse hole topology, preview separation, non-planar и invalid-ratio fail-closed.
+- Non-XY extrusion и major-axis Z не проецируются молча в XY; дают internal unsupported evidence.
+- Full ellipse area/topology считается exact только для доказанного `0..2π`; partial ellipse остаётся open topology.
+- WIP CI ещё не зафиксирован как GREEN. До gate следующий functional layer не начинать.
 
 ---
 
@@ -117,28 +116,35 @@
 
 ## 4. IN PROGRESS
 
-### Следующий DXF compatibility block — ELLIPSE
+### ELLIPSE
 
-Выбран как меньший доказуемый блок после GREEN legacy POLYLINE gate.
+Реализовано в WIP:
+- 2D parameterization `P(t) = C + A cos(t) + B sin(t)`, где `A` — major vector, `B` — перпендикулярный minor vector с ratio;
+- full/partial parameter sweep с wrap через `2π`;
+- analytic X/Y extrema для production bbox;
+- cut length через adaptive Simpson integration параметрической скорости с absolute error tolerance, не через preview sampling;
+- exact full area `πab` и containment для hole topology;
+- partial ellipse не считается closed contour;
+- non-planar/invalid ellipse не становится production geometry;
+- preview имеет отдельный sampling helper.
 
-Безопасная цель первого этапа:
-- поддержать DXF `ELLIPSE` только как 2D analytic curve;
-- читать center (10/20), major-axis endpoint vector (11/21), ratio minor/major (40), start/end parameters (41/42);
-- production bbox считать аналитически для полного эллипса и параметрической дуги, а не по coarse preview sampling;
-- production cut length: для полного/частичного эллипса не выдавать недоказанную простую формулу; использовать математически контролируемую numerical integration с заданной error tolerance либо оставлять factual length unavailable до proof;
-- preview sampling отделить от production calculations;
-- closed full ellipse topology/area можно объявлять exact только при доказанном полном параметрическом диапазоне; partial ellipse остаётся open topology.
+Regression WIP:
+- full axis-aligned `a=100,b=50`, reference circumference `484.4224110273838`;
+- rotated full ellipse bbox;
+- partial circular ellipse `r·Δt`;
+- wrapped parameter range;
+- ellipse hole внутри closed rectangle;
+- preview endpoints;
+- non-planar major-axis Z and invalid ratio fail-closed.
 
 ---
 
 ## 5. NEXT ACTION
 
-1. Проверить DXF ELLIPSE parameter semantics и текущую shape/model boundary.
-2. Добавить отдельный `ellipse` shape с center, major vector, ratio, start/end parameters.
-3. Реализовать analytic parameter point + extrema/bounds; не использовать preview sampling для production bbox.
-4. Выбрать доказуемый cut-length method с regression fixtures; если точность не доказана — fail closed вместо approximate factual length.
-5. Regression: axis-aligned full ellipse, rotated full ellipse, partial arc crossing extrema, invalid ratio/vector, preview only after production math.
-6. Journal WIP → полный CI → GREEN checkpoint до следующего слоя.
+1. Полный CI на текущем ELLIPSE WIP tree после journal commit.
+2. Если RED — исправить только ELLIPSE block и записать failure/fix.
+3. Если GREEN — `c16e0162…` становится новым functional checkpoint; journal tree — новым GREEN verified tree.
+4. После GREEN оценить следующий gap: SPLINE только как строго ограниченный subset либо exact bulged closed topology; не начинать до gate.
 
 ---
 
@@ -180,13 +186,14 @@ Green относится к конкретному проверенному SHA.
 
 ### 2026-09-14 — legacy POLYLINE/VERTEX
 - `1f8b1202…` safe simple 2D parser + complex/3D fail-closed;
-- `72cc5ecc…` open/closed/bulge/closing-bulge/3D-mesh regression;
-- `5e38668…` both workflows fully GREEN;
-- `72cc5ecc…` = current functional checkpoint.
+- `72cc5ecc…` regression;
+- `5e38668…` both workflows fully GREEN.
 
 ### 2026-09-14 — WIP ELLIPSE
-- block открыт после GREEN legacy POLYLINE gate;
-- никакая approximate ellipse length/area не считается factual без отдельного proof/regression.
+- `671ad842…` analytic geometry/topology + controlled length integration;
+- `95ffc444…` separate preview;
+- `c16e0162…` regression suite;
+- CI pending на момент записи.
 
 ---
 
