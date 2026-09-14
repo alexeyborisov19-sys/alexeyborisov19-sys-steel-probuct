@@ -13,6 +13,8 @@ const rateBook: FactualRateBook = {
   bendRubEach: { rateRub: 10, source: fixtureSource },
   weldRubPerM: { rateRub: 1000, source: fixtureSource },
   powderRubPerM2: { rateRub: 200, source: fixtureSource },
+  assemblyRubPerHour: { rateRub: 600, source: fixtureSource },
+  surfacePreparationRubPerM2: { rateRub: 200, source: fixtureSource },
 };
 
 const snapshots: StoredPriceSnapshot[] = [
@@ -119,4 +121,42 @@ test("completes welding only after actual weld length is supplied", () => {
 
   assert.equal(result.parts[0].status, "complete");
   assert.equal(result.confirmedDirectCostRub, 12100);
+});
+
+test("assembly and surface preparation stay partial until physical inputs are supplied", () => {
+  const withOperations: InstantQuoteProject = {
+    ...project,
+    parts: project.parts.map((part) => ({
+      ...part,
+      configuration: {
+        ...part.configuration,
+        operations: [...part.configuration.operations, "assembly", "surface-preparation"],
+      },
+    })),
+  };
+
+  const missing = calculateProjectFactualCost(withOperations, parsedByPartId, snapshots, rateBook, {}, now);
+  assert.equal(missing.parts[0].status, "partial");
+  assert.ok(missing.parts[0].calculation?.missing.some((item) => item.code === "assembly-time"));
+  assert.ok(missing.parts[0].calculation?.missing.some((item) => item.code === "surface-preparation-area"));
+
+  const completed = calculateProjectFactualCost(
+    withOperations,
+    parsedByPartId,
+    snapshots,
+    rateBook,
+    {
+      "part-1": {
+        assemblyMinutes: 12,
+        surfacePreparationAreaM2: 0.4,
+      },
+    },
+    now,
+  );
+
+  assert.equal(completed.parts[0].status, "complete");
+  assert.equal(completed.allCostArticlesComplete, true);
+  assert.equal(completed.parts[0].calculation?.parameters.assemblyMinutesEach, 12);
+  assert.equal(completed.parts[0].calculation?.parameters.surfacePreparationAreaM2Each, 0.4);
+  assert.equal(completed.confirmedDirectCostRub, 9100);
 });
