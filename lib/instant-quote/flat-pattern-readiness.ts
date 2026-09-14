@@ -1,12 +1,7 @@
+import type { ApprovedBendAllowanceTable } from "@/lib/instant-quote/bend-allowance";
+import { resolveApprovedBendAllowances } from "@/lib/instant-quote/bend-allowance";
+import { buildBendTopologyGraph } from "@/lib/instant-quote/bend-topology";
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
-
-export type ApprovedBendRule = {
-  id: string;
-  materialId: string;
-  thicknessMm: number;
-  kFactor: number;
-  approvedAt: string;
-};
 
 export type FlatBoundaryEvidence = {
   contourCount: number;
@@ -34,8 +29,9 @@ export type FlatPatternReadiness = {
 
 export type FlatPatternReadinessInput = {
   model: NormalizedCadModel;
+  materialId?: string;
   confirmedThicknessMm?: number;
-  bendRule?: ApprovedBendRule;
+  bendAllowanceTable?: ApprovedBendAllowanceTable;
   boundary?: FlatBoundaryEvidence;
 };
 
@@ -60,12 +56,14 @@ function validBoundary(boundary?: FlatBoundaryEvidence) {
  * Safety gate between 3D BRep interpretation and any authoritative flat pattern.
  *
  * A geometric thickness candidate is deliberately not accepted as production
- * thickness on its own. Likewise, detected bend topology cannot be unfolded
- * without a production-approved bend rule, and pricing cannot consume a flat
- * pattern until boundary geometry has been independently extracted.
+ * thickness on its own. Detected bends must form an unambiguous topology tree
+ * and every bend must resolve to one explicit production-approved bend-
+ * allowance row. No default K-factor, interpolation or nearest-match fallback is
+ * permitted. Pricing cannot consume a flat pattern until independent boundary
+ * geometry also exists.
  */
 export function evaluateFlatPatternReadiness(input: FlatPatternReadinessInput): FlatPatternReadiness {
-  const { model, confirmedThicknessMm, bendRule, boundary } = input;
+  const { model, materialId, confirmedThicknessMm, bendAllowanceTable, boundary } = input;
   const gates: FlatPatternGate[] = [];
   const isStep = model.format === "step" || model.format === "stp";
   const sheetMetal = model.sheetMetal;
@@ -106,38 +104,47 @@ export function evaluateFlatPatternReadiness(input: FlatPatternReadinessInput): 
   const hasUnresolvedCylinders = Boolean(
     sheetMetal && sheetMetal.cylindricalFaceCount > bendCandidates.length * 2,
   );
+  const topology = buildBendTopologyGraph(sheetMetal);
+  const topologyReady = bendCandidates.length === 0 || topology.status === "tree";
   gates.push({
     code: "bend-topology",
-    status: hasUnresolvedCylinders ? "manual" : "pass",
+    status: hasUnresolvedCylinders
+      ? "manual"
+      : topologyReady
+        ? "pass"
+        : "blocked",
     detail: hasUnresolvedCylinders
       ? "В STEP остаются цилиндрические поверхности, не классифицированные как парные гибы. До автоматической развёртки их нужно классифицировать как отверстия, прокатные поверхности или иные элементы."
-      : bendCandidates.length
-        ? `Парных BRep-кандидатов гиба: ${bendCandidates.length}.`
-        : "Парные зоны гиба не обнаружены.",
+      : bendCandidates.length === 0
+        ? "Парные зоны гиба не обнаружены."
+        : topology.status === "tree"
+          ? `BRep-граф гибов однозначен: ${topology.nodes.length} плоских регионов, ${topology.edges.length} гибов.`
+          : `BRep-граф гибов не готов к автоматическому traversal: ${topology.issues.join(" ") || topology.status}.`,
   });
 
   const bendRuleRequired = bendCandidates.length > 0;
-  const bendRuleValid = Boolean(
-    !bendRuleRequired ||
-      (bendRule &&
-        Number.isFinite(bendRule.thicknessMm) &&
-        bendRule.thicknessMm > 0 &&
-        Number.isFinite(bendRule.kFactor) &&
-        bendRule.kFactor > 0 &&
-        bendRule.kFactor < 1 &&
-        confirmedThicknessMm &&
-        closeEnough(bendRule.thicknessMm, confirmedThicknessMm) &&
-        !Number.isNaN(Date.parse(bendRule.approvedAt))),
-  );
-  gates.push({
-    code: "bend-rule",
-    status: bendRuleValid ? "pass" : "blocked",
-    detail: bendRuleValid
-      ? bendRuleRequired
-        ? `Используется утверждённое правило гибки ${bendRule!.id}; K-factor не подставляется эвристически.`
-        : "Правило bend allowance не требуется: парные зоны гиба не обнаружены."
-      : "Для развёртки детали с гибами нужна утверждённая производственная таблица bend allowance / K-factor для материала и толщины.",
-  });
+  let bendRuleStatus: FlatPatternGate["status"] = "pass";
+  let bendRuleDetail = "Правило bend allowance не требуется: парные зоны гиба не обнаружены.";
+
+  if (bendRuleRequired) {
+    if (!thicknessConfirmed || !materialId || !bendAllowanceTable || topology.status !== "tree") {
+      bendRuleStatus = "blocked";
+      bendRuleDetail = "Для детали с гибами нужны подтверждённая толщина, материал, однозначный BRep-граф и утверждённая explicit bend allowance table.";
+    } else {
+      const resolution = resolveApprovedBendAllowances({
+        graph: topology,
+        table: bendAllowanceTable,
+        materialId,
+        confirmedThicknessMm: confirmedThicknessMm!,
+      });
+      bendRuleStatus = resolution.ok ? "pass" : "blocked";
+      bendRuleDetail = resolution.ok
+        ? `Все ${resolution.values.length} гиба сопоставлены с утверждённой таблицей ${bendAllowanceTable.id}; интерполяция и K-factor по умолчанию не используются.`
+        : `Bend allowance не разрешён: ${resolution.errors.join(" ")}`;
+    }
+  }
+
+  gates.push({ code: "bend-rule", status: bendRuleStatus, detail: bendRuleDetail });
 
   const boundaryValid = validBoundary(boundary);
   gates.push({
