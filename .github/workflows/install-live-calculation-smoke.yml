@@ -1,0 +1,95 @@
+name: Verify live confidential calculation path
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/install-live-calculation-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit authoritative DXF to production calculation API
+        run: |
+          set -euo pipefail
+          cat > /tmp/smoke.dxf <<'DXF'
+          0
+          SECTION
+          2
+          HEADER
+          0
+          ENDSEC
+          0
+          SECTION
+          2
+          ENTITIES
+          0
+          LWPOLYLINE
+          8
+          0
+          90
+          4
+          70
+          1
+          10
+          0
+          20
+          0
+          10
+          100
+          20
+          0
+          10
+          100
+          20
+          100
+          10
+          0
+          20
+          100
+          0
+          ENDSEC
+          0
+          EOF
+          DXF
+          cat > /tmp/manifest.json <<'JSON'
+          {"title":"Production calculation smoke","parts":[{"clientPartId":"smoke-part","fileIndex":0,"materialId":"zinc","thicknessMm":1,"quantity":1,"operations":[]}]}
+          JSON
+          HTTP_CODE="$(curl --silent --show-error --output /tmp/response.json --write-out '%{http_code}' \
+            -H 'Origin: https://www.steelprodukt.ru' \
+            -H 'Referer: https://www.steelprodukt.ru/online-order' \
+            -F 'manifest=</tmp/manifest.json' \
+            -F 'files=@/tmp/smoke.dxf;type=application/dxf' \
+            https://www.steelprodukt.ru/api/online-order/calculate)"
+          echo "HTTP=$HTTP_CODE"
+          python3 - <<'PY'
+          import json
+          with open('/tmp/response.json', encoding='utf-8') as f:
+              data=json.load(f)
+          safe={"ok":data.get("ok"),"code":data.get("code")}
+          calc=data.get("calculation") or {}
+          parts=calc.get("parts") or []
+          if parts:
+              safe["status"]=parts[0].get("status")
+              safe["price"]=parts[0].get("price")
+              safe["message"]=parts[0].get("message")
+          print(json.dumps(safe,ensure_ascii=False))
+          forbidden={'rateRub','confirmedDirectCostRubEach','confirmedDirectCostRubBatch','supplier','materialPrice','basisVersion','internalReport','pierceCount','cutLengthMm'}
+          raw=json.dumps(data,ensure_ascii=False)
+          leaked=[key for key in forbidden if key in raw]
+          if leaked:
+              raise SystemExit('Confidential fields leaked: '+','.join(leaked))
+          if not data.get('ok'):
+              raise SystemExit('Calculation API did not succeed')
+          if not parts:
+              raise SystemExit('No calculated part returned')
+          price=parts[0].get('price') or {}
+          if price.get('status')!='approved' or not isinstance(price.get('totalRub'),(int,float)) or price['totalRub']<=0:
+              raise SystemExit('Approved positive sale price was not returned')
+          PY
+          test "$HTTP_CODE" = "200"
