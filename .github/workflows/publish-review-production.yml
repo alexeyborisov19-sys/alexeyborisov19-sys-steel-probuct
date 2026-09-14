@@ -34,7 +34,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Create durable rollback snapshot and preflight private basis
+      - name: Create durable rollback snapshot and prepare review runtime
         id: snapshot
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -73,11 +73,11 @@ jobs:
               done < <(find "$SEARCH_ROOT" -maxdepth 5 -type f -name '*.json' -size -5M 2>/dev/null | sort)
             done
           fi
-          test -n "$BASIS_PATH" || {
-            echo "No existing readable private calculation basis was found on the production host." >&2
-            exit 1
-          }
-          echo "Existing private calculation basis located on production host." >&2
+          if [ -n "$BASIS_PATH" ]; then
+            echo "Existing private calculation basis located on production host." >&2
+          else
+            echo "Private calculation basis is absent; review will publish fail-closed without customer pricing." >&2
+          fi
 
           REPORT_ROOT=/var/lib/steelprodukt/production/reports
           install -d -m 0700 -o nodejs -g "$(id -gn nodejs)" "$REPORT_ROOT"
@@ -109,7 +109,20 @@ jobs:
             chmod 0600 "$tmp"
             mv -f "$tmp" "$APP_PATH/.env.production"
           }
-          set_env_value STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH "$BASIS_PATH"
+          remove_env_value() {
+            key="$1"
+            tmp="$(mktemp "$APP_PATH/.env.production.review.XXXXXX")"
+            awk -v key="$key" 'index($0, key "=") != 1 { print }' "$APP_PATH/.env.production" > "$tmp"
+            chown nodejs:"$(id -gn nodejs)" "$tmp"
+            chmod 0600 "$tmp"
+            mv -f "$tmp" "$APP_PATH/.env.production"
+          }
+
+          if [ -n "$BASIS_PATH" ]; then
+            set_env_value STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH "$BASIS_PATH"
+          else
+            remove_env_value STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH
+          fi
           set_env_value STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT "$REPORT_ROOT"
 
           find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
