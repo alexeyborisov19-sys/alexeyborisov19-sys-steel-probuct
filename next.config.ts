@@ -55,6 +55,13 @@ const stablePublicAssetCache = "public, max-age=86400, stale-while-revalidate=60
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // Keep the native WASM package external on the Node.js server. Next's server
+  // bundler can otherwise move the JavaScript wrapper into .next while the
+  // occt-wasm.wasm binary remains beside the installed package in node_modules,
+  // which breaks OcctKernel.init() at runtime. Production installs dependencies
+  // on the Beget host before starting Next, so the package and its WASM asset are
+  // available together at their original filesystem location.
+  serverExternalPackages: ["occt-wasm"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "static.tildacdn.com" },
