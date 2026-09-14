@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { beforeEach } from "node:test";
 import type { NormalizedCadModel } from "../lib/instant-quote/cad-model";
 import { createOnlineCalculationHandler } from "../lib/server/instant-quote/calculation-handler";
 import type { OnlineCalculationHandlerDependencies } from "../lib/server/instant-quote/calculation-handler";
+import { rateLimitStore } from "../lib/security/rate-limit";
 
 const dxf = `0
 SECTION
@@ -46,6 +47,10 @@ ENDSEC
 EOF
 `;
 const stepBytes = "ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n";
+
+beforeEach(() => {
+  rateLimitStore.clear();
+});
 
 function request(manifest: Record<string, unknown>) {
   const form = new FormData();
