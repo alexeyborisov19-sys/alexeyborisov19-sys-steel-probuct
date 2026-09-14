@@ -99,7 +99,9 @@ export function calculateProjectProvisionalPricing(
       geometry: part.geometry,
       marketPrice: selection.price,
       operations: part.configuration.operations,
-      materialUsageFactor: 1.15,
+      // Current provisional business rule: metal is charged by the X×Y rectangular blank.
+      // No extra 15% multiplier is added on top of that rectangle.
+      materialUsageFactor: 1,
     });
 
     if (selection.stale) reviewReasons.push("Прайс металла требует обновления.");
