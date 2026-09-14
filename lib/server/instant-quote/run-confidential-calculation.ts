@@ -42,6 +42,10 @@ type CommercialPricingPolicy = {
   roundStepRub: number;
 };
 
+function calculationStage(stage: string) {
+  console.info(JSON.stringify({ event: "online_calc_stage", stage }));
+}
+
 function asMaterialId(value: string | null): MaterialId | null {
   if (value === "cold" || value === "hot" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
   return null;
@@ -120,10 +124,6 @@ function approvedSalePriceRub(part: ProjectFactualPartResult, policy: Commercial
  * 3. Applies the protected commercial pricing policy.
  * 4. Writes the full confidential report outside the public web tree.
  * 5. Returns only the explicitly client-safe projection and approved total.
- *
- * The persisted report filename/id/path is intentionally NOT returned from this
- * function, so a public route cannot accidentally serialize an internal report
- * locator together with the customer response.
  */
 export async function runConfidentialCalculationForClient(
   project: InstantQuoteProject,
@@ -131,18 +131,28 @@ export async function runConfidentialCalculationForClient(
   inputs: ConfidentialCalculationInputs = {},
   now = new Date(),
 ): Promise<ClientProjectCalculationView> {
+  calculationStage("BASIS_START");
   const basis = await loadPrivateCalculationBasis();
+  calculationStage("BASIS_OK");
+
+  calculationStage("PRICING_POLICY_START");
   const commercialPolicy = loadCommercialPricingPolicy();
+  calculationStage("PRICING_POLICY_OK");
+
   const explicitFactualByPartId = inputs.factualByPartId ?? {};
   const authoritativeFactualByPartId = inputs.authoritativeFactualByPartId ?? {};
   const powderSidesByPartId = inputs.powderSidesByPartId ?? {};
+
+  calculationStage("FACTUAL_INPUTS_START");
   const effectiveFactualByPartId = resolveEffectiveFactualInputs(
     project,
     explicitFactualByPartId,
     powderSidesByPartId,
     authoritativeFactualByPartId,
   );
+  calculationStage("FACTUAL_INPUTS_OK");
 
+  calculationStage("FACTUAL_CALCULATION_START");
   const calculation = calculateProjectFactualCost(
     project,
     evidenceByPartId,
@@ -151,7 +161,9 @@ export async function runConfidentialCalculationForClient(
     effectiveFactualByPartId,
     now,
   );
+  calculationStage("FACTUAL_CALCULATION_OK");
 
+  calculationStage("PRODUCTION_PARAMETERS_START");
   const productionParametersByPartId: Record<string, ProductionParameterSummary> = {};
   for (const part of project.parts) {
     const materialId = asMaterialId(part.configuration.materialId);
@@ -172,7 +184,9 @@ export async function runConfidentialCalculationForClient(
       packagingSelected: part.configuration.operations.includes("packaging"),
     });
   }
+  calculationStage("PRODUCTION_PARAMETERS_OK");
 
+  calculationStage("REPORT_CREATE_START");
   const unsupportedEntitiesByPartId = Object.fromEntries(
     Object.entries(evidenceByPartId).map(([partId, evidence]) => [partId, [...(evidence.unsupportedEntities ?? [])]]),
   );
@@ -193,13 +207,19 @@ export async function runConfidentialCalculationForClient(
     calculationInputSnapshot,
     now,
   });
-  await writeInternalProductionReport(report);
+  calculationStage("REPORT_CREATE_OK");
 
+  calculationStage("REPORT_WRITE_START");
+  await writeInternalProductionReport(report);
+  calculationStage("REPORT_WRITE_OK");
+
+  calculationStage("CLIENT_RESULT_START");
   const signals: ClientCalculationSignal[] = calculation.parts.map((part) => ({
     partId: part.partId,
     status: signalStatus(part.status),
     approvedSalePriceRub: approvedSalePriceRub(part, commercialPolicy),
   }));
-
-  return createClientCalculationView(project, signals);
+  const result = createClientCalculationView(project, signals);
+  calculationStage("CLIENT_RESULT_OK");
+  return result;
 }
