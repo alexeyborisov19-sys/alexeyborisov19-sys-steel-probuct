@@ -29,22 +29,22 @@ const project: InstantQuoteProject = {
       materialId: "hot",
       thicknessMm: 2,
       quantity: 10,
-      operations: ["laser-cutting", "bending", "powder-coating", "threading", "countersink"],
+      operations: ["laser-cutting", "bending", "powder-coating"],
     },
     quote: { kind: "not-requested" },
   }],
 };
 
-test("browser manifest contains customer operations needed for pricing and no CAD-derived production metrics", () => {
+test("browser manifest contains only customer configuration and no CAD-derived production metrics", () => {
   const manifest = createPublicCalculationManifest(project, ["part-1"]);
-  assert.deepEqual(manifest.parts[0].operations, ["laser-cutting", "bending", "powder-coating"]);
+  assert.deepEqual(manifest.parts[0].operations, ["bending", "powder-coating"]);
   const json = JSON.stringify(manifest).toLowerCase();
   for (const token of ["cutlength", "pierce", "area", "blank", "bendcount", "mass", "waste", "raterub", "directcost", "supplier"] ) {
     assert.equal(json.includes(token), false, `manifest leaked ${token}`);
   }
 });
 
-test("browser manifest preserves only file mapping and supported customer choices", () => {
+test("browser manifest preserves only file mapping and customer choices", () => {
   const manifest = createPublicCalculationManifest(project, ["part-1"]);
   assert.deepEqual(manifest.parts[0], {
     clientPartId: "part-1",
@@ -52,6 +52,6 @@ test("browser manifest preserves only file mapping and supported customer choice
     materialId: "hot",
     thicknessMm: 2,
     quantity: 10,
-    operations: ["laser-cutting", "bending", "powder-coating"],
+    operations: ["bending", "powder-coating"],
   });
 });
