@@ -29,22 +29,23 @@
 
 ### Последняя проверенная точка
 
-- **Last functional implementation SHA:** `f8f97fc2a5ed77a36dab76e209d08f9227528e44`
-- Functional commit: `Update snapshot fixture for DXF bulge metadata`
-- **Last GREEN verified tree HEAD:** `155c19c555d4788d8a5af35f684ebdd231211482`
-- CI на `155c19c…` полностью GREEN:
+- **Last functional implementation SHA:** `72cc5ecc4bfd7e5abe326c265e3f43201f034f01`
+- Functional commit: `Test safe legacy DXF POLYLINE VERTEX support`
+- **Last GREEN verified tree HEAD:** `5e38668d7d4c603c1e5c72213f8cc984e65868b7`
+- CI на `5e38668…` полностью GREEN:
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
 
-### Текущий WIP — legacy POLYLINE / VERTEX
+### Закрытый последний block — legacy POLYLINE / VERTEX
 
-- `1f8b12025fd6e1940a62f7ef55359ee9c2768609`: parser поддерживает безопасный legacy `POLYLINE → VERTEX* → SEQEND` subset.
-- `72cc5ecc4bfd7e5abe326c265e3f43201f034f01`: regression fixtures для open/closed, vertex bulge, closing bulge и complex 3D/mesh fail-closed.
-- Обычный 2D legacy path нормализуется в тот же `{ points, bulges, closed }`, что LWPOLYLINE.
-- `POLYLINE` flags curve-fit/spline-fit/3D/mesh/polyface и complex `VERTEX` flags не promoted в production geometry.
+- `1f8b1202…`: safe parser `POLYLINE → VERTEX* → SEQEND` для простого 2D subset.
+- `72cc5ecc…`: regression open/closed/bulge/closing-bulge/3D-mesh rejection.
+- 2D legacy path нормализуется в тот же `{points, bulges, closed}`, что LWPOLYLINE.
+- bbox/cut length/bulge preview переиспользуют уже проверенный analytic segment engine.
+- curve-fit/spline-fit/3D/mesh/polyface flags и complex vertices не promoted в production geometry.
 - Non-zero vertex Z не flatten-ится молча в 2D.
-- Complex sequence создаёт internal unsupported evidence (`POLYLINE_COMPLEX` / sequence issue), а не производственный контур.
-- CI для этого WIP ещё не зафиксирован как GREEN. До gate следующий функциональный слой не начинать.
+- Nested VERTEX/SEQEND не становятся ложными top-level unsupported entities.
+- Complex sequence оставляет unsupported evidence и fail-closed semantics.
 
 ---
 
@@ -85,66 +86,59 @@
 ### STEP
 - OpenCascade analysis;
 - BRep planar/cylindrical evidence;
-- thickness/bend candidates;
-- topology/unfold pipeline;
-- flat-pattern verification gates;
+- topology/unfold/flat-pattern verification gates;
 - unverified bent STEP fail-closed для pricing/CAM;
 - server-only exact STEP surface area для internal factual coating;
 - server-authoritative factual evidence только в confidential snapshot/revisions.
 
 ### Factual/internal
-- private runtime rate book;
-- supplier snapshot basis;
+- private runtime rate book + supplier snapshot basis;
 - factual project aggregation;
-- bending/welding/powder;
-- assembly/surface-preparation/packaging semantics;
+- bending/welding/powder/assembly/surface-preparation/packaging;
 - `assemblyMinutes` + `surfacePreparationAreaM2` через internal immutable revisions;
-- internal report/list/detail/RBAC/CSRF/revision lineage;
+- internal reports/RBAC/CSRF/revision lineage;
 - manual technologist override выше automatic evidence.
 
 ### Supplier feed
 - Atlantik protected refresh/parser/snapshot flow;
 - HTTPS allowlist, PDF validation, SHA-256, dry-run/persist, atomic private replacement;
-- METALLSERVIS не использовать как authoritative до стабильного official machine endpoint.
+- METALLSERVIS не authoritative до стабильного official machine endpoint.
 
 ### DXF
 - LINE, CIRCLE, ARC, LWPOLYLINE;
+- legacy simple 2D POLYLINE/VERTEX/SEQEND;
 - exact straight closed-polyline area/hole topology;
 - exact ARC bbox/length;
-- exact LWPOLYLINE bulge bbox/length + curved preview;
-- bulged closed area/pierce остаётся fail-closed.
+- exact LWPOLYLINE/legacy bulge bbox/length + curved preview;
+- bulged closed area/pierce остаётся fail-closed;
+- 3D/polyface/mesh legacy POLYLINE остаётся fail-closed.
 
 ---
 
 ## 4. IN PROGRESS
 
-### Legacy `POLYLINE / VERTEX / SEQEND`
+### Следующий DXF compatibility block — ELLIPSE
 
-Реализовано в WIP:
-- stateful sequence parse `POLYLINE → VERTEX* → SEQEND`;
-- simple 2D vertices читают X/Y и optional bulge group 42;
-- open/closed берётся из `POLYLINE group 70 bit 1`;
-- normalized shape переиспользует существующий analytic segment engine, поэтому bbox/cut length/bulge preview не имеют отдельной legacy-формулы;
-- closing vertex bulge поддерживается;
-- nested VERTEX/SEQEND не появляются как ложные top-level unsupported entities;
-- 3D/polyface/polygon mesh/curve-fit/spline-fit и complex vertices fail-closed;
-- invalid/missing sequence/vertices не объявляются production geometry.
+Выбран как меньший доказуемый блок после GREEN legacy POLYLINE gate.
 
-Regression WIP:
-- simple open 2D path;
-- closed rectangle: exact area/pierce/hole semantics;
-- legacy vertex semicircle bulge: exact bbox/cut length;
-- closing bulge;
-- 3D/mesh complex sequence исключается из shapes и оставляет unsupported evidence.
+Безопасная цель первого этапа:
+- поддержать DXF `ELLIPSE` только как 2D analytic curve;
+- читать center (10/20), major-axis endpoint vector (11/21), ratio minor/major (40), start/end parameters (41/42);
+- production bbox считать аналитически для полного эллипса и параметрической дуги, а не по coarse preview sampling;
+- production cut length: для полного/частичного эллипса не выдавать недоказанную простую формулу; использовать математически контролируемую numerical integration с заданной error tolerance либо оставлять factual length unavailable до proof;
+- preview sampling отделить от production calculations;
+- closed full ellipse topology/area можно объявлять exact только при доказанном полном параметрическом диапазоне; partial ellipse остаётся open topology.
 
 ---
 
 ## 5. NEXT ACTION
 
-1. Запустить/проверить полный CI на текущем WIP tree после journal commit.
-2. Если RED — локализовать и исправить только текущий legacy POLYLINE block; записать failure/fix в журнал.
-3. Если GREEN — `72cc5ecc…` становится новым functional checkpoint, а проверенный journal tree — новым GREEN verified tree.
-4. После GREEN выбрать следующий малый DXF gap: exact bulged closed topology либо ELLIPSE/SPLINE; никаких новых слоёв до gate.
+1. Проверить DXF ELLIPSE parameter semantics и текущую shape/model boundary.
+2. Добавить отдельный `ellipse` shape с center, major vector, ratio, start/end parameters.
+3. Реализовать analytic parameter point + extrema/bounds; не использовать preview sampling для production bbox.
+4. Выбрать доказуемый cut-length method с regression fixtures; если точность не доказана — fail closed вместо approximate factual length.
+5. Regression: axis-aligned full ellipse, rotated full ellipse, partial arc crossing extrema, invalid ratio/vector, preview only after production math.
+6. Journal WIP → полный CI → GREEN checkpoint до следующего слоя.
 
 ---
 
@@ -158,7 +152,7 @@ Regression WIP:
 - unverified bent STEP как production-authoritative;
 - unknown operation как zero cost;
 - 3D/polyface DXF трактовать как 2D contour;
-- approximate curved area/pierces выдавать как exact factual values.
+- approximate curved area/pierces/cut length выдавать как exact factual values.
 
 ---
 
@@ -177,21 +171,22 @@ Green относится к конкретному проверенному SHA.
 ### 2026-09-14 — private STEP/factual safety
 - private STEP surface evidence + confidential provenance;
 - assembly/surface-preparation internal revision path;
-- `ae09b1e5…` — предыдущий green functional checkpoint.
+- `ae09b1e5…` — historical green functional checkpoint.
 
 ### 2026-09-14 — DXF LWPOLYLINE bulge
-- `e2d3bb9c…` — analytic bulge arc geometry, exact bbox/cut length;
-- `2a0a6089…` — curved preview;
-- `9e163240…` — regression suite;
-- CI RED: legacy snapshot fixture не содержал `bulges[]`;
-- `f8f97fc2…` — fixture updated, без ослабления production logic;
-- `155c19c…` — verified tree: оба workflow полностью GREEN;
-- curved closed area/pierce topology намеренно остаётся fail-closed.
+- `e2d3bb9c…` analytic bulge geometry; `2a0a6089…` preview; `9e163240…` regressions;
+- RED: old snapshot fixture lacked `bulges[]`; `f8f97fc2…` fixed fixture only;
+- `155c19c…` both workflows GREEN.
 
-### 2026-09-14 — WIP legacy POLYLINE/VERTEX
-- `1f8b1202…` — safe simple 2D legacy sequence parser + complex/3D fail-closed masks;
-- `72cc5ecc…` — regression tests open/closed/bulge/closing-bulge/3D-mesh rejection;
-- CI pending на момент записи.
+### 2026-09-14 — legacy POLYLINE/VERTEX
+- `1f8b1202…` safe simple 2D parser + complex/3D fail-closed;
+- `72cc5ecc…` open/closed/bulge/closing-bulge/3D-mesh regression;
+- `5e38668…` both workflows fully GREEN;
+- `72cc5ecc…` = current functional checkpoint.
+
+### 2026-09-14 — WIP ELLIPSE
+- block открыт после GREEN legacy POLYLINE gate;
+- никакая approximate ellipse length/area не считается factual без отдельного proof/regression.
 
 ---
 
