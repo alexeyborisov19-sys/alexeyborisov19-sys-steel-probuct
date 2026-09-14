@@ -6,6 +6,7 @@ import type {
   SheetMetalFeature,
 } from "@/lib/instant-quote/cad-model";
 import { calculateMeshBounds } from "@/lib/instant-quote/mesh";
+import type { SheetMetalAnalysis } from "@/lib/instant-quote/sheet-metal";
 
 export type StepKernelResult = {
   meshes: CadMeshPrimitive[];
@@ -13,6 +14,7 @@ export type StepKernelResult = {
   bodyCount?: number;
   root?: CadAssemblyNode | null;
   features?: SheetMetalFeature[];
+  sheetMetal?: SheetMetalAnalysis;
   warnings?: string[];
   parserVersion?: string;
 };
@@ -56,6 +58,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
         meshes: result.meshes,
         root: result.root ?? null,
         features: result.features ?? [],
+        sheetMetal: result.sheetMetal,
         metadata: {
           sourceFileName: request.fileName,
           sourceBytes: request.bytes.byteLength,
@@ -63,7 +66,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
           parserVersion: result.parserVersion,
           analyzedAt: new Date().toISOString(),
         },
-        warnings: result.warnings ?? [],
+        warnings: [...(result.warnings ?? []), ...(result.sheetMetal?.warnings ?? [])],
       };
     },
   };
