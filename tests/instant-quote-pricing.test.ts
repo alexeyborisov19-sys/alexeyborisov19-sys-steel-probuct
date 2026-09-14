@@ -71,6 +71,43 @@ test("provisional quote keeps supplier price and plus-five price separately", ()
   assert.ok(price.laserRubEach > 0);
 });
 
+test("uses exact DXF planar area and pierce count instead of bounding rectangle when available", () => {
+  const exact = calculateProvisionalPartPrice({
+    materialId: "hot",
+    thicknessMm: 2,
+    quantity: 1,
+    geometry: {
+      widthMm: 500,
+      heightMm: 500,
+      areaMm2: 100_000,
+      cutLengthMm: 2_000,
+      contourCount: 20,
+      pierceCount: 2,
+    },
+    marketPrice,
+    operations: ["laser-cutting"],
+    materialUsageFactor: 1,
+  });
+  const fallback = calculateProvisionalPartPrice({
+    materialId: "hot",
+    thicknessMm: 2,
+    quantity: 1,
+    geometry: {
+      widthMm: 500,
+      heightMm: 500,
+      cutLengthMm: 2_000,
+      contourCount: 20,
+    },
+    marketPrice,
+    operations: ["laser-cutting"],
+    materialUsageFactor: 1,
+  });
+
+  assert.ok(exact.netMassKg < fallback.netMassKg);
+  assert.ok(exact.laserRubEach < fallback.laserRubEach);
+  assert.ok(exact.warnings.some((warning) => warning.includes("замкнутым DXF-контурам")));
+});
+
 test("large material batch uses supplier from-3t tier before applying plus five percent", () => {
   const price = calculateProvisionalPartPrice({
     materialId: "hot",
