@@ -1,4 +1,22 @@
+export type Vector2 = [number, number];
 export type Vector3 = [number, number, number];
+
+export type SheetMetalBoundaryEdgePreview = {
+  id: string;
+  curveKind: string;
+  pointsMm: Vector2[];
+};
+
+export type SheetMetalBoundaryWirePreview = {
+  id: string;
+  edges: SheetMetalBoundaryEdgePreview[];
+};
+
+export type SheetMetalBoundaryPreview = {
+  source: "brep-edge-sampling";
+  displayOnly: true;
+  wires: SheetMetalBoundaryWirePreview[];
+};
 
 export type PlaneFaceObservation = {
   id: string;
@@ -9,6 +27,7 @@ export type PlaneFaceObservation = {
   uvSizeMm?: [number, number];
   boundaryLengthMm?: number;
   wireCount?: number;
+  boundaryPreview?: SheetMetalBoundaryPreview;
 };
 
 export type CylinderFaceObservation = {
@@ -56,6 +75,7 @@ export type SheetMetalFlatPatternCandidate = {
   cutLengthMm: number;
   contourCount: number;
   volumeConsistencyError: number;
+  preview?: SheetMetalBoundaryPreview;
 };
 
 export type SheetMetalAnalysis = {
@@ -373,6 +393,7 @@ function pickPlanarFlatPatternCandidate(
     cutLengthMm,
     contourCount,
     volumeConsistencyError,
+    preview: primary.boundaryPreview,
   };
 }
 
