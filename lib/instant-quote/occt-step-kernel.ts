@@ -162,8 +162,10 @@ function sampleEdgeInWorld3d(
   }
 
   if (pointsMm.length < 2) return null;
+  const edgeHash = kernel.hashCode(edge, HASH_UPPER_BOUND);
   return {
-    id: `wire-${wireIndex}-edge-${edgeIndex}-${kernel.hashCode(edge, HASH_UPPER_BOUND)}`,
+    id: `wire-${wireIndex}-edge-${edgeIndex}-${edgeHash}`,
+    edgeHash,
     curveKind,
     pointsMm,
   };
@@ -363,7 +365,13 @@ function collectSheetMetalAnalysis(
     { volumeMm3 },
   );
   const unfoldGeometry = sheetMetal.thicknessCandidate?.confidence === "medium"
-    ? buildStepUnfoldGeometryEvidence({ sheetMetal, planarFaces, cylinderAxes, planarBoundaries })
+    ? buildStepUnfoldGeometryEvidence({
+        sheetMetal,
+        planarFaces,
+        cylindricalFaces,
+        cylinderAxes,
+        planarBoundaries,
+      })
     : undefined;
 
   return { sheetMetal, unfoldGeometry };
