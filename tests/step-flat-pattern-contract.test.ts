@@ -69,3 +69,28 @@ test("rejects a claimed trusted planar STEP when volume consistency is outside t
   assert.equal(validation.ok, false);
   assert.ok(validation.errors.some((error) => error.includes("volume consistency")));
 });
+
+test("accepts a finite display-only BRep boundary preview", () => {
+  const model = modelWithFlatPattern(0.01) as any;
+  model.sheetMetal.flatPatternCandidate.preview = {
+    source: "brep-edge-sampling",
+    displayOnly: true,
+    wires: [{ id: "wire-0", edges: [{ id: "edge-0", curveKind: "line", pointsMm: [[0, 0], [100, 0]] }] }],
+  };
+
+  assert.deepEqual(validateNormalizedCadModel(model), { ok: true, errors: [] });
+});
+
+test("rejects non-finite or price-authoritative STEP preview data", () => {
+  const model = modelWithFlatPattern(0.01) as any;
+  model.sheetMetal.flatPatternCandidate.preview = {
+    source: "brep-edge-sampling",
+    displayOnly: false,
+    wires: [{ id: "wire-0", edges: [{ id: "edge-0", curveKind: "line", pointsMm: [[0, 0], [Number.NaN, 0]] }] }],
+  };
+
+  const validation = validateNormalizedCadModel(model);
+  assert.equal(validation.ok, false);
+  assert.ok(validation.errors.some((error) => error.includes("display-only")));
+  assert.ok(validation.errors.some((error) => error.includes("finite UV pairs")));
+});
