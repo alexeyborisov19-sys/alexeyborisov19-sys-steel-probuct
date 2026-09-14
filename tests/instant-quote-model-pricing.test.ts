@@ -5,16 +5,17 @@ import { createEmptyProject } from "../lib/instant-quote/domain";
 import type { StoredPriceSnapshot } from "../lib/instant-quote/material-price-feed";
 import { calculateModelProjectPricing } from "../lib/instant-quote/model-pricing";
 import { addPartToProject, setPartThickness, updatePartGeometry } from "../lib/instant-quote/project";
+import { TEST_PRICING_CONTEXT } from "./fixtures/protected-pricing";
 
-const now = new Date("2026-09-14T12:00:00.000Z");
+const now = new Date("2099-01-01T12:00:00.000Z");
 const snapshots: StoredPriceSnapshot[] = [
   {
-    sourceId: "atlantik-smolensk",
-    fetchedAt: "2026-09-14T11:00:00.000Z",
-    sourceDate: "2026-09-10",
+    sourceId: "synthetic-supplier",
+    fetchedAt: "2099-01-01T11:00:00.000Z",
+    sourceDate: "2099-01-01",
     status: "ok",
     rows: [
-      { materialId: "hot", thicknessMm: 2, rubPerTon: 62_400, source: "Атлантик", sourceDate: "2026-09-10", fetchedAt: "2026-09-14T11:00:00.000Z", exactThickness: true },
+      { materialId: "hot", thicknessMm: 2, rubPerTon: 100_000, source: "fixture", sourceDate: "2099-01-01", fetchedAt: "2099-01-01T11:00:00.000Z", exactThickness: true },
     ],
   },
 ];
@@ -32,7 +33,7 @@ function model(format: "dxf" | "step", geometry: NormalizedCadModel["geometry"])
   };
 }
 
-test("normalized DXF can produce a provisional price", () => {
+test("normalized DXF can produce a provisional price only with protected pricing context", () => {
   let project = createEmptyProject(now);
   project = addPartToProject(project, { fileName: "plate.dxf", fileSizeBytes: 10 }, now);
   const id = project.activePartId!;
@@ -40,7 +41,7 @@ test("normalized DXF can produce a provisional price", () => {
   project = setPartThickness(project, id, 2, now);
   project = updatePartGeometry(project, id, geometry, now);
 
-  const result = calculateModelProjectPricing(project, { [id]: model("dxf", geometry) }, snapshots, now);
+  const result = calculateModelProjectPricing(project, { [id]: model("dxf", geometry) }, snapshots, TEST_PRICING_CONTEXT, now);
   assert.equal(result.calculatedParts, 1);
   assert.ok(result.parts[0].price);
   assert.ok(result.totalRub > 0);
@@ -54,7 +55,7 @@ test("raw STEP is inspectable but not silently priced before a trustworthy flat 
   project = setPartThickness(project, id, 2, now);
   project = updatePartGeometry(project, id, geometry, now);
 
-  const result = calculateModelProjectPricing(project, { [id]: model("step", geometry) }, snapshots, now);
+  const result = calculateModelProjectPricing(project, { [id]: model("step", geometry) }, snapshots, TEST_PRICING_CONTEXT, now);
   assert.equal(result.parts[0].status, "manual");
   assert.equal(result.parts[0].price, null);
   assert.ok(result.parts[0].reviewReasons.some((reason) => reason.includes("развёртка")));
