@@ -34,6 +34,9 @@ export type FactualRateBook = {
   bendRubEach: FactualRate | null;
   weldRubPerM: FactualRate | null;
   powderRubPerM2: FactualRate | null;
+  assemblyRubPerHour?: FactualRate | null;
+  surfacePreparationRubPerM2?: FactualRate | null;
+  packagingRubEach?: FactualRate | null;
 };
 
 export type FactualCalculationLineCode =
@@ -42,7 +45,10 @@ export type FactualCalculationLineCode =
   | "laser-piercing"
   | "bending"
   | "welding"
-  | "powder-coating";
+  | "powder-coating"
+  | "assembly"
+  | "surface-preparation"
+  | "packaging";
 
 export type FactualCalculationLine = {
   code: FactualCalculationLineCode;
@@ -64,6 +70,8 @@ export type FactualCalculationMissingCode =
   | "bend-count"
   | "weld-length"
   | "powder-area"
+  | "assembly-time"
+  | "surface-preparation-area"
   | "operation-rate"
   | "geometry";
 
@@ -87,6 +95,8 @@ export type FactualCalculationInput = {
   bendCount?: number;
   weldLengthM?: number;
   powderAreaM2?: number;
+  assemblyMinutes?: number;
+  surfacePreparationAreaM2?: number;
 };
 
 export type FactualCalculationResult = {
@@ -107,6 +117,8 @@ export type FactualCalculationResult = {
     bendCountEach: number | null;
     weldLengthMEach: number | null;
     powderAreaM2Each: number | null;
+    assemblyMinutesEach: number | null;
+    surfacePreparationAreaM2Each: number | null;
   };
   lines: FactualCalculationLine[];
   confirmedDirectCostRubEach: number;
@@ -353,10 +365,61 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
     }
   }
 
+  const assemblyMinutesEach = positiveFinite(input.assemblyMinutes) ? input.assemblyMinutes : null;
+  if (input.operations.includes("assembly")) {
+    if (assemblyMinutesEach == null) {
+      missing.push({ code: "assembly-time", label: "Сборка", reason: "Нужно фактическое время сборки на изделие.", blocking: false });
+    } else if (!input.rateBook.assemblyRubPerHour || !positiveFinite(input.rateBook.assemblyRubPerHour.rateRub)) {
+      missing.push({ code: "operation-rate", label: "Сборка", reason: "Нет утверждённой закрытой ставки сборки.", blocking: false });
+    } else {
+      addLine(lines, {
+        code: "assembly",
+        label: "Сборка",
+        quantity: assemblyMinutesEach / 60,
+        unit: "ч/шт",
+        rateRub: input.rateBook.assemblyRubPerHour.rateRub,
+        quantityBatch: quantity,
+        source: input.rateBook.assemblyRubPerHour.source,
+      });
+    }
+  }
+
+  const surfacePreparationAreaM2Each = positiveFinite(input.surfacePreparationAreaM2) ? input.surfacePreparationAreaM2 : null;
+  if (input.operations.includes("surface-preparation")) {
+    if (surfacePreparationAreaM2Each == null) {
+      missing.push({ code: "surface-preparation-area", label: "Подготовка поверхности", reason: "Нужна фактическая площадь подготовки поверхности на изделие.", blocking: false });
+    } else if (!input.rateBook.surfacePreparationRubPerM2 || !positiveFinite(input.rateBook.surfacePreparationRubPerM2.rateRub)) {
+      missing.push({ code: "operation-rate", label: "Подготовка поверхности", reason: "Нет утверждённой закрытой ставки подготовки поверхности.", blocking: false });
+    } else {
+      addLine(lines, {
+        code: "surface-preparation",
+        label: "Подготовка поверхности",
+        quantity: surfacePreparationAreaM2Each,
+        unit: "м²/шт",
+        rateRub: input.rateBook.surfacePreparationRubPerM2.rateRub,
+        quantityBatch: quantity,
+        source: input.rateBook.surfacePreparationRubPerM2.source,
+      });
+    }
+  }
+
+  if (input.operations.includes("packaging")) {
+    if (!input.rateBook.packagingRubEach || !positiveFinite(input.rateBook.packagingRubEach.rateRub)) {
+      missing.push({ code: "operation-rate", label: "Упаковка", reason: "Нет утверждённой закрытой ставки упаковки на изделие.", blocking: false });
+    } else {
+      addLine(lines, {
+        code: "packaging",
+        label: "Упаковка",
+        quantity: 1,
+        unit: "изделие/шт",
+        rateRub: input.rateBook.packagingRubEach.rateRub,
+        quantityBatch: quantity,
+        source: input.rateBook.packagingRubEach.source,
+      });
+    }
+  }
+
   const unpricedOperations: Array<{ operation: ManufacturingOperation; label: string }> = [
-    { operation: "assembly", label: "Сборка" },
-    { operation: "surface-preparation", label: "Подготовка поверхности" },
-    { operation: "packaging", label: "Упаковка" },
     { operation: "threading", label: "Нарезание резьбы" },
     { operation: "countersink", label: "Зенковка" },
   ];
@@ -400,6 +463,8 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
       bendCountEach,
       weldLengthMEach,
       powderAreaM2Each,
+      assemblyMinutesEach,
+      surfacePreparationAreaM2Each,
     },
     lines,
     confirmedDirectCostRubEach,
