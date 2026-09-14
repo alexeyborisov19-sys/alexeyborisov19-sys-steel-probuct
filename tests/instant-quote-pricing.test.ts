@@ -67,6 +67,7 @@ test("provisional quote keeps supplier price and plus-five price separately", ()
   assert.equal(price.materialMarketTier, "under-3t");
   assert.equal(price.materialPricedRubPerTon, 63_000);
   assert.equal(price.blankAreaMm2, 125_000);
+  assert.equal(price.materialAllocationStrategy, "bounding-rectangle");
   assert.equal(price.totalRub, price.unitRub * 10);
   assert.ok(price.laserRubEach > 0);
 });
@@ -109,6 +110,45 @@ test("laser uses actual contour while metal stays on the rectangular X by Y blan
   assert.equal(exact.materialRubEach, noExactArea.materialRubEach);
   assert.ok(exact.laserRubEach < noExactArea.laserRubEach);
   assert.ok(exact.warnings.some((warning) => warning.includes("прямоугольной заготовке")));
+});
+
+test("future nesting can replace the rectangular material allocation without changing laser pricing", () => {
+  const rectangle = calculateProvisionalPartPrice({
+    materialId: "hot",
+    thicknessMm: 2,
+    quantity: 10,
+    geometry: {
+      widthMm: 500,
+      heightMm: 500,
+      areaMm2: 100_000,
+      cutLengthMm: 2_000,
+      pierceCount: 2,
+    },
+    marketPrice,
+    operations: ["laser-cutting"],
+  });
+  const nested = calculateProvisionalPartPrice({
+    materialId: "hot",
+    thicknessMm: 2,
+    quantity: 10,
+    geometry: {
+      widthMm: 500,
+      heightMm: 500,
+      areaMm2: 100_000,
+      nestedAllocatedAreaMm2: 140_000,
+      cutLengthMm: 2_000,
+      pierceCount: 2,
+    },
+    marketPrice,
+    operations: ["laser-cutting"],
+  });
+
+  assert.equal(rectangle.materialAllocationStrategy, "bounding-rectangle");
+  assert.equal(nested.materialAllocationStrategy, "sheet-nesting");
+  assert.equal(rectangle.blankAreaMm2, 250_000);
+  assert.equal(nested.blankAreaMm2, 140_000);
+  assert.ok(nested.materialRubEach < rectangle.materialRubEach);
+  assert.equal(nested.laserRubEach, rectangle.laserRubEach);
 });
 
 test("large material batch uses supplier from-3t tier before applying plus five percent", () => {
