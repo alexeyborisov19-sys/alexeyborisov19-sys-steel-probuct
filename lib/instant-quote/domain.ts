@@ -25,7 +25,12 @@ export type PartGeometrySummary = {
   heightMm?: number;
   depthMm?: number;
   thicknessMm?: number;
+  // Net planar area of the finished 2D part. Used for finished-part mass and process analytics.
   areaMm2?: number;
+  // Rectangular purchasing blank around one part. Current Alpha material pricing uses this area.
+  blankAreaMm2?: number;
+  // Future nesting engine may allocate a real share of sheet stock to the part/batch.
+  nestedAllocatedAreaMm2?: number;
   cutLengthMm?: number;
   contourCount?: number;
   pierceCount?: number;
