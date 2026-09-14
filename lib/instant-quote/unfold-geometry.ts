@@ -1,4 +1,5 @@
 import type {
+  CylinderFaceObservation,
   PlaneFaceObservation,
   SheetMetalAnalysis,
   Vector3,
@@ -12,6 +13,7 @@ export type CylinderAxisSegmentObservation = {
 
 export type BRepBoundaryEdge3D = {
   id: string;
+  edgeHash: number;
   curveKind: string;
   pointsMm: Vector3[];
 };
@@ -42,6 +44,13 @@ export type BRepPanelRegionEvidence = {
   boundary3d?: BRepPanelBoundaryPreview3D;
 };
 
+export type BRepPanelTangentSegment3D = {
+  panelId: string;
+  startMm: Vector3;
+  endMm: Vector3;
+  sourceEdgeHashes: [number, number];
+};
+
 export type BRepBendGeometryEvidence = {
   bendId: string;
   sourceCylinderFaceIds: [string, string];
@@ -50,6 +59,7 @@ export type BRepBendGeometryEvidence = {
   axisEndMm: Vector3;
   angleDeg: number;
   insideRadiusMm: number;
+  tangentSegments?: [BRepPanelTangentSegment3D, BRepPanelTangentSegment3D];
 };
 
 export type StepUnfoldGeometryEvidence = {
@@ -69,6 +79,10 @@ function length(vector: Vector3) {
   return Math.hypot(vector[0], vector[1], vector[2]);
 }
 
+function distance(a: Vector3, b: Vector3) {
+  return length(subtract(b, a));
+}
+
 function subtract(a: Vector3, b: Vector3): Vector3 {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
@@ -79,6 +93,10 @@ function add(a: Vector3, b: Vector3): Vector3 {
 
 function scale(vector: Vector3, factor: number): Vector3 {
   return [vector[0] * factor, vector[1] * factor, vector[2] * factor];
+}
+
+function midpoint(a: Vector3, b: Vector3): Vector3 {
+  return scale(add(a, b), 0.5);
 }
 
 function dot(a: Vector3, b: Vector3) {
@@ -195,21 +213,93 @@ function axisOverlap(
   };
 }
 
+function boundaryEdgesForFace(
+  faceId: string,
+  boundaryByFaceId: Map<string, BRepPanelBoundaryPreview3D>,
+) {
+  return boundaryByFaceId.get(faceId)?.wires.flatMap((wire) => wire.edges) ?? [];
+}
+
+function sharedPlanarCylinderEdge(
+  panel: BRepPanelRegionEvidence,
+  cylinder: CylinderFaceObservation,
+  boundaryByFaceId: Map<string, BRepPanelBoundaryPreview3D>,
+): BRepBoundaryEdge3D | null {
+  const cylinderHashes = new Set(cylinder.edgeHashes ?? []);
+  if (!cylinderHashes.size) return null;
+
+  const matching = panel.sourceFaceIds
+    .flatMap((faceId) => boundaryEdgesForFace(faceId, boundaryByFaceId))
+    .filter((edge) => cylinderHashes.has(edge.edgeHash));
+  const unique = [...new Map(matching.map((edge) => [edge.edgeHash, edge])).values()];
+  return unique.length === 1 ? unique[0] : null;
+}
+
+function edgeEndpoints(edge: BRepBoundaryEdge3D): [Vector3, Vector3] | null {
+  if (edge.curveKind !== "line" || edge.pointsMm.length < 2) return null;
+  const start = edge.pointsMm[0];
+  const end = edge.pointsMm[edge.pointsMm.length - 1];
+  return finiteVector(start) && finiteVector(end) && distance(start, end) > 1e-8 ? [start, end] : null;
+}
+
+function buildPanelTangentSegment(
+  panel: BRepPanelRegionEvidence,
+  cylinders: [CylinderFaceObservation, CylinderFaceObservation],
+  boundaryByFaceId: Map<string, BRepPanelBoundaryPreview3D>,
+  thicknessMm: number,
+  expectedAxis: { startMm: Vector3; endMm: Vector3 },
+): BRepPanelTangentSegment3D | null {
+  const firstEdge = sharedPlanarCylinderEdge(panel, cylinders[0], boundaryByFaceId);
+  const secondEdge = sharedPlanarCylinderEdge(panel, cylinders[1], boundaryByFaceId);
+  if (!firstEdge || !secondEdge) return null;
+
+  const first = edgeEndpoints(firstEdge);
+  const second = edgeEndpoints(secondEdge);
+  if (!first || !second) return null;
+  const firstDirection = normalize(subtract(first[1], first[0]));
+  const secondDirection = normalize(subtract(second[1], second[0]));
+  if (!firstDirection || !secondDirection || Math.abs(dot(firstDirection, secondDirection)) < PARALLEL_DOT) return null;
+
+  const directCost = distance(first[0], second[0]) + distance(first[1], second[1]);
+  const reverseCost = distance(first[0], second[1]) + distance(first[1], second[0]);
+  const alignedSecond: [Vector3, Vector3] = directCost <= reverseCost
+    ? second
+    : [second[1], second[0]];
+
+  const startSeparation = distance(first[0], alignedSecond[0]);
+  const endSeparation = distance(first[1], alignedSecond[1]);
+  if (!closeEnough(startSeparation, thicknessMm) || !closeEnough(endSeparation, thicknessMm)) return null;
+
+  const startMm = midpoint(first[0], alignedSecond[0]);
+  const endMm = midpoint(first[1], alignedSecond[1]);
+  const tangentDirection = normalize(subtract(endMm, startMm));
+  const axisDirection = normalize(subtract(expectedAxis.endMm, expectedAxis.startMm));
+  if (!tangentDirection || !axisDirection || Math.abs(dot(tangentDirection, axisDirection)) < PARALLEL_DOT) return null;
+
+  return {
+    panelId: panel.id,
+    startMm,
+    endMm,
+    sourceEdgeHashes: [firstEdge.edgeHash, secondEdge.edgeHash],
+  };
+}
+
 /**
  * Converts raw BRep observations into the geometry evidence needed by the
  * bend-unfold planner. This is deliberately stricter than DFM bend detection:
  * each sheet panel must be a matched pair of opposite planar skins and each
  * bend must resolve to exactly two such panels plus an overlapping finite axis.
- * Optional panel boundaries are sampled BRep display evidence only; pricing
- * never reads them.
+ * Optional panel boundaries and tangent segments are sampled BRep evidence only;
+ * pricing never reads them directly.
  */
 export function buildStepUnfoldGeometryEvidence(input: {
   sheetMetal: SheetMetalAnalysis;
   planarFaces: PlaneFaceObservation[];
+  cylindricalFaces?: CylinderFaceObservation[];
   cylinderAxes: CylinderAxisSegmentObservation[];
   planarBoundaries?: PlanarFaceBoundary3DObservation[];
 }): StepUnfoldGeometryEvidence {
-  const { sheetMetal, planarFaces, cylinderAxes, planarBoundaries = [] } = input;
+  const { sheetMetal, planarFaces, cylindricalFaces = [], cylinderAxes, planarBoundaries = [] } = input;
   const thickness = sheetMetal.thicknessCandidate;
   const issues: string[] = [];
 
@@ -226,7 +316,10 @@ export function buildStepUnfoldGeometryEvidence(input: {
   const panels = buildPanelRegions(planarFaces, thickness.thicknessMm, planarBoundaries);
   const panelByFaceId = new Map<string, BRepPanelRegionEvidence>();
   panels.forEach((panel) => panel.sourceFaceIds.forEach((faceId) => panelByFaceId.set(faceId, panel)));
+  const panelById = new Map(panels.map((panel) => [panel.id, panel]));
   const axisByFaceId = new Map(cylinderAxes.map((axis) => [axis.faceId, axis]));
+  const cylinderById = new Map(cylindricalFaces.map((cylinder) => [cylinder.id, cylinder]));
+  const boundaryByFaceId = new Map(planarBoundaries.map((item) => [item.faceId, item.preview]));
 
   const bends: BRepBendGeometryEvidence[] = [];
   for (const bend of sheetMetal.bendCandidates) {
@@ -253,6 +346,29 @@ export function buildStepUnfoldGeometryEvidence(input: {
       continue;
     }
 
+    let tangentSegments: [BRepPanelTangentSegment3D, BRepPanelTangentSegment3D] | undefined;
+    const firstCylinder = cylinderById.get(bend.faceIds[0]);
+    const secondCylinder = cylinderById.get(bend.faceIds[1]);
+    const firstPanel = panelById.get(panelIds[0]);
+    const secondPanel = panelById.get(panelIds[1]);
+    if (firstCylinder && secondCylinder && firstPanel && secondPanel && boundaryByFaceId.size) {
+      const firstTangent = buildPanelTangentSegment(
+        firstPanel,
+        [firstCylinder, secondCylinder],
+        boundaryByFaceId,
+        thickness.thicknessMm,
+        overlap,
+      );
+      const secondTangent = buildPanelTangentSegment(
+        secondPanel,
+        [firstCylinder, secondCylinder],
+        boundaryByFaceId,
+        thickness.thicknessMm,
+        overlap,
+      );
+      if (firstTangent && secondTangent) tangentSegments = [firstTangent, secondTangent];
+    }
+
     bends.push({
       bendId: bend.id,
       sourceCylinderFaceIds: bend.faceIds,
@@ -261,6 +377,7 @@ export function buildStepUnfoldGeometryEvidence(input: {
       axisEndMm: overlap.endMm,
       angleDeg: bend.angleDeg,
       insideRadiusMm: bend.radiusMm,
+      tangentSegments,
     });
   }
 
