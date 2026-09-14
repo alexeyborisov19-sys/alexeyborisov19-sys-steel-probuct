@@ -21,7 +21,6 @@ import type { MaterialId } from "@/lib/instant-quote/pricing";
 import { loadPrivateCalculationBasis } from "@/lib/server/instant-quote/private-calculation-basis";
 import {
   calculateApprovedSalePriceRub,
-  loadPrivateCommercialPricing,
   type PrivateCommercialPricing,
 } from "@/lib/server/instant-quote/private-commercial-pricing";
 import {
@@ -103,7 +102,7 @@ function safeClientMessage(
 /**
  * Complete confidential calculation boundary.
  *
- * 1. Loads rates and supplier-price snapshots from protected server storage.
+ * 1. Loads rates, commercial terms and supplier-price snapshots from protected server storage.
  * 2. Calculates internal production cost and physical production parameters.
  * 3. Writes the full confidential report outside the public web tree.
  * 4. Returns only the explicitly client-safe projection and, when every cost
@@ -119,13 +118,7 @@ export async function runConfidentialCalculationForClient(
   now = new Date(),
 ): Promise<ClientProjectCalculationView> {
   const basis = await loadPrivateCalculationBasis();
-  let commercialPricing: PrivateCommercialPricing | null = null;
-  try {
-    commercialPricing = loadPrivateCommercialPricing();
-  } catch {
-    // Commercial publication is fail-closed. Internal factual calculation can
-    // still complete and be persisted when selling-price settings are absent.
-  }
+  const commercialPricing = basis.commercialPricing ?? null;
 
   const projectForCalculation = withRequiredLaserCutting(project);
   const explicitFactualByPartId = inputs.factualByPartId ?? {};
