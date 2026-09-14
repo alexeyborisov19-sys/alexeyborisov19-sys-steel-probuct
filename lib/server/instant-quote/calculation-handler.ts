@@ -2,13 +2,14 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
 import { dxfCadAdapter } from "@/lib/instant-quote/dxf-adapter";
-import { parseAsciiDxf, type ParsedDxf } from "@/lib/instant-quote/dxf";
+import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
 import {
   normalizeCadFormat,
   type InstantQuoteProject,
   type ProjectPart,
 } from "@/lib/instant-quote/domain";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
+import type { ProjectCadEvidence } from "@/lib/instant-quote/project-factual-calculation";
 import { clientKey } from "@/lib/security/client-ip";
 import { consumeRules, quoteRateRules } from "@/lib/security/rate-limit";
 import { PayloadTooLargeError, readMultipartForm } from "@/lib/security/request-body";
@@ -27,7 +28,7 @@ const ROUTE = "online-calculation";
 
 type RunCalculation = (
   project: InstantQuoteProject,
-  parsedByPartId: Record<string, ParsedDxf>,
+  evidenceByPartId: ProjectCadEvidence,
   inputs?: { internalNotes?: string[] },
   now?: Date,
 ) => Promise<ClientProjectCalculationView>;
@@ -64,19 +65,41 @@ function serverProjectId(now: Date) {
 }
 
 function parseDxfInspection(inspection: UploadInspection) {
-  const text = inspection.buffer.toString("utf8");
-  return parseAsciiDxf(text);
+  return parseAsciiDxf(inspection.buffer.toString("utf8"));
+}
+
+async function analyzePlanarStep(inspection: UploadInspection, format: "step" | "stp") {
+  const [{ createStepCadAdapter }, { occtStepKernel }] = await Promise.all([
+    import("@/lib/instant-quote/step-adapter"),
+    import("@/lib/instant-quote/occt-step-kernel"),
+  ]);
+  const adapter = createStepCadAdapter(occtStepKernel);
+  const bytes = new Uint8Array(
+    inspection.buffer.buffer,
+    inspection.buffer.byteOffset,
+    inspection.buffer.byteLength,
+  );
+  const model = await adapter.analyze({ fileName: inspection.safeName, format, bytes });
+  const flat = model.sheetMetal?.flatPatternCandidate;
+  const productionReady = flat?.confidence === "high"
+    && (model.geometry.areaMm2 ?? 0) > 0
+    && (model.geometry.blankAreaMm2 ?? 0) > 0
+    && (model.geometry.cutLengthMm ?? 0) > 0
+    && (model.geometry.contourCount ?? 0) > 0;
+
+  return { model, productionReady };
 }
 
 async function buildAuthoritativeProject(
   manifestRaw: string,
   inspections: UploadInspection[],
   now: Date,
-): Promise<{ project: InstantQuoteProject; parsedByPartId: Record<string, ParsedDxf> }> {
+): Promise<{ project: InstantQuoteProject; evidenceByPartId: ProjectCadEvidence; analysisNotes: string[] }> {
   const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
   const projectId = serverProjectId(now);
   const createdAt = now.toISOString();
-  const parsedByPartId: Record<string, ParsedDxf> = {};
+  const evidenceByPartId: ProjectCadEvidence = {};
+  const analysisNotes: string[] = [];
   const parts: ProjectPart[] = [];
 
   for (const item of manifest.parts) {
@@ -94,9 +117,37 @@ async function buildAuthoritativeProject(
         inspection.buffer.byteLength,
       );
       const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
+      const parsed = parseDxfInspection(inspection);
       geometry = model.geometry;
-      parsedByPartId[item.clientPartId] = parseDxfInspection(inspection);
+      evidenceByPartId[item.clientPartId] = { unsupportedEntities: [...parsed.unsupportedEntities] };
       state = model.warnings.length ? "manual-review" : "configurable";
+    } else if (format === "step" || format === "stp") {
+      try {
+        const { model, productionReady } = await analyzePlanarStep(inspection, format);
+        if (productionReady) {
+          geometry = model.geometry;
+          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
+          state = model.warnings.length ? "manual-review" : "configurable";
+          analysisNotes.push(`STEP ${inspection.safeName}: server OpenCascade confirmed a high-confidence planar sheet flat pattern.`);
+        } else {
+          evidenceByPartId[item.clientPartId] = {
+            reviewReasons: [
+              ...model.warnings,
+              "STEP распознан OpenCascade на сервере, но production-authoritative 2D-развёртка для этой модели не подтверждена.",
+            ],
+          };
+          analysisNotes.push(`STEP ${inspection.safeName}: BRep inspected on server; factual material/laser calculation withheld until authoritative flat pattern.`);
+        }
+      } catch {
+        evidenceByPartId[item.clientPartId] = {
+          reviewReasons: ["Серверный OpenCascade не смог подтвердить производственную геометрию STEP; требуется технологическая проверка."],
+        };
+        analysisNotes.push(`STEP ${inspection.safeName}: authoritative server analysis failed; no production geometry was priced.`);
+      }
+    } else {
+      evidenceByPartId[item.clientPartId] = {
+        reviewReasons: ["DWG принят в защищённое хранилище и требует внутренней технологической обработки перед расчётом."],
+      };
     }
 
     parts.push({
@@ -126,7 +177,8 @@ async function buildAuthoritativeProject(
       activePartId: parts[0]?.id ?? null,
       parts,
     },
-    parsedByPartId,
+    evidenceByPartId,
+    analysisNotes,
   };
 }
 
@@ -188,11 +240,11 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       }
 
       const now = new Date();
-      const { project, parsedByPartId } = await buildAuthoritativeProject(manifestRaw, inspections, now);
+      const { project, evidenceByPartId, analysisNotes } = await buildAuthoritativeProject(manifestRaw, inspections, now);
       const clientView = await dependencies.runCalculation(
         project,
-        parsedByPartId,
-        { internalNotes: storageNotes(requestId, quarantined) },
+        evidenceByPartId,
+        { internalNotes: [...storageNotes(requestId, quarantined), ...analysisNotes] },
         now,
       );
 
