@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClientCadPreview } from "@/lib/instant-quote/client-cad-preview";
 import { analyzeCad, cadFormatFromFileName, CadAdapterUnavailableError } from "@/lib/instant-quote/cad-router";
 import { validateNormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
 
 export const runtime = "nodejs";
 
@@ -28,17 +29,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Unsupported CAD format." }, { status: 415 });
     }
 
+    const bytes = new Uint8Array(await entry.arrayBuffer());
     const model = await analyzeCad({
       fileName: entry.name,
       format,
-      bytes: new Uint8Array(await entry.arrayBuffer()),
+      bytes,
     });
     const validation = validateNormalizedCadModel(model);
     if (!validation.ok) {
       return NextResponse.json({ ok: false, error: "Normalized CAD model validation failed." }, { status: 422 });
     }
 
-    return NextResponse.json({ ok: true, preview: createClientCadPreview(model) });
+    const parsedDxf = format === "dxf"
+      ? parseAsciiDxf(new TextDecoder("utf-8").decode(bytes))
+      : undefined;
+
+    return NextResponse.json({ ok: true, preview: createClientCadPreview(model, parsedDxf) });
   } catch (error) {
     if (error instanceof CadAdapterUnavailableError) {
       return NextResponse.json(
