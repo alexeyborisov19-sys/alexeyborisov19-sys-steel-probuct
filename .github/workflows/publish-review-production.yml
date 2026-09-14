@@ -55,12 +55,31 @@ jobs:
           test -f "$APP_PATH/ecosystem.config.cjs"
           test -f "$APP_PATH/.env.production"
 
-          BASIS_PATH=/var/lib/steelprodukt/production/calculation-basis.json
-          REPORT_ROOT=/var/lib/steelprodukt/production/reports
-          test -r "$BASIS_PATH" || {
-            echo "Private calculation basis is not readable at the approved production path." >&2
+          BASIS_PATH=""
+          APPROVED_BASIS_PATH=/var/lib/steelprodukt/production/calculation-basis.json
+          if sudo -u nodejs test -r "$APPROVED_BASIS_PATH"; then
+            BASIS_PATH="$APPROVED_BASIS_PATH"
+          else
+            for SEARCH_ROOT in /var/lib/steelprodukt "$APP_PATH/.data"; do
+              [ -d "$SEARCH_ROOT" ] || continue
+              while IFS= read -r CANDIDATE; do
+                [ -f "$CANDIDATE" ] || continue
+                if grep -q '"rateBook"' "$CANDIDATE" \
+                  && grep -q '"materialPriceSnapshots"' "$CANDIDATE" \
+                  && sudo -u nodejs test -r "$CANDIDATE"; then
+                  BASIS_PATH="$CANDIDATE"
+                  break 2
+                fi
+              done < <(find "$SEARCH_ROOT" -maxdepth 5 -type f -name '*.json' -size -5M 2>/dev/null | sort)
+            done
+          fi
+          test -n "$BASIS_PATH" || {
+            echo "No existing readable private calculation basis was found on the production host." >&2
             exit 1
           }
+          echo "Existing private calculation basis located on production host." >&2
+
+          REPORT_ROOT=/var/lib/steelprodukt/production/reports
           install -d -m 0700 -o nodejs -g "$(id -gn nodejs)" "$REPORT_ROOT"
 
           BACKUP_ROOT=/var/backups/steelprodukt/review-releases
