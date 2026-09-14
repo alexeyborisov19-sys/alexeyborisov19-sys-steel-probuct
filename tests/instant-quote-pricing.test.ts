@@ -61,17 +61,17 @@ test("provisional quote keeps supplier price and plus-five price separately", ()
     marketPrice,
     operations: ["laser-cutting", "bending", "packaging"],
     bendCount: 2,
-    materialUsageFactor: 1,
   });
 
   assert.equal(price.materialMarketRubPerTon, 60_000);
   assert.equal(price.materialMarketTier, "under-3t");
   assert.equal(price.materialPricedRubPerTon, 63_000);
+  assert.equal(price.blankAreaMm2, 125_000);
   assert.equal(price.totalRub, price.unitRub * 10);
   assert.ok(price.laserRubEach > 0);
 });
 
-test("uses exact DXF planar area and pierce count instead of bounding rectangle when available", () => {
+test("laser uses actual contour while metal stays on the rectangular X by Y blank", () => {
   const exact = calculateProvisionalPartPrice({
     materialId: "hot",
     thicknessMm: 2,
@@ -86,9 +86,8 @@ test("uses exact DXF planar area and pierce count instead of bounding rectangle 
     },
     marketPrice,
     operations: ["laser-cutting"],
-    materialUsageFactor: 1,
   });
-  const fallback = calculateProvisionalPartPrice({
+  const noExactArea = calculateProvisionalPartPrice({
     materialId: "hot",
     thicknessMm: 2,
     quantity: 1,
@@ -100,12 +99,16 @@ test("uses exact DXF planar area and pierce count instead of bounding rectangle 
     },
     marketPrice,
     operations: ["laser-cutting"],
-    materialUsageFactor: 1,
   });
 
-  assert.ok(exact.netMassKg < fallback.netMassKg);
-  assert.ok(exact.laserRubEach < fallback.laserRubEach);
-  assert.ok(exact.warnings.some((warning) => warning.includes("замкнутым DXF-контурам")));
+  assert.equal(exact.netAreaMm2, 100_000);
+  assert.equal(exact.blankAreaMm2, 250_000);
+  assert.equal(exact.blankWastePct, 60);
+  assert.ok(exact.netMassKg < exact.blankMassKg);
+  assert.equal(exact.purchasedMassKg, noExactArea.purchasedMassKg);
+  assert.equal(exact.materialRubEach, noExactArea.materialRubEach);
+  assert.ok(exact.laserRubEach < noExactArea.laserRubEach);
+  assert.ok(exact.warnings.some((warning) => warning.includes("прямоугольной заготовке")));
 });
 
 test("large material batch uses supplier from-3t tier before applying plus five percent", () => {
@@ -116,7 +119,6 @@ test("large material batch uses supplier from-3t tier before applying plus five 
     geometry: { widthMm: 2_000, heightMm: 1_000, cutLengthMm: 6_000, contourCount: 1 },
     marketPrice: { ...marketPrice, thicknessMm: 10 },
     operations: ["laser-cutting"],
-    materialUsageFactor: 1,
   });
 
   assert.ok(price.batchPurchasedMassKg >= 3_000);
@@ -132,7 +134,6 @@ test("series quantity lowers unit price by amortizing setup and selecting cut ti
     geometry: { widthMm: 500, heightMm: 250, cutLengthMm: 10_000, contourCount: 3 },
     marketPrice,
     operations: ["laser-cutting" as const],
-    materialUsageFactor: 1,
   };
 
   const one = calculateProvisionalPartPrice({ ...common, quantity: 1 });
