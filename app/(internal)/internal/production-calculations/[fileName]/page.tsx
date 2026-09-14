@@ -44,6 +44,8 @@ export default async function ProductionCalculationDetailPage({ params }: { para
     weldLengthM: snapshot.factualByPartId[part.id]?.weldLengthM,
     powderAreaM2: snapshot.factualByPartId[part.id]?.powderAreaM2,
     powderSides: snapshot.powderSidesByPartId[part.id],
+    assemblyMinutes: snapshot.factualByPartId[part.id]?.assemblyMinutes,
+    surfacePreparationAreaM2: snapshot.factualByPartId[part.id]?.surfacePreparationAreaM2,
   })) ?? [];
 
   return <InternalShell {...shell}>
@@ -98,6 +100,9 @@ export default async function ProductionCalculationDetailPage({ params }: { para
             <div className="border border-white/10 p-3"><div className="text-white/35">Гибка</div><div className="mt-1">{number(parameters.bending.bendCountBatch, " гибов")}</div></div>
             <div className="border border-white/10 p-3"><div className="text-white/35">Сварка</div><div className="mt-1">{number(parameters.welding.weldLengthMBatch, " м")}</div></div>
             <div className="border border-white/10 p-3"><div className="text-white/35">Окраска</div><div className="mt-1">{number(parameters.coating.powderAreaM2Batch, " м²")}</div></div>
+            <div className="border border-white/10 p-3"><div className="text-white/35">Сборка</div><div className="mt-1">{number(parameters.assembly.minutesEach, " мин/шт.")}</div><div className="mt-1 text-xs text-white/40">Партия: {number(parameters.assembly.hoursBatch, " ч")}</div></div>
+            <div className="border border-white/10 p-3"><div className="text-white/35">Подготовка поверхности</div><div className="mt-1">{number(parameters.surfacePreparation.areaM2Each, " м²/шт.")}</div><div className="mt-1 text-xs text-white/40">Партия: {number(parameters.surfacePreparation.areaM2Batch, " м²")}</div></div>
+            <div className="border border-white/10 p-3"><div className="text-white/35">Упаковка</div><div className="mt-1">{parameters.packaging.selected ? number(parameters.packaging.unitsBatch, " изделий") : "не выбрана"}</div></div>
           </div>}
 
           {calculation && <div className="mt-5 overflow-x-auto">
