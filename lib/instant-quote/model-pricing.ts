@@ -33,6 +33,24 @@ function materialIdOf(value: string | null): MaterialId | null {
   return null;
 }
 
+function isStepModel(model: NormalizedCadModel) {
+  return model.format === "step" || model.format === "stp";
+}
+
+function trustedPlanarStep(model: NormalizedCadModel) {
+  const flatPattern = model.sheetMetal?.flatPatternCandidate;
+  return isStepModel(model) && flatPattern?.source === "planar-prism" && flatPattern.confidence === "high"
+    ? flatPattern
+    : null;
+}
+
+function stepThicknessMatches(model: NormalizedCadModel, selectedThicknessMm: number) {
+  const detectedThicknessMm = model.sheetMetal?.thicknessCandidate?.thicknessMm;
+  if (!(detectedThicknessMm && detectedThicknessMm > 0)) return false;
+  const toleranceMm = Math.max(0.05, detectedThicknessMm * 0.02);
+  return Math.abs(selectedThicknessMm - detectedThicknessMm) <= toleranceMm;
+}
+
 export function calculateModelProjectPricing(
   project: InstantQuoteProject,
   modelsByPartId: Record<string, NormalizedCadModel>,
@@ -75,12 +93,8 @@ export function calculateModelProjectPricing(
       };
     }
 
-    const rawStepNeedsUnfold = (model.format === "step" || model.format === "stp")
-      && !(model.geometry.cutLengthMm && model.geometry.blankAreaMm2);
-
-    // Never treat a 3D STEP bounding box as a flat laser blank. Until a trusted
-    // sheet-metal unfold exists, STEP can be inspected/measured but not auto-priced.
-    if (rawStepNeedsUnfold) {
+    const planarStep = trustedPlanarStep(model);
+    if (isStepModel(model) && !planarStep) {
       return {
         partId: part.id,
         status: "manual",
@@ -90,6 +104,21 @@ export function calculateModelProjectPricing(
           ...model.warnings,
           "STEP распознан в 3D. Для автоматической цены нужна подтверждённая листовая развёртка и линия лазерного реза.",
         ],
+      };
+    }
+
+    if (planarStep && !stepThicknessMatches(model, thicknessMm)) {
+      const detectedThicknessMm = model.sheetMetal?.thicknessCandidate?.thicknessMm;
+      return {
+        partId: part.id,
+        status: "blocked",
+        price: null,
+        blockingReasons: [
+          detectedThicknessMm
+            ? `Выбранная толщина ${thicknessMm} мм не совпадает с толщиной STEP ${detectedThicknessMm} мм.`
+            : "Не удалось подтвердить толщину STEP для выбранной конфигурации.",
+        ],
+        reviewReasons: model.warnings,
       };
     }
 
