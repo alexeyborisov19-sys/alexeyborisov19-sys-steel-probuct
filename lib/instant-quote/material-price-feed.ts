@@ -25,11 +25,11 @@ export const TRUSTED_METAL_PRICE_SOURCES: PriceFeedSource[] = [
     url: "https://atlantik-company.com/price.pdf",
     format: "pdf",
     priority: 1,
-    materials: ["hot", "cold", "zinc", "inox"],
+    materials: ["hot", "cold", "zinc"],
     enabled: true,
     role: "primary",
     region: "Смоленск",
-    note: "Основной источник: прямой официальный PDF-прайс, пригодный для серверного парсинга.",
+    note: "Основной источник: прямой официальный PDF-прайс. Автопарсер подтверждён для г/к, х/к и оцинкованного листа; другие группы не заявляются до отдельной валидации.",
   },
   {
     id: "metallservis-official",
