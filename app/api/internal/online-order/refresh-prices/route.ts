@@ -10,7 +10,9 @@ function noStore(body: Record<string, unknown>, status: number) {
     status,
     headers: {
       "Cache-Control": "no-store, max-age=0",
+      "Pragma": "no-cache",
       "X-Content-Type-Options": "nosniff",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
     },
   });
 }
@@ -38,15 +40,22 @@ export async function POST(request: Request) {
     return noStore({ ok: false, code: "UNAUTHORIZED" }, 401);
   }
 
+  // Fail safe: a normal POST validates the complete upstream pipeline but does
+  // not write private prices. Persistence requires the explicit `?commit=1`.
+  const commit = new URL(request.url).searchParams.get("commit") === "1";
+
   try {
-    const result = await refreshAtlantikPriceSnapshot();
+    const result = await refreshAtlantikPriceSnapshot(new Date(), { persist: commit });
     return noStore({
       ok: true,
+      mode: commit ? "commit" : "dry-run",
       sourceId: result.sourceId,
       sourceDate: result.sourceDate,
       fetchedAt: result.fetchedAt,
       rowCount: result.rowCount,
       materialCounts: result.materialCounts,
+      contentChanged: result.contentChanged,
+      persisted: result.persisted,
     }, 200);
   } catch {
     // Do not disclose upstream, parser, filesystem or private-basis details.
