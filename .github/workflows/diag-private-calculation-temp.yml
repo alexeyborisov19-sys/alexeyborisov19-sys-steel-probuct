@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: temp-private-calculation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   diagnose:
     if: github.event.pull_request.head.repo.full_name == github.repository
@@ -26,7 +30,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Run isolated confidential calculation
+      - name: Read deployed calculation build identity
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -38,102 +42,94 @@ jobs:
             "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$APP_PATH"
-          set -a
-          . ./.env.production
-          set +a
-
-          DIAG_ROOT="$(mktemp -d /tmp/steelprodukt-calc-report.XXXXXX)"
-          DIAG_MODULES="$(mktemp -d /tmp/steelprodukt-calc-modules.XXXXXX)"
-          RUNNER="$(mktemp /tmp/steelprodukt-calc-runner.XXXXXX.mts)"
-          trap 'rm -rf "$DIAG_ROOT" "$DIAG_MODULES" "$RUNNER"' EXIT
-
-          mkdir -p "$DIAG_MODULES/server-only"
-          printf '%s\n' '{"name":"server-only","version":"0.0.0","main":"index.js"}' > "$DIAG_MODULES/server-only/package.json"
-          printf '%s\n' 'module.exports = {};' > "$DIAG_MODULES/server-only/index.js"
-
-          cat > "$RUNNER" <<'NODE'
-          const appPath = process.env.APP_PATH;
-          if (!appPath) throw new Error('APP_PATH missing');
-          const { runConfidentialCalculationForClient } = await import(`${appPath}/lib/server/instant-quote/run-confidential-calculation.ts`);
-          const now = new Date();
-          const timestamp = now.toISOString();
-          const project = {
-            id: 'diag-calculation-runtime',
-            title: 'Safe runtime diagnostic',
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            activePartId: 'smoke-part',
-            parts: [{
-              id: 'smoke-part',
-              fileName: 'diag.dxf',
-              fileSizeBytes: 1,
-              format: 'dxf',
-              createdAt: timestamp,
-              state: 'configurable',
-              geometry: {
-                widthMm: 100,
-                heightMm: 100,
-                areaMm2: 10000,
-                blankAreaMm2: 10000,
-                cutLengthMm: 400,
-                contourCount: 1,
-                pierceCount: 1,
-                bendCount: 0,
-              },
-              configuration: {
-                materialId: 'zinc',
-                thicknessMm: 1,
-                quantity: 1,
-                operations: ['laser-cutting'],
-              },
-              quote: { kind: 'not-requested' },
-            }],
-          };
-          try {
-            const result = await runConfidentialCalculationForClient(
-              project,
-              { 'smoke-part': { unsupportedEntities: [] } },
-              { internalNotes: ['safe synthetic runtime diagnostic'] },
-              now,
-            );
-            const part = result.parts[0];
-            console.log(JSON.stringify({
-              event: 'diag_result',
-              ok: true,
-              partStatus: part?.status ?? null,
-              priceStatus: part?.price?.status ?? null,
-              positiveApprovedPrice: part?.price?.status === 'approved' && typeof part.price.totalRub === 'number' && part.price.totalRub > 0,
-            }));
-          } catch (error) {
-            const message = error instanceof Error ? error.message : '';
-            let code = 'CALCULATION_RUNTIME';
-            if (message.includes('STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH')) code = 'PRIVATE_BASIS_CONFIG';
-            else if (message.includes('Invalid private calculation basis')) code = 'PRIVATE_BASIS_INVALID';
-            else if (/STEEL_PRODUCT_(?:METAL_MULTIPLIER|DRAW_PCT|FINAL_PCT|FIXED_ADD_RUB|FIXED_ADD_ENABLED|ROUND_STEP_RUB)/.test(message)) code = 'PRIVATE_PRICING_CONFIG';
-            else if (message.includes('STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT')) code = 'PRIVATE_REPORT_CONFIG';
-            else if (/EACCES|EPERM|permission denied/i.test(message)) code = 'PRIVATE_STORAGE_ACCESS';
-            else if (/ENOENT|no such file or directory/i.test(message)) code = 'PRIVATE_STORAGE_MISSING';
-            else if (/server-only/i.test(message)) code = 'SERVER_MODULE_BOUNDARY';
-            else if (/report/i.test(message) && /write|rename|mkdir|chmod/i.test(message)) code = 'PRIVATE_REPORT_WRITE';
-            console.log(JSON.stringify({ event: 'diag_result', ok: false, code }));
-            process.exit(1);
-          }
-          NODE
-
-          chown -R nodejs:nodejs "$DIAG_ROOT" "$DIAG_MODULES" "$RUNNER"
-          chmod 0700 "$DIAG_ROOT" "$DIAG_MODULES"
-          chmod 0600 "$RUNNER"
-
-          sudo -iu nodejs env \
-            APP_PATH="$APP_PATH" \
-            NODE_PATH="$DIAG_MODULES:$APP_PATH/node_modules" \
-            STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH="$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH" \
-            STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT="$DIAG_ROOT" \
-            STEEL_PRODUCT_METAL_MULTIPLIER="$STEEL_PRODUCT_METAL_MULTIPLIER" \
-            STEEL_PRODUCT_DRAW_PCT="$STEEL_PRODUCT_DRAW_PCT" \
-            STEEL_PRODUCT_FINAL_PCT="$STEEL_PRODUCT_FINAL_PCT" \
-            STEEL_PRODUCT_FIXED_ADD_RUB="$STEEL_PRODUCT_FIXED_ADD_RUB" \
-            STEEL_PRODUCT_FIXED_ADD_ENABLED="$STEEL_PRODUCT_FIXED_ADD_ENABLED" \
-            STEEL_PRODUCT_ROUND_STEP_RUB="$STEEL_PRODUCT_ROUND_STEP_RUB" \
-            bash -lc "cd '$APP_PATH' && node --import tsx '$RUNNER'"
+          BUILD_COMMIT="$(cat .next/BUILD_COMMIT 2>/dev/null || true)"
+          if [ -n "$BUILD_COMMIT" ]; then
+            echo "PRODUCTION_BUILD_COMMIT=$BUILD_COMMIT"
+          else
+            echo "PRODUCTION_BUILD_COMMIT=MISSING"
+          fi
+          if grep -q 'BASIS_START' lib/server/instant-quote/run-confidential-calculation.ts 2>/dev/null; then
+            echo "SOURCE_STAGE_TRACE=PRESENT"
+          else
+            echo "SOURCE_STAGE_TRACE=ABSENT"
+          fi
+          if grep -Rqs 'BASIS_START' .next/server 2>/dev/null; then
+            echo "BUNDLE_STAGE_TRACE=PRESENT"
+          else
+            echo "BUNDLE_STAGE_TRACE=ABSENT"
+          fi
           REMOTE
+
+      - name: Submit live DXF smoke without exposing internals
+        run: |
+          set -euo pipefail
+          cat > /tmp/smoke.dxf <<'DXF'
+          0
+          SECTION
+          2
+          HEADER
+          0
+          ENDSEC
+          0
+          SECTION
+          2
+          ENTITIES
+          0
+          LWPOLYLINE
+          8
+          0
+          90
+          4
+          70
+          1
+          10
+          0
+          20
+          0
+          10
+          100
+          20
+          0
+          10
+          100
+          20
+          100
+          10
+          0
+          20
+          100
+          0
+          ENDSEC
+          0
+          EOF
+          DXF
+          cat > /tmp/manifest.json <<'JSON'
+          {"title":"Production calculation smoke","parts":[{"clientPartId":"smoke-part","fileIndex":0,"materialId":"zinc","thicknessMm":1,"quantity":1,"operations":[]}]}
+          JSON
+          HTTP_CODE="$(curl --silent --show-error --output /tmp/response.json --write-out '%{http_code}' \
+            -H 'Origin: https://www.steelprodukt.ru' \
+            -H 'Referer: https://www.steelprodukt.ru/online-order' \
+            -F 'manifest=</tmp/manifest.json' \
+            -F 'files=@/tmp/smoke.dxf;type=application/dxf' \
+            https://www.steelprodukt.ru/api/online-order/calculate)"
+          echo "HTTP=$HTTP_CODE"
+          python3 - <<'PY'
+          import json
+          with open('/tmp/response.json', encoding='utf-8') as f:
+              data=json.load(f)
+          safe={"ok":data.get("ok"),"code":data.get("code")}
+          calc=data.get("calculation") or {}
+          parts=calc.get("parts") or []
+          if parts:
+              safe["status"]=parts[0].get("status")
+              price=parts[0].get("price") or {}
+              safe["priceStatus"]=price.get("status")
+              safe["positiveApprovedPrice"]=isinstance(price.get("totalRub"),(int,float)) and price.get("totalRub",0)>0
+          print(json.dumps(safe,ensure_ascii=False))
+          forbidden={'rateRub','confirmedDirectCostRubEach','confirmedDirectCostRubBatch','supplier','materialPrice','basisVersion','internalReport','pierceCount','cutLengthMm'}
+          raw=json.dumps(data,ensure_ascii=False)
+          leaked=[key for key in forbidden if key in raw]
+          if leaked:
+              raise SystemExit('Confidential fields leaked: '+','.join(leaked))
+          PY
+          echo "LIVE_SMOKE_COMPLETED=true"
