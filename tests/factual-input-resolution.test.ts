@@ -49,7 +49,32 @@ test("keeps explicit technologist powder area authoritative over side-derived ar
   assert.equal(resolved["part-1"].powderAreaM2, 0.73);
 });
 
+test("keeps server-authoritative physical area ahead of side-derived fallback", () => {
+  const resolved = resolveEffectiveFactualInputs(
+    projectWithGeometry(400000),
+    {},
+    { "part-1": 2 },
+    { "part-1": { powderAreaM2: 0.812345 } },
+  );
+  assert.equal(resolved["part-1"].powderAreaM2, 0.812345);
+});
+
+test("allows explicit technologist area to override server-authoritative CAD evidence", () => {
+  const resolved = resolveEffectiveFactualInputs(
+    projectWithGeometry(400000),
+    { "part-1": { powderAreaM2: 0.65 } },
+    {},
+    { "part-1": { powderAreaM2: 0.812345 } },
+  );
+  assert.equal(resolved["part-1"].powderAreaM2, 0.65);
+});
+
 test("does not derive coating area from bounding blank when net CAD area is unknown", () => {
   const resolved = resolveEffectiveFactualInputs(projectWithGeometry(undefined), {}, { "part-1": 2 });
+  assert.equal(resolved["part-1"], undefined);
+});
+
+test("keeps DXF coating area unresolved when coating sides are not explicitly selected", () => {
+  const resolved = resolveEffectiveFactualInputs(projectWithGeometry(400000), {}, {});
   assert.equal(resolved["part-1"], undefined);
 });
