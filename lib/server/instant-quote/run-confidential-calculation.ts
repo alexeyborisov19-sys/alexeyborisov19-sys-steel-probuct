@@ -97,6 +97,9 @@ export async function runConfidentialCalculationForClient(
       weldLengthMEach: factual.weldLengthM,
       powderSides: powderSidesByPartId[part.id],
       explicitPowderAreaM2Each: factual.powderAreaM2,
+      assemblyMinutesEach: factual.assemblyMinutes,
+      surfacePreparationAreaM2Each: factual.surfacePreparationAreaM2,
+      packagingSelected: part.configuration.operations.includes("packaging"),
     });
   }
 
