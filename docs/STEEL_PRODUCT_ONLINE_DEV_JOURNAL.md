@@ -42,8 +42,11 @@
 - `671ad8426efaa6ed737d046f06c8c9b453181a91`: добавлен `ellipse` shape, exact parametric point, analytic extrema/bounds, exact full area `πab`, controlled adaptive-Simpson cut length.
 - `95ffc444fb2a411be4cecdd21cd338214d42c89a`: preview sampling вынесен отдельно от production math.
 - `c16e0162a60b76945afc4e8e6a6c2d0e6ccf8c36`: regression fixtures: axis-aligned full ellipse, rotated bounds, partial/wrapped parameters, exact ellipse hole topology, preview separation, non-planar и invalid-ratio fail-closed.
+- `aa6bee60540e86ca5fdff0e811b2c259bd164c7c`: integration hardening — adaptive Simpson больше не возвращает недоказанное число при depth exhaustion/non-finite math; отсутствие доказанной tolerance даёт fail-closed.
+- `f0436d73f43bd2a9d0b303aeedf26b25b7e381bf`: regression на zero wrapped sweep и `ELLIPSE_LENGTH_UNAVAILABLE` для non-finite/non-converged production length.
 - Non-XY extrusion и major-axis Z не проецируются молча в XY; дают internal unsupported evidence.
 - Full ellipse area/topology считается exact только для доказанного `0..2π`; partial ellipse остаётся open topology.
+- **Current WIP functional HEAD:** `f0436d73f43bd2a9d0b303aeedf26b25b7e381bf`.
 - WIP CI ещё не зафиксирован как GREEN. До gate следующий functional layer не начинать.
 
 ---
@@ -123,6 +126,7 @@
 - full/partial parameter sweep с wrap через `2π`;
 - analytic X/Y extrema для production bbox;
 - cut length через adaptive Simpson integration параметрической скорости с absolute error tolerance, не через preview sampling;
+- integration fail-closed при non-finite math или исчерпании recursion depth без доказанной tolerance;
 - exact full area `πab` и containment для hole topology;
 - partial ellipse не считается closed contour;
 - non-planar/invalid ellipse не становится production geometry;
@@ -135,15 +139,17 @@ Regression WIP:
 - wrapped parameter range;
 - ellipse hole внутри closed rectangle;
 - preview endpoints;
-- non-planar major-axis Z and invalid ratio fail-closed.
+- non-planar major-axis Z and invalid ratio fail-closed;
+- zero wrapped sweep fail-closed;
+- non-finite/unproven arc-length integration => `ELLIPSE_LENGTH_UNAVAILABLE`.
 
 ---
 
 ## 5. NEXT ACTION
 
-1. Полный CI на текущем ELLIPSE WIP tree после journal commit.
+1. Полный CI на journal-only tree поверх `f0436d73…`.
 2. Если RED — исправить только ELLIPSE block и записать failure/fix.
-3. Если GREEN — `c16e0162…` становится новым functional checkpoint; journal tree — новым GREEN verified tree.
+3. Если GREEN — `f0436d73…` становится новым functional checkpoint; journal tree — новым GREEN verified tree.
 4. После GREEN оценить следующий gap: SPLINE только как строго ограниченный subset либо exact bulged closed topology; не начинать до gate.
 
 ---
@@ -192,7 +198,9 @@ Green относится к конкретному проверенному SHA.
 ### 2026-09-14 — WIP ELLIPSE
 - `671ad842…` analytic geometry/topology + controlled length integration;
 - `95ffc444…` separate preview;
-- `c16e0162…` regression suite;
+- `c16e0162…` base regression suite;
+- `aa6bee60…` numerical integration now fails closed unless tolerance is actually met;
+- `f0436d73…` regressions for zero sweep and unavailable length;
 - CI pending на момент записи.
 
 ---
