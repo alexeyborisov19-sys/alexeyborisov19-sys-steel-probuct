@@ -6,7 +6,7 @@ import {
   type FactualCalculationResult,
   type FactualRateBook,
 } from "@/lib/instant-quote/factual-calculation";
-import { selectBestStoredPrice, type StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
+import { selectBestStoredPriceForStock, type StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 
 export type PartFactualInputs = {
@@ -104,7 +104,13 @@ export function calculateProjectFactualCost(
       };
     }
 
-    const selection = selectBestStoredPrice(snapshots, materialId, thicknessMm, now);
+    const selection = selectBestStoredPriceForStock(
+      snapshots,
+      materialId,
+      thicknessMm,
+      { widthMm: part.geometry.widthMm, heightMm: part.geometry.heightMm },
+      now,
+    );
     const manualInputs = factualInputsByPartId[part.id] ?? {};
     const calculation = calculateFactualProductionCost({
       materialId,
