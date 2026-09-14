@@ -6,6 +6,9 @@ export type PlaneFaceObservation = {
   centerMm: Vector3;
   normal: Vector3;
   edgeHashes?: number[];
+  uvSizeMm?: [number, number];
+  boundaryLengthMm?: number;
+  wireCount?: number;
 };
 
 export type CylinderFaceObservation = {
@@ -41,6 +44,20 @@ export type SheetMetalBendCandidate = {
   areaMm2: number;
 };
 
+export type SheetMetalFlatPatternCandidate = {
+  source: "planar-prism";
+  faceId: string;
+  oppositeFaceId: string;
+  confidence: "high";
+  widthMm: number;
+  heightMm: number;
+  areaMm2: number;
+  blankAreaMm2: number;
+  cutLengthMm: number;
+  contourCount: number;
+  volumeConsistencyError: number;
+};
+
 export type SheetMetalAnalysis = {
   source: "brep";
   status: "candidate" | "insufficient";
@@ -49,6 +66,7 @@ export type SheetMetalAnalysis = {
   otherFaceCount: number;
   thicknessCandidate?: SheetMetalThicknessCandidate;
   bendCandidates: SheetMetalBendCandidate[];
+  flatPatternCandidate?: SheetMetalFlatPatternCandidate;
   warnings: string[];
 };
 
@@ -67,10 +85,16 @@ type CylinderPairEvidence = {
   angleRad: number;
 };
 
+export type SheetMetalAnalysisOptions = {
+  volumeMm3?: number;
+};
+
 const PARALLEL_DOT = 0.9995;
 const MIN_SEPARATION_MM = 0.01;
 const MAX_SHEET_SLENDERNESS = 0.2;
 const MAX_BEND_ANGLE_RAD = Math.PI * 1.05;
+const PLANAR_PRISM_AREA_SIMILARITY = 0.98;
+const PLANAR_PRISM_VOLUME_ERROR = 0.02;
 
 function length(vector: Vector3) {
   return Math.hypot(vector[0], vector[1], vector[2]);
@@ -294,6 +318,64 @@ function pickBendCandidates(
   return bends;
 }
 
+function pickPlanarFlatPatternCandidate(
+  planes: PlaneFaceObservation[],
+  cylinders: CylinderFaceObservation[],
+  otherFaceCount: number,
+  thicknessCandidate: SheetMetalThicknessCandidate | undefined,
+  bendCandidates: SheetMetalBendCandidate[],
+  volumeMm3: number | undefined,
+): SheetMetalFlatPatternCandidate | undefined {
+  if (!thicknessCandidate || thicknessCandidate.confidence !== "medium" || bendCandidates.length || otherFaceCount > 0) return undefined;
+  if (!finitePositive(volumeMm3 ?? 0)) return undefined;
+
+  const evidencePlanes = planes
+    .filter((face) => thicknessCandidate.evidenceFaceIds.includes(face.id))
+    .sort((a, b) => b.areaMm2 - a.areaMm2);
+  if (evidencePlanes.length < 2) return undefined;
+
+  const primary = evidencePlanes[0];
+  const primaryNormal = normalized(primary.normal);
+  if (!primaryNormal) return undefined;
+  const opposite = evidencePlanes.find((face) => {
+    if (face.id === primary.id) return false;
+    const normal = normalized(face.normal);
+    if (!normal || Math.abs(dot(primaryNormal, normal)) < PARALLEL_DOT) return false;
+    const areaSimilarity = Math.min(primary.areaMm2, face.areaMm2) / Math.max(primary.areaMm2, face.areaMm2);
+    return areaSimilarity >= PLANAR_PRISM_AREA_SIMILARITY;
+  });
+  if (!opposite) return undefined;
+
+  const widthMm = primary.uvSizeMm?.[0] ?? 0;
+  const heightMm = primary.uvSizeMm?.[1] ?? 0;
+  const cutLengthMm = primary.boundaryLengthMm ?? 0;
+  const contourCount = primary.wireCount ?? 0;
+  if (!finitePositive(widthMm) || !finitePositive(heightMm) || !finitePositive(cutLengthMm) || !Number.isInteger(contourCount) || contourCount < 1) return undefined;
+
+  for (const cylinder of cylinders) {
+    const axis = cylinder.axis ? normalized(cylinder.axis) : null;
+    if (!axis || Math.abs(dot(axis, primaryNormal)) < 0.995) return undefined;
+  }
+
+  const expectedVolume = primary.areaMm2 * thicknessCandidate.thicknessMm;
+  const volumeConsistencyError = Math.abs((volumeMm3 ?? 0) - expectedVolume) / Math.max(volumeMm3 ?? 0, expectedVolume);
+  if (!Number.isFinite(volumeConsistencyError) || volumeConsistencyError > PLANAR_PRISM_VOLUME_ERROR) return undefined;
+
+  return {
+    source: "planar-prism",
+    faceId: primary.id,
+    oppositeFaceId: opposite.id,
+    confidence: "high",
+    widthMm,
+    heightMm,
+    areaMm2: primary.areaMm2,
+    blankAreaMm2: widthMm * heightMm,
+    cutLengthMm,
+    contourCount,
+    volumeConsistencyError,
+  };
+}
+
 /**
  * Conservative sheet-metal interpretation of exact BRep face observations.
  *
@@ -301,16 +383,28 @@ function pickBendCandidates(
  * planes provide only a thickness candidate. A bend candidate requires two
  * coaxial partial cylinders whose radius difference agrees with a medium-
  * confidence thickness candidate. When edge hashes are available, each bend
- * surface must also connect to planar neighbours. Nothing here is an
- * authoritative flat pattern or production bend count.
+ * surface must also connect to planar neighbours. A high-confidence planar
+ * flat-pattern candidate is emitted only for a prism-like constant-thickness
+ * solid whose face boundary and volume independently agree.
  */
-export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObservations): SheetMetalAnalysis {
+export function analyzeSheetMetalTopology(
+  observations: SheetMetalTopologyObservations,
+  options: SheetMetalAnalysisOptions = {},
+): SheetMetalAnalysis {
   const planarFaces = observations.planarFaces.filter((face) => finitePositive(face.areaMm2));
   const cylindricalFaces = observations.cylindricalFaces.filter(
     (face) => finitePositive(face.areaMm2) && finitePositive(face.radiusMm),
   );
   const thicknessCandidate = pickThicknessCandidate(planarFaces);
   const bendCandidates = pickBendCandidates(cylindricalFaces, planarFaces, thicknessCandidate);
+  const flatPatternCandidate = pickPlanarFlatPatternCandidate(
+    planarFaces,
+    cylindricalFaces,
+    Math.max(0, Math.trunc(observations.otherFaceCount)),
+    thicknessCandidate,
+    bendCandidates,
+    options.volumeMm3,
+  );
   const warnings: string[] = [];
 
   if (!thicknessCandidate) {
@@ -333,6 +427,12 @@ export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObserv
     }
   }
 
+  if (flatPatternCandidate) {
+    warnings.push(
+      `Для плоского призматического STEP извлечён BRep-кандидат 2D-контура: ${flatPatternCandidate.contourCount} конт.; длина реза ${Math.round(flatPatternCandidate.cutLengthMm)} мм. Перед ценой толщина всё равно должна совпасть с выбранной производственной конфигурацией.`,
+    );
+  }
+
   return {
     source: "brep",
     status: thicknessCandidate ? "candidate" : "insufficient",
@@ -341,6 +441,7 @@ export function analyzeSheetMetalTopology(observations: SheetMetalTopologyObserv
     otherFaceCount: Math.max(0, Math.trunc(observations.otherFaceCount)),
     thicknessCandidate,
     bendCandidates,
+    flatPatternCandidate,
     warnings,
   };
 }
