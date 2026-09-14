@@ -1,4 +1,5 @@
 name: Publish Steel Product Online review
+# Review publish trigger: STEP preview and customer-facing status fixes.
 
 on:
   push:
