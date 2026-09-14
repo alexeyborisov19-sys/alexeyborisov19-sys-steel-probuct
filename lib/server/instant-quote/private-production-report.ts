@@ -1,6 +1,6 @@
 import "server-only";
 
-import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { ProjectFactualCalculationResult } from "@/lib/instant-quote/project-factual-calculation";
@@ -18,6 +18,19 @@ export type InternalProductionReport = {
   internalNotes: string[];
 };
 
+export type InternalProductionReportListItem = {
+  fileName: string;
+  projectId: string;
+  generatedAt: string;
+  basisVersion: string;
+  totalParts: number;
+  completeParts: number;
+  partialParts: number;
+  blockedParts: number;
+  confirmedDirectCostRub: number;
+  bytes: number;
+};
+
 function privateReportRoot() {
   const configured = process.env.STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT?.trim();
   if (!configured) throw new Error("STEEL_PRODUCT_PRIVATE_PRODUCTION_REPORT_ROOT is not configured");
@@ -33,6 +46,20 @@ function privateReportRoot() {
 function safeFileToken(value: string) {
   const normalized = value.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 80);
   return normalized || "project";
+}
+
+function assertSafeReportFileName(fileName: string) {
+  if (path.basename(fileName) !== fileName || !/^[a-zA-Z0-9._-]+\.json$/.test(fileName)) {
+    throw new Error("Invalid internal production report filename");
+  }
+}
+
+function assertReport(value: unknown): InternalProductionReport {
+  const parsed = value as InternalProductionReport;
+  if (!parsed || parsed.classification !== "internal-production-confidential" || parsed.schemaVersion !== "1") {
+    throw new Error("Invalid internal production report");
+  }
+  return parsed;
 }
 
 export function createInternalProductionReport(input: {
@@ -80,16 +107,51 @@ export async function writeInternalProductionReport(report: InternalProductionRe
   return { fileName, path: finalPath };
 }
 
-/** Intended only for a future authenticated internal dashboard/service. */
+/** Only authenticated internal server routes should call this function. */
 export async function readInternalProductionReport(fileName: string): Promise<InternalProductionReport> {
   const root = privateReportRoot();
-  if (path.basename(fileName) !== fileName || !/^[a-zA-Z0-9._-]+\.json$/.test(fileName)) {
-    throw new Error("Invalid internal production report filename");
-  }
+  assertSafeReportFileName(fileName);
   const raw = await readFile(path.join(root, fileName), "utf8");
-  const parsed = JSON.parse(raw) as InternalProductionReport;
-  if (parsed.classification !== "internal-production-confidential" || parsed.schemaVersion !== "1") {
-    throw new Error("Invalid internal production report");
+  return assertReport(JSON.parse(raw) as unknown);
+}
+
+/**
+ * Produces a compact index for the authenticated internal dashboard. Corrupt or
+ * non-report files are ignored rather than surfaced as trusted calculations.
+ */
+export async function listInternalProductionReports(limit = 200): Promise<InternalProductionReportListItem[]> {
+  const root = privateReportRoot();
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  await chmod(root, 0o700);
+
+  const names = (await readdir(root))
+    .filter((name) => /^[a-zA-Z0-9._-]+\.json$/.test(name))
+    .slice(-Math.max(1, Math.min(limit, 1000)));
+
+  const rows: InternalProductionReportListItem[] = [];
+  for (const fileName of names) {
+    try {
+      assertSafeReportFileName(fileName);
+      const fullPath = path.join(root, fileName);
+      const [raw, fileStat] = await Promise.all([readFile(fullPath, "utf8"), stat(fullPath)]);
+      if (!fileStat.isFile()) continue;
+      const report = assertReport(JSON.parse(raw) as unknown);
+      rows.push({
+        fileName,
+        projectId: report.projectId,
+        generatedAt: report.generatedAt,
+        basisVersion: report.basisVersion,
+        totalParts: report.calculation.totalParts,
+        completeParts: report.calculation.completeParts,
+        partialParts: report.calculation.partialParts,
+        blockedParts: report.calculation.blockedParts,
+        confirmedDirectCostRub: report.calculation.confirmedDirectCostRub,
+        bytes: fileStat.size,
+      });
+    } catch {
+      // The dashboard never treats a malformed file as a valid confidential report.
+    }
   }
-  return parsed;
+
+  return rows.sort((a, b) => b.generatedAt.localeCompare(a.generatedAt)).slice(0, Math.max(1, Math.min(limit, 1000)));
 }
