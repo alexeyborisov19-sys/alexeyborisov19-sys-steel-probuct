@@ -152,10 +152,12 @@ function stepDependencies(input: {
   productionReady: boolean;
   model?: NormalizedCadModel;
   throwAnalysis?: boolean;
+  authoritativePowderAreaM2?: number;
   onAnalysis?: (format: "step" | "stp") => void;
   onRun?: (
     project: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[0],
     evidence: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[1],
+    inputs: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[2],
   ) => void;
 }): Partial<OnlineCalculationHandlerDependencies> {
   return {
@@ -198,10 +200,13 @@ function stepDependencies(input: {
           pierceCount: 1,
           bendCount: 0,
         }),
+        authoritativeFactualInputs: input.authoritativePowderAreaM2 == null
+          ? undefined
+          : { powderAreaM2: input.authoritativePowderAreaM2 },
       };
     },
-    runCalculation: async (project, evidence) => {
-      input.onRun?.(project, evidence);
+    runCalculation: async (project, evidence, inputs) => {
+      input.onRun?.(project, evidence, inputs);
       return clientView(project);
     },
   };
@@ -251,21 +256,23 @@ test("server derives DXF geometry and does not trust client production metrics",
   }
 });
 
-test("server uses injected authoritative STEP analyzer and only accepts its production-ready geometry", async () => {
+test("server uses injected authoritative STEP analyzer and keeps private physical evidence out of client response", async () => {
   let analyzerCalled = false;
   const handler = createOnlineCalculationHandler(stepDependencies({
     productionReady: true,
+    authoritativePowderAreaM2: 0.812345,
     onAnalysis: (format) => {
       analyzerCalled = true;
       assert.equal(format, "step");
     },
-    onRun: (project) => {
+    onRun: (project, _evidence, inputs) => {
       const geometry = project.parts[0].geometry;
       assert.ok(geometry);
       assert.equal(geometry.widthMm, 120);
       assert.equal(geometry.heightMm, 80);
       assert.equal(geometry.cutLengthMm, 400);
       assert.equal(project.parts[0].state, "configurable");
+      assert.equal(inputs?.authoritativeFactualByPartId?.["step-part-1"]?.powderAreaM2, 0.812345);
     },
   }));
 
@@ -282,14 +289,27 @@ test("server uses injected authoritative STEP analyzer and only accepts its prod
   assert.equal(analyzerCalled, true);
 
   const json = JSON.stringify(await res.json()).toLowerCase();
-  for (const token of ["flatpatterncandidate", "unfoldgeometry", "brep", "directcost", "raterub", "rubperton", "reportid", "storageid", "cutlengthmm"]) {
+  for (const token of [
+    "flatpatterncandidate",
+    "unfoldgeometry",
+    "brep",
+    "directcost",
+    "raterub",
+    "rubperton",
+    "reportid",
+    "storageid",
+    "cutlengthmm",
+    "powderaream2",
+    "authoritativefactual",
+  ]) {
     assert.equal(json.includes(token), false, `STEP response leaked ${token}`);
   }
 });
 
-test("server withholds STEP geometry when authoritative analyzer marks it not production-ready", async () => {
+test("server withholds STEP geometry and private factual evidence when analyzer marks it not production-ready", async () => {
   const handler = createOnlineCalculationHandler(stepDependencies({
     productionReady: false,
+    authoritativePowderAreaM2: 1.25,
     model: stepModel({
       widthMm: 300,
       heightMm: 200,
@@ -300,10 +320,11 @@ test("server withholds STEP geometry when authoritative analyzer marks it not pr
       contourCount: 1,
       bendCount: 3,
     }, ["Synthetic bent STEP evidence"]),
-    onRun: (project, evidence) => {
+    onRun: (project, evidence, inputs) => {
       assert.equal(project.parts[0].geometry, null);
       assert.equal(project.parts[0].state, "manual-review");
       assert.ok(evidence["step-part-1"].reviewReasons?.some((reason) => /production-authoritative/i.test(reason)));
+      assert.equal(inputs?.authoritativeFactualByPartId?.["step-part-1"], undefined);
     },
   }));
 
@@ -318,10 +339,11 @@ test("STEP analyzer failure fails closed into internal review without production
   const handler = createOnlineCalculationHandler(stepDependencies({
     productionReady: false,
     throwAnalysis: true,
-    onRun: (project, evidence) => {
+    onRun: (project, evidence, inputs) => {
       assert.equal(project.parts[0].geometry, null);
       assert.equal(project.parts[0].state, "manual-review");
       assert.ok(evidence["step-part-1"].reviewReasons?.some((reason) => /OpenCascade/i.test(reason)));
+      assert.equal(inputs?.authoritativeFactualByPartId?.["step-part-1"], undefined);
     },
   }));
 
