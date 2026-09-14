@@ -1,0 +1,287 @@
+import {
+  resolveApprovedBendAllowances,
+  type ApprovedBendAllowanceTable,
+  type ResolvedBendAllowance,
+} from "@/lib/instant-quote/bend-allowance";
+import {
+  buildBendTopologyGraphFromUnfoldGeometry,
+  type BendTopologyGraph,
+} from "@/lib/instant-quote/bend-topology";
+import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import type { Vector3 } from "@/lib/instant-quote/sheet-metal";
+
+export type PlanarRegionGeometryEvidence = {
+  faceId: string;
+  centerMm: Vector3;
+  normal: Vector3;
+};
+
+export type BendAxisGeometryEvidence = {
+  bendId: string;
+  startMm: Vector3;
+  endMm: Vector3;
+};
+
+export type BendUnfoldStep = {
+  index: number;
+  bendId: string;
+  parentFaceId: string;
+  childFaceId: string;
+  axisStartMm: Vector3;
+  axisEndMm: Vector3;
+  angleDeg: number;
+  insideRadiusMm: number;
+  bendAllowanceMm: number;
+};
+
+export type BendUnfoldPlan = {
+  status: "ready" | "blocked";
+  rootFaceId?: string;
+  panelOrder: string[];
+  steps: BendUnfoldStep[];
+  errors: string[];
+};
+
+function finiteVector(vector: Vector3) {
+  return vector.length === 3 && vector.every(Number.isFinite);
+}
+
+function vectorLength(a: Vector3, b: Vector3) {
+  return Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+}
+
+function normalUsable(normal: Vector3) {
+  return finiteVector(normal) && Math.hypot(normal[0], normal[1], normal[2]) > 1e-8;
+}
+
+function closeEnough(left: number, right: number) {
+  return Math.abs(left - right) <= Math.max(0.05, Math.max(Math.abs(left), Math.abs(right)) * 0.02);
+}
+
+/**
+ * Produces the deterministic parent/child sequence required by a future 3D→2D
+ * transform engine. It does not rotate panels or construct a commercial flat
+ * pattern. Missing panel geometry, finite bend axes or resolved production bend
+ * allowances block the plan before any coordinate calculation begins.
+ */
+export function buildBendUnfoldPlan(input: {
+  graph: BendTopologyGraph;
+  panels: PlanarRegionGeometryEvidence[];
+  bendAxes: BendAxisGeometryEvidence[];
+  allowances: ResolvedBendAllowance[];
+}): BendUnfoldPlan {
+  const { graph, panels, bendAxes, allowances } = input;
+  const errors: string[] = [];
+
+  if (graph.status !== "tree" || !graph.rootFaceId) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: ["Automatic unfold planning requires an unambiguous connected bend tree with a root panel."],
+    };
+  }
+
+  const panelById = new Map(panels.map((panel) => [panel.faceId, panel]));
+  for (const node of graph.nodes) {
+    const panel = panelById.get(node.faceId);
+    if (!panel) {
+      errors.push(`Missing planar BRep geometry for face ${node.faceId}.`);
+      continue;
+    }
+    if (!finiteVector(panel.centerMm) || !normalUsable(panel.normal)) {
+      errors.push(`Planar BRep geometry for face ${node.faceId} has an invalid center or normal.`);
+    }
+  }
+
+  const axisByBend = new Map(bendAxes.map((axis) => [axis.bendId, axis]));
+  const allowanceByBend = new Map(allowances.map((allowance) => [allowance.bendId, allowance]));
+  for (const edge of graph.edges) {
+    const axis = axisByBend.get(edge.bendId);
+    if (!axis || !finiteVector(axis.startMm) || !finiteVector(axis.endMm) || vectorLength(axis.startMm, axis.endMm) <= 1e-8) {
+      errors.push(`Missing finite BRep bend axis for ${edge.bendId}.`);
+    }
+    const allowance = allowanceByBend.get(edge.bendId);
+    if (!allowance || !Number.isFinite(allowance.bendAllowanceMm) || allowance.bendAllowanceMm <= 0) {
+      errors.push(`Missing resolved approved bend allowance for ${edge.bendId}.`);
+    }
+  }
+
+  const duplicateAllowances = allowances.length !== new Set(allowances.map((item) => item.bendId)).size;
+  if (duplicateAllowances) errors.push("Resolved bend allowances contain duplicate bend ids.");
+  const duplicateAxes = bendAxes.length !== new Set(bendAxes.map((item) => item.bendId)).size;
+  if (duplicateAxes) errors.push("BRep bend-axis evidence contains duplicate bend ids.");
+
+  if (errors.length) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors,
+    };
+  }
+
+  const adjacency = new Map<string, Array<{ faceId: string; bendId: string }>>();
+  graph.nodes.forEach((node) => adjacency.set(node.faceId, []));
+  graph.edges.forEach((edge) => {
+    adjacency.get(edge.fromFaceId)?.push({ faceId: edge.toFaceId, bendId: edge.bendId });
+    adjacency.get(edge.toFaceId)?.push({ faceId: edge.fromFaceId, bendId: edge.bendId });
+  });
+
+  const parent = new Map<string, { faceId: string; bendId: string }>();
+  const queue = [graph.rootFaceId];
+  const seen = new Set<string>([graph.rootFaceId]);
+  while (queue.length) {
+    const current = queue.shift()!;
+    const neighbors = [...(adjacency.get(current) ?? [])].sort((a, b) => a.faceId.localeCompare(b.faceId));
+    for (const neighbor of neighbors) {
+      if (seen.has(neighbor.faceId)) continue;
+      seen.add(neighbor.faceId);
+      parent.set(neighbor.faceId, { faceId: current, bendId: neighbor.bendId });
+      queue.push(neighbor.faceId);
+    }
+  }
+
+  const edgeById = new Map(graph.edges.map((edge) => [edge.bendId, edge]));
+  const steps: BendUnfoldStep[] = [];
+  for (const childFaceId of graph.traversalFaceIds.slice(1)) {
+    const relation = parent.get(childFaceId);
+    if (!relation) {
+      errors.push(`Traversal lost parent relation for panel ${childFaceId}.`);
+      continue;
+    }
+    const edge = edgeById.get(relation.bendId)!;
+    const axis = axisByBend.get(relation.bendId)!;
+    const allowance = allowanceByBend.get(relation.bendId)!;
+    steps.push({
+      index: steps.length,
+      bendId: edge.bendId,
+      parentFaceId: relation.faceId,
+      childFaceId,
+      axisStartMm: axis.startMm,
+      axisEndMm: axis.endMm,
+      angleDeg: edge.angleDeg,
+      insideRadiusMm: edge.insideRadiusMm,
+      bendAllowanceMm: allowance.bendAllowanceMm,
+    });
+  }
+
+  if (errors.length || steps.length !== graph.edges.length) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: errors.length ? errors : ["Unfold traversal did not cover every bend exactly once."],
+    };
+  }
+
+  return {
+    status: "ready",
+    rootFaceId: graph.rootFaceId,
+    panelOrder: graph.traversalFaceIds,
+    steps,
+    errors: [],
+  };
+}
+
+/**
+ * End-to-end readiness bridge from a normalized STEP model to a deterministic
+ * unfold plan. It still does not calculate 2D coordinates: the approved bend
+ * table resolves production allowance, while model.unfoldGeometry supplies only
+ * validated BRep panel regions and finite bend axes.
+ */
+export function buildBendUnfoldPlanFromModel(input: {
+  model: NormalizedCadModel;
+  table: ApprovedBendAllowanceTable;
+  materialId: string;
+  confirmedThicknessMm: number;
+}): BendUnfoldPlan {
+  const { model, table, materialId, confirmedThicknessMm } = input;
+  const evidence = model.unfoldGeometry;
+  const graph = buildBendTopologyGraphFromUnfoldGeometry(evidence);
+
+  if (!evidence || graph.status !== "tree") {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: graph.issues.length
+        ? graph.issues
+        : ["Normalized STEP does not contain a production-ready BRep bend tree."],
+    };
+  }
+
+  const consistencyErrors: string[] = [];
+  if (model.format !== "step" && model.format !== "stp") {
+    consistencyErrors.push("Production unfold geometry is valid only for STEP/STP models.");
+  }
+
+  const thicknessCandidate = model.sheetMetal?.thicknessCandidate;
+  if (!thicknessCandidate || thicknessCandidate.confidence !== "medium") {
+    consistencyErrors.push("Production unfold requires a medium-confidence BRep thickness candidate from the same STEP analysis.");
+  } else if (!closeEnough(thicknessCandidate.thicknessMm, evidence.thicknessMm)) {
+    consistencyErrors.push(`BRep thickness candidate ${thicknessCandidate.thicknessMm} mm does not match unfold evidence thickness ${evidence.thicknessMm} mm.`);
+  }
+
+  const detectedBendIds = new Set(model.sheetMetal?.bendCandidates.map((bend) => bend.id) ?? []);
+  for (const bend of evidence.bends) {
+    if (!detectedBendIds.has(bend.bendId)) {
+      consistencyErrors.push(`Unfold evidence bend ${bend.bendId} is not present in the STEP BRep bend candidates.`);
+    }
+  }
+
+  if (consistencyErrors.length) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: consistencyErrors,
+    };
+  }
+
+  if (!closeEnough(evidence.thicknessMm, confirmedThicknessMm)) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: [`Confirmed thickness ${confirmedThicknessMm} mm does not match BRep unfold thickness ${evidence.thicknessMm} mm.`],
+    };
+  }
+
+  const allowanceResolution = resolveApprovedBendAllowances({
+    graph,
+    table,
+    materialId,
+    confirmedThicknessMm,
+  });
+  if (!allowanceResolution.ok) {
+    return {
+      status: "blocked",
+      rootFaceId: graph.rootFaceId,
+      panelOrder: graph.traversalFaceIds,
+      steps: [],
+      errors: allowanceResolution.errors,
+    };
+  }
+
+  return buildBendUnfoldPlan({
+    graph,
+    panels: evidence.panels.map((panel) => ({
+      faceId: panel.id,
+      centerMm: panel.centerMm,
+      normal: panel.normal,
+    })),
+    bendAxes: evidence.bends.map((bend) => ({
+      bendId: bend.bendId,
+      startMm: bend.axisStartMm,
+      endMm: bend.axisEndMm,
+    })),
+    allowances: allowanceResolution.values,
+  });
+}
