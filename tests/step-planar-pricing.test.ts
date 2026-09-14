@@ -5,17 +5,18 @@ import { createEmptyProject } from "../lib/instant-quote/domain";
 import type { StoredPriceSnapshot } from "../lib/instant-quote/material-price-feed";
 import { calculateModelProjectPricing } from "../lib/instant-quote/model-pricing";
 import { addPartToProject, setPartThickness, updatePartGeometry } from "../lib/instant-quote/project";
+import { TEST_PRICING_CONTEXT } from "./fixtures/protected-pricing";
 
-const now = new Date("2026-09-14T12:00:00.000Z");
+const now = new Date("2099-01-01T12:00:00.000Z");
 const snapshots: StoredPriceSnapshot[] = [
   {
-    sourceId: "atlantik-smolensk",
-    fetchedAt: "2026-09-14T11:00:00.000Z",
-    sourceDate: "2026-09-10",
+    sourceId: "synthetic-supplier",
+    fetchedAt: "2099-01-01T11:00:00.000Z",
+    sourceDate: "2099-01-01",
     status: "ok",
     rows: [
-      { materialId: "hot", thicknessMm: 2, rubPerTon: 62_400, source: "Атлантик", sourceDate: "2026-09-10", fetchedAt: "2026-09-14T11:00:00.000Z", exactThickness: true },
-      { materialId: "hot", thicknessMm: 1.5, rubPerTon: 63_100, source: "Атлантик", sourceDate: "2026-09-10", fetchedAt: "2026-09-14T11:00:00.000Z", exactThickness: true },
+      { materialId: "hot", thicknessMm: 2, rubPerTon: 100_000, source: "fixture", sourceDate: "2099-01-01", fetchedAt: "2099-01-01T11:00:00.000Z", exactThickness: true },
+      { materialId: "hot", thicknessMm: 1.5, rubPerTon: 101_000, source: "fixture", sourceDate: "2099-01-01", fetchedAt: "2099-01-01T11:00:00.000Z", exactThickness: true },
     ],
   },
 ];
@@ -82,9 +83,9 @@ function projectForThickness(thicknessMm: number) {
   return { project, id, model };
 }
 
-test("trusted planar STEP can reach provisional pricing when selected thickness matches BRep", () => {
+test("trusted planar STEP can reach protected provisional pricing when selected thickness matches BRep", () => {
   const { project, id, model } = projectForThickness(2);
-  const result = calculateModelProjectPricing(project, { [id]: model }, snapshots, now);
+  const result = calculateModelProjectPricing(project, { [id]: model }, snapshots, TEST_PRICING_CONTEXT, now);
 
   assert.ok(result.parts[0].price);
   assert.equal(result.calculatedParts, 1);
@@ -93,7 +94,7 @@ test("trusted planar STEP can reach provisional pricing when selected thickness 
 
 test("trusted planar STEP is blocked when selected thickness contradicts BRep", () => {
   const { project, id, model } = projectForThickness(1.5);
-  const result = calculateModelProjectPricing(project, { [id]: model }, snapshots, now);
+  const result = calculateModelProjectPricing(project, { [id]: model }, snapshots, TEST_PRICING_CONTEXT, now);
 
   assert.equal(result.parts[0].status, "blocked");
   assert.equal(result.parts[0].price, null);
