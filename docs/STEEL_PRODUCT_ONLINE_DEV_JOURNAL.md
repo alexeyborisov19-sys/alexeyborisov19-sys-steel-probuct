@@ -27,22 +27,16 @@
 - Публикация: **НЕ ДЕЛАТЬ** без отдельного решения владельца
 - Merge в `main`: **НЕ ДЕЛАТЬ** без отдельного решения владельца
 - Оплата / checkout: **НЕ РАЗРАБАТЫВАТЬ на текущем этапе**
-- **Last implementation checkpoint:** `ae09b1e5b8f04db893eef174455f5af2e2d0991f`
+- **Last GREEN implementation checkpoint:** `ae09b1e5b8f04db893eef174455f5af2e2d0991f`
 - Implementation commit: `Guard new internal physical inputs from public client boundary`
 - **CI на `ae09b1e…`: GREEN в обоих workflow.**
   - `Steel Product Online Alpha CI`: success — TypeScript, Unit tests, Next.js build.
   - `Verify project package`: success — Lint, Typecheck, Tests, Build, SEO audit.
 - PR #90 остаётся `open`, `draft`, `merged=false`; base остаётся `main`.
-- Закрыт factual block assembly / surface preparation:
-  - `assemblyMinutes` и `surfacePreparationAreaM2` проведены через project factual engine;
-  - internal revision parser/API принимает эти значения только как физические параметры;
-  - immutable confidential revisions сохраняют, изменяют и очищают их;
-  - production parameters и readiness/completeness используют те же factual inputs;
-  - internal form/report UI показывает их только в RBAC-контуре;
-  - packaging учитывается как выбранная операция в internal production parameters/readiness;
-  - confidentiality regression запрещает `assemblyMinutes`, `surfacePreparationAreaM2` и authoritative factual evidence в client workspace/client DTO.
+- **Current WIP implementation HEAD:** `9e16324077c8c55b85263802a17b45795b4977dd`.
+- WIP status: DXF LWPOLYLINE bulge geometry implemented + regression tests added; CI при первой проверке ещё не был создан. Не считать новый checkpoint до полного GREEN.
 
-> Обновление журнала создаёт metadata commit выше implementation checkpoint. При restart implementation checkpoint остаётся SHA последней реально проверенной функциональности, пока следующий блок не прошёл CI.
+> Journal commits выше implementation SHA являются recovery metadata. Новый implementation checkpoint фиксируется только после regression + CI gate.
 
 ---
 
@@ -100,10 +94,9 @@
 - DXF ASCII parser: LINE/LWPOLYLINE/CIRCLE/ARC, bounds/cut length/preview.
 - ARC уже использует точные cardinal bounds и фактическую длину дуги; не переписывать без regression evidence.
 - public calculation server заново разбирает CAD; browser production metrics не authoritative.
-- Известные DXF gaps: LWPOLYLINE bulge 42, legacy POLYLINE/VERTEX, SPLINE, ELLIPSE, INSERT/BLOCK, HATCH, более строгая production contour/pierce topology.
+- Известные DXF gaps после текущего WIP: legacy POLYLINE/VERTEX, SPLINE, ELLIPSE, INSERT/BLOCK, HATCH, arc-aware exact closed-contour topology для bulged LWPOLYLINE, более строгая production contour/pierce topology.
 
 ### STEP / Sheet Metal Engine
-Уже есть:
 - OpenCascade STEP analysis;
 - BRep planar/cylindrical evidence;
 - thickness/bend candidates;
@@ -121,8 +114,8 @@
 - sampled flat-pattern region/contour;
 - BRep area audit + verification gate;
 - sampled/unverified bent STEP pricing/CAM intentionally blocked;
-- calculation handler имеет injectable authoritative STEP analyzer;
-- exact STEP BRep boundary surface area для factual coating извлекается только в server-only production evidence;
+- injectable authoritative STEP analyzer;
+- exact STEP BRep boundary surface area для factual coating только в server-only production evidence;
 - browser CAD model/client DTO не расширены производственной площадью поверхности;
 - private STEP physical evidence продвигается только для production-ready high-confidence planar STEP.
 
@@ -142,7 +135,7 @@
 - no hidden public 5%/16.5%/setup assumptions;
 - provenance-aware physical input resolution: explicit technologist > server-authoritative CAD evidence > explicit coating-side derivation;
 - DXF coating area не выводится без явного выбора сторон;
-- production parameters используют effective factual inputs, а не только manual input.
+- production parameters используют effective factual inputs.
 
 ### Supplier feed
 - Atlantik primary automatic source for validated sheet groups;
@@ -188,24 +181,33 @@
 
 ## 4. IN PROGRESS
 
-1. Следующий CAD accuracy block: **LWPOLYLINE bulge (`DXF group 42`)**.
-2. Сейчас parser обнаруживает bulge, помечает `LWPOLYLINE_BULGE` unsupported и затем считает segment bounds/cut length по прямой хорде. Это занижает фактическую длину криволинейного реза и может дать неверный bbox.
-3. На первом безопасном этапе нужно сделать authoritative curved-segment bounds + cut length и preview без ложного `unsupported` для самой геометрии.
-4. Closed-contour area/pierce topology с bulge нельзя объявлять exact, пока arc-aware containment/topology не доказан тестами. Если точность площади не подтверждена — оставлять `areaStatus=unavailable`, а не аппроксимировать как факт.
+### DXF LWPOLYLINE bulge (`group 42`)
+
+Уже сделано в WIP:
+- `e2d3bb9c…`: `DxfShape.polyline` хранит `bulges[]`, где bulge вершины относится к исходящему сегменту;
+- реализовано аналитическое `bulge → circular arc` через DXF `tan(includedAngle/4)`;
+- positive/negative signed sweep поддерживаются;
+- bbox учитывает реальные cardinal extrema дуги;
+- cut length считается по `r × |sweep|`, а не по хорде;
+- последний bulge закрытого LWPOLYLINE применяется к closing segment;
+- `LWPOLYLINE_BULGE` больше не считается unsupported только из-за наличия кривого сегмента;
+- `2a0a6089…`: preview строит кривые segment points; preview sampling не используется для production length/bounds;
+- exact area/pierce topology для bulged closed contour намеренно fail-closed (`areaStatus=unavailable`) до arc-aware topology proof;
+- `9e163240…`: regression tests: positive/negative semicircle, signed quarter arc, closing bulge, zero-bulge compatibility, fail-closed area topology.
+
+Текущий gate: CI PENDING / not yet observed at first check.
 
 ---
 
 ## 5. NEXT ACTION — начинать отсюда
 
-**NEXT ACTION #1:** расширить внутреннее представление `LWPOLYLINE` segment metadata так, чтобы bulge относился к исходящей дуге вершины и корректно работал для последнего сегмента закрытого polyline.
+**NEXT ACTION #1:** проверить оба CI workflow на implementation tree с `9e163240…`. Если RED — исправить только текущие failures, не добавляя следующий функциональный слой.
 
-**NEXT ACTION #2:** реализовать математически точное преобразование bulge → circular arc: center/radius/start/end/orientation; использовать его для bbox и cut length. Не подменять дугу хордой.
+**NEXT ACTION #2:** если GREEN — обновить `Last GREEN implementation checkpoint` на проверенный SHA/tree и перенести bulge bounds/length/preview в DONE.
 
-**NEXT ACTION #3:** preview должен отображать bulged segment как дугу/достаточно плотную визуальную выборку, но production length/bounds считать аналитически.
+**NEXT ACTION #3:** после GREEN оценить следующий DXF gap. Приоритет: либо exact arc-aware area/topology для bulged closed contour, либо legacy `POLYLINE/VERTEX`; выбрать меньший доказуемый блок с regression fixtures.
 
-**NEXT ACTION #4:** regression tests: positive/negative bulge, semicircle (`bulge=±1`), arc crossing cardinal directions, closed last segment, zero bulge backward compatibility. Пока topology area не доказана — явно test `areaStatus=unavailable` для bulged closed contour.
-
-**NEXT ACTION #5:** полный CI. Только после GREEN обновить checkpoint и идти к следующему DXF gap (`POLYLINE/VERTEX` или exact bulge topology).
+**NEXT ACTION #4:** сохранять fail-closed semantics: никакую аппроксимированную площадь/число прожигов не выдавать как factual production value.
 
 ---
 
@@ -238,35 +240,33 @@ Green относится только к SHA, который реально пр
 - `AGENTS.md` требует journal-first restart protocol.
 
 ### 2026-09-14 — factual CI restored
-- `4b8e11c7…`: authoritative STEP analyzer injection уже присутствует.
-- `1068abbb…`: исправлен lint pierce-rate fixture.
-- `1e0e41e8…`: completeness fixtures догнали новые production parameters.
-- `3ffe7029…`: missing-operation test согласован с factual semantics.
-- На `3ffe7029…` оба workflow полностью GREEN.
+- `3ffe7029…`: factual regression chain полностью GREEN.
 
 ### 2026-09-14 — private STEP coating evidence
-- `9bcb19ce…`: regression suite изолирован от production quote rate-limit state; production limits не менялись.
-- exact OpenCascade STEP boundary surface area вынесена в server-only production evidence и передаётся только в confidential calculation.
-- server-authoritative factual provenance сохраняется в закрытом snapshot/revisions, manual technologist value имеет приоритет.
-- `5fab1567…`: regression подтверждает promotion только для production-ready STEP и отсутствие private physical evidence в client response.
-- На `5fab1567…` оба workflow полностью GREEN.
+- exact OpenCascade STEP boundary surface area вынесена в server-only production evidence;
+- server-authoritative factual provenance сохраняется только в confidential snapshot/revisions;
+- `5fab1567…` — GREEN implementation checkpoint.
 
 ### 2026-09-14 — internal assembly / surface preparation revision path
-- `75308022…`: project factual inputs проводят `assemblyMinutes` и `surfacePreparationAreaM2` в existing low-level factual engine.
-- `b32df14d…` + `0b08d861…`: internal parser/API принимает только новые физические inputs; rates/cost/total не являются revision input.
-- `03c78609…` + `bf554e14…`: immutable recalculation/confidential production parameters сохраняют assembly/surface-preparation; packaging state передаётся в internal parameters.
-- `6bdc9ffa…` + `aacc629b…` + `673d74ef…`: internal completeness/form/report UI дополнены для сборки/подготовки поверхности/упаковки.
-- `7201aa40…` и последующие regression commits закрыли parser/project/readiness/confidentiality checks.
-- `ae09b1e5…`: public client boundary дополнительно запрещает новые internal physical fields.
-- На `ae09b1e5…` оба workflow полностью GREEN; это новый implementation checkpoint.
+- `75308022…` → `673d74ef…`: project/internal path, revisions, production parameters, completeness и internal UI;
+- `7201aa40…` и последующие regression commits закрыли parser/project/readiness/confidentiality checks;
+- `ae09b1e5…`: client boundary regression дополнительно запрещает новые internal physical fields;
+- на `ae09b1e5…` оба workflow GREEN — предыдущий implementation checkpoint.
+
+### 2026-09-14 — WIP DXF LWPOLYLINE bulge
+- `e2d3bb9c…`: аналитические bulge arc bounds/cut length + segment metadata;
+- `2a0a6089…`: curved preview;
+- `9e163240…`: bulge regression suite;
+- area/pierce topology для curved closed contours остаётся fail-closed до отдельного доказанного блока;
+- CI ещё не подтверждён на момент этой записи.
 
 ---
 
 ## 9. Как обновлять журнал
 
 После meaningful block:
-1. `Last implementation checkpoint` = свежий implementation SHA;
+1. `Last GREEN implementation checkpoint` = свежий проверенный implementation SHA;
 2. честный CI status;
 3. DONE / IN PROGRESS / NEXT ACTION;
-4. 2–5 строк changelog;
+4. changelog с SHA и fail-closed ограничениями;
 5. не менять жёсткие продуктовые решения без явного решения владельца.
