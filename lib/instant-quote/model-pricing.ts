@@ -75,6 +75,24 @@ export function calculateModelProjectPricing(
       };
     }
 
+    const rawStepNeedsUnfold = (model.format === "step" || model.format === "stp")
+      && !(model.geometry.cutLengthMm && model.geometry.blankAreaMm2);
+
+    // Never treat a 3D STEP bounding box as a flat laser blank. Until a trusted
+    // sheet-metal unfold exists, STEP can be inspected/measured but not auto-priced.
+    if (rawStepNeedsUnfold) {
+      return {
+        partId: part.id,
+        status: "manual",
+        price: null,
+        blockingReasons: [],
+        reviewReasons: [
+          ...model.warnings,
+          "STEP распознан в 3D. Для автоматической цены нужна подтверждённая листовая развёртка и линия лазерного реза.",
+        ],
+      };
+    }
+
     const dfm = runVerifiedLaserDfm({ width: widthMm, height: heightMm, units: "мм" }, thicknessMm, materialId);
     const blockingReasons = dfm.filter((item) => item.severity === "error").map((item) => item.title);
     const reviewReasons = [
@@ -84,21 +102,6 @@ export function calculateModelProjectPricing(
 
     if (blockingReasons.length) {
       return { partId: part.id, status: "blocked", price: null, blockingReasons, reviewReasons };
-    }
-
-    // A raw STEP solid is already valuable for 3D inspection, dimensions and volume,
-    // but automatic laser pricing requires a trustworthy sheet-metal flat pattern/toolpath.
-    if ((model.format === "step" || model.format === "stp") && !(model.geometry.cutLengthMm && model.geometry.blankAreaMm2)) {
-      return {
-        partId: part.id,
-        status: "manual",
-        price: null,
-        blockingReasons,
-        reviewReasons: [
-          ...reviewReasons,
-          "STEP распознан в 3D. Для автоматической цены нужна подтверждённая листовая развёртка и линия лазерного реза.",
-        ],
-      };
     }
 
     const selection = selectBestStoredPrice(snapshots, materialId, thicknessMm, now);
