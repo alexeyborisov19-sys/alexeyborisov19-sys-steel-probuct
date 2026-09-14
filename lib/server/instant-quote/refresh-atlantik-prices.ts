@@ -48,28 +48,30 @@ async function extractPdfText(pdf: Buffer) {
       });
       let stderr = "";
       let settled = false;
-      child.stderr?.on("data", (chunk) => {
-        if (stderr.length < 4096) stderr += String(chunk).slice(0, 4096 - stderr.length);
-      });
-      const timeout = setTimeout(() => {
-        child.kill("SIGKILL");
-        finish(new Error("pdftotext timed out"));
-      }, EXTRACT_TIMEOUT_MS);
-      timeout.unref();
+      let timeout: ReturnType<typeof setTimeout> | null = null;
 
       const finish = (error?: Error) => {
         if (settled) return;
         settled = true;
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
         if (error) reject(error);
         else resolve();
       };
 
+      child.stderr?.on("data", (chunk) => {
+        if (stderr.length < 4096) stderr += String(chunk).slice(0, 4096 - stderr.length);
+      });
       child.once("error", (error) => finish(error));
       child.once("exit", (code) => {
         if (code === 0) finish();
         else finish(new Error(`pdftotext failed (${code ?? "unknown"}): ${stderr.trim().slice(0, 400)}`));
       });
+
+      timeout = setTimeout(() => {
+        child.kill("SIGKILL");
+        finish(new Error("pdftotext timed out"));
+      }, EXTRACT_TIMEOUT_MS);
+      timeout.unref();
     });
 
     await chmod(textPath, 0o600);
