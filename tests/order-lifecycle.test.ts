@@ -81,7 +81,7 @@ test("enforces the production sequence through QC, packing, shipping and complet
 
   assert.equal(order.status, "completed");
   assert.equal(customerFacingOrderStage(order.status), "Выполнено");
-  assert.equal(order.events.length, 8);
+  assert.equal(order.events.length, 9);
 });
 
 test("rejects invalid lifecycle jumps", () => {
