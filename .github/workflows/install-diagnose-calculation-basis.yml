@@ -1,0 +1,53 @@
+name: Diagnose private calculation basis
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/install-diagnose-calculation-basis.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Validate protected calculation basis with production parser
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$APP_PATH"
+          set -a
+          . ./.env.production
+          set +a
+          sudo -iu nodejs env \
+            STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH="$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH" \
+            STEEL_PRODUCT_METAL_MULTIPLIER="$STEEL_PRODUCT_METAL_MULTIPLIER" \
+            STEEL_PRODUCT_DRAW_PCT="$STEEL_PRODUCT_DRAW_PCT" \
+            STEEL_PRODUCT_FINAL_PCT="$STEEL_PRODUCT_FINAL_PCT" \
+            STEEL_PRODUCT_FIXED_ADD_RUB="$STEEL_PRODUCT_FIXED_ADD_RUB" \
+            STEEL_PRODUCT_FIXED_ADD_ENABLED="$STEEL_PRODUCT_FIXED_ADD_ENABLED" \
+            STEEL_PRODUCT_ROUND_STEP_RUB="$STEEL_PRODUCT_ROUND_STEP_RUB" \
+            bash -lc "cd '$APP_PATH' && node --import tsx --input-type=module -e \"import('./lib/server/instant-quote/private-calculation-basis.ts').then(async m => { const b=await m.loadPrivateCalculationBasis(); console.log(JSON.stringify({ok:true,version:b.version,laserRows:b.rateBook.laserRubPerM.length,snapshots:b.materialPriceSnapshots.length,materialRows:b.materialPriceSnapshots.reduce((n,s)=>n+s.rows.length,0)})); }).catch(e => { console.error('BASIS_ERROR='+(e instanceof Error ? e.message : String(e))); process.exit(1); })\""
+          REMOTE
