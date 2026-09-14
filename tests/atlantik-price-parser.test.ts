@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseAtlantikSheetPriceText } from "../lib/instant-quote/atlantik-price-parser";
+import {
+  extractAtlantikPriceDocumentDate,
+  parseAtlantikSheetPriceText,
+} from "../lib/instant-quote/atlantik-price-parser";
 
 const options = {
   sourceDate: "2099-02-03",
@@ -8,6 +11,7 @@ const options = {
 };
 
 const syntheticText = `
+04 сентября 2099 года
 Цена для юр.лиц до 3 т от 3 т
 Лист оцинкованный
 0,5х1000х2000 111 000 109 000 999,00
@@ -28,6 +32,12 @@ const syntheticText = `
 Лист горячекатаный ГОСТ
 2×1250×2500 92 000 90 000 3 333,00
 `;
+
+test("extracts the source date printed inside the Atlantik price document", () => {
+  assert.equal(extractAtlantikPriceDocumentDate(syntheticText), "2099-09-04");
+  assert.equal(extractAtlantikPriceDocumentDate("31 февраля 2099 года"), null);
+  assert.equal(extractAtlantikPriceDocumentDate("Прайс без даты"), null);
+});
 
 test("parses only supported Atlantik sheet sections", () => {
   const rows = parseAtlantikSheetPriceText(syntheticText, options);
