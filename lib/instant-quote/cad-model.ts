@@ -99,6 +99,22 @@ function validateSheetMetalAnalysis(sheetMetal: unknown, errors: string[]) {
     if (!Number.isInteger(candidate.evidencePairs) || candidate.evidencePairs < 1) errors.push("Thickness candidate requires evidence pairs.");
     if (!Array.isArray(candidate.evidenceFaceIds) || candidate.evidenceFaceIds.some((id) => typeof id !== "string" || !id)) errors.push("Thickness candidate evidence face ids are invalid.");
   }
+
+  if (analysis.flatPatternCandidate != null) {
+    const flat = analysis.flatPatternCandidate;
+    if (flat.source !== "planar-prism") errors.push("Trusted flat pattern must use the planar-prism source.");
+    if (flat.confidence !== "high") errors.push("Trusted planar flat pattern must have high confidence.");
+    if (typeof flat.faceId !== "string" || !flat.faceId || typeof flat.oppositeFaceId !== "string" || !flat.oppositeFaceId || flat.faceId === flat.oppositeFaceId) errors.push("Trusted flat pattern must reference two distinct BRep faces.");
+    if (!finitePositive(flat.widthMm) || !finitePositive(flat.heightMm)) errors.push("Trusted flat-pattern dimensions must be finite and positive.");
+    if (!finitePositive(flat.areaMm2) || !finitePositive(flat.blankAreaMm2) || flat.blankAreaMm2 < flat.areaMm2) errors.push("Trusted flat-pattern areas are invalid.");
+    if (!finitePositive(flat.cutLengthMm)) errors.push("Trusted flat-pattern cut length must be finite and positive.");
+    if (!Number.isInteger(flat.contourCount) || flat.contourCount < 1) errors.push("Trusted flat pattern requires at least one contour.");
+    if (typeof flat.volumeConsistencyError !== "number" || !Number.isFinite(flat.volumeConsistencyError) || flat.volumeConsistencyError < 0 || flat.volumeConsistencyError > 0.02) errors.push("Trusted flat-pattern volume consistency is outside the accepted range.");
+    if (analysis.thicknessCandidate?.confidence !== "medium") errors.push("Trusted planar flat pattern requires a medium-confidence BRep thickness candidate.");
+    if (Array.isArray(analysis.bendCandidates) && analysis.bendCandidates.length > 0) errors.push("Planar-prism flat pattern cannot coexist with bend candidates.");
+    const evidenceIds = new Set(analysis.thicknessCandidate?.evidenceFaceIds ?? []);
+    if (!evidenceIds.has(flat.faceId) || !evidenceIds.has(flat.oppositeFaceId)) errors.push("Trusted flat-pattern faces must be part of the thickness evidence.");
+  }
 }
 
 export function validateNormalizedCadModel(input: unknown) {
@@ -116,9 +132,21 @@ export function validateNormalizedCadModel(input: unknown) {
     if (!finiteNonNegative(model.geometry.widthMm)) errors.push("Width cannot be negative or non-finite.");
     if (!finiteNonNegative(model.geometry.heightMm)) errors.push("Height cannot be negative or non-finite.");
     if (!finiteNonNegative(model.geometry.depthMm)) errors.push("Depth cannot be negative or non-finite.");
+    if (!finiteNonNegative(model.geometry.thicknessMm)) errors.push("Thickness cannot be negative or non-finite.");
     if (!finiteNonNegative(model.geometry.volumeMm3)) errors.push("Volume cannot be negative or non-finite.");
     if (!finiteNonNegative(model.geometry.areaMm2)) errors.push("Area cannot be negative or non-finite.");
+    if (!finiteNonNegative(model.geometry.blankAreaMm2)) errors.push("Blank area cannot be negative or non-finite.");
+    if (!finiteNonNegative(model.geometry.nestedAllocatedAreaMm2)) errors.push("Nested allocated area cannot be negative or non-finite.");
     if (!finiteNonNegative(model.geometry.cutLengthMm)) errors.push("Cut length cannot be negative or non-finite.");
+    for (const [label, value] of [
+      ["Contour count", model.geometry.contourCount],
+      ["Pierce count", model.geometry.pierceCount],
+      ["Hole count", model.geometry.holeCount],
+      ["Bend count", model.geometry.bendCount],
+      ["Body count", model.geometry.bodyCount],
+    ] as const) {
+      if (value != null && (!Number.isInteger(value) || value < 0)) errors.push(`${label} must be a non-negative integer.`);
+    }
   }
 
   if (!Array.isArray(model.meshes)) errors.push("Normalized CAD meshes must be an array.");
