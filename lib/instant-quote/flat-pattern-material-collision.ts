@@ -67,10 +67,6 @@ function cross(a: Vector2, b: Vector2) {
   return a[0] * b[1] - a[1] * b[0];
 }
 
-function dot(a: Vector2, b: Vector2) {
-  return a[0] * b[0] + a[1] * b[1];
-}
-
 function distance(a: Vector2, b: Vector2) {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
