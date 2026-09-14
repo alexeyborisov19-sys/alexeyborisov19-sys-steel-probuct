@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { FactualRate, FactualRateBook } from "@/lib/instant-quote/factual-calculation";
 import type { StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
-import type { MaterialId } from "@/lib/instant-quote/pricing";
+import type { MaterialId, MaterialMarketPrice } from "@/lib/instant-quote/pricing";
 
 export type PrivateCalculationBasis = {
   version: string;
@@ -24,13 +24,19 @@ function text(value: unknown, label: string): string {
   return value.trim();
 }
 
+function isoDate(value: unknown, label: string): string {
+  const result = text(value, label);
+  if (!Number.isFinite(Date.parse(result))) throw new Error(`Invalid private calculation basis: ${label}`);
+  return result;
+}
+
 function source(value: unknown, label: string): FactualRate["source"] {
   if (!value || typeof value !== "object") throw new Error(`Invalid private calculation basis: ${label}`);
   const row = value as Record<string, unknown>;
   return {
     id: text(row.id, `${label}.id`),
     label: text(row.label, `${label}.label`),
-    confirmedAt: text(row.confirmedAt, `${label}.confirmedAt`),
+    confirmedAt: isoDate(row.confirmedAt, `${label}.confirmedAt`),
     note: text(row.note, `${label}.note`),
   };
 }
@@ -48,6 +54,56 @@ function rate(value: unknown, label: string): FactualRate | null {
 function materialId(value: unknown): MaterialId {
   if (value === "cold" || value === "hot" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
   throw new Error("Invalid private calculation basis: materialId");
+}
+
+function materialPrice(value: unknown, label: string, snapshotFetchedAt: string): MaterialMarketPrice {
+  if (!value || typeof value !== "object") throw new Error(`Invalid private calculation basis: ${label}`);
+  const row = value as Record<string, unknown>;
+  const from3t = row.rubPerTonFrom3t;
+  if (from3t != null) finitePositive(from3t, `${label}.rubPerTonFrom3t`);
+  const exactThickness = row.exactThickness;
+  if (exactThickness != null && typeof exactThickness !== "boolean") {
+    throw new Error(`Invalid private calculation basis: ${label}.exactThickness`);
+  }
+  const size = row.size;
+  if (size != null && typeof size !== "string") throw new Error(`Invalid private calculation basis: ${label}.size`);
+
+  return {
+    materialId: materialId(row.materialId),
+    thicknessMm: finitePositive(row.thicknessMm, `${label}.thicknessMm`),
+    rubPerTon: finitePositive(row.rubPerTon, `${label}.rubPerTon`),
+    rubPerTonFrom3t: from3t == null ? undefined : from3t as number,
+    source: text(row.source, `${label}.source`),
+    sourceDate: isoDate(row.sourceDate, `${label}.sourceDate`),
+    fetchedAt: row.fetchedAt == null ? snapshotFetchedAt : isoDate(row.fetchedAt, `${label}.fetchedAt`),
+    size: size as string | undefined,
+    exactThickness: exactThickness as boolean | undefined,
+  };
+}
+
+function snapshot(value: unknown, index: number): StoredPriceSnapshot {
+  const label = `materialPriceSnapshots[${index}]`;
+  if (!value || typeof value !== "object") throw new Error(`Invalid private calculation basis: ${label}`);
+  const row = value as Record<string, unknown>;
+  const status = row.status;
+  if (status !== "ok" && status !== "stale" && status !== "failed") {
+    throw new Error(`Invalid private calculation basis: ${label}.status`);
+  }
+  const fetchedAt = isoDate(row.fetchedAt, `${label}.fetchedAt`);
+  const rows = row.rows;
+  if (!Array.isArray(rows)) throw new Error(`Invalid private calculation basis: ${label}.rows`);
+  if (status !== "failed" && rows.length === 0) throw new Error(`Invalid private calculation basis: ${label}.rows empty`);
+  const error = row.error;
+  if (error != null && typeof error !== "string") throw new Error(`Invalid private calculation basis: ${label}.error`);
+
+  return {
+    sourceId: text(row.sourceId, `${label}.sourceId`),
+    fetchedAt,
+    sourceDate: isoDate(row.sourceDate, `${label}.sourceDate`),
+    status,
+    error: error as string | undefined,
+    rows: rows.map((item, rowIndex) => materialPrice(item, `${label}.rows[${rowIndex}]`, fetchedAt)),
+  };
 }
 
 function parseBasis(value: unknown): PrivateCalculationBasis {
@@ -69,8 +125,16 @@ function parseBasis(value: unknown): PrivateCalculationBasis {
     };
   });
 
-  const snapshots = root.materialPriceSnapshots;
-  if (!Array.isArray(snapshots)) throw new Error("Invalid private calculation basis: materialPriceSnapshots");
+  const uniqueLaserRows = new Set<string>();
+  for (const row of laserRubPerM) {
+    const key = `${row.materialId}:${row.thicknessMm}`;
+    if (uniqueLaserRows.has(key)) throw new Error(`Invalid private calculation basis: duplicate laser rate ${key}`);
+    uniqueLaserRows.add(key);
+  }
+
+  const snapshotsRaw = root.materialPriceSnapshots;
+  if (!Array.isArray(snapshotsRaw)) throw new Error("Invalid private calculation basis: materialPriceSnapshots");
+  const materialPriceSnapshots = snapshotsRaw.map(snapshot);
 
   return {
     version: text(root.version, "version"),
@@ -80,7 +144,7 @@ function parseBasis(value: unknown): PrivateCalculationBasis {
       weldRubPerM: rate(rateBookRaw.weldRubPerM, "weldRubPerM"),
       powderRubPerM2: rate(rateBookRaw.powderRubPerM2, "powderRubPerM2"),
     },
-    materialPriceSnapshots: snapshots as StoredPriceSnapshot[],
+    materialPriceSnapshots,
   };
 }
 
