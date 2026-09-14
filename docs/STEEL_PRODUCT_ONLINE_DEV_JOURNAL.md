@@ -27,15 +27,19 @@
 - Публикация: **НЕ ДЕЛАТЬ** без отдельного решения владельца
 - Merge в `main`: **НЕ ДЕЛАТЬ** без отдельного решения владельца
 - Оплата / checkout: **НЕ РАЗРАБАТЫВАТЬ на текущем этапе**
-- **Last implementation checkpoint:** `3ffe70290f842d09ca4d9eb487dd16735a42e483`
-- Implementation commit: `Align factual missing-operation test with physical inputs`
-- **CI на `3ffe7029…`: GREEN в обоих workflow.**
+- **Last implementation checkpoint:** `5fab1567b8586a30bd99dda18b7a3a1e96a2534e`
+- Implementation commit: `Test private STEP physical evidence boundary`
+- **CI на `5fab1567…`: GREEN в обоих workflow.**
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
-- Перед этим исправлены два чисто тестовых/fixture mismatch без изменения production-логики:
-  - `1068abbb…` — lint в pierce-rate test;
-  - `1e0e41e8…` — completeness fixtures для новых assembly/surface-preparation/packaging параметров.
-- Важный предыдущий production commit: `4b8e11c7d3987fee04296128b940573f5131bcef` — injectable authoritative STEP analyzer в calculation handler.
+- В начале блока исправлена только изоляция тестового rate-limit state (`9bcb19ce…`), production rate limits не ослаблялись.
+- Новый factual block:
+  - exact STEP boundary surface area измеряется отдельным `server-only` OpenCascade проходом;
+  - это значение не добавлено в browser `NormalizedCadModel` и не входит в client DTO;
+  - server-authoritative physical inputs имеют отдельное происхождение и сохраняются только в confidential calculation/report snapshot;
+  - explicit technologist value имеет приоритет над server-authoritative evidence;
+  - DXF без явно заданных сторон окраски остаётся incomplete/partial;
+  - bent/unverified STEP по-прежнему fail-closed: production geometry и private factual evidence не продвигаются в расчёт.
 
 > Обновление этого журнала создаёт metadata commit выше implementation checkpoint. При restart сравнивать изменения, а не считать journal-only SHA новой функциональностью.
 
@@ -115,7 +119,10 @@
 - sampled flat-pattern region/contour;
 - BRep area audit + verification gate;
 - sampled/unverified bent STEP pricing/CAM intentionally blocked;
-- calculation handler имеет injectable authoritative STEP analyzer.
+- calculation handler имеет injectable authoritative STEP analyzer;
+- exact STEP BRep boundary surface area для factual coating извлекается только в server-only production evidence;
+- browser CAD model/client DTO не расширены производственной площадью поверхности;
+- private STEP physical evidence продвигается только для production-ready high-confidence planar STEP.
 
 ### Factual calculation
 - private runtime rate-book;
@@ -129,7 +136,10 @@
 - bending/welding/powder;
 - assembly / surface preparation / packaging physical-input semantics;
 - missing physical input отдельно от missing rate;
-- no hidden public 5%/16.5%/setup assumptions.
+- no hidden public 5%/16.5%/setup assumptions;
+- provenance-aware physical input resolution: explicit technologist > server-authoritative CAD evidence > explicit coating-side derivation;
+- DXF coating area не выводится без явного выбора сторон;
+- production parameters используют effective factual inputs, а не только manual input.
 
 ### Supplier feed
 - Atlantik primary automatic source for validated sheet groups;
@@ -149,7 +159,8 @@
 - public manifest accepts only customer choices;
 - security/quarantine upload path;
 - private orchestrator server-only/lazy;
-- confidentiality regression tests.
+- confidentiality regression tests;
+- regression подтверждает отсутствие `powderAreaM2`, authoritative factual evidence, BRep/DFM/cost fields в public calculation response.
 
 ### Internal reports
 - private storage/list/detail pages;
@@ -160,7 +171,9 @@
 - revision input accepts only physical parameters, never rates/cost/total;
 - internal session + CSRF;
 - lineage (`supersedes`, actor, reason);
-- revision form.
+- revision form;
+- server-authoritative factual inputs сохраняются в confidential snapshot и переживают immutable recalculation revisions;
+- manual technologist override остаётся выше automatic CAD evidence.
 
 ### Continuity
 - этот journal создан;
@@ -171,25 +184,21 @@
 
 ## 4. IN PROGRESS
 
-1. **Server-authoritative STEP regression в public calculation handler.**
-2. Проверить, что:
-   - planar high-confidence STEP получает только server-derived factual geometry;
-   - bent/sampled/unverified STEP остаётся review-only и не получает production pricing/CAM;
-   - browser-provided geometry никогда не становится authoritative;
-   - client response не содержит internal STEP/BRep evidence.
-3. После этого проверить internal revision form/API на следующем полном CI checkpoint.
+1. Следующий factual gap — довести уже существующие semantics для `assembly` и `surface-preparation` до project/revision input path.
+2. Сейчас low-level factual engine умеет считать эти операции при подтверждённых физических inputs, но project-level `PartFactualInputs` / internal revision request ещё не дают технологу провести эти значения через immutable report recalculation.
+3. Делать только во внутреннем контуре: никаких производственных минут/площадей, ставок или расшифровки клиенту.
 
 ---
 
 ## 5. NEXT ACTION — начинать отсюда
 
-**NEXT ACTION #1:** прочитать текущий `calculation-handler` и существующий `tests/online-calculation-handler.test.ts`, затем добавить regression tests для injected authoritative STEP analyzer.
+**NEXT ACTION #1:** прочитать текущие `project-factual-calculation.ts`, `internal-revision-request.ts`, `recalculate-production-report.ts` и внутреннюю revision form/API; подтвердить точные имена уже существующих low-level physical inputs для assembly и surface preparation.
 
-**NEXT ACTION #2:** не менять STEP production rules ради тестов. Тесты должны подтвердить существующие fail-closed gates: planar high-confidence allow; bent/unverified review-only.
+**NEXT ACTION #2:** провести через confidential/internal path только физические значения (`assemblyMinutes`, `surfacePreparationAreaM2`) с валидацией и immutable revision lineage. Не давать форме менять ставки, supplier prices, себестоимость или итог.
 
-**NEXT ACTION #3:** полный CI. После green обновить журнал новым implementation checkpoint.
+**NEXT ACTION #3:** production parameters и completeness должны использовать те же effective factual inputs; missing physical input остаётся `partial`, а не нулём.
 
-**NEXT ACTION #4:** затем брать следующий factual gap, который реально уменьшает `partial`, а не payment/UI polish.
+**NEXT ACTION #4:** добавить regression tests на manual override / clear / persistence across revision и confidentiality boundary, затем полный CI и новый green checkpoint.
 
 ---
 
@@ -226,7 +235,14 @@ Green относится только к SHA, который реально пр
 - `1e0e41e8…`: completeness fixtures догнали новые production parameters.
 - `3ffe7029…`: missing-operation test согласован с factual semantics.
 - На `3ffe7029…` оба workflow полностью GREEN.
-- Следующий блок: authoritative STEP regression в calculation handler.
+
+### 2026-09-14 — private STEP coating evidence
+- `9bcb19ce…`: regression suite изолирован от production quote rate-limit state; production limits не менялись.
+- `2cd3b218…` + `b2290e5a…`: exact OpenCascade STEP boundary surface area вынесена в server-only production evidence и передаётся только в confidential calculation.
+- `8db1c04d…` + `7b13d786…`: server-authoritative factual provenance сохраняется в закрытом snapshot/revisions, manual technologist value имеет приоритет.
+- `5fab1567…`: regression подтверждает promotion только для production-ready STEP и отсутствие private physical evidence в client response.
+- На `5fab1567…` оба workflow полностью GREEN.
+- Следующий block: internal assembly/surface-preparation physical inputs через revision path.
 
 ---
 
