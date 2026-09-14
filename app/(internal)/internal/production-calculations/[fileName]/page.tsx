@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InternalPageHeader, InternalShell } from "@/components/pd-admin/InternalShell";
 import { Panel, StatusPill } from "@/components/pd-admin/Ui";
+import { summarizeProjectCalculationCompleteness } from "@/lib/instant-quote/calculation-completeness";
 import { requirePdPageContext } from "@/lib/pd-admin/auth/page-context";
 import { readInternalProductionReport } from "@/lib/server/instant-quote/private-production-report";
 
@@ -27,6 +28,13 @@ export default async function ProductionCalculationDetailPage({ params }: { para
     notFound();
   }
 
+  const readiness = summarizeProjectCalculationCompleteness(
+    report.calculation,
+    report.productionParametersByPartId,
+  );
+  const readinessLabel = readiness.status === "ready" ? "готов" : readiness.status === "blocked" ? "заблокирован" : "требует проверки";
+  const readinessPill = readiness.status === "ready" ? "ready" : readiness.status === "blocked" ? "critical" : "warning";
+
   return <InternalShell {...shell}>
     <div className="mb-5"><Link href="/internal/production-calculations" className="text-sm text-steel-orange hover:underline">← Все производственные расчёты</Link></div>
     <InternalPageHeader
@@ -35,22 +43,31 @@ export default async function ProductionCalculationDetailPage({ params }: { para
       description={`Сформирован ${new Date(report.generatedAt).toLocaleString("ru-RU")} · расчётная база ${report.basisVersion}`}
     />
 
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-5">
       <Panel title="Подтверждено"><div className="text-2xl font-semibold">{money(report.calculation.confirmedDirectCostRub)}</div><p className="mt-2 text-xs text-white/40">Внутренняя сумма только подтверждённых статей.</p></Panel>
+      <Panel title="Готовность"><div className="flex items-center gap-3"><div className="text-2xl font-semibold">{readiness.scorePct}%</div><StatusPill status={readinessPill} label={readinessLabel} /></div><div className="mt-3 h-1.5 overflow-hidden bg-white/10"><div className="h-full bg-steel-orange" style={{ width: `${readiness.scorePct}%` }} /></div><p className="mt-2 text-xs text-white/40">{readiness.confirmedChecks} из {readiness.totalChecks} контрольных пунктов закрыто.</p></Panel>
       <Panel title="Позиции"><div className="text-2xl font-semibold">{report.calculation.totalParts}</div></Panel>
-      <Panel title="Полные"><div className="text-2xl font-semibold">{report.calculation.completeParts}</div></Panel>
-      <Panel title="Требуют проверки"><div className="text-2xl font-semibold">{report.calculation.partialParts + report.calculation.blockedParts}</div></Panel>
+      <Panel title="Готовы"><div className="text-2xl font-semibold">{readiness.readyParts}</div></Panel>
+      <Panel title="Проверка / блок"><div className="text-2xl font-semibold">{readiness.reviewParts} / {readiness.blockedParts}</div></Panel>
     </div>
 
     <div className="mt-6 space-y-6">
       {report.calculation.parts.map((part, index) => {
         const parameters = report.productionParametersByPartId[part.partId];
         const calculation = part.calculation;
+        const partReadiness = readiness.parts.find((item) => item.partId === part.partId);
+        const partStatus = partReadiness?.status === "ready" ? "ready" : partReadiness?.status === "blocked" ? "critical" : "warning";
         return <Panel key={part.partId} title={`Позиция ${index + 1} · ${part.partId}`}>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <StatusPill status={part.status === "complete" ? "ready" : part.status === "blocked" ? "critical" : "warning"} label={part.status} />
+            <StatusPill status={partStatus} label={partReadiness ? `${partReadiness.scorePct}% готовности` : part.status} />
             {calculation && <span className="text-sm font-semibold">Подтверждённые затраты: {money(calculation.confirmedDirectCostRubBatch)}</span>}
           </div>
+
+          {partReadiness && <div className="mb-5 border border-white/10 bg-white/[.02] p-4">
+            <div className="flex items-center justify-between gap-4"><div className="text-xs font-bold uppercase tracking-[.12em] text-white/50">Контроль полноты</div><div className="text-sm font-semibold">{partReadiness.confirmedChecks}/{partReadiness.totalChecks}</div></div>
+            <div className="mt-3 h-1.5 overflow-hidden bg-white/10"><div className="h-full bg-steel-orange" style={{ width: `${partReadiness.scorePct}%` }} /></div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">{partReadiness.items.map((item) => <div key={item.key} className={`border p-3 ${item.state === "confirmed" ? "border-emerald-400/20" : item.state === "blocked" ? "border-red-400/25" : "border-amber-400/20"}`}><div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold">{item.label}</span><span className={`text-[10px] font-bold uppercase tracking-[.1em] ${item.state === "confirmed" ? "text-emerald-300" : item.state === "blocked" ? "text-red-300" : "text-amber-200"}`}>{item.state === "confirmed" ? "готово" : item.state === "blocked" ? "блок" : "нужно закрыть"}</span></div>{item.detail && <p className="mt-2 text-xs leading-relaxed text-white/45">{item.detail}</p>}</div>)}</div>
+          </div>}
 
           {parameters && <div className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
             <div className="border border-white/10 p-3"><div className="text-white/35">Габарит</div><div className="mt-1">{number(parameters.dimensionsMm.width, " мм")} × {number(parameters.dimensionsMm.height, " мм")} × {number(parameters.dimensionsMm.depth, " мм")}</div></div>
