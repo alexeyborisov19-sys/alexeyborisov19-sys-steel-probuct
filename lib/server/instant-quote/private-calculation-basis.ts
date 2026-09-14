@@ -31,6 +31,14 @@ function isoDate(value: unknown, label: string): string {
   return result;
 }
 
+function optionalSha256(value: unknown, label: string): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== "string" || !/^[a-f0-9]{64}$/i.test(value)) {
+    throw new Error(`Invalid private calculation basis: ${label}`);
+  }
+  return value.toLowerCase();
+}
+
 function source(value: unknown, label: string): FactualRate["source"] {
   if (!value || typeof value !== "object") throw new Error(`Invalid private calculation basis: ${label}`);
   const row = value as Record<string, unknown>;
@@ -103,6 +111,7 @@ function snapshot(value: unknown, index: number): StoredPriceSnapshot {
     sourceDate: isoDate(row.sourceDate, `${label}.sourceDate`),
     status,
     error: error as string | undefined,
+    contentSha256: optionalSha256(row.contentSha256, `${label}.contentSha256`),
     rows: rows.map((item, rowIndex) => materialPrice(item, `${label}.rows[${rowIndex}]`, fetchedAt)),
   };
 }
