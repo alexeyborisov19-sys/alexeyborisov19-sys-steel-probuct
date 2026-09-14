@@ -1,17 +1,5 @@
 import type { NextConfig } from "next";
 
-const projectImageHosts = [
-  "https://static.tildacdn.com",
-  "https://images.cdn-cian.ru",
-  "https://www.rabochy-put.ru",
-  "https://vostokstroy67.ru",
-  "https://smolgazeta.ru",
-  "https://static.mk.ru",
-  "https://smoldaily.ru",
-  "https://vestnikstroy.ru",
-  "https://sdelanounas.ru",
-] as const;
-
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -20,7 +8,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline' https://mc.yandex.ru",
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com ${projectImageHosts.join(" ")}`,
+  "img-src 'self' data: blob: https://mc.yandex.ru https://mc.yandex.com",
   "font-src 'self' data:",
   "media-src 'self'",
   "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com",
@@ -63,17 +51,11 @@ const nextConfig: NextConfig = {
   // available together at their original filesystem location.
   serverExternalPackages: ["occt-wasm"],
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "static.tildacdn.com" },
-      { protocol: "https", hostname: "images.cdn-cian.ru" },
-      { protocol: "https", hostname: "www.rabochy-put.ru" },
-      { protocol: "https", hostname: "vostokstroy67.ru" },
-      { protocol: "https", hostname: "smolgazeta.ru" },
-      { protocol: "https", hostname: "static.mk.ru" },
-      { protocol: "https", hostname: "smoldaily.ru" },
-      { protocol: "https", hostname: "vestnikstroy.ru" },
-      { protocol: "https", hostname: "sdelanounas.ru" },
-    ],
+    // Project photography is published from this site only. Do not whitelist
+    // remote image hosts: an external file can vanish or change without notice,
+    // and local publication requires a documented right in
+    // LEGAL_MEDIA_RIGHTS_REGISTER.md.
+    remotePatterns: [],
   },
   async redirects() {
     return [

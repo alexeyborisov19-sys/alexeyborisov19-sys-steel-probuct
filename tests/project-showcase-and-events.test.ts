@@ -18,14 +18,20 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   assert.equal(obninsk.city, "Обнинск, Калужская область");
   assert.ok(obninsk.supply.some((item) => item.includes("металлокассеты")));
   assert.match(obninsk.description, /поставка продолжается/i);
-  assert.ok(obninsk.photos.length >= 2);
-  assert.ok(solovinaya && solovinaya.photos.length >= 3);
-  assert.ok(klovskiy && klovskiy.photos.length >= 2);
-  assert.ok(unity && unity.photos.length >= 2);
+  // Only these objects publish photographs of the object itself. Every other
+  // project falls back to a single illustrative industry visual, labelled as
+  // such — see LEGAL_MEDIA_RIGHTS_REGISTER.md.
+  assert.ok(obninsk.photos.length >= 3);
+  assert.ok(solovinaya && solovinaya.photos.length >= 7);
   assert.ok(regionalHospital && regionalHospital.photos.length >= 2);
   assert.ok(odkb && odkb.photos.length >= 4);
   assert.ok(oncology && oncology.photos.length >= 2);
-  assert.ok(feniks && feniks.photos.length >= 4);
+
+  for (const project of [klovskiy, unity, feniks]) {
+    assert.ok(project);
+    assert.equal(project.photos.length, 1);
+    assert.match(project.photos[0].credit, /Иллюстративный визуал/);
+  }
   assert.equal(realProjectsShowcase.some((project) => project.slug === "kb-8-fmba-obninsk"), false);
 });
 

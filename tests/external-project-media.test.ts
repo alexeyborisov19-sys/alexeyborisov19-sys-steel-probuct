@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { realProjects } from "@/data/real-projects";
+import { realProjectsShowcase } from "@/data/real-project-showcase";
 
 const gallerySource = readFileSync(new URL("../components/ProjectPhotoGallery.tsx", import.meta.url), "utf8");
 const nextConfigSource = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
 const jsonLdSource = readFileSync(new URL("../components/JsonLd.tsx", import.meta.url), "utf8");
 
-const approvedProjectMediaHosts = [
+// Hosts the project galleries used to hotlink. The photographs now live in
+// public/images/projects, so none of these may come back into the image or CSP
+// configuration: a file on someone else's server can disappear without notice.
+const retiredProjectMediaHosts = [
   "static.tildacdn.com",
   "images.cdn-cian.ru",
   "www.rabochy-put.ru",
@@ -28,23 +32,50 @@ test("project card images are first-party paths", () => {
   }
 });
 
-test("approved third-party project media hosts are whitelisted in Next image and CSP config", () => {
-  for (const host of approvedProjectMediaHosts) {
-    assert.equal(
-      nextConfigSource.includes(host),
-      true,
-      `${host} must remain whitelisted so approved project photography can render`,
-    );
+test("every gallery photo is served by this site", () => {
+  for (const project of realProjectsShowcase) {
+    for (const photo of project.photos) {
+      assert.ok(
+        photo.src.startsWith("/"),
+        `${project.slug} must publish gallery photos from this site, got ${photo.src}`,
+      );
+    }
   }
-  assert.doesNotMatch(nextConfigSource, /remotePatterns:\s*\[\]/);
 });
 
-test("project gallery renders approved photo sources with visible attribution", () => {
+test("every gallery photo file exists in public/", () => {
+  for (const project of realProjectsShowcase) {
+    for (const photo of project.photos) {
+      const file = new URL(`../public${photo.src}`, import.meta.url);
+      assert.ok(existsSync(file), `${project.slug} refers to a missing file: public${photo.src}`);
+    }
+  }
+});
+
+test("every gallery photo keeps a visible credit and a source link", () => {
+  for (const project of realProjectsShowcase) {
+    for (const photo of project.photos) {
+      assert.ok(photo.credit.trim().length > 0, `${project.slug}: photo ${photo.src} has no credit`);
+      assert.ok(photo.sourceUrl.trim().length > 0, `${project.slug}: photo ${photo.src} has no source link`);
+    }
+  }
+});
+
+test("retired third-party media hosts stay out of Next image and CSP config", () => {
+  for (const host of retiredProjectMediaHosts) {
+    assert.equal(
+      nextConfigSource.includes(host),
+      false,
+      `${host} must not be whitelisted for automatic image loading`,
+    );
+  }
+  assert.match(nextConfigSource, /remotePatterns:\s*\[\]/);
+});
+
+test("project gallery renders photo sources with visible attribution", () => {
   assert.match(gallerySource, /src=\{photo\.src\}/);
   assert.match(gallerySource, /href=\{photo\.sourceUrl\}/);
   assert.match(gallerySource, /Источник: \{photo\.credit\}/);
-  assert.doesNotMatch(gallerySource, /право на публикацию файла не подтверждено/);
-  assert.doesNotMatch(gallerySource, /Оригинал фото/);
 });
 
 test("JSON-LD removes third-party image URLs before serialization", () => {
