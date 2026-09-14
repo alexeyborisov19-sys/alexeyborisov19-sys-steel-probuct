@@ -1,0 +1,26 @@
+name: Verify Steel Product Online live review
+
+on:
+  push:
+    branches:
+      - feat/steel-product-online-clean-alpha-sep14
+    paths:
+      - .github/workflows/verify-online-order-live.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify public health and online-order route
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-delay 2 --max-time 20 https://www.steelprodukt.ru/api/health >/tmp/health.json
+          grep -q '"ok":true' /tmp/health.json
+          curl -fsSL --retry 5 --retry-delay 2 --max-time 30 https://www.steelprodukt.ru/online-order >/tmp/online-order.html
+          grep -q 'Steel Product Online' /tmp/online-order.html
+          printf '%s\n' 'External HTTPS verification passed.'
