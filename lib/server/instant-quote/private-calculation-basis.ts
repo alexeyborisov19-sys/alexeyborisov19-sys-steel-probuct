@@ -20,6 +20,11 @@ function finitePositive(value: unknown, label: string): number {
   return value;
 }
 
+function optionalPositive(value: unknown, label: string): number | undefined {
+  if (value == null) return undefined;
+  return finitePositive(value, label);
+}
+
 function text(value: unknown, label: string): string {
   if (typeof value !== "string" || !value.trim()) throw new Error(`Invalid private calculation basis: ${label}`);
   return value.trim();
@@ -131,6 +136,9 @@ function parseBasis(value: unknown): PrivateCalculationBasis {
       materialId: materialId(row.materialId),
       thicknessMm: finitePositive(row.thicknessMm, `laserRubPerM[${index}].thicknessMm`),
       rateRub: finitePositive(row.rateRub, `laserRubPerM[${index}].rateRub`),
+      from100mRubPerM: optionalPositive(row.from100mRubPerM, `laserRubPerM[${index}].from100mRubPerM`),
+      from500mRubPerM: optionalPositive(row.from500mRubPerM, `laserRubPerM[${index}].from500mRubPerM`),
+      pierceRubEach: optionalPositive(row.pierceRubEach, `laserRubPerM[${index}].pierceRubEach`),
       source: source(row.source, `laserRubPerM[${index}].source`),
     };
   });
