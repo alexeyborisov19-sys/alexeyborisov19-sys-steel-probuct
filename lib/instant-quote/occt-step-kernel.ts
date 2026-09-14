@@ -4,6 +4,9 @@ import {
   type CylinderFaceObservation,
   type PlaneFaceObservation,
   type SheetMetalAnalysis,
+  type SheetMetalBoundaryEdgePreview,
+  type SheetMetalBoundaryPreview,
+  type SheetMetalBoundaryWirePreview,
   type Vector3,
 } from "@/lib/instant-quote/sheet-metal";
 import type { StepKernelPort, StepKernelResult } from "@/lib/instant-quote/step-adapter";
@@ -72,6 +75,86 @@ function measureFaceBoundary(kernel: OcctKernelInstance, face: OcctShapeHandle) 
   return { boundaryLengthMm, wireCount };
 }
 
+function displaySampleCount(curveKind: string, lengthMm: number) {
+  if (curveKind === "line") return 1;
+  const minimum = curveKind === "circle" || curveKind === "ellipse" ? 16 : 8;
+  return Math.max(minimum, Math.min(96, Math.ceil(lengthMm / 4)));
+}
+
+function sampleEdgeInFaceUv(
+  kernel: OcctKernelInstance,
+  face: OcctShapeHandle,
+  edge: OcctShapeHandle,
+  bounds: { uMin: number; uMax: number; vMin: number; vMax: number },
+  wireIndex: number,
+  edgeIndex: number,
+): SheetMetalBoundaryEdgePreview | null {
+  const curveKind = kernel.curveType(edge);
+  const parameters = kernel.curveParameters(edge);
+  const lengthMm = kernel.curveLength(edge);
+  if (![parameters.first, parameters.last, lengthMm].every(Number.isFinite) || !(lengthMm > 0)) return null;
+
+  const segmentCount = displaySampleCount(curveKind, lengthMm);
+  const pointsMm: Array<[number, number]> = [];
+  for (let sampleIndex = 0; sampleIndex <= segmentCount; sampleIndex += 1) {
+    const ratio = sampleIndex / segmentCount;
+    const parameter = parameters.first + (parameters.last - parameters.first) * ratio;
+    const point = kernel.curvePointAtParam(edge, parameter);
+    if (!finiteVec3(point)) return null;
+    const uv = kernel.uvFromPoint(face, point);
+    const u = uv.u - bounds.uMin;
+    const v = uv.v - bounds.vMin;
+    if (!Number.isFinite(u) || !Number.isFinite(v)) return null;
+    pointsMm.push([u, v]);
+  }
+
+  if (pointsMm.length < 2) return null;
+  return {
+    id: `wire-${wireIndex}-edge-${edgeIndex}-${kernel.hashCode(edge, HASH_UPPER_BOUND)}`,
+    curveKind,
+    pointsMm,
+  };
+}
+
+/**
+ * Display-only approximation of exact BRep edges in the planar face's own UV
+ * coordinate system. Exact commercial cut length still comes from BRep length;
+ * sampled points can never affect pricing.
+ */
+function collectBoundaryPreview(
+  kernel: OcctKernelInstance,
+  face: OcctShapeHandle,
+  bounds: { uMin: number; uMax: number; vMin: number; vMax: number },
+): SheetMetalBoundaryPreview | undefined {
+  const wires = kernel.getSubShapes(face, "wire");
+  const previewWires: SheetMetalBoundaryWirePreview[] = [];
+
+  try {
+    for (let wireIndex = 0; wireIndex < wires.length; wireIndex += 1) {
+      const wire = wires[wireIndex];
+      const edges = kernel.getSubShapes(wire, "edge");
+      const previewEdges: SheetMetalBoundaryEdgePreview[] = [];
+      try {
+        for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex += 1) {
+          const preview = sampleEdgeInFaceUv(kernel, face, edges[edgeIndex], bounds, wireIndex, edgeIndex);
+          if (!preview) return undefined;
+          previewEdges.push(preview);
+        }
+      } finally {
+        edges.forEach((edge) => kernel.release(edge));
+      }
+
+      if (!previewEdges.length) return undefined;
+      previewWires.push({ id: `wire-${wireIndex}`, edges: previewEdges });
+    }
+  } finally {
+    wires.forEach((wire) => kernel.release(wire));
+  }
+
+  if (!previewWires.length) return undefined;
+  return { source: "brep-edge-sampling", displayOnly: true, wires: previewWires };
+}
+
 function collectSheetMetalAnalysis(
   kernel: OcctKernelInstance,
   shape: OcctShapeHandle,
@@ -116,6 +199,13 @@ function collectSheetMetalAnalysis(
         }
 
         const boundary = measureFaceBoundary(kernel, face);
+        let boundaryPreview: SheetMetalBoundaryPreview | undefined;
+        try {
+          boundaryPreview = collectBoundaryPreview(kernel, face, bounds);
+        } catch {
+          // Preview sampling is non-authoritative. Exact BRep measurements remain usable.
+        }
+
         planarFaces.push({
           id: faceId,
           areaMm2,
@@ -125,6 +215,7 @@ function collectSheetMetalAnalysis(
           uvSizeMm: [Math.abs(bounds.uMax - bounds.uMin), Math.abs(bounds.vMax - bounds.vMin)],
           boundaryLengthMm: boundary?.boundaryLengthMm,
           wireCount: boundary?.wireCount,
+          boundaryPreview,
         });
         continue;
       }
