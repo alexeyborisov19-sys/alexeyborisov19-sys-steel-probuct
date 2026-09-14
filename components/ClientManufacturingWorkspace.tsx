@@ -42,6 +42,7 @@ const OPERATION_OPTIONS: Array<{ id: ManufacturingOperation; label: string }> = 
 
 type CalculationApiResponse = {
   ok?: boolean;
+  code?: string;
   message?: string;
   calculation?: ClientProjectCalculationView;
 };
@@ -107,7 +108,7 @@ export function ClientManufacturingWorkspace() {
   const markConfigurationChanged = (partId: string) => {
     setStatusByPartId((current) => ({
       ...current,
-      [partId]: "Параметры изменены. Запустите внутренний расчёт повторно.",
+      [partId]: "Параметры изменены. Нажмите «Рассчитать проект», чтобы обновить результат.",
     }));
     setProjectCalculationMessage(null);
   };
@@ -139,7 +140,7 @@ export function ClientManufacturingWorkspace() {
     await Promise.all(jobs.map(async ({ file, partId, format }) => {
       if (format === "dwg") {
         setProject((current) => setPartState(current, partId, "manual-review"));
-        setStatusByPartId((current) => ({ ...current, [partId]: "Файл принят. Для DWG требуется внутренняя технологическая проверка." }));
+        setStatusByPartId((current) => ({ ...current, [partId]: "DWG загружен. Для расчёта потребуется уточнение модели." }));
         return;
       }
 
@@ -172,11 +173,14 @@ export function ClientManufacturingWorkspace() {
           ...current,
           [partId]: preview.status === "needs-review"
             ? preview.message
-            : "CAD распознан. Конфигурация готова к внутреннему расчёту.",
+            : "Модель распознана. Проверьте параметры и нажмите «Рассчитать проект».",
         }));
       } catch {
         setProject((current) => setPartState(current, partId, "manual-review"));
-        setStatusByPartId((current) => ({ ...current, [partId]: "Файл принят, но требуется внутренняя проверка CAD." }));
+        setStatusByPartId((current) => ({
+          ...current,
+          [partId]: "Не удалось построить предпросмотр модели. Попробуйте загрузить файл ещё раз или используйте другой CAD-файл.",
+        }));
       } finally {
         setAnalyzingByPartId((current) => ({ ...current, [partId]: false }));
       }
@@ -227,7 +231,7 @@ export function ClientManufacturingWorkspace() {
   const calculateProject = async () => {
     if (!canCalculate) return;
     setIsCalculating(true);
-    setProjectCalculationMessage("Передаём исходные CAD во внутренний защищённый расчёт…");
+    setProjectCalculationMessage("Проверяем CAD и рассчитываем проект…");
 
     try {
       const formData = createCalculationFormData(project, filesByPartId);
@@ -239,7 +243,10 @@ export function ClientManufacturingWorkspace() {
       const payload = await response.json().catch(() => null) as CalculationApiResponse | null;
 
       if (!response.ok || !payload?.ok || !isClientCalculationView(payload.calculation)) {
-        throw new Error(payload?.message || "Внутренний расчёт сейчас недоступен.");
+        if (payload?.code === "CALCULATION_UNAVAILABLE") {
+          throw new Error("Автоматический расчёт этой конфигурации сейчас недоступен. Модель и выбранные параметры можно продолжить редактировать.");
+        }
+        throw new Error(payload?.message || "Не удалось выполнить расчёт. Попробуйте ещё раз.");
       }
 
       const calculation = payload.calculation;
@@ -250,11 +257,11 @@ export function ClientManufacturingWorkspace() {
       });
       setProjectCalculationMessage(
         calculation.parts.every((part) => part.status === "ready")
-          ? "Внутренний расчёт проекта завершён."
-          : "Проект принят. Для части позиций требуется внутренняя технологическая проверка.",
+          ? "Расчёт проекта завершён."
+          : "Проект обработан. Для некоторых позиций потребуется уточнение параметров.",
       );
     } catch (error) {
-      setProjectCalculationMessage(error instanceof Error ? error.message : "Внутренний расчёт сейчас недоступен.");
+      setProjectCalculationMessage(error instanceof Error ? error.message : "Не удалось выполнить расчёт. Попробуйте ещё раз.");
     } finally {
       setIsCalculating(false);
     }
@@ -272,7 +279,7 @@ export function ClientManufacturingWorkspace() {
         <div className="container py-8">
           <p className="text-[11px] font-bold uppercase tracking-[.18em] text-steel-orange">Steel Product Online</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">CAD → конфигурация → расчёт</h1>
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/50">Загрузите CAD и задайте параметры изделия. Производственный расчёт выполняется во внутреннем защищённом контуре; в клиентском интерфейсе публикуется только разрешённый результат.</p>
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/50">Загрузите CAD-модель, проверьте габариты, выберите материал, толщину, количество и необходимые операции.</p>
         </div>
       </section>
 
@@ -281,7 +288,7 @@ export function ClientManufacturingWorkspace() {
           <aside className="border border-white/10 bg-[#101416]">
             <div className="border-b border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.15em] text-white/35">Проект</p>
-              <div className="mt-2 flex items-center justify-between"><strong className="truncate text-sm">{project.title}</strong><span className="text-[10px] text-white/30">{project.parts.length} поз.</span></div>
+              <div className="mt-2 flex items-center justify-between gap-3"><strong className="min-w-0 truncate text-sm" title={project.title}>{project.title}</strong><span className="shrink-0 text-[10px] text-white/30">{project.parts.length} поз.</span></div>
             </div>
             <div className="max-h-[610px] overflow-y-auto">
               {project.parts.map((part, index) => {
@@ -307,7 +314,7 @@ export function ClientManufacturingWorkspace() {
                   <div className="flex h-16 w-16 items-center justify-center border border-steel-orange/55 text-3xl text-steel-orange">+</div>
                   <h2 className="mt-6 text-2xl font-semibold">Перетащите CAD-файлы</h2>
                   <p className="mt-3 text-sm text-white/40">DXF · STEP · STP · DWG</p>
-                </motion.div> : isAnalyzing ? <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center text-center"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD analysis</p><h2 className="mt-3 text-xl font-semibold">Обрабатываем модель</h2><p className="mt-3 text-xs text-white/35">Производственный анализ выполняется только на сервере.</p></div></motion.div> : activePreview?.meshes.length ? <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activePreview.meshes} className="h-full" /></motion.div> : activePreview?.drawing ? <motion.div key={`dxf-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-6"><ClientCad2DPreview drawing={activePreview.drawing} animated /></motion.div> : <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><p className="max-w-lg text-sm leading-relaxed text-white/50">{statusByPartId[activePart.id] ?? "Файл принят в проект."}</p></motion.div>}
+                </motion.div> : isAnalyzing ? <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center text-center"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD</p><h2 className="mt-3 text-xl font-semibold">Обрабатываем модель</h2><p className="mt-3 text-xs text-white/35">Подготавливаем предпросмотр и определяем габариты.</p></div></motion.div> : activePreview?.meshes.length ? <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activePreview.meshes} className="h-full" /></motion.div> : activePreview?.drawing ? <motion.div key={`dxf-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-6"><ClientCad2DPreview drawing={activePreview.drawing} animated /></motion.div> : <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><p className="max-w-lg text-sm leading-relaxed text-white/50">{statusByPartId[activePart.id] ?? "Файл добавлен в проект."}</p></motion.div>}
               </AnimatePresence>
               {activePreview && <div className="absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-3">{clientMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
             </div>
@@ -326,8 +333,8 @@ export function ClientManufacturingWorkspace() {
                 <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">
                   {isCalculating ? "Выполняется расчёт…" : "Рассчитать проект"}
                 </button>
-                {projectCalculationMessage && <p className="mt-3 text-xs leading-relaxed text-white/45">{projectCalculationMessage}</p>}
-                <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Результат расчёта</p><p className="mt-3 text-sm leading-relaxed text-white/55">{statusByPartId[activePart.id] ?? "После анализа конфигурация будет передана во внутренний расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/30">Себестоимость, внутренние ставки, нормы и производственная расшифровка клиентскому интерфейсу не передаются. Оплата на этом этапе не подключена.</p></div>
+                {projectCalculationMessage && <p className="mt-3 text-xs leading-relaxed text-white/50">{projectCalculationMessage}</p>}
+                <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Статус проекта</p><p className="mt-3 text-sm leading-relaxed text-white/60">{statusByPartId[activePart.id] ?? "Проверьте параметры изделия и запустите расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/30">Расчёт на сайте является предварительным и зависит от качества исходной CAD-модели. Оплата пока не подключена.</p></div>
               </div>
             </> : <div className="p-5 text-sm text-white/35">Добавьте CAD-файл.</div>}
           </aside>
