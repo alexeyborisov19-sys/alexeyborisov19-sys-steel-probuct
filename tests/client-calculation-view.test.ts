@@ -19,7 +19,6 @@ const project: InstantQuoteProject = {
     geometry: {
       widthMm: 500,
       heightMm: 300,
-      depthMm: null,
       cutLengthMm: 9876,
       pierceCount: 42,
       areaMm2: 123456,
@@ -50,18 +49,18 @@ test("public calculation projection excludes production economics and process me
 
   const json = JSON.stringify(view).toLowerCase();
   const forbidden = [
-    "rateRub".toLowerCase(),
-    "rubPerTon".toLowerCase(),
-    "directCost".toLowerCase(),
-    "internalSubtotal".toLowerCase(),
-    "supplier".toLowerCase(),
-    "cutLength".toLowerCase(),
-    "pierce".toLowerCase(),
-    "massKg".toLowerCase(),
-    "waste".toLowerCase(),
-    "blankArea".toLowerCase(),
-    "dfmBlocking".toLowerCase(),
-    "reportId".toLowerCase(),
+    "raterub",
+    "rubperton",
+    "directcost",
+    "internalsubtotal",
+    "supplier",
+    "cutlength",
+    "pierce",
+    "masskg",
+    "waste",
+    "blankarea",
+    "dfmblocking",
+    "reportid",
   ];
 
   for (const token of forbidden) assert.equal(json.includes(token), false, `public DTO leaked ${token}`);
