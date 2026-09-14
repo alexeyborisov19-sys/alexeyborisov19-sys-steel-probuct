@@ -60,11 +60,23 @@ function collectSheetMetalAnalysis(kernel: OcctKernelInstance, shape: OcctShapeH
 
       if (surfaceType === "cylinder") {
         const cylinder = kernel.getFaceCylinderData(face);
-        if (cylinder && Number.isFinite(cylinder.radius) && cylinder.radius > 0) {
+        const bounds = kernel.uvBounds(face);
+        const angleSpanRad = Math.abs(bounds.uMax - bounds.uMin);
+        if (
+          cylinder &&
+          Number.isFinite(cylinder.radius) &&
+          cylinder.radius > 0 &&
+          cylinder.origin.every(Number.isFinite) &&
+          cylinder.direction.every(Number.isFinite) &&
+          Number.isFinite(angleSpanRad)
+        ) {
           cylindricalFaces.push({
             id: `face-${index}`,
             areaMm2,
             radiusMm: cylinder.radius,
+            originMm: [cylinder.origin[0], cylinder.origin[1], cylinder.origin[2]],
+            axis: [cylinder.direction[0], cylinder.direction[1], cylinder.direction[2]],
+            angleSpanRad,
           });
         } else {
           otherFaceCount += 1;
