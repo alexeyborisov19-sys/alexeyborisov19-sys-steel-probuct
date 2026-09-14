@@ -1,5 +1,5 @@
 name: Publish Steel Product Online review
-# Review publish trigger: STEP preview and customer-facing status fixes.
+# Review publish trigger: STEP preview and customer-facing status fixes. Re-publish after GREEN CI.
 
 on:
   push:
