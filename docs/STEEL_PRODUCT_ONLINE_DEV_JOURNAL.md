@@ -33,11 +33,13 @@ Feature development для текущей pre-release версии остано�
 - Functional block: strict exact-safe linear planar DXF SPLINE subset + regressions.
 - **Latest stabilization SHA:** `c912cafba2d2857c66bd25bc9854b6125201841c`
 - Stabilization block: regression-only malformed legacy POLYLINE matrix; production parser не менялся.
-- **Last GREEN verified tree HEAD:** `c912cafba2d2857c66bd25bc9854b6125201841c`
-- CI на `c912cafb…` полностью GREEN:
+- **FINAL REVIEW CANDIDATE HEAD:** `a47dccda70d2666d3cc78136b3d7f8deae87fa0a`
+- **Last GREEN verified tree HEAD:** `a47dccda70d2666d3cc78136b3d7f8deae87fa0a`
+- CI на `a47dccda…` полностью GREEN:
   - `Steel Product Online Alpha CI`: TypeScript ✅, Unit tests ✅, Next.js build ✅
   - `Verify project package`: Lint ✅, Typecheck ✅, Tests ✅, Build ✅, SEO audit ✅
-- Этот финальный journal-only commit после записи должен пройти оба workflow; после GREEN его SHA становится **FINAL REVIEW CANDIDATE HEAD**.
+- Draft PR #90 на момент проверки: `open`, `draft`, `merged=false`, mergeable=true.
+- Этот checkpoint — окончательная версия текущего pre-release scope для ручной проверки владельцем перед решением о публикации.
 
 ---
 
@@ -168,11 +170,11 @@ Fixes:
 
 ## 6. NEXT ACTION
 
-**Feature development остановить.**
+**Текущий pre-release scope завершён. Feature development остановить до ручного review.**
 
-1. Проверить оба workflow на этом journal-only HEAD.
-2. Если оба GREEN — этот HEAD = **FINAL REVIEW CANDIDATE**.
-3. Отдать владельцу на ручную проверку перед публикацией.
+1. Считать `a47dccda70d2666d3cc78136b3d7f8deae87fa0a` последним подтверждённым FINAL REVIEW CANDIDATE после GREEN обоих workflow.
+2. Текущий journal-only commit должен пройти оба workflow; если GREEN — он становится новым metadata-only review checkpoint, функциональный candidate остаётся `a47dccda…`.
+3. Отдать владельцу на ручную проверку `/online-order` и внутреннего review flow перед публикацией.
 4. Не deploy/publish/merge до отдельного прямого указания владельца.
 5. Defects из ручного review исправлять regression-first отдельным блоком с новым CI gate.
 
@@ -201,4 +203,4 @@ Fixes:
 - deterministic first-party SEO image availability audit;
 - malformed legacy POLYLINE regression-only hardening;
 - confidentiality and candidate-build regressions included in full GREEN suite;
-- `c912cafb…` = latest fully verified stabilization tree before this final journal-only commit.
+- `a47dccda…` = fully verified FINAL REVIEW CANDIDATE before this metadata-only journal checkpoint.
