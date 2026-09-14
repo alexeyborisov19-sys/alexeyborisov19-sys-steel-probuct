@@ -156,7 +156,7 @@ export async function refreshAtlantikPriceSnapshot(
   now = new Date(),
   options: AtlantikRefreshOptions = {},
 ): Promise<AtlantikRefreshResult> {
-  const persist = options.persist ?? true;
+  const persist = options.persist === true;
   const response = await fetch(SOURCE_URL, {
     redirect: "follow",
     cache: "no-store",
