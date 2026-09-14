@@ -10,6 +10,9 @@ export type ProductionParameterInput = {
   weldLengthMEach?: number;
   powderSides?: 1 | 2;
   explicitPowderAreaM2Each?: number;
+  assemblyMinutesEach?: number;
+  surfacePreparationAreaM2Each?: number;
+  packagingSelected?: boolean;
 };
 
 export type ProductionParameterSummary = {
@@ -61,6 +64,19 @@ export type ProductionParameterSummary = {
     powderSides: 1 | 2 | null;
     powderAreaM2Each: number | null;
     powderAreaM2Batch: number | null;
+  };
+  assembly: {
+    minutesEach: number | null;
+    minutesBatch: number | null;
+    hoursBatch: number | null;
+  };
+  surfacePreparation: {
+    areaM2Each: number | null;
+    areaM2Batch: number | null;
+  };
+  packaging: {
+    selected: boolean;
+    unitsBatch: number | null;
   };
   issues: string[];
 };
@@ -134,6 +150,9 @@ export function deriveProductionParameters(input: ProductionParameterInput): Pro
     ? netAreaMm2 / 1_000_000 * powderSides
     : null;
   const powderAreaM2Each = explicitPowderArea ?? derivedPowderArea;
+  const assemblyMinutesEach = positive(input.assemblyMinutesEach);
+  const surfacePreparationAreaM2Each = positive(input.surfacePreparationAreaM2Each);
+  const packagingSelected = input.packagingSelected === true;
 
   const wasteAreaMm2Each = blank && netAreaMm2 != null
     ? Math.max(0, blank.areaMm2 - netAreaMm2)
@@ -187,6 +206,19 @@ export function deriveProductionParameters(input: ProductionParameterInput): Pro
       powderSides,
       powderAreaM2Each,
       powderAreaM2Batch: times(powderAreaM2Each, quantity),
+    },
+    assembly: {
+      minutesEach: assemblyMinutesEach,
+      minutesBatch: times(assemblyMinutesEach, quantity),
+      hoursBatch: assemblyMinutesEach == null ? null : assemblyMinutesEach * quantity / 60,
+    },
+    surfacePreparation: {
+      areaM2Each: surfacePreparationAreaM2Each,
+      areaM2Batch: times(surfacePreparationAreaM2Each, quantity),
+    },
+    packaging: {
+      selected: packagingSelected,
+      unitsBatch: packagingSelected ? quantity : null,
     },
     issues,
   };
