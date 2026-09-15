@@ -39,6 +39,8 @@ export type ProjectFactualCalculationResult = {
 export type PartCadEvidence = {
   unsupportedEntities?: string[];
   reviewReasons?: string[];
+  /** Annotation layers the DXF parser excluded from the priced geometry. */
+  skippedServiceLayers?: string[];
 };
 
 export type ProjectCadEvidence = Record<string, PartCadEvidence>;

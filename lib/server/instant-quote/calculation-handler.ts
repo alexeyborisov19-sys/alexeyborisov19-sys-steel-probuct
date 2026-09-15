@@ -169,7 +169,12 @@ async function buildAuthoritativeProject(
       const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
       const parsed = parseDxfInspection(inspection);
       geometry = model.geometry;
-      evidenceByPartId[item.clientPartId] = { unsupportedEntities: [...parsed.unsupportedEntities] };
+      evidenceByPartId[item.clientPartId] = {
+        unsupportedEntities: [...parsed.unsupportedEntities],
+        ...(parsed.skippedServiceLayers.length
+          ? { skippedServiceLayers: [...parsed.skippedServiceLayers] }
+          : {}),
+      };
       state = model.warnings.length ? "manual-review" : "configurable";
     } else if (format === "step" || format === "stp") {
       try {

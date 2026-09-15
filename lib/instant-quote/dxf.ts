@@ -25,6 +25,8 @@ export type ParsedDxf = {
   units: string;
   unitsCode: number | null;
   unsupportedEntities: string[];
+  /** Annotation layers whose geometry was excluded from every metric. */
+  skippedServiceLayers: string[];
 };
 
 type Pair = [number, string];
@@ -109,6 +111,24 @@ function collectEntityFields(pairs: Pair[], start: number) {
     end++;
   }
   return { fields, end };
+}
+
+/**
+ * Annotation layers that describe a drawing rather than the part to be cut:
+ * dimensions, centre lines, borders, title blocks, text and hatching. Their
+ * geometry must not reach the bounding box, the cut length or the blank area,
+ * otherwise a dimension line below the part inflates both the priced blank and
+ * the priced cut.
+ */
+const SERVICE_LAYER_PATTERN =
+  /(^|[^a-z])(dim|размер|ось|оси|axis|center|centre|осев|рамк|frame|border|штамп|title|text|текст|hatch|штрих|defpoints|annot|note|mark)/i;
+
+export function isServiceDxfLayer(layer: string) {
+  return SERVICE_LAYER_PATTERN.test(layer.trim());
+}
+
+function layerField(fields: Pair[]) {
+  return fields.find(([fieldCode]) => fieldCode === 8)?.[1]?.trim() ?? "";
 }
 
 function numberField(fields: Pair[], code: number) {
@@ -609,6 +629,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
   const units = detectUnits(pairs);
   const shapes: DxfShape[] = [];
   const unsupported = new Set<string>();
+  const skippedServiceLayers = new Set<string>();
   let inEntities = false;
 
   for (let i = 0; i < pairs.length; i++) {
@@ -627,6 +648,19 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     const { fields, end } = collectEntityFields(pairs, i);
     i = end - 1;
     const first = (fieldCode: number) => fields.find(([field]) => field === fieldCode)?.[1];
+    const layer = layerField(fields);
+    const skipLayer = isServiceDxfLayer(layer);
+
+    if (skipLayer) {
+      skippedServiceLayers.add(layer);
+      // A legacy POLYLINE owns a trailing VERTEX/SEQEND block. It still has to
+      // be consumed, or its vertices would be read back as unknown entities.
+      if (value === "POLYLINE") {
+        const legacy = parseLegacyPolylineSequence(pairs, end, fields);
+        i = Math.max(i, legacy.end - 1);
+      }
+      continue;
+    }
 
     if (value === "LINE") {
       const x1 = numberField(fields, 10);
@@ -749,6 +783,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     units: units.label,
     unitsCode: units.code,
     unsupportedEntities: [...unsupported].sort(),
+    skippedServiceLayers: [...skippedServiceLayers].sort(),
   };
 }
 
