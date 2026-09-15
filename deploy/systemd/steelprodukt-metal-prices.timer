@@ -1,0 +1,15 @@
+[Unit]
+Description=Twice-daily Steelprodukt supplier metal price refresh
+
+# Stored prices go stale after 72 h and the calculator then withholds an
+# automatic quote, so the refresh runs well inside that window on working
+# mornings and again in the evening.
+[Timer]
+OnCalendar=*-*-* 06:40:00 Europe/Moscow
+OnCalendar=*-*-* 18:40:00 Europe/Moscow
+RandomizedDelaySec=15m
+Persistent=true
+Unit=steelprodukt-metal-prices.service
+
+[Install]
+WantedBy=timers.target

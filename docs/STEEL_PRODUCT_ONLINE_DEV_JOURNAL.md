@@ -204,3 +204,5 @@ Fixes:
 - malformed legacy POLYLINE regression-only hardening;
 - confidentiality and candidate-build regressions included in full GREEN suite;
 - `a47dccda…` = fully verified FINAL REVIEW CANDIDATE before this metadata-only journal checkpoint.
+- явная наценка владельца на металл в фактическом расчёте (`STEEL_PRODUCT_METAL_UPLIFT_PCT`, по умолчанию 5 %), значение только на сервере;
+- systemd-таймер обновления прайса поставщика `deploy/systemd/steelprodukt-metal-prices.*` (дважды в сутки, внутри 72-часового окна свежести). Перед установкой администратор обязан проверить фактические пути `npm`, права пользователя `nodejs` и выполнить `npm run prices:refresh -- --dry-run`; до этого автообновление цен нельзя считать включённым на production.

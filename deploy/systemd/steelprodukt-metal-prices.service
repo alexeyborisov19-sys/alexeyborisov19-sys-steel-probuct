@@ -1,0 +1,25 @@
+[Unit]
+Description=Steelprodukt supplier metal price refresh (Atlantik, Smolensk)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nodejs
+Group=nodejs
+UMask=0077
+WorkingDirectory=/var/www/html
+EnvironmentFile=/var/www/html/.env.production
+ExecStart=/usr/bin/npm run prices:refresh -- --commit
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+# The refresh calls the app on loopback; the app itself fetches the supplier PDF.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# This unit only POSTs to the app on loopback; the app process performs the
+# snapshot write, so the timer itself needs no write access of its own.
+ReadOnlyPaths=/var/www/html
