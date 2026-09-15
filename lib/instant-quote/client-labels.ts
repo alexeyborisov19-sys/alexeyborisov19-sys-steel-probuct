@@ -22,6 +22,22 @@ export const OPERATION_LABELS: Record<ManufacturingOperation, string> = {
   packaging: "Упаковка",
 };
 
+/**
+ * Single wording for the machine calculation, shared by the screen and the
+ * printed quote so the customer cannot be shown two different promises. It
+ * follows the site's own terms at /legal/terms rather than inventing a new
+ * legal formula.
+ */
+export const CALCULATION_DISCLAIMER =
+  "Расчёт выполнен автоматически по загруженной модели и является предварительным. "
+  + "Он не является публичной офертой: окончательные цена, сроки, характеристики и "
+  + "условия поставки определяются коммерческим предложением и договором после "
+  + "проверки инженером.";
+
+/** Short form for places where the full sentence does not fit. */
+export const CALCULATION_DISCLAIMER_SHORT =
+  "Предварительный автоматический расчёт. Не является офертой.";
+
 export function materialLabel(materialId: string | null) {
   return (materialId && MATERIAL_LABELS[materialId]) || "—";
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { materialLabel, operationLabels } from "../lib/instant-quote/client-labels";
+import { CALCULATION_DISCLAIMER, materialLabel, operationLabels } from "../lib/instant-quote/client-labels";
 
 async function source(path: string) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -51,4 +51,32 @@ test("customer-facing labels are shared, so the quote cannot disagree with the c
   assert.equal(materialLabel(null), "—");
   assert.equal(materialLabel("unknown"), "—");
   assert.deepEqual(operationLabels(["laser-cutting", "bending"]), ["Лазерная резка", "Гибка"]);
+});
+
+test("the machine calculation is disclaimed wherever a price is shown", async () => {
+  const workspace = await source("components/ClientManufacturingWorkspace.tsx");
+  const printout = await source("components/instant-quote/ClientQuotePrintout.tsx");
+
+  // Screen and paper must quote the same wording, not two different promises.
+  for (const surface of [workspace, printout]) {
+    assert.match(surface, /CALCULATION_DISCLAIMER/);
+  }
+  // Beside the total, in the per-part status, and on the sticky mobile bar.
+  assert.ok(
+    (workspace.match(/CALCULATION_DISCLAIMER/g) ?? []).length >= 3,
+    "the disclaimer must accompany every place the calculator shows a price",
+  );
+  assert.match(workspace, /href="\/legal\/terms"/);
+});
+
+test("the disclaimer says it is automatic, preliminary and not an offer", () => {
+  assert.match(CALCULATION_DISCLAIMER, /автоматически/);
+  assert.match(CALCULATION_DISCLAIMER, /предварительн/);
+  assert.match(CALCULATION_DISCLAIMER, /не является публичной офертой/);
+  assert.match(CALCULATION_DISCLAIMER, /инженер/);
+});
+
+test("the disclaimer repeats the site's own terms rather than inventing new ones", async () => {
+  const terms = await source("app/(public)/legal/terms/page.tsx");
+  assert.match(terms, /не является публичной офертой/);
 });

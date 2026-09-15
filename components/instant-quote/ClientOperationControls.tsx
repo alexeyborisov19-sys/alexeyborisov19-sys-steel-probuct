@@ -29,6 +29,18 @@ const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
   assembly: { field: "assemblyMinutes", label: "Сборка, мин на деталь", step: 1, max: 10_000 },
 };
 
+type SidesField = "powderSides" | "surfacePreparationSides";
+
+/**
+ * Operations charged by treated area. The area is the part's own net area times
+ * the number of sides, so the side count is the one thing the drawing cannot
+ * supply and the customer has to state.
+ */
+const OPERATION_SIDES: Partial<Record<ManufacturingOperation, { field: SidesField; label: string }>> = {
+  "powder-coating": { field: "powderSides", label: "Сторон окраски" },
+  "surface-preparation": { field: "surfacePreparationSides", label: "Сторон подготовки" },
+};
+
 export type ClientOperationControlsProps = {
   operations: readonly ManufacturingOperation[];
   operationInputs: OperationInputs;
@@ -52,6 +64,7 @@ export function ClientOperationControls({
         {OPERATION_OPTIONS.map((option) => {
           const enabled = operations.includes(option.id);
           const quantity = OPERATION_QUANTITY[option.id];
+          const sides = OPERATION_SIDES[option.id];
 
           return (
             <div key={option.id}>
@@ -94,19 +107,19 @@ export function ClientOperationControls({
                 </p>
               )}
 
-              {enabled && option.id === "powder-coating" && (
+              {enabled && sides && (
                 <div className="mt-1 flex items-center gap-3 border border-white/10 bg-[#090c0e] px-4 py-2">
-                  <span className="grow text-[10px] uppercase tracking-[.1em] text-white/40">Сторон окраски</span>
+                  <span className="grow text-[10px] uppercase tracking-[.1em] text-white/40">{sides.label}</span>
                   <div className="flex gap-1">
-                    {([1, 2] as const).map((sides) => (
+                    {([1, 2] as const).map((count) => (
                       <button
-                        key={sides}
+                        key={count}
                         type="button"
-                        aria-pressed={operationInputs.powderSides === sides}
-                        onClick={() => onQuantityChange({ powderSides: sides })}
-                        className={`h-7 w-9 border text-xs font-semibold ${operationInputs.powderSides === sides ? "border-steel-orange bg-steel-orange/15 text-steel-orange" : "border-white/12 text-white/50"}`}
+                        aria-pressed={operationInputs[sides.field] === count}
+                        onClick={() => onQuantityChange({ [sides.field]: count })}
+                        className={`h-7 w-9 border text-xs font-semibold ${operationInputs[sides.field] === count ? "border-steel-orange bg-steel-orange/15 text-steel-orange" : "border-white/12 text-white/50"}`}
                       >
-                        {sides}
+                        {count}
                       </button>
                     ))}
                   </div>

@@ -31,6 +31,7 @@ export type ConfidentialCalculationInputs = {
   /** Physical values confirmed by protected server-side CAD analysis. */
   authoritativeFactualByPartId?: Record<string, PartFactualInputs>;
   powderSidesByPartId?: Record<string, 1 | 2>;
+  surfacePreparationSidesByPartId?: Record<string, 1 | 2>;
   internalNotes?: string[];
 };
 
@@ -143,6 +144,7 @@ export async function runConfidentialCalculationForClient(
   const explicitFactualByPartId = inputs.factualByPartId ?? {};
   const authoritativeFactualByPartId = inputs.authoritativeFactualByPartId ?? {};
   const powderSidesByPartId = inputs.powderSidesByPartId ?? {};
+  const surfacePreparationSidesByPartId = inputs.surfacePreparationSidesByPartId ?? {};
 
   calculationStage("FACTUAL_INPUTS_START");
   const effectiveFactualByPartId = resolveEffectiveFactualInputs(
@@ -150,6 +152,7 @@ export async function runConfidentialCalculationForClient(
     explicitFactualByPartId,
     powderSidesByPartId,
     authoritativeFactualByPartId,
+    surfacePreparationSidesByPartId,
   );
   calculationStage("FACTUAL_INPUTS_OK");
 

@@ -12,7 +12,7 @@ import { createCalculationFormData } from "@/lib/instant-quote/client-calculatio
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-types";
 import { createEmptyProject, type ManufacturingOperation, type OperationInputs } from "@/lib/instant-quote/domain";
-import { MATERIAL_LABELS } from "@/lib/instant-quote/client-labels";
+import { CALCULATION_DISCLAIMER, CALCULATION_DISCLAIMER_SHORT, MATERIAL_LABELS } from "@/lib/instant-quote/client-labels";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import {
   addPartToProject,
@@ -403,8 +403,8 @@ export function ClientManufacturingWorkspace() {
                   Печать / КП
                 </button>
               )}
-              <p className="mt-3 text-[10px] leading-relaxed text-white/30">
-                Расчёт предварительный и зависит от качества CAD-модели. Точную стоимость подтверждает инженер.
+              <p className="mt-3 border-t border-white/10 pt-3 text-[10px] leading-relaxed text-white/45">
+                {CALCULATION_DISCLAIMER}{" "}<Link href="/legal/terms" className="underline decoration-white/30 underline-offset-2 hover:text-white">Условия</Link>
               </p>
             </div>
           </aside>
@@ -457,7 +457,7 @@ export function ClientManufacturingWorkspace() {
                 </button>
                 {projectCalculationMessage && <p className="mt-3 text-xs leading-relaxed text-white/50">{projectCalculationMessage}</p>}
                 {activeCalculation?.price.status === "approved" && typeof activeCalculation.price.totalRub === "number" && <div className="mt-4 border border-steel-orange/40 bg-steel-orange/[.08] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Стоимость позиции</p><p className="mt-2 text-2xl font-semibold">{fmt(activeCalculation.price.totalRub)} ₽</p>{approvedProjectTotalRub != null && calculation && calculation.parts.length > 1 && <p className="mt-2 text-xs text-white/50">Итого по проекту: {fmt(approvedProjectTotalRub)} ₽</p>}</div>}
-                <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Статус проекта</p><p className="mt-3 text-sm leading-relaxed text-white/60">{statusByPartId[activePart.id] ?? "Проверьте параметры изделия и запустите расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/30">Расчёт на сайте является предварительным и зависит от качества исходной CAD-модели. Оплата пока не подключена.</p></div>
+                <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Статус проекта</p><p className="mt-3 text-sm leading-relaxed text-white/60">{statusByPartId[activePart.id] ?? "Проверьте параметры изделия и запустите расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/45">{CALCULATION_DISCLAIMER} Оплата на сайте не подключена.</p></div>
               </div>
             </> : <div className="p-5 text-sm text-white/35">Добавьте CAD-файл.</div>}
           </aside>
@@ -466,7 +466,7 @@ export function ClientManufacturingWorkspace() {
       {project.parts.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-white/12 bg-[#101416]/95 px-4 py-3 backdrop-blur-sm xl:hidden">
           <div className="min-w-0 grow">
-            <p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
+            <p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/35" title={CALCULATION_DISCLAIMER}>{CALCULATION_DISCLAIMER_SHORT}</p>
             <p className="truncate text-lg font-semibold tabular-nums text-steel-orange">
               {approvedProjectTotalRub == null ? "—" : `${fmt(approvedProjectTotalRub)} ₽`}
             </p>

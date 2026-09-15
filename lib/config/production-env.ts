@@ -114,6 +114,14 @@ export function validateProductionEnvironment(
   if (environment.CONSENT_AUDIT_RETENTION_DAYS && !isPositiveInteger(environment.CONSENT_AUDIT_RETENTION_DAYS)) {
     add("CONSENT_AUDIT_RETENTION_DAYS", "must be a positive integer");
   }
+  // Optional, and deliberately so: every issue reported here turns the public
+  // quote form into a 503, so a variable only the price-refresh timer needs
+  // must never be able to stop customers from sending a request. The value is
+  // still checked when present, because a truncated token fails silently every
+  // time the timer runs and the supplier prices then quietly go stale.
+  if (environment.STEEL_PRODUCT_PRICE_REFRESH_TOKEN && environment.STEEL_PRODUCT_PRICE_REFRESH_TOKEN.trim().length < 32) {
+    add("STEEL_PRODUCT_PRICE_REFRESH_TOKEN", "must be at least 32 characters for the supplier price refresh to authenticate");
+  }
   // Optional: production falls back to the owner-approved default when unset.
   // A malformed override is still worth reporting rather than silently ignoring.
   if (environment.STEEL_PRODUCT_METAL_UPLIFT_PCT) {

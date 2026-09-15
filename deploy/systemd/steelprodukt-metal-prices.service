@@ -1,3 +1,13 @@
+# Preconditions, all on the host and none of them checked automatically:
+#   1. STEEL_PRODUCT_PRICE_REFRESH_TOKEN in .env.production, 32+ characters.
+#      Without it the refresh cannot authenticate and this unit fails every run.
+#      It cannot be made a required variable: every production-environment issue
+#      turns the public quote form into a 503.
+#   2. pdftotext (poppler-utils) on PATH, or STEEL_PRODUCT_PDFTOTEXT_COMMAND.
+#   3. The unit installed and enabled: systemctl enable --now steelprodukt-metal-prices.timer
+# Verify once with:  npm run prices:refresh -- --dry-run
+# Watch for silent failure with:  systemctl --failed | grep steelprodukt-metal-prices
+
 [Unit]
 Description=Steelprodukt supplier metal price refresh (Atlantik, Smolensk)
 After=network-online.target

@@ -1,5 +1,5 @@
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
-import { materialLabel, operationLabels } from "@/lib/instant-quote/client-labels";
+import { CALCULATION_DISCLAIMER, materialLabel, operationLabels } from "@/lib/instant-quote/client-labels";
 import { legalOperator } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 
@@ -86,9 +86,7 @@ export function ClientQuotePrintout({
       )}
 
       <p style={{ marginTop: 18, fontSize: 10, lineHeight: 1.6, color: "#333" }}>
-        Расчёт предварительный, выполнен автоматически по загруженной CAD-модели и не является публичной офертой.
-        Окончательная стоимость и сроки подтверждаются инженером после проверки конструкторской документации.
-        Оплата на сайте не подключена.
+        {CALCULATION_DISCLAIMER} Оплата на сайте не подключена.
       </p>
     </section>
   );
