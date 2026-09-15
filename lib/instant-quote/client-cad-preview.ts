@@ -103,6 +103,10 @@ export function createClientDxfDrawingPreview(parsed: ParsedDxf): ClientCadDrawi
  */
 export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: ParsedDxf): ClientCadPreview {
   const needsReview = model.warnings.length > 0;
+  // A bent part is the one case where "needs review" has a specific, knowable
+  // reason. Saying it here means the customer learns it on upload instead of
+  // after configuring the position and pressing calculate.
+  const bent = (model.geometry.bendCount ?? 0) > 0;
 
   return {
     kind: "client-cad-preview",
@@ -119,8 +123,10 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
     root: model.root,
     drawing: parsedDxf ? createClientDxfDrawingPreview(parsedDxf) : null,
     status: needsReview ? "needs-review" : "recognized",
-    message: needsReview
-      ? "Модель загружена. Некоторые параметры потребуется уточнить перед окончательным расчётом."
-      : "Модель распознана и готова к настройке.",
+    message: bent
+      ? "Деталь с гибами. Гибы и толщина определены по модели, но размер развёртки подтверждает технолог, поэтому стоимость по этой позиции рассчитывается не автоматически."
+      : needsReview
+        ? "Модель загружена. Некоторые параметры потребуется уточнить перед окончательным расчётом."
+        : "Модель распознана и готова к настройке.",
   };
 }

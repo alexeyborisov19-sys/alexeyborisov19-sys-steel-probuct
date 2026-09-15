@@ -57,3 +57,18 @@ test("a measured thickness snaps onto a stocked one, or onto nothing at all", ()
   assert.equal(nearestThicknessOption(0), null);
   assert.equal(nearestThicknessOption(Number.NaN), null);
 });
+
+test("a bent part says on upload that it will not be priced automatically", () => {
+  const bent = modelWith(analysis(1.5, "medium"));
+  bent.geometry.bendCount = 1;
+  const preview = createClientCadPreview(bent);
+
+  // Without this the customer configures the whole position and only learns at
+  // "Рассчитать проект" that there is no automatic price for it.
+  assert.equal(preview.status, "recognized");
+  assert.match(preview.message, /гибами/);
+  assert.match(preview.message, /не автоматически/);
+  // The bends and thickness it did read are still reported.
+  assert.equal(preview.cad.bendCountFromModel, 1);
+  assert.equal(preview.cad.thicknessFromModelMm, 1.5);
+});
