@@ -5,16 +5,16 @@ import Link from "next/link";
 
 const STEPS = [
   {
-    title: "Загружаете модель",
-    text: "DXF с развёрткой или STEP с 3D-деталью. Можно перетащить сразу несколько файлов.",
+    title: "Загрузите файл",
+    text: "DXF, STEP или STP. Можно загрузить несколько деталей одновременно.",
   },
   {
-    title: "Геометрия читается сама",
-    text: "Габарит, площадь, длина реза и число врезок снимаются с чертежа. По STEP определяется толщина и число гибов.",
+    title: "Автоматический анализ",
+    text: "Система определит габариты, площадь, длину реза, количество врезок, толщину и гибы.",
   },
   {
-    title: "Видите стоимость",
-    text: "Остаётся выбрать материал, количество и обработку. Цена собирается по актуальному прайсу на металл.",
+    title: "Получите стоимость",
+    text: "Выберите материал, количество и обработку — система рассчитает предварительную стоимость изготовления.",
   },
 ] as const;
 
@@ -41,21 +41,20 @@ export function CadCalculatorShowcase() {
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="max-w-2xl">
             <p className="text-[11px] font-bold uppercase tracking-[.16em] text-steel-orange">
-              Онлайн-расчёт по чертежу
+              Онлайн-расчёт по CAD-файлу
             </p>
             <h2 id="cad-calculator-title" className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">
-              Загрузите чертёж — геометрию посчитает машина
+              Загрузите модель — система сама определит геометрию
             </h2>
             <p className="mt-3 text-[13px] leading-relaxed text-white/55">
-              Калькулятор читает вашу CAD-модель и сам достаёт из неё размеры, площадь и длину реза.
-              Не нужно ничего обмерять и переписывать в форму.
+              Система считывает параметры детали напрямую из чертежа и формирует предварительный расчёт стоимости.
             </p>
           </div>
           <Link
             href="/online-order"
             className="clip-corner inline-block whitespace-nowrap bg-steel-orange-deep px-6 py-4 text-[13px] font-bold uppercase transition hover:bg-steel-orange-deeper"
           >
-            Открыть калькулятор&nbsp; →
+            Открыть онлайн-расчёт&nbsp; →
           </Link>
         </div>
 
@@ -87,11 +86,11 @@ export function CadCalculatorShowcase() {
         </ol>
 
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[.12em] text-white/35">
-          <span>Принимаем</span>
+          <span>Форматы</span>
           {FORMATS.map((format) => (
             <span key={format} className="border border-white/12 px-2.5 py-1 text-white/55">{format}</span>
           ))}
-          <span className="text-white/30">DWG — с уточнением инженера</span>
+          <span className="text-white/30">DWG — после проверки инженером</span>
         </div>
       </div>
     </section>
