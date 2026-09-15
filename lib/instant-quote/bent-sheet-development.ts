@@ -19,13 +19,14 @@ export type BentSheetDevelopment = {
 };
 
 /**
- * How far a face extent may sit from the nominal thickness and still be read as
- * the sheet's edge band. Modelled edges land exactly on the thickness, so this
- * only absorbs rounding; it stays far below the narrowest flange anyone bends,
- * which cannot be thinner than a couple of thicknesses.
+ * How far a measured width may sit from the nominal thickness and still be read
+ * as the sheet's edge band. The mean-width measure returns slightly more than
+ * the true width on a short ribbon, so the band is one-sidedly generous; it
+ * still stays well below the narrowest flange anyone bends, which cannot be
+ * thinner than about two thicknesses.
  */
 function edgeBandTolerance(thicknessMm: number) {
-  return Math.max(0.1, thicknessMm * 0.15);
+  return Math.max(0.05, thicknessMm * 0.35);
 }
 
 /** Total surface of the solid must be accounted for within this fraction. */
@@ -35,11 +36,19 @@ function unavailable(reasons: string[]): BentSheetDevelopment {
   return { source: "brep-surface-development", status: "unavailable", reasons };
 }
 
+/**
+ * Mean width of a planar face: area over half its boundary. For a ribbon of
+ * width w and length L this is w·L / (w + L) ≈ w, whatever shape the ribbon
+ * runs in. The face's bounding box cannot be used instead — the end cap of a
+ * bent profile is an L-shaped ribbon 1,5 mm wide whose box is 100 × 60 mm, and
+ * reading that box would file the sheet's own edge as its face and double the
+ * blank.
+ */
 function planarExtentMm(face: PlaneFaceObservation) {
-  if (!face.uvSizeMm) return null;
-  const [u, v] = face.uvSizeMm;
-  if (!Number.isFinite(u) || !Number.isFinite(v) || u <= 0 || v <= 0) return null;
-  return Math.min(u, v);
+  const perimeter = face.boundaryLengthMm;
+  if (!Number.isFinite(perimeter) || (perimeter ?? 0) <= 0) return null;
+  if (!Number.isFinite(face.areaMm2) || face.areaMm2 <= 0) return null;
+  return face.areaMm2 / ((perimeter as number) / 2);
 }
 
 /**
@@ -98,7 +107,7 @@ export function measureBentSheetDevelopment(input: {
 
   for (const face of observations.planarFaces) {
     const extent = planarExtentMm(face);
-    if (extent == null) return unavailable(["У плоской грани нет размеров, её нельзя отнести ни к полотну, ни к торцу."]);
+    if (extent == null) return unavailable(["У плоской грани нет длины контура, её нельзя отнести ни к полотну, ни к торцу."]);
     if (Math.abs(extent - thicknessMm) <= tolerance) narrowAreaMm2 += face.areaMm2;
     else wideAreaMm2 += face.areaMm2;
   }
