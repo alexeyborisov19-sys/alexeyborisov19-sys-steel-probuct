@@ -49,6 +49,7 @@ export type OperationInputs = {
   bendCount?: number;
   weldLengthM?: number;
   powderSides?: 1 | 2;
+  surfacePreparationSides?: 1 | 2;
   assemblyMinutes?: number;
 };
 

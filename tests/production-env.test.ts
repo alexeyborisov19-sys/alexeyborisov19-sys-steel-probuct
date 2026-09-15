@@ -106,6 +106,23 @@ test("the metal uplift override is optional but must be a sane percentage", () =
   }
 });
 
+test("the price-refresh token is optional but must be long enough when present", () => {
+  const base = validProductionEnvironment();
+  // Unset: the quote form must still work, because an unset token only means
+  // the supplier price refresh is not installed.
+  assert.deepEqual(validateProductionEnvironment(base, { force: true }), []);
+  assert.deepEqual(
+    validateProductionEnvironment({ ...base, STEEL_PRODUCT_PRICE_REFRESH_TOKEN: "x".repeat(32) }, { force: true }),
+    [],
+  );
+
+  const keys = validateProductionEnvironment(
+    { ...base, STEEL_PRODUCT_PRICE_REFRESH_TOKEN: "too-short" },
+    { force: true },
+  ).map((issue) => issue.key);
+  assert.deepEqual(keys, ["STEEL_PRODUCT_PRICE_REFRESH_TOKEN"]);
+});
+
 test("uses no production-only requirements during local development unless forced", () => {
   assert.deepEqual(validateProductionEnvironment({ NODE_ENV: "test" }), []);
 });

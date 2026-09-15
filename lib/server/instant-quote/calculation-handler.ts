@@ -32,6 +32,7 @@ type RunCalculationInputs = {
   authoritativeFactualByPartId?: Record<string, PartFactualInputs>;
   factualByPartId?: Record<string, PartFactualInputs>;
   powderSidesByPartId?: Record<string, 1 | 2>;
+  surfacePreparationSidesByPartId?: Record<string, 1 | 2>;
 };
 
 type RunCalculation = (
@@ -151,6 +152,7 @@ async function buildAuthoritativeProject(
   authoritativeFactualByPartId: Record<string, PartFactualInputs>;
   declaredFactualByPartId: Record<string, PartFactualInputs>;
   powderSidesByPartId: Record<string, 1 | 2>;
+  surfacePreparationSidesByPartId: Record<string, 1 | 2>;
   analysisNotes: string[];
 }> {
   const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
@@ -252,6 +254,7 @@ async function buildAuthoritativeProject(
   // selected and bounds-checked the rest.
   const declaredFactualByPartId: Record<string, PartFactualInputs> = {};
   const powderSidesByPartId: Record<string, 1 | 2> = {};
+  const surfacePreparationSidesByPartId: Record<string, 1 | 2> = {};
   for (const item of manifest.parts) {
     const declared: PartFactualInputs = {};
     if (item.operationInputs.bendCount != null) declared.bendCount = item.operationInputs.bendCount;
@@ -259,6 +262,7 @@ async function buildAuthoritativeProject(
     if (item.operationInputs.assemblyMinutes != null) declared.assemblyMinutes = item.operationInputs.assemblyMinutes;
     if (Object.keys(declared).length > 0) declaredFactualByPartId[item.clientPartId] = declared;
     if (item.operationInputs.powderSides != null) powderSidesByPartId[item.clientPartId] = item.operationInputs.powderSides;
+    if (item.operationInputs.surfacePreparationSides != null) surfacePreparationSidesByPartId[item.clientPartId] = item.operationInputs.surfacePreparationSides;
   }
 
   return {
@@ -274,6 +278,7 @@ async function buildAuthoritativeProject(
     authoritativeFactualByPartId,
     declaredFactualByPartId,
     powderSidesByPartId,
+    surfacePreparationSidesByPartId,
     analysisNotes,
   };
 }
@@ -342,6 +347,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
         authoritativeFactualByPartId,
         declaredFactualByPartId,
         powderSidesByPartId,
+        surfacePreparationSidesByPartId,
         analysisNotes,
       } = await buildAuthoritativeProject(
         manifestRaw,
@@ -356,6 +362,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
           authoritativeFactualByPartId,
           factualByPartId: declaredFactualByPartId,
           powderSidesByPartId,
+          surfacePreparationSidesByPartId,
           internalNotes: [...storageNotes(requestId, quarantined), ...analysisNotes],
         },
         now,

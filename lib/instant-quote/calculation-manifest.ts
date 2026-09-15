@@ -94,6 +94,11 @@ function operationInputs(
     if (sides !== 1 && sides !== 2) throw new CalculationManifestError(`${label}.powderSides: допустимы только 1 или 2.`);
     result.powderSides = sides;
   }
+  if (item.surfacePreparationSides != null && operations.has("surface-preparation")) {
+    const sides = boundedNumber(item.surfacePreparationSides, `${label}.surfacePreparationSides`, 2, true);
+    if (sides !== 1 && sides !== 2) throw new CalculationManifestError(`${label}.surfacePreparationSides: допустимы только 1 или 2.`);
+    result.surfacePreparationSides = sides;
+  }
 
   return result;
 }

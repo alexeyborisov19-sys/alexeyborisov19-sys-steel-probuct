@@ -26,6 +26,7 @@ function publicOperationInputs(
   if (operations.has("welding") && inputs.weldLengthM != null) result.weldLengthM = inputs.weldLengthM;
   if (operations.has("assembly") && inputs.assemblyMinutes != null) result.assemblyMinutes = inputs.assemblyMinutes;
   if (operations.has("powder-coating") && inputs.powderSides != null) result.powderSides = inputs.powderSides;
+  if (operations.has("surface-preparation") && inputs.surfacePreparationSides != null) result.surfacePreparationSides = inputs.surfacePreparationSides;
   return result;
 }
 
