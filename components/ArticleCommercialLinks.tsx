@@ -27,6 +27,11 @@ const linksByDirection: Record<ArticleDirection, CommercialLink[]> = {
   ],
   metalworking: [
     {
+      title: "Онлайн-расчёт по чертежу",
+      description: "Загрузите DXF или STEP — габариты, площадь и длина реза определятся автоматически.",
+      href: "/online-order",
+    },
+    {
       title: "Гибка листового металла",
       description: "Подбор инструмента, проверка развёртки и контроль повторяемости партии.",
       href: "/production/gibka-listovogo-metalla",
@@ -43,6 +48,11 @@ const linksByDirection: Record<ArticleDirection, CommercialLink[]> = {
     },
   ],
   "engineering-practice": [
+    {
+      title: "Онлайн-расчёт по чертежу",
+      description: "Калькулятор читает CAD-модель и сам достаёт из неё размеры, площадь и число врезок.",
+      href: "/online-order",
+    },
     {
       title: "Проектирование металлоизделий",
       description: "Проверка технологичности, подготовка КД и сопровождение опытного образца.",
