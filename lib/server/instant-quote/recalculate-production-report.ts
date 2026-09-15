@@ -6,6 +6,7 @@ import { calculateProjectFactualCost } from "@/lib/instant-quote/project-factual
 import { deriveProductionParameters, type ProductionParameterSummary } from "@/lib/instant-quote/production-parameters";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import { loadPrivateCalculationBasis } from "@/lib/server/instant-quote/private-calculation-basis";
+import { metalMarketUpliftPct } from "@/lib/server/instant-quote/metal-market-uplift";
 import {
   createInternalProductionReport,
   readInternalProductionReport,
@@ -154,6 +155,7 @@ export async function recalculateInternalProductionReport(
     basis.rateBook,
     effectiveFactualByPartId,
     now,
+    { materialMarketUpliftPct: metalMarketUpliftPct() },
   );
 
   const productionParametersByPartId: Record<string, ProductionParameterSummary> = {};

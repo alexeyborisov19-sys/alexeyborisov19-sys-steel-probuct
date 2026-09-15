@@ -84,6 +84,28 @@ test("rejects a wrong counter, public storage, weak salts and untrusted proxy mo
   ]);
 });
 
+test("the metal uplift override is optional but must be a sane percentage", () => {
+  const base = validProductionEnvironment();
+  // Unset: production uses the owner-approved default.
+  assert.deepEqual(validateProductionEnvironment(base, { force: true }), []);
+
+  for (const accepted of ["0", "5", "7,5", "100"]) {
+    assert.deepEqual(
+      validateProductionEnvironment({ ...base, STEEL_PRODUCT_METAL_UPLIFT_PCT: accepted }, { force: true }),
+      [],
+      `${accepted} should be accepted`,
+    );
+  }
+
+  for (const rejected of ["-1", "101", "abc"]) {
+    const keys = validateProductionEnvironment(
+      { ...base, STEEL_PRODUCT_METAL_UPLIFT_PCT: rejected },
+      { force: true },
+    ).map((issue) => issue.key);
+    assert.deepEqual(keys, ["STEEL_PRODUCT_METAL_UPLIFT_PCT"], `${rejected} should be reported`);
+  }
+});
+
 test("uses no production-only requirements during local development unless forced", () => {
   assert.deepEqual(validateProductionEnvironment({ NODE_ENV: "test" }), []);
 });

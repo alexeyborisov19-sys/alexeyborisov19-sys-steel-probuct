@@ -16,9 +16,10 @@ const productLinks: Record<string, string> = {
 };
 
 const quickLinks = [
+  { label: "Калькулятор металлоизделий", href: "/online-order" },
+  { label: "Калькулятор металлокассет", href: "/calculator-metallokassety" },
   { label: "Вся продукция", href: "/products" },
   { label: "Производство", href: "/production" },
-  { label: "Калькулятор металлокассет", href: "/calculator-metallokassety" },
 ] as const;
 
 export function MegaMenu({ onClose }: { onClose: () => void }) {

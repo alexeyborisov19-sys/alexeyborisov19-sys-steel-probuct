@@ -1,14 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import Link from "next/link";
 import type { ChangeEvent, DragEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
+import { ClientOperationControls } from "@/components/instant-quote/ClientOperationControls";
+import { ClientQuotePrintout } from "@/components/instant-quote/ClientQuotePrintout";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
 import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-types";
-import { createEmptyProject, type ManufacturingOperation } from "@/lib/instant-quote/domain";
+import { createEmptyProject, type ManufacturingOperation, type OperationInputs } from "@/lib/instant-quote/domain";
+import { MATERIAL_LABELS } from "@/lib/instant-quote/client-labels";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import {
   addPartToProject,
@@ -17,28 +21,25 @@ import {
   setPartMaterial,
   setPartQuantity,
   setPartState,
+  setPartOperationInputs,
   setPartThickness,
   togglePartOperation,
   updatePartGeometry,
 } from "@/lib/instant-quote/project";
 
 const accepted = ".dxf,.dwg,.step,.stp";
+
+const FORMAT_BADGES: ReadonlyArray<{ label: string; supported: boolean; hint: string }> = [
+  { label: "DXF", supported: true, hint: "Плоская развёртка: габариты и контуры определяются автоматически." },
+  { label: "STEP", supported: true, hint: "3D-модель: габариты и толщина определяются автоматически." },
+  { label: "STP", supported: true, hint: "То же, что STEP." },
+  { label: "DWG", supported: false, hint: "Принимаем в проект, но геометрию уточняет инженер." },
+];
 const thicknessOptions = [0.5, 0.7, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 40];
 
-const MATERIAL_OPTIONS: Array<{ id: MaterialId; label: string }> = [
-  { id: "hot", label: "Сталь г/к" },
-  { id: "cold", label: "Сталь х/к" },
-  { id: "zinc", label: "Оцинкованная сталь" },
-];
-
-const OPERATION_OPTIONS: Array<{ id: ManufacturingOperation; label: string }> = [
-  { id: "bending", label: "Гибка" },
-  { id: "welding", label: "Сварка" },
-  { id: "assembly", label: "Сборка" },
-  { id: "surface-preparation", label: "Подготовка поверхности" },
-  { id: "powder-coating", label: "Порошковая окраска" },
-  { id: "packaging", label: "Упаковка" },
-];
+// Shared with the printed quote, so a material cannot get two names.
+const MATERIAL_OPTIONS: ReadonlyArray<{ id: MaterialId; label: string }> =
+  (["hot", "cold", "zinc"] as const).map((id) => ({ id, label: MATERIAL_LABELS[id] }));
 
 type CalculationApiResponse = {
   ok?: boolean;
@@ -115,6 +116,18 @@ export function ClientManufacturingWorkspace() {
     if (approved.length !== calculation.parts.length) return null;
     return approved.reduce((sum, part) => sum + (part.price.totalRub ?? 0), 0);
   }, [calculation]);
+  // The public calculator never submits orders on its own: it hands the customer
+  // over to the existing contacts form, which is the flow that records 152-ФЗ
+  // consent and stores the lead. Only the customer's own inputs travel in the URL.
+  const quoteHandoffHref = {
+    pathname: "/contacts",
+    query: {
+      source: "online-order",
+      parts: String(project.parts.length),
+      ...(approvedProjectTotalRub == null ? {} : { total: String(Math.round(approvedProjectTotalRub)) }),
+    },
+    hash: "contact-form",
+  };
   const isAnalyzing = activePart ? Boolean(analyzingByPartId[activePart.id]) : false;
   const materialId = materialIdOf(activePart?.configuration.materialId ?? null);
   const thickness = activePart?.configuration.thicknessMm ?? 1;
@@ -186,8 +199,15 @@ export function ClientManufacturingWorkspace() {
             ...(preview.cad.heightMm == null ? {} : { heightMm: preview.cad.heightMm }),
             ...(preview.cad.depthMm == null ? {} : { depthMm: preview.cad.depthMm }),
           };
-          const withGeometry = updatePartGeometry(current, partId, geometry);
-          return setPartState(withGeometry, partId, preview.status === "needs-review" ? "manual-review" : "configurable");
+          let next = updatePartGeometry(current, partId, geometry);
+          // A STEP model that reports bends selects bending and fills in the
+          // count, so the customer never counts them by hand.
+          const bends = preview.cad.bendCountFromModel;
+          if (bends != null && bends > 0) {
+            next = togglePartOperation(next, partId, "bending", true);
+            next = setPartOperationInputs(next, partId, { bendCount: bends });
+          }
+          return setPartState(next, partId, preview.status === "needs-review" ? "manual-review" : "configurable");
         });
         setStatusByPartId((current) => ({
           ...current,
@@ -258,6 +278,11 @@ export function ClientManufacturingWorkspace() {
     setProject((current) => togglePartOperation(current, activePart.id, operation, enabled));
     markConfigurationChanged(activePart.id);
   };
+  const updateOperationInputs = (patch: OperationInputs) => {
+    if (!activePart) return;
+    setProject((current) => setPartOperationInputs(current, activePart.id, patch));
+    markConfigurationChanged(activePart.id);
+  };
   const removeActivePart = () => {
     if (!activePart) return;
     const id = activePart.id;
@@ -318,12 +343,23 @@ export function ClientManufacturingWorkspace() {
   ] : [];
 
   return (
-    <main className="min-h-screen bg-[#090c0e] text-white">
+    <div className="bg-[#090c0e] pb-24 text-white xl:pb-10">
       <section className="border-b border-white/10 bg-[#101416]">
-        <div className="container py-8">
-          <p className="text-[11px] font-bold uppercase tracking-[.18em] text-steel-orange">Steel Product Online</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">CAD → конфигурация → расчёт</h1>
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/50">Загрузите CAD-модель, проверьте габариты, выберите материал, толщину, количество и необходимые операции.</p>
+        <div className="container flex flex-wrap items-center gap-x-6 gap-y-3 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/35">Принимаем</p>
+          <div className="flex flex-wrap gap-2">
+            {FORMAT_BADGES.map((badge) => (
+              <span
+                key={badge.label}
+                title={badge.hint}
+                className={badge.supported
+                  ? "border border-steel-orange/45 bg-steel-orange/[.07] px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-steel-orange"
+                  : "border border-white/12 px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-white/35"}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -345,6 +381,32 @@ export function ClientManufacturingWorkspace() {
               })}
             </div>
             <button onClick={() => inputRef.current?.click()} className="m-4 w-[calc(100%-2rem)] border border-white/12 px-3 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/55 hover:border-steel-orange hover:text-white">+ Добавить CAD</button>
+
+            <div className="border-t border-white/10 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums text-steel-orange">
+                {approvedProjectTotalRub == null ? "—" : `${fmt(approvedProjectTotalRub)} ₽`}
+              </p>
+              <p className="mt-1 text-[10px] text-white/35">
+                {project.parts.length === 0
+                  ? "Позиции не добавлены"
+                  : `${project.parts.length} поз.${approvedProjectTotalRub == null ? " · расчёт не выполнен" : ""}`}
+              </p>
+              <Link
+                href={quoteHandoffHref}
+                className="mt-4 block border border-steel-orange bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white"
+              >
+                Отправить заявку
+              </Link>
+              {calculation && (
+                <button type="button" onClick={() => window.print()} className="mt-2 w-full border border-white/15 px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-white/70 transition hover:border-steel-orange hover:text-white">
+                  Печать / КП
+                </button>
+              )}
+              <p className="mt-3 text-[10px] leading-relaxed text-white/30">
+                Расчёт предварительный и зависит от качества CAD-модели. Точную стоимость подтверждает инженер.
+              </p>
+            </div>
           </aside>
 
           <div
@@ -381,7 +443,13 @@ export function ClientManufacturingWorkspace() {
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07]" : "border-white/10"}`}>{option.label}</button>)}</div></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none">{thicknessOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none" /></div>
-                <div><p className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Операции</p><div className="mt-2 grid gap-2">{OPERATION_OPTIONS.map((option) => { const enabled = activePart.configuration.operations.includes(option.id); return <button key={option.id} onClick={() => toggleOperation(option.id)} className={`flex items-center justify-between border px-4 py-3 text-left text-sm ${enabled ? "border-steel-orange/45 bg-steel-orange/[.06]" : "border-white/10"}`}><span>{option.label}</span><span>{enabled ? "✓" : ""}</span></button>; })}</div></div>
+                <ClientOperationControls
+                  operations={activePart.configuration.operations}
+                  operationInputs={activePart.configuration.operationInputs ?? {}}
+                  detectedBendCount={activePreview?.cad.bendCountFromModel ?? null}
+                  onToggle={toggleOperation}
+                  onQuantityChange={updateOperationInputs}
+                />
               </div>
               <div className="border-t border-white/10 p-5">
                 <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">
@@ -395,7 +463,37 @@ export function ClientManufacturingWorkspace() {
           </aside>
         </div>
       </section>
+      {project.parts.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-white/12 bg-[#101416]/95 px-4 py-3 backdrop-blur-sm xl:hidden">
+          <div className="min-w-0 grow">
+            <p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
+            <p className="truncate text-lg font-semibold tabular-nums text-steel-orange">
+              {approvedProjectTotalRub == null ? "—" : `${fmt(approvedProjectTotalRub)} ₽`}
+            </p>
+          </div>
+          {approvedProjectTotalRub == null ? (
+            <button
+              type="button"
+              onClick={() => void calculateProject()}
+              disabled={!canCalculate}
+              className="shrink-0 border border-steel-orange bg-steel-orange px-4 py-3 text-[11px] font-bold uppercase tracking-[.12em] text-black disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25"
+            >
+              {isCalculating ? "Считаем…" : "Рассчитать"}
+            </button>
+          ) : (
+            <Link
+              href={quoteHandoffHref}
+              className="shrink-0 border border-steel-orange bg-steel-orange px-4 py-3 text-[11px] font-bold uppercase tracking-[.12em] text-black"
+            >
+              Отправить
+            </Link>
+          )}
+        </div>
+      )}
+      {calculation && (
+        <ClientQuotePrintout calculation={calculation} totalRub={approvedProjectTotalRub} preparedAt={new Date()} />
+      )}
       <input ref={inputRef} type="file" accept={accepted} multiple onChange={onChange} className="hidden" />
-    </main>
+    </div>
   );
 }

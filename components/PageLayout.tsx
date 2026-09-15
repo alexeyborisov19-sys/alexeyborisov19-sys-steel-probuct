@@ -40,6 +40,9 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
   if (path === "/calculator-metallokassety") {
     return { secondaryHref: "/products/metallokassety", secondaryLabel: "Металлокассеты" };
   }
+  if (path === "/online-order") {
+    return { secondaryHref: "/production", secondaryLabel: "Производство" };
+  }
   if (path === "/products") {
     return { secondaryHref: "/production", secondaryLabel: "Производство" };
   }

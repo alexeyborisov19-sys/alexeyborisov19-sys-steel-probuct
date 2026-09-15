@@ -108,6 +108,7 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
       widthMm: model.geometry.widthMm ?? null,
       heightMm: model.geometry.heightMm ?? null,
       depthMm: model.geometry.depthMm ?? null,
+      bendCountFromModel: model.geometry.bendCount ?? null,
     },
     meshes: model.meshes,
     root: model.root,

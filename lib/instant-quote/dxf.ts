@@ -25,6 +25,8 @@ export type ParsedDxf = {
   units: string;
   unitsCode: number | null;
   unsupportedEntities: string[];
+  /** Annotation layers whose geometry was excluded from every metric. */
+  skippedServiceLayers: string[];
 };
 
 type Pair = [number, string];
@@ -109,6 +111,24 @@ function collectEntityFields(pairs: Pair[], start: number) {
     end++;
   }
   return { fields, end };
+}
+
+/**
+ * Annotation layers that describe a drawing rather than the part to be cut:
+ * dimensions, centre lines, borders, title blocks, text and hatching. Their
+ * geometry must not reach the bounding box, the cut length or the blank area,
+ * otherwise a dimension line below the part inflates both the priced blank and
+ * the priced cut.
+ */
+const SERVICE_LAYER_PATTERN =
+  /(^|[^a-z])(dim|размер|ось|оси|axis|center|centre|осев|рамк|frame|border|штамп|title|text|текст|hatch|штрих|defpoints|annot|note|mark)/i;
+
+export function isServiceDxfLayer(layer: string) {
+  return SERVICE_LAYER_PATTERN.test(layer.trim());
+}
+
+function layerField(fields: Pair[]) {
+  return fields.find(([fieldCode]) => fieldCode === 8)?.[1]?.trim() ?? "";
 }
 
 function numberField(fields: Pair[], code: number) {
@@ -267,16 +287,6 @@ export function ellipseArcLength(shape: Extract<DxfShape, { kind: "ellipse" }>) 
   return adaptiveSimpson(fn, a, b, tolerance, whole, fa, fm, fb, 22);
 }
 
-function polygonArea(points: Point2D[]) {
-  let sum = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i];
-    const b = points[(i + 1) % points.length];
-    sum += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(sum) / 2;
-}
-
 function pointInPolygon(point: Point2D, polygon: Point2D[]) {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -289,74 +299,240 @@ function pointInPolygon(point: Point2D, polygon: Point2D[]) {
   return inside;
 }
 
-function hasCurvedPolylineSegment(shape: Extract<DxfShape, { kind: "polyline" }>) {
-  const segmentCount = shape.closed ? shape.points.length : Math.max(0, shape.points.length - 1);
-  for (let index = 0; index < segmentCount; index++) {
-    if (Math.abs(shape.bulges[index] ?? 0) > EPSILON) return true;
+/**
+ * A contour is assembled from straight and circular pieces. Keeping the arcs
+ * analytic (rather than sampling them into a polyline) means the enclosed area
+ * stays exact: the chord shoelace is corrected by the true circular-segment
+ * area of every arc.
+ */
+type ContourSegment =
+  | { kind: "line"; a: Point2D; b: Point2D }
+  | { kind: "arc"; a: Point2D; b: Point2D; arc: CircularArc };
+
+/** Endpoints closer than this are treated as the same node when stitching. */
+const CONTOUR_STITCH_TOLERANCE = 0.05;
+
+function reverseSegment(segment: ContourSegment): ContourSegment {
+  if (segment.kind === "line") return { kind: "line", a: segment.b, b: segment.a };
+  return {
+    kind: "arc",
+    a: segment.b,
+    b: segment.a,
+    arc: {
+      c: segment.arc.c,
+      r: segment.arc.r,
+      start: segment.arc.start + segment.arc.sweep,
+      sweep: -segment.arc.sweep,
+    },
+  };
+}
+
+function arcEndpoint(arc: CircularArc, angleDegrees: number): Point2D {
+  const radians = angleDegrees * Math.PI / 180;
+  return { x: arc.c.x + Math.cos(radians) * arc.r, y: arc.c.y + Math.sin(radians) * arc.r };
+}
+
+function segmentsOfShape(shape: DxfShape): { segments: ContourSegment[]; closed: boolean } | null {
+  if (shape.kind === "line") {
+    if (distance(shape.a, shape.b) <= EPSILON) return null;
+    return { segments: [{ kind: "line", a: shape.a, b: shape.b }], closed: false };
   }
-  return false;
+
+  if (shape.kind === "arc") {
+    const arc: CircularArc = { c: shape.c, r: shape.r, start: shape.start, sweep: normalizeArc(shape.start, shape.end) };
+    return {
+      segments: [{ kind: "arc", a: arcEndpoint(arc, arc.start), b: arcEndpoint(arc, arc.start + arc.sweep), arc }],
+      closed: false,
+    };
+  }
+
+  if (shape.kind === "circle") {
+    // Two half turns give the loop real endpoints while keeping it exact:
+    // the chord shoelace vanishes and the two corrections add up to pi*r^2.
+    const first: CircularArc = { c: shape.c, r: shape.r, start: 0, sweep: 180 };
+    const second: CircularArc = { c: shape.c, r: shape.r, start: 180, sweep: 180 };
+    return {
+      segments: [
+        { kind: "arc", a: arcEndpoint(first, 0), b: arcEndpoint(first, 180), arc: first },
+        { kind: "arc", a: arcEndpoint(second, 180), b: arcEndpoint(second, 360), arc: second },
+      ],
+      closed: true,
+    };
+  }
+
+  if (shape.kind === "polyline") {
+    const segments: ContourSegment[] = [];
+    const segmentCount = shape.closed ? shape.points.length : shape.points.length - 1;
+    for (let index = 0; index < segmentCount; index++) {
+      const a = shape.points[index];
+      const b = shape.points[(index + 1) % shape.points.length];
+      const curved = bulgeArc(a, b, shape.bulges[index] ?? 0);
+      if (curved) segments.push({ kind: "arc", a, b, arc: curved });
+      else if (distance(a, b) > EPSILON) segments.push({ kind: "line", a, b });
+    }
+    if (!segments.length) return null;
+    return { segments, closed: shape.closed };
+  }
+
+  // A partial ellipse has no exact circular decomposition here.
+  return null;
+}
+
+/** Chord shoelace plus the exact circular-segment area contributed by each arc. */
+function signedContourArea(segments: ContourSegment[]) {
+  let shoelace = 0;
+  for (const segment of segments) {
+    shoelace += segment.a.x * segment.b.y - segment.b.x * segment.a.y;
+  }
+
+  let area = shoelace / 2;
+  for (const segment of segments) {
+    if (segment.kind !== "arc") continue;
+    const theta = Math.abs(segment.arc.sweep) * Math.PI / 180;
+    const circularSegment = segment.arc.r * segment.arc.r / 2 * (theta - Math.sin(theta));
+    area += Math.sign(segment.arc.sweep) * circularSegment;
+  }
+  return area;
+}
+
+function sampleContour(segments: ContourSegment[]) {
+  const points: Point2D[] = [];
+  for (const segment of segments) {
+    if (segment.kind === "line") {
+      points.push(segment.a);
+      continue;
+    }
+    const sampled = sampleCircularArc(segment.arc, 6);
+    for (let index = 0; index < sampled.length - 1; index++) points.push(sampled[index]);
+  }
+  return points;
+}
+
+function contourFromSegments(segments: ContourSegment[]): ClosedContour | null {
+  const area = Math.abs(signedContourArea(segments));
+  if (!(area > 0) || !Number.isFinite(area)) return null;
+  const polygon = sampleContour(segments);
+  if (polygon.length < 3) return null;
+  return {
+    area,
+    sample: polygon[0],
+    contains: (point) => pointInPolygon(point, polygon),
+  };
+}
+
+/**
+ * Joins loose primitives into contours. Real drawings rarely hand over one
+ * closed polyline: an outline is usually a run of separate LINE and ARC
+ * entities that only meet at their endpoints.
+ */
+function stitchOpenChains(chains: ContourSegment[][]) {
+  const used = new Array(chains.length).fill(false);
+  const loops: ContourSegment[][] = [];
+  let openChains = 0;
+
+  const endsOf = (chain: ContourSegment[]) => ({ start: chain[0].a, end: chain[chain.length - 1].b });
+  const meets = (left: Point2D, right: Point2D) => distance(left, right) <= CONTOUR_STITCH_TOLERANCE;
+
+  for (let index = 0; index < chains.length; index++) {
+    if (used[index]) continue;
+    used[index] = true;
+    let chain = [...chains[index]];
+
+    for (let grew = true; grew;) {
+      grew = false;
+      for (let other = 0; other < chains.length; other++) {
+        if (used[other]) continue;
+        const { start: chainStart, end: chainEnd } = endsOf(chain);
+        const candidate = chains[other];
+        const { start: candidateStart, end: candidateEnd } = endsOf(candidate);
+
+        if (meets(chainEnd, candidateStart)) chain = [...chain, ...candidate];
+        else if (meets(chainEnd, candidateEnd)) chain = [...chain, ...[...candidate].reverse().map(reverseSegment)];
+        else if (meets(chainStart, candidateEnd)) chain = [...candidate, ...chain];
+        else if (meets(chainStart, candidateStart)) chain = [...[...candidate].reverse().map(reverseSegment), ...chain];
+        else continue;
+
+        used[other] = true;
+        grew = true;
+        break;
+      }
+    }
+
+    const { start, end } = endsOf(chain);
+    if (meets(start, end)) loops.push(chain);
+    else openChains++;
+  }
+
+  return { loops, openChains };
+}
+
+function ellipseContour(shape: Extract<DxfShape, { kind: "ellipse" }>): ClosedContour {
+  const majorRadius = Math.hypot(shape.major.x, shape.major.y);
+  const minorRadius = majorRadius * shape.ratio;
+  const unitMajor = { x: shape.major.x / majorRadius, y: shape.major.y / majorRadius };
+  const unitMinor = { x: -unitMajor.y, y: unitMajor.x };
+  return {
+    area: Math.PI * majorRadius * minorRadius,
+    sample: { x: shape.c.x + shape.major.x * 0.999, y: shape.c.y + shape.major.y * 0.999 },
+    contains: (point) => {
+      const dx = point.x - shape.c.x;
+      const dy = point.y - shape.c.y;
+      const alongMajor = dx * unitMajor.x + dy * unitMajor.y;
+      const alongMinor = dx * unitMinor.x + dy * unitMinor.y;
+      return (alongMajor / majorRadius) ** 2 + (alongMinor / minorRadius) ** 2 < 1 - 1e-10;
+    },
+  };
 }
 
 function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
   const closed: ClosedContour[] = [];
-  let closedContourCount = 0;
+  const openChains: ContourSegment[][] = [];
   let exact = unsupported.size === 0;
 
   for (const shape of shapes) {
-    if (shape.kind === "circle") {
-      closedContourCount++;
-      closed.push({
-        area: Math.PI * shape.r * shape.r,
-        sample: { x: shape.c.x + shape.r * 0.999, y: shape.c.y },
-        contains: (point) => distance(shape.c, point) < shape.r - 1e-8,
-      });
-      continue;
-    }
-
     if (shape.kind === "ellipse") {
       if (!ellipseIsFull(shape)) {
         exact = false;
         continue;
       }
-      const majorRadius = Math.hypot(shape.major.x, shape.major.y);
-      const minorRadius = majorRadius * shape.ratio;
-      closedContourCount++;
-      const unitMajor = { x: shape.major.x / majorRadius, y: shape.major.y / majorRadius };
-      const unitMinor = { x: -unitMajor.y, y: unitMajor.x };
-      closed.push({
-        area: Math.PI * majorRadius * minorRadius,
-        sample: { x: shape.c.x + shape.major.x * 0.999, y: shape.c.y + shape.major.y * 0.999 },
-        contains: (point) => {
-          const dx = point.x - shape.c.x;
-          const dy = point.y - shape.c.y;
-          const alongMajor = dx * unitMajor.x + dy * unitMajor.y;
-          const alongMinor = dx * unitMinor.x + dy * unitMinor.y;
-          return (alongMajor / majorRadius) ** 2 + (alongMinor / minorRadius) ** 2 < 1 - 1e-10;
-        },
-      });
+      closed.push(ellipseContour(shape));
       continue;
     }
 
-    if (shape.kind === "polyline" && shape.closed && shape.points.length >= 3) {
-      closedContourCount++;
-      if (hasCurvedPolylineSegment(shape)) {
-        exact = false;
-        continue;
-      }
-      const area = polygonArea(shape.points);
-      if (!(area > 0)) {
-        exact = false;
-        continue;
-      }
-      closed.push({ area, sample: shape.points[0], contains: (point) => pointInPolygon(point, shape.points) });
+    const built = segmentsOfShape(shape);
+    if (!built) {
+      exact = false;
       continue;
     }
 
-    exact = false;
+    if (!built.closed) {
+      openChains.push(built.segments);
+      continue;
+    }
+
+    const contour = contourFromSegments(built.segments);
+    if (!contour) {
+      exact = false;
+      continue;
+    }
+    closed.push(contour);
   }
 
-  if (!exact || !closed.length || closed.length !== closedContourCount) {
-    return { area: null, pierces: null, holes: null, closedContours: closedContourCount, status: "unavailable" as const };
+  const stitched = stitchOpenChains(openChains);
+  for (const loop of stitched.loops) {
+    const contour = contourFromSegments(loop);
+    if (!contour) {
+      exact = false;
+      continue;
+    }
+    closed.push(contour);
+  }
+  // A contour left open is a real drawing problem, not a rounding issue: the
+  // enclosed area is undefined, so no area is reported for the whole file.
+  if (stitched.openChains > 0) exact = false;
+
+  if (!exact || !closed.length) {
+    return { area: null, pierces: null, holes: null, closedContours: closed.length, status: "unavailable" as const };
   }
 
   let netArea = 0;
@@ -373,7 +549,7 @@ function closedContourMetrics(shapes: DxfShape[], unsupported: Set<string>) {
     }
   });
 
-  return { area: Math.max(0, netArea), pierces: closed.length, holes, closedContours: closedContourCount, status: "exact" as const };
+  return { area: Math.max(0, netArea), pierces: closed.length, holes, closedContours: closed.length, status: "exact" as const };
 }
 
 function parseLwPolyline(fields: Pair[]) {
@@ -609,6 +785,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
   const units = detectUnits(pairs);
   const shapes: DxfShape[] = [];
   const unsupported = new Set<string>();
+  const skippedServiceLayers = new Set<string>();
   let inEntities = false;
 
   for (let i = 0; i < pairs.length; i++) {
@@ -627,6 +804,19 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     const { fields, end } = collectEntityFields(pairs, i);
     i = end - 1;
     const first = (fieldCode: number) => fields.find(([field]) => field === fieldCode)?.[1];
+    const layer = layerField(fields);
+    const skipLayer = isServiceDxfLayer(layer);
+
+    if (skipLayer) {
+      skippedServiceLayers.add(layer);
+      // A legacy POLYLINE owns a trailing VERTEX/SEQEND block. It still has to
+      // be consumed, or its vertices would be read back as unknown entities.
+      if (value === "POLYLINE") {
+        const legacy = parseLegacyPolylineSequence(pairs, end, fields);
+        i = Math.max(i, legacy.end - 1);
+      }
+      continue;
+    }
 
     if (value === "LINE") {
       const x1 = numberField(fields, 10);
@@ -749,6 +939,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     units: units.label,
     unitsCode: units.code,
     unsupportedEntities: [...unsupported].sort(),
+    skippedServiceLayers: [...skippedServiceLayers].sort(),
   };
 }
 

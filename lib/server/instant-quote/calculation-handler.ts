@@ -30,6 +30,8 @@ const ROUTE = "online-calculation";
 type RunCalculationInputs = {
   internalNotes?: string[];
   authoritativeFactualByPartId?: Record<string, PartFactualInputs>;
+  factualByPartId?: Record<string, PartFactualInputs>;
+  powderSidesByPartId?: Record<string, 1 | 2>;
 };
 
 type RunCalculation = (
@@ -76,9 +78,14 @@ async function analyzePlanarStep(inspection: UploadInspection, format: "step" | 
     && (model.geometry.blankAreaMm2 ?? 0) > 0
     && (model.geometry.cutLengthMm ?? 0) > 0
     && (model.geometry.contourCount ?? 0) > 0;
-  const authoritativeFactualInputs = productionReady && privateEvidence?.surfaceAreaMm2
-    ? { powderAreaM2: privateEvidence.surfaceAreaMm2 / 1_000_000 }
-    : undefined;
+  const authoritativeFactualInputs: PartFactualInputs = {
+    ...(productionReady && privateEvidence?.surfaceAreaMm2
+      ? { powderAreaM2: privateEvidence.surfaceAreaMm2 / 1_000_000 }
+      : {}),
+    // Counted from verified BRep evidence, which does not require a confirmed
+    // flat pattern, so a bent part still reports its bends.
+    ...(model.geometry.bendCount != null ? { bendCount: model.geometry.bendCount } : {}),
+  };
 
   return { model, productionReady, authoritativeFactualInputs };
 }
@@ -142,6 +149,8 @@ async function buildAuthoritativeProject(
   project: InstantQuoteProject;
   evidenceByPartId: ProjectCadEvidence;
   authoritativeFactualByPartId: Record<string, PartFactualInputs>;
+  declaredFactualByPartId: Record<string, PartFactualInputs>;
+  powderSidesByPartId: Record<string, 1 | 2>;
   analysisNotes: string[];
 }> {
   const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
@@ -169,15 +178,27 @@ async function buildAuthoritativeProject(
       const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
       const parsed = parseDxfInspection(inspection);
       geometry = model.geometry;
-      evidenceByPartId[item.clientPartId] = { unsupportedEntities: [...parsed.unsupportedEntities] };
+      evidenceByPartId[item.clientPartId] = {
+        unsupportedEntities: [...parsed.unsupportedEntities],
+        ...(parsed.skippedServiceLayers.length
+          ? { skippedServiceLayers: [...parsed.skippedServiceLayers] }
+          : {}),
+      };
       state = model.warnings.length ? "manual-review" : "configurable";
     } else if (format === "step" || format === "stp") {
       try {
-        const { model, productionReady, authoritativeFactualInputs } = await analyzeStep(inspection, format);
+        // Defaulted here so neither branch below has to re-check for undefined:
+        // the analyzer type keeps the field optional for injected test doubles.
+        const { model, productionReady, authoritativeFactualInputs = {} } = await analyzeStep(inspection, format);
         if (productionReady) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
-          if (authoritativeFactualInputs && Object.keys(authoritativeFactualInputs).length > 0) {
+          // Private STEP evidence stays fail-closed: it reaches the calculation
+          // only once the flat pattern is confirmed. An unconfirmed part is not
+          // priced at all, so withholding it costs nothing — the detected bend
+          // count still reaches the customer through the preview, and the
+          // engineer through the review note below.
+          if (Object.keys(authoritativeFactualInputs).length > 0) {
             authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
           }
           state = model.warnings.length ? "manual-review" : "configurable";
@@ -186,6 +207,9 @@ async function buildAuthoritativeProject(
           evidenceByPartId[item.clientPartId] = {
             reviewReasons: [
               ...model.warnings,
+              ...(model.geometry.bendCount != null && model.geometry.bendCount > 0
+                ? [`По модели определено гибов: ${model.geometry.bendCount}. Развёртка гнутой детали требует подтверждения технологом.`]
+                : []),
               "STEP распознан OpenCascade на сервере, но production-authoritative 2D-развёртка для этой модели не подтверждена.",
             ],
           };
@@ -216,9 +240,25 @@ async function buildAuthoritativeProject(
         thicknessMm: item.thicknessMm,
         quantity: item.quantity,
         operations: [...item.operations],
+        operationInputs: { ...item.operationInputs },
       },
       quote: { kind: "not-requested" },
     });
+  }
+
+  // Quantities the CAD cannot carry. Server-side CAD evidence still wins where
+  // it exists: resolveEffectiveFactualInputs layers these over it, and the
+  // manifest parser has already dropped anything whose operation is not
+  // selected and bounds-checked the rest.
+  const declaredFactualByPartId: Record<string, PartFactualInputs> = {};
+  const powderSidesByPartId: Record<string, 1 | 2> = {};
+  for (const item of manifest.parts) {
+    const declared: PartFactualInputs = {};
+    if (item.operationInputs.bendCount != null) declared.bendCount = item.operationInputs.bendCount;
+    if (item.operationInputs.weldLengthM != null) declared.weldLengthM = item.operationInputs.weldLengthM;
+    if (item.operationInputs.assemblyMinutes != null) declared.assemblyMinutes = item.operationInputs.assemblyMinutes;
+    if (Object.keys(declared).length > 0) declaredFactualByPartId[item.clientPartId] = declared;
+    if (item.operationInputs.powderSides != null) powderSidesByPartId[item.clientPartId] = item.operationInputs.powderSides;
   }
 
   return {
@@ -232,6 +272,8 @@ async function buildAuthoritativeProject(
     },
     evidenceByPartId,
     authoritativeFactualByPartId,
+    declaredFactualByPartId,
+    powderSidesByPartId,
     analysisNotes,
   };
 }
@@ -294,7 +336,14 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       }
 
       const now = new Date();
-      const { project, evidenceByPartId, authoritativeFactualByPartId, analysisNotes } = await buildAuthoritativeProject(
+      const {
+        project,
+        evidenceByPartId,
+        authoritativeFactualByPartId,
+        declaredFactualByPartId,
+        powderSidesByPartId,
+        analysisNotes,
+      } = await buildAuthoritativeProject(
         manifestRaw,
         inspections,
         now,
@@ -305,6 +354,8 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
         evidenceByPartId,
         {
           authoritativeFactualByPartId,
+          factualByPartId: declaredFactualByPartId,
+          powderSidesByPartId,
           internalNotes: [...storageNotes(requestId, quarantined), ...analysisNotes],
         },
         now,

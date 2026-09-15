@@ -51,12 +51,32 @@ export function QuoteRequestForm() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const formatNumber = (value: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
+
+    if (params.get("source") === "online-order") {
+      // Handoff from the CAD calculator. Only the customer's own project scope
+      // travels here; the calculation basis stays on the server.
+      const parts = Number(params.get("parts") ?? "");
+      const total = Number(params.get("total") ?? "");
+      const summary = [
+        "Прошу рассчитать изготовление по CAD-моделям из онлайн-калькулятора.",
+        Number.isFinite(parts) && parts > 0 ? `Позиций в проекте: ${formatNumber(parts)}.` : "",
+        Number.isFinite(total) && total > 0
+          ? `Предварительная оценка калькулятора: ≈ ${formatNumber(total)} ₽ с НДС.`
+          : "",
+        "CAD-файлы прикладываю к заявке.",
+        "Необходима проверка инженером и итоговое коммерческое предложение.",
+      ].filter(Boolean).join("\n");
+
+      setMessage((current) => current || summary);
+      return;
+    }
+
     if (params.get("source") !== "calculator-metallokassety") return;
 
     const area = params.get("area");
     const thickness = params.get("thickness");
     const quantity = Number(params.get("quantity") ?? "");
-    const formatNumber = (value: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
 
     const summary = [
       "Прошу выполнить точный расчёт металлокассет по приложенным исходным данным.",

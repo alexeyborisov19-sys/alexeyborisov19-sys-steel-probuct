@@ -44,7 +44,8 @@ test("client CAD preview strips production geometry and evidence", () => {
   const preview = createClientCadPreview(model);
   const serialized = JSON.stringify(preview);
 
-  assert.deepEqual(preview.cad, { widthMm: 120, heightMm: 80, depthMm: 2 });
+  // Bounding box plus the bends read from the model; nothing about pricing.
+  assert.deepEqual(preview.cad, { widthMm: 120, heightMm: 80, depthMm: 2, bendCountFromModel: null });
   assert.equal(preview.status, "needs-review");
   assert.equal(preview.meshes.length, 1);
   assert.equal(preview.root?.id, "root");
@@ -67,6 +68,27 @@ test("client CAD preview strips production geometry and evidence", () => {
     "private unfold evidence",
   ]) {
     assert.equal(serialized.includes(forbidden), false, `client CAD preview leaked ${forbidden}`);
+  }
+});
+
+test("a verified STEP bend count reaches the customer, priced metrics do not", () => {
+  const model = {
+    format: "step",
+    units: "mm",
+    geometry: { widthMm: 250, heightMm: 157.3, depthMm: 1.5, bendCount: 2, cutLengthMm: 814.6, pierceCount: 1 },
+    meshes: [],
+    root: null,
+    features: [],
+    metadata: { sourceFileName: "angle.step", sourceBytes: 10, parser: "p", analyzedAt: "2026-09-15T00:00:00.000Z" },
+    warnings: [],
+  } as unknown as NormalizedCadModel;
+
+  const preview = createClientCadPreview(model);
+  assert.equal(preview.cad.bendCountFromModel, 2);
+
+  const serialized = JSON.stringify(preview);
+  for (const forbidden of ["cutLengthMm", "pierceCount", "814.6"]) {
+    assert.equal(serialized.includes(forbidden), false, `preview leaked ${forbidden}`);
   }
 });
 

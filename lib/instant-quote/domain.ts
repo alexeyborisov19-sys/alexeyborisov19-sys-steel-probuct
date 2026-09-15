@@ -40,11 +40,25 @@ export type PartGeometrySummary = {
   volumeMm3?: number;
 };
 
+/**
+ * Physical quantities a CAD file cannot supply: a DXF carries no bend count,
+ * no weld length and no coating-side choice. Without them the matching cost
+ * articles cannot be completed.
+ */
+export type OperationInputs = {
+  bendCount?: number;
+  weldLengthM?: number;
+  powderSides?: 1 | 2;
+  assemblyMinutes?: number;
+};
+
 export type PartConfiguration = {
   materialId: string | null;
   thicknessMm: number | null;
   quantity: number;
   operations: ManufacturingOperation[];
+  /** Optional so projects stored before these inputs existed still load. */
+  operationInputs?: OperationInputs;
 };
 
 export type QuoteState =

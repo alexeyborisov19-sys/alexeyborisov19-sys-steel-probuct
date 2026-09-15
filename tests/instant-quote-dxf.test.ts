@@ -132,10 +132,13 @@ test("uses bulge on the last vertex for the closing segment of a closed LWPOLYLI
   const closingRadius = Math.hypot(100, 100) / 2;
   approx(parsed.cutLength, 200 + Math.PI * closingRadius);
   assert.equal(parsed.closedContours, 1);
-  assert.equal(parsed.areaStatus, "unavailable");
-  assert.equal(parsed.area, null);
-  assert.equal(parsed.pierces, null);
-  assert.equal(parsed.holeCount, null);
+
+  // The closing bulge is a half turn, so the area is the chord triangle plus
+  // the exact circular segment standing on it.
+  assert.equal(parsed.areaStatus, "exact");
+  approx(parsed.area ?? 0, 5000 + Math.PI * closingRadius ** 2 / 2);
+  assert.equal(parsed.pierces, 1);
+  assert.equal(parsed.holeCount, 0);
 });
 
 test("zero bulge remains backward-compatible with exact straight closed topology", () => {
@@ -152,7 +155,7 @@ test("zero bulge remains backward-compatible with exact straight closed topology
   approx(parsed.cutLength, 300);
 });
 
-test("curved closed polyline keeps exact bounds/length but fails closed on area topology", () => {
+test("curved closed polyline is measured exactly, arc segments included", () => {
   const parsed = parseAsciiDxf(dxf([
     "0", "LWPOLYLINE", "70", "1",
     "10", "0", "20", "0", "42", "0.5",
@@ -161,10 +164,13 @@ test("curved closed polyline keeps exact bounds/length but fails closed on area 
   ]));
 
   assert.equal(parsed.unsupportedEntities.includes("LWPOLYLINE_BULGE"), false);
-  assert.equal(parsed.areaStatus, "unavailable");
-  assert.equal(parsed.area, null);
   assert.equal(parsed.closedContours, 1);
-  assert.equal(parsed.pierces, null);
+  assert.equal(parsed.areaStatus, "exact");
+
+  const sweep = 4 * Math.atan(0.5);
+  const radius = 100 * (1 + 0.5 ** 2) / (4 * 0.5);
+  approx(parsed.area ?? 0, 5000 + radius ** 2 / 2 * (sweep - Math.sin(sweep)));
+  assert.equal(parsed.pierces, 1);
 });
 
 test("parses a simple legacy 2D POLYLINE VERTEX sequence without leaking nested entities as unsupported", () => {
@@ -233,8 +239,9 @@ test("legacy closing VERTEX bulge is applied to the last-to-first segment", () =
 
   const closingRadius = Math.hypot(100, 100) / 2;
   approx(parsed.cutLength, 200 + Math.PI * closingRadius);
-  assert.equal(parsed.areaStatus, "unavailable");
-  assert.equal(parsed.pierces, null);
+  assert.equal(parsed.areaStatus, "exact");
+  approx(parsed.area ?? 0, 5000 + Math.PI * closingRadius ** 2 / 2);
+  assert.equal(parsed.pierces, 1);
   assert.deepEqual(parsed.unsupportedEntities, []);
 });
 

@@ -39,6 +39,7 @@ function parsed(): ParsedDxf {
     units: "мм",
     unitsCode: 4,
     unsupportedEntities: [],
+    skippedServiceLayers: [],
   };
 }
 

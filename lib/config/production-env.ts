@@ -114,6 +114,14 @@ export function validateProductionEnvironment(
   if (environment.CONSENT_AUDIT_RETENTION_DAYS && !isPositiveInteger(environment.CONSENT_AUDIT_RETENTION_DAYS)) {
     add("CONSENT_AUDIT_RETENTION_DAYS", "must be a positive integer");
   }
+  // Optional: production falls back to the owner-approved default when unset.
+  // A malformed override is still worth reporting rather than silently ignoring.
+  if (environment.STEEL_PRODUCT_METAL_UPLIFT_PCT) {
+    const uplift = Number(environment.STEEL_PRODUCT_METAL_UPLIFT_PCT.replace(",", "."));
+    if (!Number.isFinite(uplift) || uplift < 0 || uplift > 100) {
+      add("STEEL_PRODUCT_METAL_UPLIFT_PCT", "must be a percentage between 0 and 100");
+    }
+  }
 
   for (const key of ["IP_HASH_SALT", "CONSENT_AUDIT_SALT"] as const) {
     const salt = environment[key];

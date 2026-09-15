@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { InstantQuoteProject } from "../lib/instant-quote/domain";
+import type { ManufacturingOperation, InstantQuoteProject } from "../lib/instant-quote/domain";
 import { createPublicCalculationManifest } from "../lib/instant-quote/client-calculation-request";
 
 const project: InstantQuoteProject = {
@@ -53,5 +53,29 @@ test("browser manifest preserves only file mapping and customer choices", () => 
     thicknessMm: 2,
     quantity: 10,
     operations: ["bending", "powder-coating"],
+    // A project configured without explicit quantities declares none.
+    operationInputs: {},
   });
+});
+
+test("declared operation quantities travel only for the selected operations", () => {
+  const configured = {
+    ...project,
+    parts: [{
+      ...project.parts[0],
+      configuration: {
+        ...project.parts[0].configuration,
+        operations: ["bending", "powder-coating"] as ManufacturingOperation[],
+        operationInputs: {
+          bendCount: 4,
+          powderSides: 2 as const,
+          // Welding is not selected for this part, so its length must not travel.
+          weldLengthM: 7,
+        },
+      },
+    }],
+  };
+
+  const manifest = createPublicCalculationManifest(configured, ["part-1"]);
+  assert.deepEqual(manifest.parts[0].operationInputs, { bendCount: 4, powderSides: 2 });
 });

@@ -1,5 +1,14 @@
-import type { ManufacturingOperation } from "@/lib/instant-quote/domain";
+import type { ManufacturingOperation, OperationInputs } from "@/lib/instant-quote/domain";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
+
+/**
+ * Physical quantities the customer declares for the operations they selected.
+ * A CAD file cannot supply them: a DXF carries no bend count, no weld length
+ * and no coating-side choice, so without these the matching cost articles stay
+ * incomplete. They are customer specification, never rates, and an engineer
+ * confirms them before production.
+ */
+export type PublicOperationInputs = OperationInputs;
 
 export type PublicCalculationPartManifest = {
   clientPartId: string;
@@ -8,6 +17,7 @@ export type PublicCalculationPartManifest = {
   thicknessMm: number;
   quantity: number;
   operations: ManufacturingOperation[];
+  operationInputs: PublicOperationInputs;
 };
 
 export type PublicCalculationManifest = {
@@ -47,6 +57,45 @@ function cleanText(value: unknown, label: string, max: number) {
 function finiteNumber(value: unknown, label: string) {
   if (typeof value !== "number" || !Number.isFinite(value)) throw new CalculationManifestError(`${label}: ожидается число.`);
   return value;
+}
+
+function boundedNumber(value: unknown, label: string, max: number, integer: boolean) {
+  const parsed = finiteNumber(value, label);
+  if (integer && !Number.isInteger(parsed)) throw new CalculationManifestError(`${label}: ожидается целое число.`);
+  if (parsed < 0 || parsed > max) throw new CalculationManifestError(`${label}: значение вне допустимого диапазона.`);
+  return parsed;
+}
+
+/**
+ * Keeps only the quantities whose operation the customer actually selected, so
+ * a stale value left in the browser cannot reach a cost article that is not
+ * part of this request.
+ */
+function operationInputs(
+  value: unknown,
+  label: string,
+  operations: Set<ManufacturingOperation>,
+): PublicOperationInputs {
+  if (value == null) return {};
+  const item = record(value, label);
+  const result: PublicOperationInputs = {};
+
+  if (item.bendCount != null && operations.has("bending")) {
+    result.bendCount = boundedNumber(item.bendCount, `${label}.bendCount`, 500, true);
+  }
+  if (item.weldLengthM != null && operations.has("welding")) {
+    result.weldLengthM = boundedNumber(item.weldLengthM, `${label}.weldLengthM`, 500, false);
+  }
+  if (item.assemblyMinutes != null && operations.has("assembly")) {
+    result.assemblyMinutes = boundedNumber(item.assemblyMinutes, `${label}.assemblyMinutes`, 10_000, false);
+  }
+  if (item.powderSides != null && operations.has("powder-coating")) {
+    const sides = boundedNumber(item.powderSides, `${label}.powderSides`, 2, true);
+    if (sides !== 1 && sides !== 2) throw new CalculationManifestError(`${label}.powderSides: допустимы только 1 или 2.`);
+    result.powderSides = sides;
+  }
+
+  return result;
 }
 
 export function parsePublicCalculationManifest(raw: string, fileCount: number): PublicCalculationManifest {
@@ -109,6 +158,7 @@ export function parsePublicCalculationManifest(raw: string, fileCount: number): 
       thicknessMm,
       quantity,
       operations: ["laser-cutting", ...operationSet],
+      operationInputs: operationInputs(item.operationInputs, `parts[${index}].operationInputs`, operationSet),
     };
   });
 

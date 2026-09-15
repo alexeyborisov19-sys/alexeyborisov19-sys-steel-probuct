@@ -1,4 +1,4 @@
-import type { InstantQuoteProject, ManufacturingOperation } from "@/lib/instant-quote/domain";
+import type { InstantQuoteProject, ManufacturingOperation, OperationInputs } from "@/lib/instant-quote/domain";
 import type { PublicCalculationManifest } from "@/lib/instant-quote/calculation-manifest";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 
@@ -14,6 +14,19 @@ const PUBLIC_OPERATIONS = new Set<ManufacturingOperation>([
 function publicMaterial(value: string | null): MaterialId {
   if (value === "hot" || value === "cold" || value === "zinc") return value;
   return "hot";
+}
+
+/** Sends a quantity only for an operation the customer actually selected. */
+function publicOperationInputs(
+  inputs: OperationInputs,
+  operations: Set<ManufacturingOperation>,
+): OperationInputs {
+  const result: OperationInputs = {};
+  if (operations.has("bending") && inputs.bendCount != null) result.bendCount = inputs.bendCount;
+  if (operations.has("welding") && inputs.weldLengthM != null) result.weldLengthM = inputs.weldLengthM;
+  if (operations.has("assembly") && inputs.assemblyMinutes != null) result.assemblyMinutes = inputs.assemblyMinutes;
+  if (operations.has("powder-coating") && inputs.powderSides != null) result.powderSides = inputs.powderSides;
+  return result;
 }
 
 /**
@@ -38,13 +51,15 @@ export function createPublicCalculationManifest(
         throw new Error(`Thickness is missing for part ${part.id}`);
       }
 
+      const operations = part.configuration.operations.filter((operation) => PUBLIC_OPERATIONS.has(operation));
       return {
         clientPartId: part.id,
         fileIndex,
         materialId: publicMaterial(part.configuration.materialId),
         thicknessMm,
         quantity: Math.max(1, Math.floor(part.configuration.quantity)),
-        operations: part.configuration.operations.filter((operation) => PUBLIC_OPERATIONS.has(operation)),
+        operations,
+        operationInputs: publicOperationInputs(part.configuration.operationInputs ?? {}, new Set(operations)),
       };
     }),
   };
