@@ -6,6 +6,7 @@ import type { ChangeEvent, DragEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
 import { ClientOperationControls } from "@/components/instant-quote/ClientOperationControls";
+import { ClientQuotePrintout } from "@/components/instant-quote/ClientQuotePrintout";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
 import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
@@ -391,6 +392,11 @@ export function ClientManufacturingWorkspace() {
               >
                 Отправить заявку
               </Link>
+              {calculation && (
+                <button type="button" onClick={() => window.print()} className="mt-2 w-full border border-white/15 px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-white/70 transition hover:border-steel-orange hover:text-white">
+                  Печать / КП
+                </button>
+              )}
               <p className="mt-3 text-[10px] leading-relaxed text-white/30">
                 Расчёт предварительный и зависит от качества CAD-модели. Точную стоимость подтверждает инженер.
               </p>
@@ -476,6 +482,9 @@ export function ClientManufacturingWorkspace() {
             </Link>
           )}
         </div>
+      )}
+      {calculation && (
+        <ClientQuotePrintout calculation={calculation} totalRub={approvedProjectTotalRub} preparedAt={new Date()} />
       )}
       <input ref={inputRef} type="file" accept={accepted} multiple onChange={onChange} className="hidden" />
     </div>
