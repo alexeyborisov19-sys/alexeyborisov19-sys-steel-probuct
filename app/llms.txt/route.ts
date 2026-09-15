@@ -46,7 +46,7 @@ export function GET() {
 - [Производство](${siteConfig.url}/production)
 - [Реальные проекты](${siteConfig.url}/projects)
 - [Инженерный журнал](${siteConfig.url}/articles)
-- [Онлайн-расчёт металлоизделий по CAD-чертежу](${siteConfig.url}/online-order)
+- [Онлайн-расчёт по CAD-файлу](${siteConfig.url}/online-order)
 - [Калькулятор металлокассет](${siteConfig.url}/calculator-metallokassety)
 - [Контакты и отправка проекта](${siteConfig.url}/contacts)
 
