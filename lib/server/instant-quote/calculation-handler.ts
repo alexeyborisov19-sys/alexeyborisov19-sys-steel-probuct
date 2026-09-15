@@ -190,15 +190,17 @@ async function buildAuthoritativeProject(
         // Defaulted here so neither branch below has to re-check for undefined:
         // the analyzer type keeps the field optional for injected test doubles.
         const { model, productionReady, authoritativeFactualInputs = {} } = await analyzeStep(inspection, format);
-        // Server-derived evidence is recorded whether or not a flat pattern was
-        // confirmed, so a bent part still contributes its verified bend count.
-        if (Object.keys(authoritativeFactualInputs).length > 0) {
-          authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
-        }
-
         if (productionReady) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
+          // Private STEP evidence stays fail-closed: it reaches the calculation
+          // only once the flat pattern is confirmed. An unconfirmed part is not
+          // priced at all, so withholding it costs nothing — the detected bend
+          // count still reaches the customer through the preview, and the
+          // engineer through the review note below.
+          if (Object.keys(authoritativeFactualInputs).length > 0) {
+            authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
+          }
           state = model.warnings.length ? "manual-review" : "configurable";
           analysisNotes.push(`STEP ${inspection.safeName}: server OpenCascade confirmed a high-confidence planar sheet flat pattern.`);
         } else {
