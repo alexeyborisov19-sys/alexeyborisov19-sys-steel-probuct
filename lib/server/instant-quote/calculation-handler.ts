@@ -208,35 +208,29 @@ async function buildAuthoritativeProject(
           reviewReasons: ["Файл сохранён как двоичный DXF (AutoCAD Binary DXF). Автоматический разбор работает с текстовым DXF; для расчёта сохраните чертёж как «ASCII DXF» либо передайте его технологу."],
         };
         analysisNotes.push(`DXF ${inspection.safeName}: binary DXF received; ASCII parser cannot read it, no production geometry was priced.`);
-        parts.push({
-          id: item.clientPartId,
-          fileName: inspection.safeName,
-          format,
-          fileSizeBytes: inspection.size,
-          createdAt,
-          state: "manual-review",
-          geometry: null,
-          configuration: {
-            materialId: item.materialId,
-            thicknessMm: item.thicknessMm,
-            quantity: item.quantity,
-            operations: [...item.operations],
-            operationInputs: { ...item.operationInputs },
-          },
-          quote: { kind: "not-requested" },
-        });
-        continue;
+      } else {
+        try {
+          const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
+          const parsed = parseDxfInspection(inspection);
+          geometry = model.geometry;
+          evidenceByPartId[item.clientPartId] = {
+            unsupportedEntities: [...parsed.unsupportedEntities],
+            ...(parsed.skippedServiceLayers.length
+              ? { skippedServiceLayers: [...parsed.skippedServiceLayers] }
+              : {}),
+          };
+          state = model.warnings.length ? "manual-review" : "configurable";
+        } catch {
+          // One unreadable drawing is one position to check, not a failed
+          // project. The adapter refuses a DXF whose units it cannot establish
+          // — common enough on export — and before this that exception escaped
+          // and turned the whole request into a 503.
+          evidenceByPartId[item.clientPartId] = {
+            reviewReasons: ["Единицы измерения в DXF не определены, поэтому габариты нельзя пересчитать в миллиметры автоматически. Сохраните чертёж с указанием единиц ($INSUNITS) или передайте его технологу."],
+          };
+          analysisNotes.push(`DXF ${inspection.safeName}: adapter could not normalise the drawing; no production geometry was priced for this part.`);
+        }
       }
-      const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
-      const parsed = parseDxfInspection(inspection);
-      geometry = model.geometry;
-      evidenceByPartId[item.clientPartId] = {
-        unsupportedEntities: [...parsed.unsupportedEntities],
-        ...(parsed.skippedServiceLayers.length
-          ? { skippedServiceLayers: [...parsed.skippedServiceLayers] }
-          : {}),
-      };
-      state = model.warnings.length ? "manual-review" : "configurable";
     } else if (format === "step" || format === "stp") {
       try {
         // Defaulted here so neither branch below has to re-check for undefined:

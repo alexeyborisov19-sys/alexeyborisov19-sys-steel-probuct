@@ -177,3 +177,33 @@ test("a binary DXF goes to an engineer instead of being read as an empty drawing
     `expected a binary-DXF reason, got: ${reasons.join(" | ")}`,
   );
 });
+
+test("a DXF without units puts one position in review instead of failing the project", async () => {
+  // Real ASCII DXF geometry, but no $INSUNITS header — a common export result.
+  const noUnits = "0\nSECTION\n2\nENTITIES\n0\nLWPOLYLINE\n90\n4\n70\n1\n10\n0\n20\n0\n10\n100\n20\n0\n10\n100\n20\n50\n10\n0\n20\n50\n0\nENDSEC\n0\nEOF\n";
+  let pricedGeometry: unknown = "unset";
+  let state: string | undefined;
+  let reasons: string[] = [];
+  const handler = createOnlineCalculationHandler(dependencies({
+    extension: "dxf",
+    buffer: Buffer.from(noUnits, "utf8"),
+    onRun: (project, evidence) => {
+      pricedGeometry = project.parts[0].geometry;
+      state = project.parts[0].state;
+      reasons = evidence["part-1"]?.reviewReasons ?? [];
+    },
+  }));
+
+  const res = await handler(upload("part.dxf", noUnits));
+
+  // The adapter refuses a drawing whose units it cannot establish. That
+  // exception used to escape and turn the whole request into a 503, so one
+  // unreadable file killed every other position in the project.
+  assert.equal(res.status, 200);
+  assert.equal(pricedGeometry, null);
+  assert.equal(state, "manual-review");
+  assert.ok(
+    reasons.some((reason) => reason.includes("Единицы измерения")),
+    `expected a units reason, got: ${reasons.join(" | ")}`,
+  );
+});
