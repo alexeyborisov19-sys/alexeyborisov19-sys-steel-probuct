@@ -43,7 +43,7 @@ test("the calculator page carries FAQ structured data and the text behind it", a
   assert.match(page, /faqItems\.map\(/);
   assert.ok((page.match(/question:/g) ?? []).length >= 5, "too few questions to be worth marking up");
 
-  for (const phrase of ["Как считает калькулятор", "Частые вопросы"]) {
+  for (const phrase of ["Как работает онлайн-расчёт", "Частые вопросы"]) {
     assert.ok(page.includes(phrase), `the page is missing the "${phrase}" section`);
   }
 });
