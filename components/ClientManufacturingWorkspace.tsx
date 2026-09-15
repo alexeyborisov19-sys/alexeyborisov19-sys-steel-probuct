@@ -5,11 +5,12 @@ import Link from "next/link";
 import type { ChangeEvent, DragEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
+import { ClientOperationControls } from "@/components/instant-quote/ClientOperationControls";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
 import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-types";
-import { createEmptyProject, type ManufacturingOperation } from "@/lib/instant-quote/domain";
+import { createEmptyProject, type ManufacturingOperation, type OperationInputs } from "@/lib/instant-quote/domain";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import {
   addPartToProject,
@@ -18,6 +19,7 @@ import {
   setPartMaterial,
   setPartQuantity,
   setPartState,
+  setPartOperationInputs,
   setPartThickness,
   togglePartOperation,
   updatePartGeometry,
@@ -37,15 +39,6 @@ const MATERIAL_OPTIONS: Array<{ id: MaterialId; label: string }> = [
   { id: "hot", label: "Сталь г/к" },
   { id: "cold", label: "Сталь х/к" },
   { id: "zinc", label: "Оцинкованная сталь" },
-];
-
-const OPERATION_OPTIONS: Array<{ id: ManufacturingOperation; label: string }> = [
-  { id: "bending", label: "Гибка" },
-  { id: "welding", label: "Сварка" },
-  { id: "assembly", label: "Сборка" },
-  { id: "surface-preparation", label: "Подготовка поверхности" },
-  { id: "powder-coating", label: "Порошковая окраска" },
-  { id: "packaging", label: "Упаковка" },
 ];
 
 type CalculationApiResponse = {
@@ -278,6 +271,11 @@ export function ClientManufacturingWorkspace() {
     setProject((current) => togglePartOperation(current, activePart.id, operation, enabled));
     markConfigurationChanged(activePart.id);
   };
+  const updateOperationInputs = (patch: OperationInputs) => {
+    if (!activePart) return;
+    setProject((current) => setPartOperationInputs(current, activePart.id, patch));
+    markConfigurationChanged(activePart.id);
+  };
   const removeActivePart = () => {
     if (!activePart) return;
     const id = activePart.id;
@@ -433,7 +431,12 @@ export function ClientManufacturingWorkspace() {
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07]" : "border-white/10"}`}>{option.label}</button>)}</div></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none">{thicknessOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none" /></div>
-                <div><p className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Операции</p><div className="mt-2 grid gap-2">{OPERATION_OPTIONS.map((option) => { const enabled = activePart.configuration.operations.includes(option.id); return <button key={option.id} onClick={() => toggleOperation(option.id)} className={`flex items-center justify-between border px-4 py-3 text-left text-sm ${enabled ? "border-steel-orange/45 bg-steel-orange/[.06]" : "border-white/10"}`}><span>{option.label}</span><span>{enabled ? "✓" : ""}</span></button>; })}</div></div>
+                <ClientOperationControls
+                  operations={activePart.configuration.operations}
+                  operationInputs={activePart.configuration.operationInputs ?? {}}
+                  onToggle={toggleOperation}
+                  onQuantityChange={updateOperationInputs}
+                />
               </div>
               <div className="border-t border-white/10 p-5">
                 <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">

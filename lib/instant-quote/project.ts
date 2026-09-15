@@ -3,6 +3,7 @@ import {
   normalizeCadFormat,
   type InstantQuoteProject,
   type ManufacturingOperation,
+  type OperationInputs,
   type PartGeometrySummary,
   type ProjectPart,
   type QuoteState,
@@ -30,6 +31,7 @@ export function addPartToProject(
       thicknessMm: 1,
       quantity: 1,
       operations: ["laser-cutting"],
+      operationInputs: {},
     },
     quote: { kind: "not-requested" },
   };
@@ -55,6 +57,27 @@ export function updatePartGeometry(
     parts: project.parts.map((part) =>
       part.id === partId
         ? { ...part, geometry, state: "dfm-review" as const, quote: { kind: "not-requested" as const } }
+        : part,
+    ),
+  };
+}
+
+export function setPartOperationInputs(
+  project: InstantQuoteProject,
+  partId: string,
+  operationInputs: OperationInputs,
+  now = new Date(),
+): InstantQuoteProject {
+  return {
+    ...project,
+    updatedAt: now.toISOString(),
+    parts: project.parts.map((part) =>
+      part.id === partId
+        ? {
+            ...part,
+            configuration: { ...part.configuration, operationInputs: { ...(part.configuration.operationInputs ?? {}), ...operationInputs } },
+            quote: { kind: "not-requested" as const },
+          }
         : part,
     ),
   };

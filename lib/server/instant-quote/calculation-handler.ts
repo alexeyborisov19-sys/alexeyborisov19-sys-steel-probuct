@@ -30,6 +30,8 @@ const ROUTE = "online-calculation";
 type RunCalculationInputs = {
   internalNotes?: string[];
   authoritativeFactualByPartId?: Record<string, PartFactualInputs>;
+  factualByPartId?: Record<string, PartFactualInputs>;
+  powderSidesByPartId?: Record<string, 1 | 2>;
 };
 
 type RunCalculation = (
@@ -221,9 +223,25 @@ async function buildAuthoritativeProject(
         thicknessMm: item.thicknessMm,
         quantity: item.quantity,
         operations: [...item.operations],
+        operationInputs: { ...item.operationInputs },
       },
       quote: { kind: "not-requested" },
     });
+  }
+
+  // Quantities the CAD cannot carry. Server-side CAD evidence still wins where
+  // it exists: resolveEffectiveFactualInputs layers these over it, and the
+  // manifest parser has already dropped anything whose operation is not
+  // selected and bounds-checked the rest.
+  const declaredFactualByPartId: Record<string, PartFactualInputs> = {};
+  const powderSidesByPartId: Record<string, 1 | 2> = {};
+  for (const item of manifest.parts) {
+    const declared: PartFactualInputs = {};
+    if (item.operationInputs.bendCount != null) declared.bendCount = item.operationInputs.bendCount;
+    if (item.operationInputs.weldLengthM != null) declared.weldLengthM = item.operationInputs.weldLengthM;
+    if (item.operationInputs.assemblyMinutes != null) declared.assemblyMinutes = item.operationInputs.assemblyMinutes;
+    if (Object.keys(declared).length > 0) declaredFactualByPartId[item.clientPartId] = declared;
+    if (item.operationInputs.powderSides != null) powderSidesByPartId[item.clientPartId] = item.operationInputs.powderSides;
   }
 
   return {
@@ -237,6 +255,8 @@ async function buildAuthoritativeProject(
     },
     evidenceByPartId,
     authoritativeFactualByPartId,
+    declaredFactualByPartId,
+    powderSidesByPartId,
     analysisNotes,
   };
 }
@@ -299,7 +319,14 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       }
 
       const now = new Date();
-      const { project, evidenceByPartId, authoritativeFactualByPartId, analysisNotes } = await buildAuthoritativeProject(
+      const {
+        project,
+        evidenceByPartId,
+        authoritativeFactualByPartId,
+        declaredFactualByPartId,
+        powderSidesByPartId,
+        analysisNotes,
+      } = await buildAuthoritativeProject(
         manifestRaw,
         inspections,
         now,
@@ -310,6 +337,8 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
         evidenceByPartId,
         {
           authoritativeFactualByPartId,
+          factualByPartId: declaredFactualByPartId,
+          powderSidesByPartId,
           internalNotes: [...storageNotes(requestId, quarantined), ...analysisNotes],
         },
         now,
