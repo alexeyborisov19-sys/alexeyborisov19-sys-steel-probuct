@@ -144,6 +144,8 @@ async function buildAuthoritativeProject(
   project: InstantQuoteProject;
   evidenceByPartId: ProjectCadEvidence;
   authoritativeFactualByPartId: Record<string, PartFactualInputs>;
+  declaredFactualByPartId: Record<string, PartFactualInputs>;
+  powderSidesByPartId: Record<string, 1 | 2>;
   analysisNotes: string[];
 }> {
   const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);

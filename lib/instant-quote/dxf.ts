@@ -287,16 +287,6 @@ export function ellipseArcLength(shape: Extract<DxfShape, { kind: "ellipse" }>) 
   return adaptiveSimpson(fn, a, b, tolerance, whole, fa, fm, fb, 22);
 }
 
-function polygonArea(points: Point2D[]) {
-  let sum = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i];
-    const b = points[(i + 1) % points.length];
-    sum += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(sum) / 2;
-}
-
 function pointInPolygon(point: Point2D, polygon: Point2D[]) {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -307,14 +297,6 @@ function pointInPolygon(point: Point2D, polygon: Point2D[]) {
     if (crosses) inside = !inside;
   }
   return inside;
-}
-
-function hasCurvedPolylineSegment(shape: Extract<DxfShape, { kind: "polyline" }>) {
-  const segmentCount = shape.closed ? shape.points.length : Math.max(0, shape.points.length - 1);
-  for (let index = 0; index < segmentCount; index++) {
-    if (Math.abs(shape.bulges[index] ?? 0) > EPSILON) return true;
-  }
-  return false;
 }
 
 /**
