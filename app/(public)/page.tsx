@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { CadCalculatorShowcase } from "@/components/CadCalculatorShowcase";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -179,6 +180,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        <CadCalculatorShowcase />
         <section
           id="projects"
           className="border-y border-white/10 bg-[#101112] py-12"
