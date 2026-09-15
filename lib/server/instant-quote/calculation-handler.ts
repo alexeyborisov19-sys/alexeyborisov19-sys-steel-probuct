@@ -298,10 +298,14 @@ async function buildAuthoritativeProject(
     });
   }
 
-  // Quantities the CAD cannot carry. Server-side CAD evidence still wins where
-  // it exists: resolveEffectiveFactualInputs layers these over it, and the
-  // manifest parser has already dropped anything whose operation is not
-  // selected and bounds-checked the rest.
+  // Quantities the CAD cannot carry. resolveEffectiveFactualInputs layers these
+  // over the server's own CAD evidence, so a declared value wins where both
+  // exist — deliberately: a customer may want bends added to a flat blank, and
+  // the drawing cannot know that. It is safe here because the only evidence
+  // that reaches pricing comes from a confirmed flat pattern, which by
+  // definition has no bends; a bent part is not priced at all. The manifest
+  // parser has already dropped anything whose operation is not selected and
+  // bounds-checked the rest.
   const declaredFactualByPartId: Record<string, PartFactualInputs> = {};
   const powderSidesByPartId: Record<string, 1 | 2> = {};
   const surfacePreparationSidesByPartId: Record<string, 1 | 2> = {};
