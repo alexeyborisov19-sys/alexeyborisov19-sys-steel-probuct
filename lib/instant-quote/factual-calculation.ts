@@ -1,6 +1,6 @@
 import type { ManufacturingOperation, PartGeometrySummary } from "@/lib/instant-quote/domain";
 import { resolveMaterialStockPlan, type BlankStrategy } from "@/lib/instant-quote/blanking";
-import type { MaterialId, MaterialMarketPrice } from "@/lib/instant-quote/pricing";
+import { applyMetalUplift, type MaterialId, type MaterialMarketPrice } from "@/lib/instant-quote/pricing";
 
 export type FactualRateSource = {
   id: string;
@@ -90,6 +90,12 @@ export type FactualCalculationInput = {
   marketPrice: MaterialMarketPrice | null;
   materialPriceSourceId?: string | null;
   materialPriceStale?: boolean;
+  /**
+   * Owner-approved percentage added on top of the supplier's metal price.
+   * It stays an explicit caller input so the engine keeps its rule of never
+   * applying an uplift the caller did not ask for. Omitted means 0 %.
+   */
+  materialMarketUpliftPct?: number;
   operations: ManufacturingOperation[];
   rateBook: FactualRateBook;
   bendCount?: number;
@@ -231,18 +237,22 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
       ? input.marketPrice.rubPerTonFrom3t
       : input.marketPrice.rubPerTon;
     if (positiveFinite(rubPerTon)) {
+      const upliftPct = positiveFinite(input.materialMarketUpliftPct) ? input.materialMarketUpliftPct : 0;
+      const pricedRubPerTon = applyMetalUplift(rubPerTon, upliftPct);
       addLine(lines, {
         code: "material",
         label: "Металл по расчётной заготовке",
         quantity: purchasedMassKgEach,
         unit: "кг/шт",
-        rateRub: rubPerTon / 1000,
+        rateRub: pricedRubPerTon / 1000,
         quantityBatch: quantity,
         source: {
           id: input.materialPriceSourceId ?? input.marketPrice.source,
           label: input.marketPrice.source,
           confirmedAt: input.marketPrice.sourceDate,
-          note: `Закрытый прайс поставщика, ${input.marketPrice.thicknessMm} мм.`,
+          note: upliftPct > 0
+            ? `Закрытый прайс поставщика, ${input.marketPrice.thicknessMm} мм: ${rubPerTon} ₽/т + ${upliftPct} % = ${Math.round(pricedRubPerTon)} ₽/т.`
+            : `Закрытый прайс поставщика, ${input.marketPrice.thicknessMm} мм.`,
         },
       });
     } else {

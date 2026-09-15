@@ -38,6 +38,7 @@ const requiredVariables = [
   "TRUST_NGINX_PROXY",
   "CLAMAV_ENABLED",
   "CLAMAV_COMMAND",
+  "STEEL_PRODUCT_METAL_UPLIFT_PCT",
 ] as const;
 
 const expectedStoragePaths: Record<string, string> = {

@@ -63,6 +63,7 @@ export function calculateProjectFactualCost(
   rateBook: FactualRateBook,
   factualInputsByPartId: Record<string, PartFactualInputs> = {},
   now = new Date(),
+  options: { materialMarketUpliftPct?: number } = {},
 ): ProjectFactualCalculationResult {
   const parts = project.parts.map<ProjectFactualPartResult>((part) => {
     const evidence = evidenceByPartId[part.id] ?? {};
@@ -133,6 +134,7 @@ export function calculateProjectFactualCost(
       marketPrice: selection.price,
       materialPriceSourceId: selection.sourceId,
       materialPriceStale: selection.stale,
+      materialMarketUpliftPct: options.materialMarketUpliftPct,
       operations: part.configuration.operations,
       rateBook,
       bendCount: factualInputs.bendCount,

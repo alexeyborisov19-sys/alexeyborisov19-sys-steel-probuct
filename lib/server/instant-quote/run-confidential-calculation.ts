@@ -19,6 +19,7 @@ import {
 } from "@/lib/instant-quote/production-parameters";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import { loadPrivateCalculationBasis } from "@/lib/server/instant-quote/private-calculation-basis";
+import { metalMarketUpliftPct } from "@/lib/server/instant-quote/metal-market-uplift";
 import {
   createInternalProductionReport,
   writeInternalProductionReport,
@@ -160,6 +161,7 @@ export async function runConfidentialCalculationForClient(
     basis.rateBook,
     effectiveFactualByPartId,
     now,
+    { materialMarketUpliftPct: metalMarketUpliftPct() },
   );
   calculationStage("FACTUAL_CALCULATION_OK");
 
