@@ -45,6 +45,7 @@ const staticModifiedAt: Record<string, Date> = {
   "/articles/uzly-fasada-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/metall-dlya-goroda-proekty-stal-produkt": new Date("2026-09-12T00:00:00.000Z"),
   "/calculator-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
+  "/online-order": new Date("2026-09-15T00:00:00.000Z"),
   "/products/metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
   "/products/korziny-dlya-konditsionerov": commercialProductPagesModifiedAt,
@@ -82,7 +83,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
   if (path === "/") return 1;
   if (path === "/company" || path === "/company/facts") return 0.9;
   if (commercialHubs.has(path)) return 0.9;
-  if (path === "/calculator-metallokassety" || path === "/contacts") return 0.9;
+  if (path === "/calculator-metallokassety" || path === "/online-order" || path === "/contacts") return 0.9;
   if (path.startsWith("/projects/")) return 0.85;
   if (path.startsWith("/production/") || path.startsWith("/solutions/") || path.startsWith("/industries/") || path.startsWith("/products/")) return 0.85;
   if (path === "/articles") return 0.85;
@@ -94,7 +95,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
-    "/", "/company", "/company/facts", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety",
+    "/", "/company", "/company/facts", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety", "/online-order",
     "/products/metallokassety", "/products/dobornye-elementy",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];
@@ -111,7 +112,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [...new Set(paths)].filter((path) => !retiredPaths.has(path)).map((path) => {
     const isJournal = path === "/articles" || path.startsWith("/articles/");
     const isExhibitionCalendar = path === facadeCalendarPath || path === metalworkingCalendarPath;
-    const isCalculator = path === "/calculator-metallokassety";
+    const isCalculator = path === "/calculator-metallokassety" || path === "/online-order";
     const currentArticle = articles.find((article) => `/articles/${article.slug}` === path);
     const isLegal = path.startsWith("/legal/");
 
