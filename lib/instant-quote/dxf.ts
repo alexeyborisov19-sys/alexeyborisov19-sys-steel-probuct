@@ -780,6 +780,22 @@ function parseLinearPlanarSpline(fields: Pair[]) {
   };
 }
 
+/**
+ * AutoCAD Binary DXF sentinel. Such a file is a valid DXF, but this parser
+ * reads the ASCII grouped-code form only, so decoding one as text yields
+ * silence rather than geometry. Detecting it lets the caller say so instead of
+ * analysing an empty drawing.
+ */
+const BINARY_DXF_SENTINEL = "AutoCAD Binary DXF";
+
+export function isBinaryDxf(bytes: Uint8Array) {
+  if (bytes.byteLength < BINARY_DXF_SENTINEL.length) return false;
+  for (let index = 0; index < BINARY_DXF_SENTINEL.length; index += 1) {
+    if (bytes[index] !== BINARY_DXF_SENTINEL.charCodeAt(index)) return false;
+  }
+  return true;
+}
+
 export function parseAsciiDxf(text: string): ParsedDxf {
   const pairs = parsePairs(text);
   const units = detectUnits(pairs);

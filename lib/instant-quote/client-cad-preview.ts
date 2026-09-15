@@ -1,4 +1,5 @@
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
 import {
   arcPoints,
   ellipsePreviewPoints,
@@ -92,13 +93,20 @@ export function createClientDxfDrawingPreview(parsed: ParsedDxf): ClientCadDrawi
 }
 
 /**
- * Public CAD analysis may expose only customer-visible preview geometry and
- * coarse bounding dimensions. Production geometry/evidence (cut length,
- * pierces, areas, BRep faces, bend/thickness evidence, unfold data and detailed
- * warnings) must remain inside the confidential calculation boundary.
+ * Public CAD analysis may expose preview geometry, coarse bounding dimensions
+ * and the plain facts of the customer's own file — how thick they drew it and
+ * how many bends it has. What stays inside the confidential calculation
+ * boundary is Steel Product's reading of that file for production: cut length,
+ * pierces, areas, BRep faces, unfold data, stock allocation and detailed
+ * warnings. The test is whose knowledge it is, not whether a number is
+ * geometric.
  */
 export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: ParsedDxf): ClientCadPreview {
   const needsReview = model.warnings.length > 0;
+  // A bent part is the one case where "needs review" has a specific, knowable
+  // reason. Saying it here means the customer learns it on upload instead of
+  // after configuring the position and pressing calculate.
+  const bent = (model.geometry.bendCount ?? 0) > 0;
 
   return {
     kind: "client-cad-preview",
@@ -109,13 +117,16 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
       heightMm: model.geometry.heightMm ?? null,
       depthMm: model.geometry.depthMm ?? null,
       bendCountFromModel: model.geometry.bendCount ?? null,
+      thicknessFromModelMm: measuredThicknessMm(model.sheetMetal),
     },
     meshes: model.meshes,
     root: model.root,
     drawing: parsedDxf ? createClientDxfDrawingPreview(parsedDxf) : null,
     status: needsReview ? "needs-review" : "recognized",
-    message: needsReview
-      ? "Модель загружена. Некоторые параметры потребуется уточнить перед окончательным расчётом."
-      : "Модель распознана и готова к настройке.",
+    message: bent
+      ? "Деталь с гибами. Гибы и толщина определены по модели, но размер развёртки подтверждает технолог, поэтому стоимость по этой позиции рассчитывается не автоматически."
+      : needsReview
+        ? "Модель загружена. Некоторые параметры потребуется уточнить перед окончательным расчётом."
+        : "Модель распознана и готова к настройке.",
   };
 }

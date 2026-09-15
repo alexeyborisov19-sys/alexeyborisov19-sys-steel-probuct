@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { dxfCadAdapter } from "@/lib/instant-quote/dxf-adapter";
-import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
+import { isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
+import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
 import {
   normalizeCadFormat,
   type InstantQuoteProject,
@@ -122,6 +123,27 @@ function parseDxfInspection(inspection: UploadInspection) {
 }
 
 /**
+ * Sheet thickness drives both the metal cost and the laser rate, so a STEP
+ * model that was drawn in one thickness must never be priced in another. The
+ * tolerance absorbs mill tolerance and nominal-vs-modelled rounding; anything
+ * wider is a genuine contradiction between the solid and the chosen
+ * configuration, and the part goes to an engineer instead of to a price.
+ */
+function thicknessMismatchReason(measuredMm: number | null, declaredMm: number | null) {
+  if (!Number.isFinite(measuredMm ?? NaN) || (measuredMm ?? 0) <= 0) return null;
+  if (!Number.isFinite(declaredMm ?? NaN) || (declaredMm ?? 0) <= 0) return null;
+
+  const measured = measuredMm as number;
+  const declared = declaredMm as number;
+  const tolerance = Math.max(0.2, declared * 0.1);
+  if (Math.abs(measured - declared) <= tolerance) return null;
+
+  const show = (value: number) => String(Math.round(value * 100) / 100).replace(".", ",");
+  return `Толщина STEP-модели ${show(measured)} мм не совпадает с выбранной в расчёте ${show(declared)} мм. `
+    + "Материал и лазер по такой детали не рассчитываются автоматически: выберите толщину модели или передайте деталь технологу.";
+}
+
+/**
  * Maps an internal exception to a coarse server-log-only category. The raw
  * exception, paths, rate values and private report details are deliberately not
  * logged or returned to the browser.
@@ -177,22 +199,45 @@ async function buildAuthoritativeProject(
         inspection.buffer.byteOffset,
         inspection.buffer.byteLength,
       );
-      const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
-      const parsed = parseDxfInspection(inspection);
-      geometry = model.geometry;
-      evidenceByPartId[item.clientPartId] = {
-        unsupportedEntities: [...parsed.unsupportedEntities],
-        ...(parsed.skippedServiceLayers.length
-          ? { skippedServiceLayers: [...parsed.skippedServiceLayers] }
-          : {}),
-      };
-      state = model.warnings.length ? "manual-review" : "configurable";
+      // A binary DXF passes the upload signature check but this analyser reads
+      // the ASCII form only. Decoding one as text yields an empty drawing, so
+      // it goes to an engineer instead of being priced as if it had no
+      // geometry.
+      if (isBinaryDxf(bytes)) {
+        evidenceByPartId[item.clientPartId] = {
+          reviewReasons: ["Файл сохранён как двоичный DXF (AutoCAD Binary DXF). Автоматический разбор работает с текстовым DXF; для расчёта сохраните чертёж как «ASCII DXF» либо передайте его технологу."],
+        };
+        analysisNotes.push(`DXF ${inspection.safeName}: binary DXF received; ASCII parser cannot read it, no production geometry was priced.`);
+      } else {
+        try {
+          const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
+          const parsed = parseDxfInspection(inspection);
+          geometry = model.geometry;
+          evidenceByPartId[item.clientPartId] = {
+            unsupportedEntities: [...parsed.unsupportedEntities],
+            ...(parsed.skippedServiceLayers.length
+              ? { skippedServiceLayers: [...parsed.skippedServiceLayers] }
+              : {}),
+          };
+          state = model.warnings.length ? "manual-review" : "configurable";
+        } catch {
+          // One unreadable drawing is one position to check, not a failed
+          // project. The adapter refuses a DXF whose units it cannot establish
+          // — common enough on export — and before this that exception escaped
+          // and turned the whole request into a 503.
+          evidenceByPartId[item.clientPartId] = {
+            reviewReasons: ["Единицы измерения в DXF не определены, поэтому габариты нельзя пересчитать в миллиметры автоматически. Сохраните чертёж с указанием единиц ($INSUNITS) или передайте его технологу."],
+          };
+          analysisNotes.push(`DXF ${inspection.safeName}: adapter could not normalise the drawing; no production geometry was priced for this part.`);
+        }
+      }
     } else if (format === "step" || format === "stp") {
       try {
         // Defaulted here so neither branch below has to re-check for undefined:
         // the analyzer type keeps the field optional for injected test doubles.
         const { model, productionReady, authoritativeFactualInputs = {} } = await analyzeStep(inspection, format);
-        if (productionReady) {
+        const thicknessMismatch = thicknessMismatchReason(measuredThicknessMm(model.sheetMetal), item.thicknessMm);
+        if (productionReady && !thicknessMismatch) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
           // Private STEP evidence stays fail-closed: it reaches the calculation
@@ -209,13 +254,18 @@ async function buildAuthoritativeProject(
           evidenceByPartId[item.clientPartId] = {
             reviewReasons: [
               ...model.warnings,
+              ...(thicknessMismatch ? [thicknessMismatch] : []),
               ...(model.geometry.bendCount != null && model.geometry.bendCount > 0
                 ? [`По модели определено гибов: ${model.geometry.bendCount}. Развёртка гнутой детали требует подтверждения технологом.`]
                 : []),
-              "STEP распознан OpenCascade на сервере, но production-authoritative 2D-развёртка для этой модели не подтверждена.",
+              ...(thicknessMismatch
+                ? []
+                : ["STEP распознан OpenCascade на сервере, но production-authoritative 2D-развёртка для этой модели не подтверждена."]),
             ],
           };
-          analysisNotes.push(`STEP ${inspection.safeName}: BRep inspected on server; factual material/laser calculation withheld until authoritative flat pattern.`);
+          analysisNotes.push(thicknessMismatch
+            ? `STEP ${inspection.safeName}: declared thickness contradicts BRep-measured thickness; no production geometry was priced.`
+            : `STEP ${inspection.safeName}: BRep inspected on server; factual material/laser calculation withheld until authoritative flat pattern.`);
         }
       } catch {
         evidenceByPartId[item.clientPartId] = {
@@ -248,10 +298,14 @@ async function buildAuthoritativeProject(
     });
   }
 
-  // Quantities the CAD cannot carry. Server-side CAD evidence still wins where
-  // it exists: resolveEffectiveFactualInputs layers these over it, and the
-  // manifest parser has already dropped anything whose operation is not
-  // selected and bounds-checked the rest.
+  // Quantities the CAD cannot carry. resolveEffectiveFactualInputs layers these
+  // over the server's own CAD evidence, so a declared value wins where both
+  // exist — deliberately: a customer may want bends added to a flat blank, and
+  // the drawing cannot know that. It is safe here because the only evidence
+  // that reaches pricing comes from a confirmed flat pattern, which by
+  // definition has no bends; a bent part is not priced at all. The manifest
+  // parser has already dropped anything whose operation is not selected and
+  // bounds-checked the rest.
   const declaredFactualByPartId: Record<string, PartFactualInputs> = {};
   const powderSidesByPartId: Record<string, 1 | 2> = {};
   const surfacePreparationSidesByPartId: Record<string, 1 | 2> = {};

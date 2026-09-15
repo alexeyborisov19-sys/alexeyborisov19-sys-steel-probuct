@@ -86,6 +86,27 @@ test("aggregates internal factual direct cost at project level", () => {
   assert.equal(result.commercialPriceReady, false);
 });
 
+test("geometry the DXF parser could not read blocks the price instead of warning about it", () => {
+  const result = calculateProjectFactualCost(
+    project,
+    { "part-1": { unsupportedEntities: ["SPLINE_UNSUPPORTED"] } as unknown as ParsedDxf },
+    snapshots,
+    rateBook,
+    {},
+    now,
+  );
+
+  // An unread entity may carry cut length, pierces or area, so the part must
+  // not reach a published price on a drawing that was only partly understood.
+  assert.equal(result.parts[0].status, "blocked");
+  assert.equal(result.parts[0].calculation, null);
+  assert.ok(result.parts[0].dfmBlockingReasons.includes("Неподдерживаемая геометрия DXF"));
+  assert.equal(result.blockedParts, 1);
+  assert.equal(result.completeParts, 0);
+  assert.equal(result.confirmedDirectCostRub, 0);
+  assert.equal(result.allCostArticlesComplete, false);
+});
+
 test("keeps project incomplete when a selected operation lacks a factual input", () => {
   const withWelding: InstantQuoteProject = {
     ...project,

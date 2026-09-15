@@ -1,4 +1,4 @@
-type SafeRoute = "assistant" | "assistant-lead" | "quote" | "online-calculation";
+type SafeRoute = "assistant" | "assistant-lead" | "quote" | "online-calculation" | "online-order-cad-preview";
 type SafeResult =
   | "accepted"
   | "antivirus_blocked"

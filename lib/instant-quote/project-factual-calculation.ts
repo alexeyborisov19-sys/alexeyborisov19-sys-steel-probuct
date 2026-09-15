@@ -97,11 +97,15 @@ export function calculateProjectFactualCost(
       materialId,
     );
     if ((evidence.unsupportedEntities?.length ?? 0) > 0) {
+      // Blocking, not advisory. Every unread entity is geometry that may carry
+      // cut length, pierces or area the price is built from, so a part whose
+      // drawing was only partly understood must not reach a published price —
+      // an under-read contour would be quoted cheaper than it can be made.
       dfm.push({
         code: "unsupported-dxf-entities",
         title: "Неподдерживаемая геометрия DXF",
         detail: evidence.unsupportedEntities!.join(", "),
-        severity: "manual",
+        severity: "error",
       });
     }
 

@@ -408,6 +408,21 @@ function pickPlanarFlatPatternCandidate(
  * flat-pattern candidate is emitted only for a prism-like constant-thickness
  * solid whose face boundary and volume independently agree.
  */
+/**
+ * Sheet thickness as measured from the BRep. It stays a candidate — nothing
+ * independently confirms it the way volume and boundary confirm a flat pattern
+ * — so it never enters the promoted production geometry. It is still the only
+ * thing that knows what thickness the customer actually drew, which is what
+ * both the configurator and the pricing guard need from it. A "low" candidate
+ * is a guess and is withheld.
+ */
+export function measuredThicknessMm(analysis: SheetMetalAnalysis | undefined) {
+  const candidate = analysis?.thicknessCandidate;
+  if (!candidate || candidate.confidence !== "medium") return null;
+  if (!Number.isFinite(candidate.thicknessMm) || candidate.thicknessMm <= 0) return null;
+  return candidate.thicknessMm;
+}
+
 export function analyzeSheetMetalTopology(
   observations: SheetMetalTopologyObservations,
   options: SheetMetalAnalysisOptions = {},
