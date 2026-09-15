@@ -44,6 +44,13 @@ export type ClientCadPreview = {
     widthMm: number | null;
     heightMm: number | null;
     depthMm: number | null;
+    /**
+     * Bends counted from verified BRep evidence in a STEP model, so the
+     * customer does not have to count them by hand. It describes the part they
+     * uploaded, never how it is priced. Null whenever the evidence is not
+     * unambiguous, and for DXF, which is a flat drawing.
+     */
+    bendCountFromModel: number | null;
   };
   meshes: ClientCadMeshPrimitive[];
   root: ClientCadAssemblyNode | null;

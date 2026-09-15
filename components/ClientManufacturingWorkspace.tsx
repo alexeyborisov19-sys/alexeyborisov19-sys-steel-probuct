@@ -12,6 +12,7 @@ import { createCalculationFormData } from "@/lib/instant-quote/client-calculatio
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-types";
 import { createEmptyProject, type ManufacturingOperation, type OperationInputs } from "@/lib/instant-quote/domain";
+import { MATERIAL_LABELS } from "@/lib/instant-quote/client-labels";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import {
   addPartToProject,
@@ -36,11 +37,9 @@ const FORMAT_BADGES: ReadonlyArray<{ label: string; supported: boolean; hint: st
 ];
 const thicknessOptions = [0.5, 0.7, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 40];
 
-const MATERIAL_OPTIONS: Array<{ id: MaterialId; label: string }> = [
-  { id: "hot", label: "Сталь г/к" },
-  { id: "cold", label: "Сталь х/к" },
-  { id: "zinc", label: "Оцинкованная сталь" },
-];
+// Shared with the printed quote, so a material cannot get two names.
+const MATERIAL_OPTIONS: ReadonlyArray<{ id: MaterialId; label: string }> =
+  (["hot", "cold", "zinc"] as const).map((id) => ({ id, label: MATERIAL_LABELS[id] }));
 
 type CalculationApiResponse = {
   ok?: boolean;
@@ -200,8 +199,15 @@ export function ClientManufacturingWorkspace() {
             ...(preview.cad.heightMm == null ? {} : { heightMm: preview.cad.heightMm }),
             ...(preview.cad.depthMm == null ? {} : { depthMm: preview.cad.depthMm }),
           };
-          const withGeometry = updatePartGeometry(current, partId, geometry);
-          return setPartState(withGeometry, partId, preview.status === "needs-review" ? "manual-review" : "configurable");
+          let next = updatePartGeometry(current, partId, geometry);
+          // A STEP model that reports bends selects bending and fills in the
+          // count, so the customer never counts them by hand.
+          const bends = preview.cad.bendCountFromModel;
+          if (bends != null && bends > 0) {
+            next = togglePartOperation(next, partId, "bending", true);
+            next = setPartOperationInputs(next, partId, { bendCount: bends });
+          }
+          return setPartState(next, partId, preview.status === "needs-review" ? "manual-review" : "configurable");
         });
         setStatusByPartId((current) => ({
           ...current,
@@ -440,6 +446,7 @@ export function ClientManufacturingWorkspace() {
                 <ClientOperationControls
                   operations={activePart.configuration.operations}
                   operationInputs={activePart.configuration.operationInputs ?? {}}
+                  detectedBendCount={activePreview?.cad.bendCountFromModel ?? null}
                   onToggle={toggleOperation}
                   onQuantityChange={updateOperationInputs}
                 />

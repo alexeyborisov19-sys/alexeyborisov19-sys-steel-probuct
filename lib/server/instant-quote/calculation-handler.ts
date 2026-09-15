@@ -78,9 +78,14 @@ async function analyzePlanarStep(inspection: UploadInspection, format: "step" | 
     && (model.geometry.blankAreaMm2 ?? 0) > 0
     && (model.geometry.cutLengthMm ?? 0) > 0
     && (model.geometry.contourCount ?? 0) > 0;
-  const authoritativeFactualInputs = productionReady && privateEvidence?.surfaceAreaMm2
-    ? { powderAreaM2: privateEvidence.surfaceAreaMm2 / 1_000_000 }
-    : undefined;
+  const authoritativeFactualInputs: PartFactualInputs = {
+    ...(productionReady && privateEvidence?.surfaceAreaMm2
+      ? { powderAreaM2: privateEvidence.surfaceAreaMm2 / 1_000_000 }
+      : {}),
+    // Counted from verified BRep evidence, which does not require a confirmed
+    // flat pattern, so a bent part still reports its bends.
+    ...(model.geometry.bendCount != null ? { bendCount: model.geometry.bendCount } : {}),
+  };
 
   return { model, productionReady, authoritativeFactualInputs };
 }
@@ -192,9 +197,15 @@ async function buildAuthoritativeProject(
           state = model.warnings.length ? "manual-review" : "configurable";
           analysisNotes.push(`STEP ${inspection.safeName}: server OpenCascade confirmed a high-confidence planar sheet flat pattern.`);
         } else {
+          if (Object.keys(authoritativeFactualInputs).length > 0) {
+            authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
+          }
           evidenceByPartId[item.clientPartId] = {
             reviewReasons: [
               ...model.warnings,
+              ...(model.geometry.bendCount != null && model.geometry.bendCount > 0
+                ? [`По модели определено гибов: ${model.geometry.bendCount}. Развёртка гнутой детали требует подтверждения технологом.`]
+                : []),
               "STEP распознан OpenCascade на сервере, но production-authoritative 2D-развёртка для этой модели не подтверждена.",
             ],
           };

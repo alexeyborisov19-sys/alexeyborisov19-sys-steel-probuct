@@ -32,6 +32,8 @@ const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
 export type ClientOperationControlsProps = {
   operations: readonly ManufacturingOperation[];
   operationInputs: OperationInputs;
+  /** Bends read from the uploaded STEP model, when the evidence was unambiguous. */
+  detectedBendCount?: number | null;
   onToggle: (operation: ManufacturingOperation) => void;
   onQuantityChange: (patch: OperationInputs) => void;
 };
@@ -39,6 +41,7 @@ export type ClientOperationControlsProps = {
 export function ClientOperationControls({
   operations,
   operationInputs,
+  detectedBendCount = null,
   onToggle,
   onQuantityChange,
 }: ClientOperationControlsProps) {
@@ -83,6 +86,12 @@ export function ClientOperationControls({
                     className="w-20 border border-white/12 bg-transparent px-2 py-1 text-right text-sm outline-none"
                   />
                 </label>
+              )}
+
+              {enabled && option.id === "bending" && detectedBendCount != null && detectedBendCount > 0 && (
+                <p className="mt-1 px-4 text-[10px] leading-relaxed text-steel-orange">
+                  Определено по 3D-модели: {detectedBendCount}. Значение можно изменить — инженер подтвердит его при проверке.
+                </p>
               )}
 
               {enabled && option.id === "powder-coating" && (
