@@ -187,19 +187,21 @@ async function buildAuthoritativeProject(
       state = model.warnings.length ? "manual-review" : "configurable";
     } else if (format === "step" || format === "stp") {
       try {
-        const { model, productionReady, authoritativeFactualInputs } = await analyzeStep(inspection, format);
+        // Defaulted here so neither branch below has to re-check for undefined:
+        // the analyzer type keeps the field optional for injected test doubles.
+        const { model, productionReady, authoritativeFactualInputs = {} } = await analyzeStep(inspection, format);
+        // Server-derived evidence is recorded whether or not a flat pattern was
+        // confirmed, so a bent part still contributes its verified bend count.
+        if (Object.keys(authoritativeFactualInputs).length > 0) {
+          authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
+        }
+
         if (productionReady) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
-          if (authoritativeFactualInputs && Object.keys(authoritativeFactualInputs).length > 0) {
-            authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
-          }
           state = model.warnings.length ? "manual-review" : "configurable";
           analysisNotes.push(`STEP ${inspection.safeName}: server OpenCascade confirmed a high-confidence planar sheet flat pattern.`);
         } else {
-          if (Object.keys(authoritativeFactualInputs).length > 0) {
-            authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
-          }
           evidenceByPartId[item.clientPartId] = {
             reviewReasons: [
               ...model.warnings,
