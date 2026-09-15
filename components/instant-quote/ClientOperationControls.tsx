@@ -23,10 +23,29 @@ const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
   label: string;
   step: number;
   max: number;
+  /**
+   * Said out loud where the number is a technologist's parameter rather than
+   * something a customer can be expected to know. It goes straight into the
+   * automatic price, so five minutes entered instead of thirty is a five-fold
+   * error in that article — the customer should know it is their estimate.
+   */
+  note?: string;
 }>> = {
   bending: { field: "bendCount", label: "Гибов на деталь", step: 1, max: 500 },
-  welding: { field: "weldLengthM", label: "Длина шва, м", step: 0.1, max: 500 },
-  assembly: { field: "assemblyMinutes", label: "Сборка, мин на деталь", step: 1, max: 10_000 },
+  welding: {
+    field: "weldLengthM",
+    label: "Длина шва, м",
+    step: 0.1,
+    max: 500,
+    note: "Ваша оценка. Тип соединения, толщина, оснастка и доступ к шву здесь не учитываются — их определит инженер.",
+  },
+  assembly: {
+    field: "assemblyMinutes",
+    label: "Сборка, мин на деталь",
+    step: 1,
+    max: 10_000,
+    note: "Ваша оценка. Норму сборки определит технолог при проверке.",
+  },
 };
 
 type SidesField = "powderSides" | "surfacePreparationSides";
@@ -99,6 +118,10 @@ export function ClientOperationControls({
                     className="w-20 border border-white/12 bg-transparent px-2 py-1 text-right text-sm outline-none"
                   />
                 </label>
+              )}
+
+              {enabled && quantity?.note && (
+                <p className="mt-1 px-4 text-[10px] leading-relaxed text-white/40">{quantity.note}</p>
               )}
 
               {enabled && option.id === "bending" && detectedBendCount != null && detectedBendCount > 0 && (

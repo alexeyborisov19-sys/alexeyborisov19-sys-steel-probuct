@@ -168,3 +168,18 @@ test("an area-based operation without its side count stays incomplete rather tha
   assert.deepEqual(codes, ["powder-area", "surface-preparation-area"]);
   assert.equal(withoutSides.status, "partial");
 });
+
+test("quantities only a technologist knows are labelled as the customer's own estimate", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const controls = await readFile(new URL("../components/instant-quote/ClientOperationControls.tsx", import.meta.url), "utf8");
+
+  // Weld length and assembly minutes go straight into the automatic price, but
+  // a customer is not a technologist: five minutes entered instead of thirty is
+  // a five-fold error in that article. The field says whose number it is.
+  for (const marker of ["Ваша оценка", "определит инженер", "определит технолог"]) {
+    assert.ok(controls.includes(marker), `operation controls missing "${marker}"`);
+  }
+
+  // The bend count is different: it is read off the model, not estimated.
+  assert.match(controls, /Определено по 3D-модели/);
+});
