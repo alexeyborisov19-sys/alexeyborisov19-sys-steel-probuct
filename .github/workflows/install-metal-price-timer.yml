@@ -1,0 +1,179 @@
+name: Install supplier metal price timer
+
+# Installs and enables the systemd timer that refreshes the Atlantik (Smolensk)
+# sheet price list. Runs when this file changes on main, and on demand.
+#
+# It never enables a timer it has not proven works: preconditions are checked
+# and a full dry run is performed first, and the timer is enabled only once that
+# dry run succeeds. Nothing here touches the website, the app process or nginx.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/install-metal-price-timer.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check = verify only; enable = verify then enable the timer'
+        required: true
+        default: 'enable'
+        type: choice
+        options:
+          - check
+          - enable
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steelprodukt-metal-price-timer
+  cancel-in-progress: false
+
+jobs:
+  install:
+    name: Verify preconditions and enable the timer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Install and enable the price refresh timer
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+          MODE: ${{ github.event.inputs.mode || 'enable' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' MODE='$MODE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          test -n "$APP_PATH"
+
+          TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP" /tmp/steelprodukt-price-dryrun.sh' EXIT
+
+          ENV_FILE="$APP_PATH/.env.production"
+          SCRIPT="$APP_PATH/scripts/refresh-steel-product-prices.mjs"
+          UNIT_SRC="$APP_PATH/deploy/systemd"
+
+          echo "== 1. Preconditions =="
+
+          if ! sudo -n true 2>/dev/null; then
+            echo "FAIL: this account cannot use sudo without a password, so the unit cannot be installed."
+            exit 1
+          fi
+          echo "OK: sudo available."
+
+          test -s "$ENV_FILE" || { echo "FAIL: $ENV_FILE is missing."; exit 1; }
+
+          # Length only: the token value is never printed, logged or exported here.
+          TOKEN_LEN="$(sudo sed -n 's/^STEEL_PRODUCT_PRICE_REFRESH_TOKEN=//p' "$ENV_FILE" | head -n 1 | tr -d '"'"'"'\r\n' | wc -c | tr -d ' ')"
+          if [ "${TOKEN_LEN:-0}" -lt 32 ]; then
+            echo "FAIL: STEEL_PRODUCT_PRICE_REFRESH_TOKEN is missing or shorter than 32 characters (length ${TOKEN_LEN:-0})."
+            echo "      The refresh endpoint rejects anything shorter, so the timer would fail on every run."
+            echo "      Add a 32+ character token to $ENV_FILE and run this workflow again."
+            exit 1
+          fi
+          echo "OK: refresh token present (length $TOKEN_LEN)."
+
+          PDFTOTEXT="$(command -v pdftotext || true)"
+          if [ -z "$PDFTOTEXT" ]; then
+            echo "FAIL: pdftotext is missing. Install poppler-utils, then run this workflow again."
+            exit 1
+          fi
+          echo "OK: pdftotext at $PDFTOTEXT"
+
+          NODE_BIN="$(command -v node || true)"
+          test -n "$NODE_BIN" || { echo "FAIL: node is not on PATH."; exit 1; }
+          echo "OK: node at $NODE_BIN"
+
+          test -s "$SCRIPT" || { echo "FAIL: $SCRIPT is missing. Deploy current main first."; exit 1; }
+          test -s "$UNIT_SRC/steelprodukt-metal-prices.service" || { echo "FAIL: service template missing."; exit 1; }
+          test -s "$UNIT_SRC/steelprodukt-metal-prices.timer" || { echo "FAIL: timer template missing."; exit 1; }
+
+          # The deploy that ships this template and the run that installs it are
+          # triggered by the same merge and race each other. Refuse to install a
+          # stale template rather than enabling a unit that fails every run.
+          if ! grep -Eq '^ExecStart=/usr/bin/node .*refresh-steel-product-prices\.mjs --commit' "$UNIT_SRC/steelprodukt-metal-prices.service"; then
+            echo "FAIL: the unit template on the server is not the current one."
+            echo "      The production deploy has probably not finished yet."
+            echo "      Wait for 'Publish to Beget' to succeed, then re-run this workflow"
+            echo "      (Actions -> Install supplier metal price timer -> Run workflow)."
+            exit 1
+          fi
+          echo "OK: refresh script and current unit templates present."
+
+          echo
+          echo "== 2. Dry run: fetch, extract, parse, sanity-check =="
+          echo "   (--dry-run never writes a snapshot)"
+          {
+            echo 'set -euo pipefail'
+            echo 'set -a'
+            echo ". \"$ENV_FILE\""
+            echo 'set +a'
+            echo "cd \"$APP_PATH\""
+            echo "exec \"$NODE_BIN\" \"$SCRIPT\" --dry-run"
+          } > "$TMP/dryrun.sh"
+          sudo install -m 0700 -o nodejs -g nodejs "$TMP/dryrun.sh" /tmp/steelprodukt-price-dryrun.sh
+
+          if ! sudo -u nodejs bash /tmp/steelprodukt-price-dryrun.sh; then
+            echo
+            echo "FAIL: the dry run did not succeed, so the timer was NOT enabled."
+            echo "      Nothing on the server was changed."
+            exit 1
+          fi
+          echo "OK: dry run succeeded."
+
+          if [ "$MODE" != "enable" ]; then
+            echo
+            echo "MODE=$MODE — verification only. The timer was not touched."
+            exit 0
+          fi
+
+          echo
+          echo "== 3. Install units =="
+          # Templates are written for /var/www/html; point them at the real path.
+          sed -e "s#/var/www/html#$APP_PATH#g" -e "s#^ExecStart=/usr/bin/node#ExecStart=$NODE_BIN#" \
+            "$UNIT_SRC/steelprodukt-metal-prices.service" > "$TMP/service"
+          cp "$UNIT_SRC/steelprodukt-metal-prices.timer" "$TMP/timer"
+          sudo install -m 0644 -o root -g root "$TMP/service" /etc/systemd/system/steelprodukt-metal-prices.service
+          sudo install -m 0644 -o root -g root "$TMP/timer" /etc/systemd/system/steelprodukt-metal-prices.timer
+          sudo systemctl daemon-reload
+          echo "OK: units installed."
+
+          echo
+          echo "== 4. Enable the timer =="
+          sudo systemctl enable --now steelprodukt-metal-prices.timer
+          echo "OK: timer enabled."
+
+          echo
+          echo "== 5. One real run, to prove the unit works =="
+          sudo systemctl start steelprodukt-metal-prices.service || true
+          sleep 8
+          if systemctl is-failed --quiet steelprodukt-metal-prices.service; then
+            echo "WARNING: the unit ran but failed. The timer stays enabled. Last output:"
+            sudo journalctl -u steelprodukt-metal-prices.service -n 40 --no-pager || true
+            exit 1
+          fi
+          echo "OK: the service completed without failing."
+
+          echo
+          echo "== 6. Resulting state =="
+          systemctl list-timers steelprodukt-metal-prices.timer --no-pager || true
+          systemctl status steelprodukt-metal-prices.service --no-pager -n 20 || true
+          REMOTE
