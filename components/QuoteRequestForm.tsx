@@ -58,8 +58,12 @@ export function QuoteRequestForm() {
       // travels here; the calculation basis stays on the server.
       const parts = Number(params.get("parts") ?? "");
       const total = Number(params.get("total") ?? "");
+      // Opaque calculation number. It lets the engineer open the calculation
+      // this request came from instead of re-deriving it from the attachments.
+      const calc = (params.get("calc") ?? "").trim().slice(0, 64);
       const summary = [
         "Прошу рассчитать изготовление по CAD-моделям из онлайн-калькулятора.",
+        /^[A-Za-z0-9_-]+$/.test(calc) ? `Номер расчёта: ${calc}.` : "",
         Number.isFinite(parts) && parts > 0 ? `Позиций в проекте: ${formatNumber(parts)}.` : "",
         Number.isFinite(total) && total > 0
           ? `Предварительная оценка калькулятора: ≈ ${formatNumber(total)} ₽ с НДС.`

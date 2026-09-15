@@ -51,6 +51,13 @@ export type ClientCadPreview = {
      * unambiguous, and for DXF, which is a flat drawing.
      */
     bendCountFromModel: number | null;
+    /**
+     * Sheet thickness measured from the BRep, so the customer is not left
+     * guessing which thickness their own model was drawn in. It describes the
+     * part they uploaded, never how it is priced. Null when the evidence is not
+     * unambiguous, and for DXF, which is a flat drawing without thickness.
+     */
+    thicknessFromModelMm: number | null;
   };
   meshes: ClientCadMeshPrimitive[];
   root: ClientCadAssemblyNode | null;

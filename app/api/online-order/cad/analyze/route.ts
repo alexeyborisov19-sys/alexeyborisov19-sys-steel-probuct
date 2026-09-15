@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { createClientCadPreview } from "@/lib/instant-quote/client-cad-preview";
 import { analyzeCad, cadFormatFromFileName, CadAdapterUnavailableError } from "@/lib/instant-quote/cad-router";
 import { validateNormalizedCadModel } from "@/lib/instant-quote/cad-model";
-import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
+import { isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
+import { clientKey } from "@/lib/security/client-ip";
+import { cadPreviewRateRules, consumeRules } from "@/lib/security/rate-limit";
+import { safeSecurityLog } from "@/lib/security/safe-log";
+import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
+import { inspectUploads, UploadValidationError } from "@/lib/security/uploads";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Technical Alpha guard only; not a published commercial file-size limit.
-const MAX_ALPHA_CAD_BYTES = 25 * 1024 * 1024;
+const ROUTE = "online-order-cad-preview";
 
 async function analyzeForClientPreview(input: {
   fileName: string;
@@ -26,7 +30,33 @@ async function analyzeForClientPreview(input: {
   return analyzeCad(input);
 }
 
+/**
+ * Public CAD preview. It runs the same kernel as the calculation endpoint, so
+ * it carries the same protections: same-origin only, rate limited, and the
+ * identical upload inspection and size limits — a file the calculation would
+ * later refuse is refused here, before the customer spends time configuring it.
+ */
 export async function POST(request: Request) {
+  const ownerKey = clientKey(request);
+
+  try {
+    assertSameOriginRequest(request);
+  } catch (error) {
+    if (error instanceof CrossSiteRequestError) {
+      safeSecurityLog(ROUTE, "cross_site_rejected", ownerKey, { code: "CROSS_ORIGIN_REJECTED" });
+      return NextResponse.json({ ok: false, error: "Запрос отклонён." }, { status: 403 });
+    }
+    throw error;
+  }
+
+  const limited = consumeRules(ownerKey, cadPreviewRateRules);
+  if (limited) {
+    return NextResponse.json(
+      { ok: false, error: "Слишком много загрузок моделей подряд. Повторите позже.", retryAfterSeconds: limited.retryAfterSeconds },
+      { status: 429 },
+    );
+  }
+
   try {
     const form = await request.formData();
     const entry = form.get("file");
@@ -37,18 +67,34 @@ export async function POST(request: Request) {
     if (entry.size <= 0) {
       return NextResponse.json({ ok: false, error: "CAD file is empty." }, { status: 400 });
     }
-    if (entry.size > MAX_ALPHA_CAD_BYTES) {
-      return NextResponse.json({ ok: false, error: "CAD file exceeds the current Alpha processing guard." }, { status: 413 });
-    }
 
     const format = cadFormatFromFileName(entry.name);
     if (!format) {
       return NextResponse.json({ ok: false, error: "Unsupported CAD format." }, { status: 415 });
     }
 
-    const bytes = new Uint8Array(await entry.arrayBuffer());
+    // Same inspection the calculation runs: extension, declared type, magic
+    // bytes and the published size limits, so preview and price agree on what
+    // is acceptable.
+    const [inspection] = await inspectUploads([entry], 1);
+    const bytes = new Uint8Array(
+      inspection.buffer.buffer,
+      inspection.buffer.byteOffset,
+      inspection.buffer.byteLength,
+    );
+
+    if (format === "dxf" && isBinaryDxf(bytes)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Это двоичный DXF (AutoCAD Binary DXF). Автоматический разбор работает с текстовым DXF — сохраните файл как «ASCII DXF» и загрузите снова.",
+        },
+        { status: 415 },
+      );
+    }
+
     const model = await analyzeForClientPreview({
-      fileName: entry.name,
+      fileName: inspection.safeName,
       format,
       bytes,
     });
@@ -63,6 +109,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, preview: createClientCadPreview(model, parsedDxf) });
   } catch (error) {
+    if (error instanceof UploadValidationError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+    }
     if (error instanceof CadAdapterUnavailableError) {
       return NextResponse.json(
         { ok: false, error: error.message, format: error.format, code: "CAD_ADAPTER_UNAVAILABLE" },

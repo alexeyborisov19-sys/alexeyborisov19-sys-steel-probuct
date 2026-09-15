@@ -9,10 +9,11 @@ import { ClientOperationControls } from "@/components/instant-quote/ClientOperat
 import { ClientQuotePrintout } from "@/components/instant-quote/ClientQuotePrintout";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
 import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
+import { isClientCadPreview, isClientCalculationView, type CadAnalysisApiResponse, type CalculationApiResponse } from "@/lib/instant-quote/client-api-contracts";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-types";
 import { createEmptyProject, type ManufacturingOperation, type OperationInputs } from "@/lib/instant-quote/domain";
-import { CALCULATION_DISCLAIMER, CALCULATION_DISCLAIMER_SHORT, MATERIAL_LABELS } from "@/lib/instant-quote/client-labels";
+import { CALCULATION_DISCLAIMER, CALCULATION_DISCLAIMER_SHORT, MATERIAL_LABELS, modelReadings, nearestThicknessOption, THICKNESS_OPTIONS } from "@/lib/instant-quote/client-labels";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import {
   addPartToProject,
@@ -35,24 +36,13 @@ const FORMAT_BADGES: ReadonlyArray<{ label: string; supported: boolean; hint: st
   { label: "STP", supported: true, hint: "То же, что STEP." },
   { label: "DWG", supported: false, hint: "Принимаем в проект, но геометрию уточняет инженер." },
 ];
-const thicknessOptions = [0.5, 0.7, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 40];
+// The server manifest refuses a project with more than ten positions, so the
+// eleventh is stopped here rather than after the whole project fails to price.
+const MAX_PROJECT_PARTS = 10;
 
 // Shared with the printed quote, so a material cannot get two names.
 const MATERIAL_OPTIONS: ReadonlyArray<{ id: MaterialId; label: string }> =
   (["hot", "cold", "zinc"] as const).map((id) => ({ id, label: MATERIAL_LABELS[id] }));
-
-type CalculationApiResponse = {
-  ok?: boolean;
-  code?: string;
-  message?: string;
-  calculation?: ClientProjectCalculationView;
-};
-
-type CadAnalysisApiResponse = {
-  ok?: boolean;
-  error?: string;
-  preview?: ClientCadPreview;
-};
 
 function fmt(value: number) {
   return value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
@@ -65,22 +55,6 @@ function fmtMetric(value: number | null) {
 function materialIdOf(value: string | null): MaterialId {
   if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
   return "hot";
-}
-
-function isClientCalculationView(value: unknown): value is ClientProjectCalculationView {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<ClientProjectCalculationView>;
-  return candidate.kind === "client-calculation" && Array.isArray(candidate.parts) && candidate.paymentEnabled === false;
-}
-
-function isClientCadPreview(value: unknown): value is ClientCadPreview {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<ClientCadPreview>;
-  return candidate.kind === "client-cad-preview"
-    && candidate.units === "mm"
-    && (candidate.status === "recognized" || candidate.status === "needs-review")
-    && Boolean(candidate.cad && typeof candidate.cad === "object")
-    && Array.isArray(candidate.meshes);
 }
 
 function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
@@ -119,11 +93,16 @@ export function ClientManufacturingWorkspace() {
   // The public calculator never submits orders on its own: it hands the customer
   // over to the existing contacts form, which is the flow that records 152-ФЗ
   // consent and stores the lead. Only the customer's own inputs travel in the URL.
+  // The calculation number travels with them so the incoming request can be
+  // matched to the calculation an engineer already has, instead of being
+  // re-quoted from scratch. It is an opaque identifier the server had already
+  // published to this browser — no basis, rate or geometry rides along with it.
   const quoteHandoffHref = {
     pathname: "/contacts",
     query: {
       source: "online-order",
       parts: String(project.parts.length),
+      ...(calculation == null ? {} : { calc: calculation.projectId }),
       ...(approvedProjectTotalRub == null ? {} : { total: String(Math.round(approvedProjectTotalRub)) }),
     },
     hash: "contact-form",
@@ -148,9 +127,15 @@ export function ClientManufacturingWorkspace() {
   const ingestFiles = async (files: File[]) => {
     if (!files.length) return;
     let nextProject = project;
+    const room = MAX_PROJECT_PARTS - nextProject.parts.length;
+    const accepting = files.slice(0, Math.max(0, room));
+    setProjectCalculationMessage(accepting.length < files.length
+      ? `В одном проекте можно рассчитать не более ${MAX_PROJECT_PARTS} позиций. Лишние файлы не добавлены — рассчитайте их отдельным проектом.`
+      : null);
+    if (!accepting.length) return;
     const jobs: Array<{ file: File; partId: string; format: "dxf" | "dwg" | "step" | "stp" }> = [];
 
-    files.forEach((file, index) => {
+    accepting.forEach((file, index) => {
       try {
         nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, new Date(Date.now() + index));
         const partId = nextProject.activePartId;
@@ -162,7 +147,6 @@ export function ClientManufacturingWorkspace() {
     });
 
     setProject(nextProject);
-    setProjectCalculationMessage(null);
     setCalculation(null);
     setFilesByPartId((current) => {
       const next = { ...current };
@@ -200,6 +184,11 @@ export function ClientManufacturingWorkspace() {
             ...(preview.cad.depthMm == null ? {} : { depthMm: preview.cad.depthMm }),
           };
           let next = updatePartGeometry(current, partId, geometry);
+          // A STEP model carries its own sheet thickness. Selecting it here is
+          // what keeps the default 1 mm from silently pricing a 3 mm part: the
+          // server refuses a declared thickness its BRep contradicts.
+          const measuredThickness = nearestThicknessOption(preview.cad.thicknessFromModelMm);
+          if (measuredThickness != null) next = setPartThickness(next, partId, measuredThickness);
           // A STEP model that reports bends selects bending and fills in the
           // count, so the customer never counts them by hand.
           const bends = preview.cad.bendCountFromModel;
@@ -213,7 +202,7 @@ export function ClientManufacturingWorkspace() {
           ...current,
           [partId]: preview.status === "needs-review"
             ? preview.message
-            : "Модель распознана. Проверьте параметры и нажмите «Рассчитать проект».",
+            : `Модель распознана${modelReadings(preview.cad)}. Проверьте параметры и нажмите «Рассчитать проект».`,
         }));
       } catch {
         setProject((current) => setPartState(current, partId, "manual-review"));
@@ -441,7 +430,7 @@ export function ClientManufacturingWorkspace() {
             {activePart ? <>
               <div className="space-y-5 p-5">
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07]" : "border-white/10"}`}>{option.label}</button>)}</div></div>
-                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none">{thicknessOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
+                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none" /></div>
                 <ClientOperationControls
                   operations={activePart.configuration.operations}

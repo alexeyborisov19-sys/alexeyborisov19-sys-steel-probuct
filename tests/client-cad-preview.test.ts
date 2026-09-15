@@ -44,8 +44,15 @@ test("client CAD preview strips production geometry and evidence", () => {
   const preview = createClientCadPreview(model);
   const serialized = JSON.stringify(preview);
 
-  // Bounding box plus the bends read from the model; nothing about pricing.
-  assert.deepEqual(preview.cad, { widthMm: 120, heightMm: 80, depthMm: 2, bendCountFromModel: null });
+  // Bounding box plus what was read off the customer's own model; nothing
+  // about pricing. This model carries no thickness candidate, so none is shown.
+  assert.deepEqual(preview.cad, {
+    widthMm: 120,
+    heightMm: 80,
+    depthMm: 2,
+    bendCountFromModel: null,
+    thicknessFromModelMm: null,
+  });
   assert.equal(preview.status, "needs-review");
   assert.equal(preview.meshes.length, 1);
   assert.equal(preview.root?.id, "root");

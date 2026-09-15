@@ -88,6 +88,17 @@ export const leadRateRules: RateLimitRule[] = [
   { id: "lead-day", limit: 20, windowMs: 86_400_000 },
 ];
 
+/**
+ * CAD preview is cheap for the customer and expensive for the server: every
+ * STEP goes through OpenCascade. The window fits a whole ten-file project twice
+ * over, so ordinary use never notices it, while a script cannot keep the kernel
+ * busy indefinitely.
+ */
+export const cadPreviewRateRules: RateLimitRule[] = [
+  { id: "cad-preview-minute", limit: 20, windowMs: 60_000 },
+  { id: "cad-preview-day", limit: 200, windowMs: 86_400_000 },
+];
+
 export const quoteRateRules: RateLimitRule[] = [
   { id: "quote-minute", limit: 3, windowMs: 60_000 },
   { id: "quote-day", limit: 20, windowMs: 86_400_000 },

@@ -1,0 +1,59 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createClientCadPreview } from "@/lib/instant-quote/client-cad-preview";
+import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
+import { nearestThicknessOption } from "@/lib/instant-quote/client-labels";
+import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import type { SheetMetalAnalysis } from "@/lib/instant-quote/sheet-metal";
+
+function analysis(thicknessMm: number, confidence: "low" | "medium"): SheetMetalAnalysis {
+  return {
+    source: "brep",
+    status: "candidate",
+    planarFaceCount: 2,
+    cylindricalFaceCount: 0,
+    otherFaceCount: 0,
+    thicknessCandidate: { thicknessMm, confidence, evidencePairs: 1, evidenceFaceIds: ["top", "bottom"] },
+    bendCandidates: [],
+    warnings: [],
+  } as unknown as SheetMetalAnalysis;
+}
+
+function modelWith(sheetMetal: SheetMetalAnalysis | undefined): NormalizedCadModel {
+  return {
+    format: "step",
+    units: "mm",
+    geometry: { widthMm: 300, heightMm: 200, depthMm: 3 },
+    meshes: [{ id: "mesh-1", positions: [0, 0, 0], indices: [0] }],
+    root: null,
+    features: [],
+    ...(sheetMetal ? { sheetMetal } : {}),
+    metadata: { sourceFileName: "part.step", sourceBytes: 10, parser: "test", analyzedAt: "2026-09-15T00:00:00.000Z" },
+    warnings: [],
+  } as unknown as NormalizedCadModel;
+}
+
+test("a medium-confidence thickness candidate is the measured thickness, a low one is not", () => {
+  assert.equal(measuredThicknessMm(analysis(3, "medium")), 3);
+  assert.equal(measuredThicknessMm(analysis(3, "low")), null);
+  assert.equal(measuredThicknessMm(undefined), null);
+  assert.equal(measuredThicknessMm(analysis(0, "medium")), null);
+});
+
+test("the customer's preview reports the thickness their own model was drawn in", () => {
+  assert.equal(createClientCadPreview(modelWith(analysis(3, "medium"))).cad.thicknessFromModelMm, 3);
+  // A DXF is a flat drawing: it has no sheet-metal analysis and no thickness.
+  assert.equal(createClientCadPreview(modelWith(undefined)).cad.thicknessFromModelMm, null);
+});
+
+test("a measured thickness snaps onto a stocked one, or onto nothing at all", () => {
+  assert.equal(nearestThicknessOption(3), 3);
+  // Mill tolerance and modelling rounding must not push a part off its stock.
+  assert.equal(nearestThicknessOption(1.95), 2);
+  assert.equal(nearestThicknessOption(10.4), 10);
+  // 3,5 mm is not stocked and is too far from 3 or 4 to stand in for either.
+  assert.equal(nearestThicknessOption(3.5), null);
+  assert.equal(nearestThicknessOption(null), null);
+  assert.equal(nearestThicknessOption(0), null);
+  assert.equal(nearestThicknessOption(Number.NaN), null);
+});

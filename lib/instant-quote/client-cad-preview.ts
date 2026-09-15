@@ -1,4 +1,5 @@
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
 import {
   arcPoints,
   ellipsePreviewPoints,
@@ -92,10 +93,13 @@ export function createClientDxfDrawingPreview(parsed: ParsedDxf): ClientCadDrawi
 }
 
 /**
- * Public CAD analysis may expose only customer-visible preview geometry and
- * coarse bounding dimensions. Production geometry/evidence (cut length,
- * pierces, areas, BRep faces, bend/thickness evidence, unfold data and detailed
- * warnings) must remain inside the confidential calculation boundary.
+ * Public CAD analysis may expose preview geometry, coarse bounding dimensions
+ * and the plain facts of the customer's own file — how thick they drew it and
+ * how many bends it has. What stays inside the confidential calculation
+ * boundary is Steel Product's reading of that file for production: cut length,
+ * pierces, areas, BRep faces, unfold data, stock allocation and detailed
+ * warnings. The test is whose knowledge it is, not whether a number is
+ * geometric.
  */
 export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: ParsedDxf): ClientCadPreview {
   const needsReview = model.warnings.length > 0;
@@ -109,6 +113,7 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
       heightMm: model.geometry.heightMm ?? null,
       depthMm: model.geometry.depthMm ?? null,
       bendCountFromModel: model.geometry.bendCount ?? null,
+      thicknessFromModelMm: measuredThicknessMm(model.sheetMetal),
     },
     meshes: model.meshes,
     root: model.root,
