@@ -35,7 +35,7 @@ export function ProductPricingFactors({ productTitle, showInputs = true }: { pro
           </div>}
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link href="/contacts#contact-form" className="clip-corner inline-block bg-steel-orange-deep px-7 py-4 text-center text-sm font-bold uppercase">Передать данные на расчёт&nbsp; →</Link>
-            <Link href="/online-order" className="inline-block border border-white/25 px-7 py-4 text-center text-sm font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Рассчитать по чертежу&nbsp; →</Link>
+            <Link href="/online-order" className="inline-block border border-white/25 px-7 py-4 text-center text-sm font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Онлайн-расчёт по CAD-файлу&nbsp; →</Link>
             {hasCassetteCalculator && <Link href="/calculator-metallokassety" className="inline-block border border-white/25 px-7 py-4 text-center text-sm font-bold uppercase text-white transition hover:border-steel-orange hover:text-steel-orange">Калькулятор металлокассет&nbsp; →</Link>}
           </div>
         </div>

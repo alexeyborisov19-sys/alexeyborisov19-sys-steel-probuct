@@ -16,7 +16,7 @@ const productLinks: Record<string, string> = {
 };
 
 const quickLinks = [
-  { label: "Калькулятор металлоизделий", href: "/online-order" },
+  { label: "Онлайн-расчёт по CAD-файлу", href: "/online-order" },
   { label: "Калькулятор металлокассет", href: "/calculator-metallokassety" },
   { label: "Вся продукция", href: "/products" },
   { label: "Производство", href: "/production" },

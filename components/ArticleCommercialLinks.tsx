@@ -27,8 +27,8 @@ const linksByDirection: Record<ArticleDirection, CommercialLink[]> = {
   ],
   metalworking: [
     {
-      title: "Онлайн-расчёт по чертежу",
-      description: "Загрузите DXF или STEP — габариты, площадь и длина реза определятся автоматически.",
+      title: "Онлайн-расчёт по CAD-файлу",
+      description: "Загрузите DXF, STEP или STP — система определит геометрию детали и подготовит предварительный расчёт.",
       href: "/online-order",
     },
     {
@@ -49,8 +49,8 @@ const linksByDirection: Record<ArticleDirection, CommercialLink[]> = {
   ],
   "engineering-practice": [
     {
-      title: "Онлайн-расчёт по чертежу",
-      description: "Калькулятор читает CAD-модель и сам достаёт из неё размеры, площадь и число врезок.",
+      title: "Онлайн-расчёт по CAD-файлу",
+      description: "Система считывает параметры детали из CAD-файла и формирует предварительный расчёт стоимости.",
       href: "/online-order",
     },
     {
