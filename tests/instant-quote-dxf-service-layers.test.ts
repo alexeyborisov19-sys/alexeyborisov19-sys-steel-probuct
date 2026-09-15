@@ -173,6 +173,20 @@ test("a dimension line never reaches the bounding box or the cut length", () => 
   assert.deepEqual(parsed.skippedServiceLayers, ["DIM"]);
 });
 
+test("the reference plate is measured against its known geometry", () => {
+  const parsed = parseAsciiDxf(PLATE_DXF);
+  const within = (actual: number, expected: number) =>
+    assert.ok(Math.abs(actual - expected) <= expected * 0.005, `${actual} != ${expected} ± 0.5 %`);
+
+  // 400x250 rectangle less the R10 corner fillet, two d12 holes and a 20x7
+  // obround slot. The outline arrives as separate LINE and ARC entities, so it
+  // only becomes a contour once the loose primitives are stitched together.
+  assert.equal(parsed.areaStatus, "exact");
+  within(parsed.area ?? 0, 99_574);
+  assert.equal(parsed.pierces, 4);
+  assert.equal(parsed.holeCount, 3);
+});
+
 test("geometry on production layers survives the filter", () => {
   const parsed = parseAsciiDxf(PLATE_DXF);
 
