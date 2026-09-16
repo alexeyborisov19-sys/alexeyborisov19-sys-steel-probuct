@@ -369,14 +369,14 @@ export function ClientManufacturingWorkspace() {
             <div className="max-h-[610px] overflow-y-auto">
               {project.parts.map((part, index) => {
                 const active = part.id === activePart?.id;
-                return <button key={part.id} onClick={() => setProject((current) => setActivePart(current, part.id))} className={`block w-full border-b p-3 text-left ${active ? "border-steel-orange/35 bg-steel-orange/[.05]" : "border-white/10 hover:bg-white/[.03]"}`}>
+                return <button key={part.id} type="button" aria-current={active ? "true" : undefined} onClick={() => setProject((current) => setActivePart(current, part.id))} className={`block w-full border-b p-3 text-left ${active ? "border-steel-orange/35 bg-steel-orange/[.05]" : "border-white/10 hover:bg-white/[.03]"}`}>
                   <p className="text-[9px] font-bold uppercase tracking-[.13em] text-steel-orange">#{String(index + 1).padStart(2, "0")}</p>
                   <p className="mt-1 truncate text-xs font-semibold">{part.fileName}</p>
                   <p className="mt-1 text-[9px] text-white/35">×{part.configuration.quantity} · {part.format.toUpperCase()}</p>
                 </button>;
               })}
             </div>
-            <button onClick={() => inputRef.current?.click()} className="m-4 w-[calc(100%-2rem)] border border-white/12 px-3 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/55 hover:border-steel-orange hover:text-white">+ Добавить CAD</button>
+            <button type="button" onClick={() => inputRef.current?.click()} className="m-4 w-[calc(100%-2rem)] border border-white/12 px-3 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/55 hover:border-steel-orange hover:text-white">+ Добавить CAD</button>
 
             <div className="border-t border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
@@ -416,7 +416,7 @@ export function ClientManufacturingWorkspace() {
               <span className="text-[10px] font-bold uppercase tracking-[.14em] text-white/40">Модель</span>
               <div className="flex items-center gap-4">
                 <span className="hidden text-[9px] font-bold uppercase tracking-[.12em] text-white/25 sm:inline">Перетащите CAD сюда</span>
-                {activePart && <button onClick={removeActivePart} className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40 hover:text-red-300">Удалить</button>}
+                {activePart && <button type="button" onClick={removeActivePart} className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40 hover:text-red-300">Удалить</button>}
               </div>
             </div>
             <div className="relative min-h-[650px] bg-[#080b0d]">
@@ -436,9 +436,9 @@ export function ClientManufacturingWorkspace() {
             <div className="border-b border-white/10 p-5"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Параметры</p><h2 className="mt-2 text-xl font-semibold">Конфигурация изделия</h2></div>
             {activePart ? <>
               <div className="space-y-5 p-5">
-                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07]" : "border-white/10"}`}>{option.label}</button>)}</div></div>
-                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
-                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none" /></div>
+                <div><p id="part-material-label" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
+                <div><label htmlFor="part-thickness" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
+                <div><label htmlFor="part-quantity" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>
                 <ClientOperationControls
                   operations={activePart.configuration.operations}
                   operationInputs={activePart.configuration.operationInputs ?? {}}

@@ -115,7 +115,7 @@ export function ClientOperationControls({
                           : undefined,
                       });
                     }}
-                    className="w-20 border border-white/12 bg-transparent px-2 py-1 text-right text-sm outline-none"
+                    className="w-20 border border-white/12 bg-transparent px-2 py-1 text-right text-sm"
                   />
                 </label>
               )}
