@@ -71,11 +71,21 @@ function normalizePositiveRadians(value: number) {
   return normalized;
 }
 
+/**
+ * Arc sweep in [0, 360).
+ *
+ * This subtracted 360 in a loop, which never ends once the difference is large
+ * enough that 360 falls below its ulp: at 1e308 the subtraction returns the
+ * same number for ever. A DXF whose ARC carries a group code 50 of 1e300 is a
+ * finite number the field parser accepts, so a two-hundred-byte file pinned the
+ * request that read it — on a public endpoint. The remainder does the same job
+ * for every input, in one step.
+ */
 export function normalizeArc(start: number, end: number) {
-  let delta = end - start;
-  while (delta < 0) delta += 360;
-  while (delta >= 360) delta -= 360;
-  return delta;
+  const delta = (end - start) % 360;
+  if (delta < 0) return delta + 360;
+  // An exact negative multiple of 360 leaves -0 behind; hand back a plain zero.
+  return delta === 0 ? 0 : delta;
 }
 
 function parsePairs(text: string): Pair[] {
@@ -1023,6 +1033,17 @@ export function parseAsciiDxf(text: string): ParsedDxf {
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
   const topology = closedContourMetrics(shapes, unsupported);
+
+  // Coordinates near the top of the double range are finite one at a time and
+  // overflow the moment they are added up: an ARC at 1e308 gives an infinite
+  // cut length. Nothing downstream can do anything sensible with that, and the
+  // pricing path reads this result without the preview's validation, so the
+  // file is refused here rather than turned into a number.
+  if (![maxX - minX, maxY - minY, minX, minY, maxX, maxY, cutLength].every(Number.isFinite)) {
+    throw new CadReadError(
+      "Координаты в чертеже выходят за пределы, в которых деталь можно измерить: габариты и длина реза не вычисляются. Проверьте масштаб и положение геометрии относительно начала координат, затем сохраните файл заново.",
+    );
+  }
 
   return {
     shapes,

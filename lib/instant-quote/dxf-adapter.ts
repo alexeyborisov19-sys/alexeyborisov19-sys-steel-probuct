@@ -28,6 +28,23 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
 
     const widthMm = parsed.width * scale;
     const heightMm = parsed.height * scale;
+    const areaMm2 = parsed.area == null ? undefined : parsed.area * scale * scale;
+    // Current commercial rule: material is billed by the rectangular blank
+    // around the part. A future nesting engine can replace this with
+    // nestedAllocatedAreaMm2.
+    const blankAreaMm2 = widthMm * heightMm;
+    const cutLengthMm = parsed.cutLength * scale;
+
+    // Converting to millimetres multiplies, and the blank multiplies again, so
+    // a drawing the parser could still measure can overflow here. Every number
+    // below feeds the price, and the calculation is entitled to assume they are
+    // numbers, so an overflow is refused with a sentence instead of being
+    // handed on as Infinity.
+    if (![widthMm, heightMm, blankAreaMm2, cutLengthMm, areaMm2 ?? 0].every(Number.isFinite)) {
+      throw new CadReadError(
+        "Габариты чертежа в миллиметрах выходят за пределы, в которых деталь можно посчитать. Проверьте единицы измерения и масштаб чертежа, затем сохраните файл заново.",
+      );
+    }
 
     return {
       format: "dxf",
@@ -35,11 +52,9 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
       geometry: {
         widthMm,
         heightMm,
-        areaMm2: parsed.area == null ? undefined : parsed.area * scale * scale,
-        // Current commercial rule: material is billed by the rectangular blank around the part.
-        // A future nesting engine can replace this with nestedAllocatedAreaMm2.
-        blankAreaMm2: widthMm * heightMm,
-        cutLengthMm: parsed.cutLength * scale,
+        areaMm2,
+        blankAreaMm2,
+        cutLengthMm,
         contourCount: parsed.contours,
         pierceCount: parsed.pierces ?? undefined,
         holeCount: parsed.holeCount ?? undefined,
