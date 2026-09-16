@@ -67,6 +67,23 @@ test("a dry run explains why it could not start, a commit run does not", () => {
   assert.match(script, /commit\s*\?[\s\S]*error\.name[\s\S]*:[\s\S]*error\.message/);
 });
 
+test("a dry run also explains why the refresh itself failed", () => {
+  const script = readFileSync("scripts/refresh-steel-product-prices.ts", "utf8");
+
+  // The refusal to disclose applied to the run that actually does the work
+  // too, so an unreachable supplier, a changed price list and an unreadable
+  // basis all printed one sentence and the dry run could diagnose none of them.
+  assert.match(script, /Supplier price refresh failed: \$\{describeFailure\(error\)\}/);
+  assert.match(script, /commit\s*\n?\s*\?\s*"Supplier price refresh failed\."/);
+
+  // Node reports a failed fetch as a bare "fetch failed" and keeps the reason
+  // on the cause, so the cause is the part worth having.
+  assert.match(script, /error\.cause instanceof Error/);
+
+  // Disclosure still stops at filesystem paths.
+  assert.match(script, /replace\(.*<path>.*\)/);
+});
+
 test("the timer resolves Next's build markers, which are not packages", async () => {
   const { readFile } = await import("node:fs/promises");
   const [resolver, packageJson] = await Promise.all([
