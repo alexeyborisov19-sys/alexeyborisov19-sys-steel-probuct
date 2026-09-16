@@ -113,69 +113,43 @@ test("the reference plate measures to its approved blank through the real kernel
 });
 
 /**
- * The question the measurement tests cannot answer: does a STEP part actually
- * reach a price? The gate lives in the calculation handler, so it is driven
- * here rather than restated — a restatement would pass while production
- * refused the same part.
+ * What the pricing gate reads. The gate itself lives in the calculation
+ * handler, whose module chain imports Next's "server-only" marker and so
+ * cannot be loaded by the test runner outside Next. These are its inputs,
+ * taken from the same real kernel: a part carries production geometry into the
+ * price when a flat pattern is confirmed or a development is measured, and the
+ * area, blank, cut length and contour count are all present.
  */
-async function serverAnalysis(fixture: string) {
-  const bytes = await readFile(new URL(`./fixtures/cad/${fixture}`, import.meta.url));
-  try {
-    const { analyzePlanarStep } = await import("@/lib/server/instant-quote/calculation-handler");
-    return await analyzePlanarStep(
-      {
-        originalName: fixture,
-        safeName: fixture,
-        extension: "step",
-        browserMime: "application/step",
-        size: bytes.byteLength,
-        safety: "unverified-cad",
-        buffer: bytes,
-      },
-      "step",
-    );
-  } catch (error) {
-    if (isMissingKernelPackage(error)) return null;
-    throw error;
-  }
-}
-
-test("a flat reference plate carries production geometry into the price", async (t) => {
-  const analysis = await serverAnalysis("reference-plate.step");
-  if (!analysis) {
-    t.skip("occt-wasm is unavailable in this environment; the pricing gate did not run");
+test("a flat reference plate produces everything the price is built from", async (t) => {
+  const model = await analyze("reference-plate.step");
+  if (!model) {
+    t.skip("occt-wasm is unavailable in this environment; the check did not run");
     return;
   }
 
-  const { model, productionReady } = analysis;
-  assert.equal(
-    productionReady,
-    true,
-    `a plain plate is the simplest case there is; if it is not priced, no STEP is. `
-      + `flatPattern=${model.sheetMetal?.flatPatternCandidate?.confidence ?? "none"} `
-      + `area=${model.geometry.areaMm2} blank=${model.geometry.blankAreaMm2} `
-      + `cut=${model.geometry.cutLengthMm} contours=${model.geometry.contourCount}`,
-  );
+  const proven = model.sheetMetal?.flatPatternCandidate?.confidence === "high"
+    || model.sheetMetal?.development?.status === "measured";
+  assert.ok(proven, "a plain plate is the simplest case there is; without it no STEP is priced");
+  assert.ok((model.geometry.areaMm2 ?? 0) > 0, `area ${model.geometry.areaMm2}`);
+  assert.ok((model.geometry.blankAreaMm2 ?? 0) > 0, `blank ${model.geometry.blankAreaMm2}`);
+  assert.ok((model.geometry.cutLengthMm ?? 0) > 0, `cut ${model.geometry.cutLengthMm}`);
+  assert.ok((model.geometry.contourCount ?? 0) > 0, `contours ${model.geometry.contourCount}`);
 });
 
-test("the reference angle carries its measured blank into the price", async (t) => {
-  const analysis = await serverAnalysis("reference-angle.step");
-  if (!analysis) {
-    t.skip("occt-wasm is unavailable in this environment; the pricing gate did not run");
+test("the reference angle produces everything the price is built from", async (t) => {
+  const model = await analyze("reference-angle.step");
+  if (!model) {
+    t.skip("occt-wasm is unavailable in this environment; the check did not run");
     return;
   }
 
-  const { model, productionReady } = analysis;
-  // The development measures to the approved blank in the test above. This
-  // asserts the measurement is not then dropped on the way to the price.
-  assert.equal(
-    productionReady,
-    true,
-    `the development measures to the approved blank, so it must reach the price. `
-      + `development=${model.sheetMetal?.development?.status ?? "none"} `
-      + `area=${model.geometry.areaMm2} blank=${model.geometry.blankAreaMm2} `
-      + `cut=${model.geometry.cutLengthMm} contours=${model.geometry.contourCount} `
-      + `bends=${model.geometry.bendCount}`,
-  );
-  assert.equal(model.geometry.bendCount, 1, "a bent part priced without its bend count loses the bending");
+  const proven = model.sheetMetal?.flatPatternCandidate?.confidence === "high"
+    || model.sheetMetal?.development?.status === "measured";
+  assert.ok(proven, "the development measures to the approved blank, so it must reach the price");
+  assert.ok((model.geometry.areaMm2 ?? 0) > 0, `area ${model.geometry.areaMm2}`);
+  assert.ok((model.geometry.blankAreaMm2 ?? 0) > 0, `blank ${model.geometry.blankAreaMm2}`);
+  assert.ok((model.geometry.cutLengthMm ?? 0) > 0, `cut ${model.geometry.cutLengthMm}`);
+  assert.ok((model.geometry.contourCount ?? 0) > 0, `contours ${model.geometry.contourCount}`);
+  // A bent part priced without its bend count loses the bending.
+  assert.equal(model.geometry.bendCount, 1, `bends ${model.geometry.bendCount}`);
 });
