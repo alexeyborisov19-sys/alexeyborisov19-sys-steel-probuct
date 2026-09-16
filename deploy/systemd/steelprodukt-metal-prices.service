@@ -1,8 +1,7 @@
 # Preconditions, all on the host and none of them checked automatically:
-#   1. STEEL_PRODUCT_PRICE_REFRESH_TOKEN in .env.production, 32+ characters.
-#      Without it the refresh cannot authenticate and this unit fails every run.
-#      It cannot be made a required variable: every production-environment issue
-#      turns the public quote form into a 503.
+#   1. STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH in .env.production. The
+#      refresh writes the snapshot next to it, and the installer needs it to
+#      grant this unit write access to that one directory.
 #   2. pdftotext (poppler-utils) on PATH, or STEEL_PRODUCT_PDFTOTEXT_COMMAND.
 #   3. The unit installed and enabled: systemctl enable --now steelprodukt-metal-prices.timer
 # Verify once with:  npm run prices:refresh -- --dry-run
@@ -34,8 +33,13 @@ ProtectHome=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
-# The refresh calls the app on loopback; the app itself fetches the supplier PDF.
+# This unit fetches the supplier PDF itself.
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-# This unit only POSTs to the app on loopback; the app process performs the
-# snapshot write, so the timer itself needs no write access of its own.
+# The application directory stays read-only: nothing here writes to it.
 ReadOnlyPaths=/var/www/html
+# ProtectSystem=strict makes the whole filesystem read-only, and this unit now
+# writes the snapshot itself instead of asking the app to do it over loopback —
+# the change that removed the shared secret. Without this line every run died on
+# EROFS after fetching and parsing the price list correctly. The installer fills
+# the path from .env.production, the same place the application reads it from.
+ReadWritePaths=__PRIVATE_BASIS_DIR__
