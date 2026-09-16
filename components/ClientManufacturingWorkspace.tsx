@@ -40,6 +40,11 @@ const FORMAT_BADGES: ReadonlyArray<{ label: string; supported: boolean; hint: st
 // eleventh is stopped here rather than after the whole project fails to price.
 const MAX_PROJECT_PARTS = 10;
 
+// Shown on the positions a previous run had priced, for as long as the next
+// run is in flight. Named so that the failure path can recognise and replace it
+// instead of leaving it behind once the attempt it describes is over.
+const RECALCULATING_MESSAGE = "Идёт расчёт проекта…";
+
 // Shared with the printed quote, so a material cannot get two names.
 const MATERIAL_OPTIONS: ReadonlyArray<{ id: MaterialId; label: string }> =
   (["hot", "cold", "zinc"] as const).map((id) => ({ id, label: MATERIAL_LABELS[id] }));
@@ -114,14 +119,39 @@ export function ClientManufacturingWorkspace() {
   const allFilesPresent = project.parts.length > 0 && project.parts.every((part) => Boolean(filesByPartId[part.id]));
   const anyAnalyzing = Object.values(analyzingByPartId).some(Boolean);
   const canCalculate = allFilesPresent && !anyAnalyzing && !isCalculating;
+  // Files are analysed in parallel, so the selected position can look ready
+  // while another one is still being read. Without this the button is simply
+  // dead and grey, with nothing on screen saying why.
+  const calculateLabel = isCalculating ? "Выполняется расчёт…" : anyAnalyzing ? "Обрабатываем CAD…" : "Рассчитать проект";
+  const calculateLabelShort = isCalculating ? "Считаем…" : anyAnalyzing ? "Читаем CAD…" : "Рассчитать";
 
-  const markConfigurationChanged = (partId: string) => {
-    setStatusByPartId((current) => ({
-      ...current,
-      [partId]: "Параметры изменены. Нажмите «Рассчитать проект», чтобы обновить результат.",
-    }));
+  /**
+   * One button prices the whole project, so a change to any position makes the
+   * result stale for all of them. Clearing only the calculation left every
+   * other position still showing the sentence that calculation gave it — a
+   * price per position beside a project total that had gone back to «—».
+   */
+  const dropStaleCalculation = (options: { changed?: string; removed?: string; message?: string } = {}) => {
+    const stale = calculation;
+    const staleMessage = options.message ?? "Результат устарел: проект изменился. Нажмите «Рассчитать проект».";
+    setStatusByPartId((current) => {
+      const next = { ...current };
+      for (const part of stale?.parts ?? []) {
+        if (part.partId === options.changed || part.partId === options.removed) continue;
+        next[part.partId] = staleMessage;
+      }
+      if (options.changed) {
+        next[options.changed] = "Параметры изменены. Нажмите «Рассчитать проект», чтобы обновить результат.";
+      }
+      if (options.removed) delete next[options.removed];
+      return next;
+    });
     setProjectCalculationMessage(null);
     setCalculation(null);
+  };
+
+  const markConfigurationChanged = (partId: string) => {
+    dropStaleCalculation({ changed: partId });
   };
 
   const ingestFiles = async (files: File[]) => {
@@ -129,10 +159,13 @@ export function ClientManufacturingWorkspace() {
     let nextProject = project;
     const room = MAX_PROJECT_PARTS - nextProject.parts.length;
     const accepting = files.slice(0, Math.max(0, room));
-    setProjectCalculationMessage(accepting.length < files.length
+    const overflowMessage = accepting.length < files.length
       ? `В одном проекте можно рассчитать не более ${MAX_PROJECT_PARTS} позиций. Лишние файлы не добавлены — рассчитайте их отдельным проектом.`
-      : null);
-    if (!accepting.length) return;
+      : null;
+    if (!accepting.length) {
+      setProjectCalculationMessage(overflowMessage);
+      return;
+    }
     const jobs: Array<{ file: File; partId: string; format: "dxf" | "dwg" | "step" | "stp" }> = [];
 
     accepting.forEach((file, index) => {
@@ -147,7 +180,10 @@ export function ClientManufacturingWorkspace() {
     });
 
     setProject(nextProject);
-    setCalculation(null);
+    // A new position makes the project total stale, so the sentences the
+    // priced positions are still showing go with it.
+    dropStaleCalculation();
+    setProjectCalculationMessage(overflowMessage);
     setFilesByPartId((current) => {
       const next = { ...current };
       for (const job of jobs) next[job.partId] = job.file;
@@ -285,15 +321,16 @@ export function ClientManufacturingWorkspace() {
     setProject((current) => removePartFromProject(current, id));
     setPreviewsByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setFilesByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
-    setStatusByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
-    setProjectCalculationMessage(null);
-    setCalculation(null);
+    dropStaleCalculation({ removed: id });
   };
 
   const calculateProject = async () => {
     if (!canCalculate) return;
     setIsCalculating(true);
-    setCalculation(null);
+    // Pressing the button twice used to leave every position showing the price
+    // from the previous run while the total read «—» and, if the second run
+    // failed, beside an error saying there was no result.
+    dropStaleCalculation({ message: RECALCULATING_MESSAGE });
     setProjectCalculationMessage("Проверяем CAD и рассчитываем проект…");
 
     try {
@@ -326,6 +363,16 @@ export function ClientManufacturingWorkspace() {
       );
     } catch (error) {
       setCalculation(null);
+      // The attempt is over, so the positions must stop saying it is running.
+      // The reason itself goes in the project message below rather than being
+      // repeated on every position.
+      setStatusByPartId((current) => {
+        const next = { ...current };
+        for (const partId of Object.keys(next)) {
+          if (next[partId] === RECALCULATING_MESSAGE) next[partId] = "Расчёт не выполнен.";
+        }
+        return next;
+      });
       setProjectCalculationMessage(error instanceof Error ? error.message : "Не удалось выполнить расчёт. Попробуйте ещё раз.");
     } finally {
       setIsCalculating(false);
@@ -369,14 +416,14 @@ export function ClientManufacturingWorkspace() {
             <div className="max-h-[610px] overflow-y-auto">
               {project.parts.map((part, index) => {
                 const active = part.id === activePart?.id;
-                return <button key={part.id} onClick={() => setProject((current) => setActivePart(current, part.id))} className={`block w-full border-b p-3 text-left ${active ? "border-steel-orange/35 bg-steel-orange/[.05]" : "border-white/10 hover:bg-white/[.03]"}`}>
+                return <button key={part.id} type="button" aria-current={active ? "true" : undefined} onClick={() => setProject((current) => setActivePart(current, part.id))} className={`block w-full border-b p-3 text-left ${active ? "border-steel-orange/35 bg-steel-orange/[.05]" : "border-white/10 hover:bg-white/[.03]"}`}>
                   <p className="text-[9px] font-bold uppercase tracking-[.13em] text-steel-orange">#{String(index + 1).padStart(2, "0")}</p>
                   <p className="mt-1 truncate text-xs font-semibold">{part.fileName}</p>
                   <p className="mt-1 text-[9px] text-white/35">×{part.configuration.quantity} · {part.format.toUpperCase()}</p>
                 </button>;
               })}
             </div>
-            <button onClick={() => inputRef.current?.click()} className="m-4 w-[calc(100%-2rem)] border border-white/12 px-3 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/55 hover:border-steel-orange hover:text-white">+ Добавить CAD</button>
+            <button type="button" onClick={() => inputRef.current?.click()} className="m-4 w-[calc(100%-2rem)] border border-white/12 px-3 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/55 hover:border-steel-orange hover:text-white">+ Добавить CAD</button>
 
             <div className="border-t border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
@@ -416,7 +463,7 @@ export function ClientManufacturingWorkspace() {
               <span className="text-[10px] font-bold uppercase tracking-[.14em] text-white/40">Модель</span>
               <div className="flex items-center gap-4">
                 <span className="hidden text-[9px] font-bold uppercase tracking-[.12em] text-white/25 sm:inline">Перетащите CAD сюда</span>
-                {activePart && <button onClick={removeActivePart} className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40 hover:text-red-300">Удалить</button>}
+                {activePart && <button type="button" onClick={removeActivePart} className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40 hover:text-red-300">Удалить</button>}
               </div>
             </div>
             <div className="relative min-h-[650px] bg-[#080b0d]">
@@ -436,9 +483,9 @@ export function ClientManufacturingWorkspace() {
             <div className="border-b border-white/10 p-5"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Параметры</p><h2 className="mt-2 text-xl font-semibold">Конфигурация изделия</h2></div>
             {activePart ? <>
               <div className="space-y-5 p-5">
-                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</label><div className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07]" : "border-white/10"}`}>{option.label}</button>)}</div></div>
-                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
-                <div><label className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm outline-none" /></div>
+                <div><p id="part-material-label" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
+                <div><label htmlFor="part-thickness" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
+                <div><label htmlFor="part-quantity" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>
                 <ClientOperationControls
                   operations={activePart.configuration.operations}
                   operationInputs={activePart.configuration.operationInputs ?? {}}
@@ -449,7 +496,7 @@ export function ClientManufacturingWorkspace() {
               </div>
               <div className="border-t border-white/10 p-5">
                 <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">
-                  {isCalculating ? "Выполняется расчёт…" : "Рассчитать проект"}
+                  {calculateLabel}
                 </button>
                 {projectCalculationMessage && <p className="mt-3 text-xs leading-relaxed text-white/50">{projectCalculationMessage}</p>}
                 {activeCalculation?.price.status === "approved" && typeof activeCalculation.price.totalRub === "number" && <div className="mt-4 border border-steel-orange/40 bg-steel-orange/[.08] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Стоимость позиции</p><p className="mt-2 text-2xl font-semibold">{fmt(activeCalculation.price.totalRub)} ₽</p>{approvedProjectTotalRub != null && calculation && calculation.parts.length > 1 && <p className="mt-2 text-xs text-white/50">Итого по проекту: {fmt(approvedProjectTotalRub)} ₽</p>}</div>}
@@ -474,7 +521,7 @@ export function ClientManufacturingWorkspace() {
               disabled={!canCalculate}
               className="shrink-0 border border-steel-orange bg-steel-orange px-4 py-3 text-[11px] font-bold uppercase tracking-[.12em] text-black disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25"
             >
-              {isCalculating ? "Считаем…" : "Рассчитать"}
+              {calculateLabelShort}
             </button>
           ) : (
             <Link

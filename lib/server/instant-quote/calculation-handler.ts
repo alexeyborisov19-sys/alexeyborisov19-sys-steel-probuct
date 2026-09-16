@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
 import { CadReadError, type NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { dxfCadAdapter } from "@/lib/instant-quote/dxf-adapter";
-import { isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
+import { decodeDxfText, isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
 import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
 import {
   normalizeCadFormat,
@@ -127,9 +127,9 @@ function serverProjectId(now: Date) {
 
 function parseDxfInspection(inspection: UploadInspection) {
   // Decoded the same way the adapter decodes it, so the evidence recorded for a
-  // part describes the same drawing that was priced. TextDecoder also drops a
-  // leading byte-order mark, which Buffer.toString keeps.
-  return parseAsciiDxf(new TextDecoder("utf-8").decode(inspection.buffer));
+  // part describes the same drawing that was priced: same UTF-8-then-CP1251
+  // choice, and the same dropped byte-order mark that Buffer.toString keeps.
+  return parseAsciiDxf(decodeDxfText(inspection.buffer));
 }
 
 /**

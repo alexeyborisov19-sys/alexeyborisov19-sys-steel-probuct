@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClientCadPreview } from "@/lib/instant-quote/client-cad-preview";
 import { analyzeCad, cadFormatFromFileName, CadAdapterUnavailableError } from "@/lib/instant-quote/cad-router";
 import { CadReadError, validateNormalizedCadModel } from "@/lib/instant-quote/cad-model";
-import { isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
+import { decodeDxfText, isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
 import { clientKey } from "@/lib/security/client-ip";
 import { cadPreviewRateRules, consumeRules } from "@/lib/security/rate-limit";
 import { safeSecurityLog } from "@/lib/security/safe-log";
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     }
 
     const parsedDxf = format === "dxf"
-      ? parseAsciiDxf(new TextDecoder("utf-8").decode(bytes))
+      ? parseAsciiDxf(decodeDxfText(bytes))
       : undefined;
 
     return NextResponse.json({ ok: true, preview: createClientCadPreview(model, parsedDxf) });

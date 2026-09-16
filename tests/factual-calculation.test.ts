@@ -250,3 +250,39 @@ test("reports missing physical inputs separately from missing confidential opera
   assert.ok(result.missing.some((item) => item.code === "operation-rate" && item.label === "Упаковка"));
   assert.equal(result.missing.filter((item) => item.code === "operation-rate").length, 1);
 });
+
+test("the batch is rounded once from the exact price, not from the rounded piece", () => {
+  // A price per piece that does not land on a whole kopeck is the normal case:
+  // metal is priced per tonne and billed by a mass that never comes out round.
+  // Rounding the piece and then multiplying pushed up to half a kopeck into
+  // every unit of the batch, so a run of a thousand drifted by roubles on each
+  // line and the batch no longer matched the price it was built from.
+  const result = calculateFactualProductionCost({
+    materialId: "cold",
+    thicknessMm: 1,
+    quantity: 1000,
+    geometry: baseGeometry,
+    marketPrice: exactCold1mm,
+    materialPriceSourceId: "fixture-supplier",
+    materialPriceStale: false,
+    operations: ["laser-cutting"],
+    rateBook: fixtureRateBook,
+  });
+
+  for (const line of result.lines) {
+    const exactBatch = line.quantity * line.rateRub * result.quantity;
+    const drift = Math.abs(line.amountRubBatch - exactBatch);
+    assert.ok(
+      drift <= 0.005,
+      `${line.code}: batch ${line.amountRubBatch} is ${drift.toFixed(4)} away from the exact ${exactBatch}`,
+    );
+  }
+
+  // And every amount is a real number of kopecks, never a floating-point tail.
+  for (const line of result.lines) {
+    assert.equal(Number.isFinite(line.amountRubEach), true, line.code);
+    assert.equal(Number.isFinite(line.amountRubBatch), true, line.code);
+    assert.equal(Math.round(line.amountRubBatch * 100), line.amountRubBatch * 100, line.code);
+  }
+  assert.equal(Number.isFinite(result.confirmedDirectCostRubBatch), true);
+});

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bulgeArc, parseAsciiDxf, polylinePreviewPoints } from "../lib/instant-quote/dxf";
+import { bulgeArc, normalizeArc, parseAsciiDxf, polylinePreviewPoints } from "../lib/instant-quote/dxf";
+import { dxfCadAdapter } from "../lib/instant-quote/dxf-adapter";
+import { CadReadError } from "../lib/instant-quote/cad-model";
 
 function dxf(entities: string[]) {
   return [
@@ -393,4 +395,67 @@ test("a byte-order mark ahead of the first group code is not read as part of it"
   const parsed = parseAsciiDxf(`\uFEFF${dxf(ONE_LINE)}`);
   assert.equal(parsed.shapes.length, 1);
   assert.equal(parsed.unitsCode, 4);
+});
+
+test("an arc sweep is normalised in one step, whatever the angles say", () => {
+  // The ordinary cases the parser relies on, unchanged.
+  assert.equal(normalizeArc(0, 90), 90);
+  assert.equal(normalizeArc(90, 0), 270);
+  assert.equal(normalizeArc(0, 360), 0);
+  assert.equal(normalizeArc(0, 720), 0);
+  assert.equal(normalizeArc(360, 0), 0);
+  assert.equal(normalizeArc(350, 10), 20);
+  assert.equal(normalizeArc(-90, 90), 180);
+
+  // And the ones that used to subtract 360 for ever, because at this magnitude
+  // 360 is below the ulp and the subtraction returns the same number.
+  for (const [start, end] of [[0, 1e308], [1e308, 0], [-1e308, 1e308], [0, 1e18], [0, Number.MAX_SAFE_INTEGER]]) {
+    const sweep = normalizeArc(start, end);
+    assert.ok(Number.isFinite(sweep) || Number.isNaN(sweep), `sweep was ${sweep}`);
+    if (Number.isFinite(sweep)) assert.ok(sweep >= 0 && sweep < 360, `sweep ${sweep} outside [0, 360)`);
+  }
+});
+
+test("a drawing with unmeasurable coordinates is refused, not chewed on", () => {
+  // Before the loop was fixed this call never returned: the request that read
+  // this two-hundred-byte file was pinned for good, on a public endpoint.
+  const started = Date.now();
+  assert.throws(
+    () => parseAsciiDxf(dxf(["0", "ARC", "8", "CUT", "10", "1e308", "20", "0", "40", "1e308", "50", "0", "51", "1e308"])),
+    CadReadError,
+  );
+  assert.ok(Date.now() - started < 1000, "parsing took longer than a second");
+});
+
+test("a drawing that overflows on the way to millimetres is refused", async () => {
+  // Finite in the file's own units, infinite once converted from feet and
+  // squared into a blank — and the blank is what the metal is billed by.
+  const inFeet = [
+    "0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "2", "0", "ENDSEC",
+    "0", "SECTION", "2", "ENTITIES",
+    "0", "LINE", "8", "CUT", "10", "0", "20", "0", "11", "1e306", "21", "1e306",
+    "0", "ENDSEC", "0", "EOF",
+  ].join("\n") + "\n";
+
+  await assert.rejects(
+    () => dxfCadAdapter.analyze({ fileName: "huge.dxf", format: "dxf", bytes: new TextEncoder().encode(inFeet) }),
+    CadReadError,
+  );
+});
+
+test("an ordinary drawing still converts from feet without complaint", async () => {
+  const inFeet = [
+    "0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "2", "0", "ENDSEC",
+    "0", "SECTION", "2", "ENTITIES",
+    "0", "LWPOLYLINE", "8", "CUT", "90", "4", "70", "1",
+    "10", "0", "20", "0", "10", "1", "20", "0", "10", "1", "20", "1", "10", "0", "20", "1",
+    "0", "ENDSEC", "0", "EOF",
+  ].join("\n") + "\n";
+
+  const model = await dxfCadAdapter.analyze({ fileName: "foot.dxf", format: "dxf", bytes: new TextEncoder().encode(inFeet) });
+  // One foot square: 304.8 mm a side, and the blank is that squared.
+  assert.ok(Math.abs((model.geometry.widthMm ?? 0) - 304.8) < 0.01);
+  assert.ok(Math.abs((model.geometry.heightMm ?? 0) - 304.8) < 0.01);
+  assert.ok(Math.abs((model.geometry.blankAreaMm2 ?? 0) - 304.8 * 304.8) < 1);
+  assert.ok(Math.abs((model.geometry.cutLengthMm ?? 0) - 4 * 304.8) < 0.1);
 });
