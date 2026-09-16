@@ -26,11 +26,13 @@ function limitedPolyline(
   closed: boolean,
   pointBudget: { remaining: number },
 ): ClientCadPreviewPolyline | null {
-  if (points.length < 2 || pointBudget.remaining < 2) return null;
-  const keep = points.slice(0, pointBudget.remaining);
-  if (keep.length < 2) return null;
-  pointBudget.remaining -= keep.length;
-  return { points: keep, closed: closed && keep.length === points.length };
+  if (points.length < 2) return null;
+  // Whole or nothing. A polyline cut off at the budget draws a contour that
+  // stops in mid-air, and the customer reads that as a gap in their part
+  // rather than as a preview that ran out of room.
+  if (points.length > pointBudget.remaining) return null;
+  pointBudget.remaining -= points.length;
+  return { points, closed };
 }
 
 /**

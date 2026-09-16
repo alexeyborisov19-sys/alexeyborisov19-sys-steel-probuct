@@ -15,8 +15,13 @@ export function Cad2DViewer({ parsed, animated = false }: { parsed: ParsedDxf; a
   const common = {
     fill: "none",
     stroke: "#f58220",
-    strokeWidth: Math.max(bounds.w, bounds.h) / 720,
+    // Screen pixels, because vector-effect keeps the line weight off the
+    // viewBox transform. Deriving it from the bounding box drew a large part
+    // as a sub-pixel hairline and a small one as a heavy smear.
+    strokeWidth: 1.4,
     vectorEffect: "non-scaling-stroke" as const,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
   };
 
   return (

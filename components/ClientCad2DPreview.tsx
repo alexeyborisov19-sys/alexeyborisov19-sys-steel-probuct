@@ -15,8 +15,17 @@ export function ClientCad2DPreview({ drawing, animated = false }: { drawing: Cli
   const common = {
     fill: "none",
     stroke: "#f58220",
-    strokeWidth: Math.max(bounds.w, bounds.h) / 720,
+    // vector-effect keeps the line weight off the viewBox transform, which
+    // means this number is screen pixels — not millimetres of the drawing. It
+    // used to be derived from the bounding box, so a 340 mm part was drawn at
+    // half a pixel: a hairline the display smeared into a broken dotted line,
+    // and a part ten times larger would have been drawn ten times heavier.
+    strokeWidth: 1.4,
     vectorEffect: "non-scaling-stroke" as const,
+    // A drawing arrives as many separate segments. Round joins and caps close
+    // the pinholes where two of them meet, so the contour reads as one line.
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
   };
 
   return (
@@ -35,12 +44,16 @@ export function ClientCad2DPreview({ drawing, animated = false }: { drawing: Cli
           : points;
 
         if (animated) {
+          // Fade, not pathLength. Framer draws a pathLength animation with
+          // stroke-dasharray, and a dash pattern under non-scaling-stroke is
+          // measured on the untransformed path and painted on the transformed
+          // one — every straight run came out as evenly spaced dots.
           return (
             <motion.polyline
               key={index}
-              initial={{ pathLength: 0, opacity: 0.2 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 0.45, delay: Math.min(index * 0.01, 0.4) }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.35, delay: Math.min(index * 0.008, 0.35) }}
               points={renderedPoints}
               {...common}
             />

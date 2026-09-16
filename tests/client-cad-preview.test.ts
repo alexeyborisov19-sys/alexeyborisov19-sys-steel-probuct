@@ -182,3 +182,64 @@ test("public workspace never imports production CAD analyzers", async () => {
   assert.match(workspace, /fetch\("\/api\/online-order\/cad\/analyze"/);
   assert.match(workspace, /import type \{ ClientCadPreview \}/);
 });
+
+function dxfWithPolylines(pointCounts: number[]): ParsedDxf {
+  const shapes = pointCounts.map((count) => ({
+    kind: "polyline" as const,
+    points: Array.from({ length: count }, (_, index) => ({ x: index, y: index % 7 })),
+    bulges: Array.from({ length: count }, () => 0),
+    closed: false,
+  }));
+  return {
+    shapes,
+    width: 100, height: 50, minX: 0, minY: 0, maxX: 100, maxY: 50,
+    cutLength: 0, contours: shapes.length, closedContours: 0,
+    pierces: null, holeCount: null, area: null, areaStatus: "unavailable",
+    units: "мм", unitsCode: 4, unitsSource: "insunits",
+    unsupportedEntities: [], skippedServiceLayers: [],
+  } as ParsedDxf;
+}
+
+const geometryOnly = {
+  format: "dxf",
+  units: "mm",
+  geometry: { widthMm: 100, heightMm: 50 },
+  meshes: [],
+  root: null,
+  features: [],
+  metadata: { sourceFileName: "part.dxf", sourceBytes: 1, parser: "p", analyzedAt: "2026-09-16T00:00:00.000Z" },
+  warnings: [],
+} as unknown as NormalizedCadModel;
+
+test("a drawing too large for the preview budget loses whole contours, never half of one", () => {
+  // A polyline cut off at the budget draws a contour that stops in mid-air,
+  // and the customer reads that as a gap in their part rather than as a
+  // preview that ran out of room.
+  const preview = createClientCadPreview(geometryOnly, dxfWithPolylines([49_998, 5, 3]));
+  const polylines = preview.drawing?.polylines ?? [];
+
+  assert.equal(polylines.length, 1);
+  assert.equal(polylines[0].points.length, 49_998);
+});
+
+test("the preview draws in screen-width strokes and never as a dash pattern", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("../components/ClientCad2DPreview.tsx", import.meta.url), "utf8");
+
+  // vector-effect keeps the line weight off the viewBox transform, so the
+  // stroke width is screen pixels. Deriving it from the bounding box drew a
+  // 340 mm part at half a pixel — a hairline the display smeared into a
+  // broken dotted line.
+  assert.equal(/strokeWidth:\s*Math\.max/.test(source), false, "stroke width is back on the bounding box");
+  assert.match(source, /strokeWidth:\s*\d/);
+
+  // Framer draws a pathLength animation with stroke-dasharray, and a dash
+  // pattern under non-scaling-stroke is measured on the untransformed path and
+  // painted on the transformed one: every straight run came out as dots.
+  // The property, not the word: the comment above it explains why it is gone.
+  assert.equal(/pathLength\s*:/.test(source), false, "the draw-on animation is back on pathLength");
+
+  // Round joins close the pinholes where two segments meet, so a contour built
+  // from many separate lines reads as one.
+  assert.match(source, /strokeLinejoin:\s*"round"/);
+});
