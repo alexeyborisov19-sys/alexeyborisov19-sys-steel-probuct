@@ -30,6 +30,15 @@ export type ClientCadDrawingPreview = {
   widthMm: number;
   heightMm: number;
   polylines: ClientCadPreviewPolyline[];
+  /**
+   * Layers left out of the contour as annotation — dimensions, centre lines,
+   * the border, the title block, hatching. They are the customer's own layer
+   * names, returned to the customer, so nothing about how the part is priced
+   * travels with them. Naming them is what turns "some lines are missing" into
+   * something the customer can act on: if their contour sits on a layer that
+   * reads as annotation, nothing else in the preview would ever say so.
+   */
+  excludedLayers: string[];
 };
 
 /**

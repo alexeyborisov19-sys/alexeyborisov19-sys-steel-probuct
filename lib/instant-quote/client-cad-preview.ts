@@ -91,6 +91,7 @@ export function createClientDxfDrawingPreview(parsed: ParsedDxf): ClientCadDrawi
     widthMm: parsed.width,
     heightMm: parsed.height,
     polylines,
+    excludedLayers: [...(parsed.skippedServiceLayers ?? [])],
   };
 }
 

@@ -12,6 +12,9 @@ export function ClientCad2DPreview({ drawing, animated = false }: { drawing: Cli
     h: Math.max(drawing.heightMm + pad * 2, 1),
   };
   const flipY = (value: number) => drawing.minY + drawing.maxY - value;
+  // A page loaded before a release can post to the server that follows it, so
+  // the field may be missing from a payload this build expects to have it.
+  const excludedLayers = drawing.excludedLayers ?? [];
   const common = {
     fill: "none",
     stroke: "#f58220",
@@ -29,39 +32,51 @@ export function ClientCad2DPreview({ drawing, animated = false }: { drawing: Cli
   };
 
   return (
-    <svg
-      className="h-full w-full"
-      viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`}
-      preserveAspectRatio="xMidYMid meet"
-      aria-label="2D CAD preview"
-    >
-      {drawing.polylines.map((polyline, index) => {
-        const points = polyline.points
-          .map(([x, y]) => `${x},${flipY(y)}`)
-          .join(" ");
-        const renderedPoints = polyline.closed && polyline.points.length > 0
-          ? `${points} ${polyline.points[0][0]},${flipY(polyline.points[0][1])}`
-          : points;
+    <div className="flex h-full w-full flex-col">
+      <svg
+        className="min-h-0 w-full flex-1"
+        viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`}
+        preserveAspectRatio="xMidYMid meet"
+        aria-label="2D CAD preview"
+      >
+        {drawing.polylines.map((polyline, index) => {
+          const points = polyline.points
+            .map(([x, y]) => `${x},${flipY(y)}`)
+            .join(" ");
+          const renderedPoints = polyline.closed && polyline.points.length > 0
+            ? `${points} ${polyline.points[0][0]},${flipY(polyline.points[0][1])}`
+            : points;
 
-        if (animated) {
-          // Fade, not pathLength. Framer draws a pathLength animation with
-          // stroke-dasharray, and a dash pattern under non-scaling-stroke is
-          // measured on the untransformed path and painted on the transformed
-          // one — every straight run came out as evenly spaced dots.
-          return (
-            <motion.polyline
-              key={index}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.35, delay: Math.min(index * 0.008, 0.35) }}
-              points={renderedPoints}
-              {...common}
-            />
-          );
-        }
+          if (animated) {
+            // Fade, not pathLength. Framer draws a pathLength animation with
+            // stroke-dasharray, and a dash pattern under non-scaling-stroke is
+            // measured on the untransformed path and painted on the transformed
+            // one — every straight run came out as evenly spaced dots.
+            return (
+              <motion.polyline
+                key={index}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.35, delay: Math.min(index * 0.008, 0.35) }}
+                points={renderedPoints}
+                {...common}
+              />
+            );
+          }
 
-        return <polyline key={index} points={renderedPoints} {...common} />;
-      })}
-    </svg>
+          return <polyline key={index} points={renderedPoints} {...common} />;
+        })}
+      </svg>
+      {excludedLayers.length > 0 ? (
+        // Without this the drawing simply comes up short and the customer has
+        // no way to know why: a contour drawn on a layer whose name reads as
+        // annotation is excluded on purpose, and silently.
+        <p className="mt-3 shrink-0 text-center text-[11px] leading-relaxed text-white/45">
+          Не показаны слои оформления:{" "}
+          <span className="text-white/70">{excludedLayers.join(", ")}</span>. Если контур детали
+          начерчен на одном из них, переименуйте слой и загрузите файл заново.
+        </p>
+      ) : null}
+    </div>
   );
 }

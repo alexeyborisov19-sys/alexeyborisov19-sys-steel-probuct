@@ -243,3 +243,23 @@ test("the preview draws in screen-width strokes and never as a dash pattern", as
   // from many separate lines reads as one.
   assert.match(source, /strokeLinejoin:\s*"round"/);
 });
+
+test("layers the parser left out are named back to the customer", async () => {
+  // A contour drawn on a layer whose name reads as annotation is excluded on
+  // purpose. Nothing said so, and the drawing simply came up short — which is
+  // indistinguishable from a parser that failed to read it.
+  const parsed = dxfWithPolylines([3]);
+  const withLayers = { ...parsed, skippedServiceLayers: ["РАМКА", "DIM"] } as ParsedDxf;
+
+  const preview = createClientCadPreview(geometryOnly, withLayers);
+  assert.deepEqual(preview.drawing?.excludedLayers, ["РАМКА", "DIM"]);
+
+  const { readFile } = await import("node:fs/promises");
+  const component = await readFile(new URL("../components/ClientCad2DPreview.tsx", import.meta.url), "utf8");
+  assert.match(component, /Не показаны слои оформления/);
+});
+
+test("a drawing with nothing excluded says nothing", () => {
+  const preview = createClientCadPreview(geometryOnly, dxfWithPolylines([3]));
+  assert.deepEqual(preview.drawing?.excludedLayers, []);
+});
