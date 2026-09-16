@@ -371,3 +371,92 @@ test("a blank that is not a rectangle reports no sides rather than inventing the
   assert.equal(result.contourCount, 1);
   assert.equal(result.blankWidthMm, undefined);
 });
+
+test("one bend is counted once, not once per face", () => {
+  // The kernel shows a bend as two cylindrical faces — the inside radius and
+  // the outside radius. Counting faces would charge for two bends on a part
+  // that has one.
+  const thicknessMm = 1.5;
+  const insideRadiusMm = 2;
+  const widthMm = 250;
+  const sweepRad = Math.PI / 2;
+  const blankLengthMm = 80 + 60 + sweepRad * (insideRadiusMm + thicknessMm / 2);
+
+  const result = measureBentSheetDevelopment({
+    thicknessMm,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("flange-a-out", widthMm, 80),
+        plane("flange-a-in", widthMm, 80),
+        plane("flange-b-out", widthMm, 60),
+        plane("flange-b-in", widthMm, 60),
+        plane("edge-band", 2 * (widthMm + blankLengthMm), thicknessMm, [1]),
+      ],
+      cylindricalFaces: [
+        cylinder("bend-inside", insideRadiusMm, sweepRad, widthMm),
+        cylinder("bend-outside", insideRadiusMm + thicknessMm, sweepRad, widthMm),
+      ],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  assert.equal(result.bendCount, 1);
+});
+
+test("two bends are counted as two", () => {
+  const thicknessMm = 2;
+  const widthMm = 200;
+  const sweepRad = Math.PI / 2;
+  const bendMm = sweepRad * (3 + thicknessMm / 2);
+  const blankLengthMm = 50 + 100 + 50 + bendMm * 2;
+
+  const result = measureBentSheetDevelopment({
+    thicknessMm,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("a-out", widthMm, 50), plane("a-in", widthMm, 50),
+        plane("b-out", widthMm, 100), plane("b-in", widthMm, 100),
+        plane("c-out", widthMm, 50), plane("c-in", widthMm, 50),
+        plane("edge-band", 2 * (widthMm + blankLengthMm), thicknessMm, [1]),
+      ],
+      cylindricalFaces: [
+        cylinder("bend-1-inside", 3, sweepRad, widthMm),
+        cylinder("bend-1-outside", 3 + thicknessMm, sweepRad, widthMm),
+        cylinder("bend-2-inside", 3, sweepRad, widthMm),
+        cylinder("bend-2-outside", 3 + thicknessMm, sweepRad, widthMm),
+      ],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  assert.equal(result.bendCount, 2);
+});
+
+test("a bend face without its opposite reports no count rather than a guess", () => {
+  // A sharp bend with no inner radius shows one face where this reading expects
+  // two. Guessing the count would charge for bending that may not match the
+  // part; the blank still measures, and the count simply is not reported.
+  const thicknessMm = 1.5;
+  const widthMm = 250;
+  const sweepRad = Math.PI / 2;
+
+  const result = measureBentSheetDevelopment({
+    thicknessMm,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("flange-a-out", widthMm, 80),
+        plane("flange-a-in", widthMm, 80),
+        plane("flange-b-out", widthMm, 60),
+        plane("flange-b-in", widthMm, 60),
+        plane("edge-band", 2 * (widthMm + 145), thicknessMm, [1]),
+      ],
+      cylindricalFaces: [cylinder("bend-outside-only", 3.5, sweepRad, widthMm)],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  assert.equal(result.bendCount, undefined);
+});

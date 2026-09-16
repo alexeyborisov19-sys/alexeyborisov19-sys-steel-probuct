@@ -105,7 +105,14 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
       const flatPattern = result.sheetMetal?.flatPatternCandidate?.confidence === "high"
         ? result.sheetMetal.flatPatternCandidate
         : null;
-      const bendCount = verifiedBendCount(result, flatPattern);
+      // The unfold evidence stays authoritative where it exists. Where it does
+      // not, the development's own count fills the gap: it is measured from the
+      // same surfaces that proved the blank, and both halves of every bend had
+      // to be found for it to be reported at all. Without this a bent part
+      // whose blank was fully measured still lost its price, because the count
+      // the price needs came from somewhere else entirely.
+      const bendCount = verifiedBendCount(result, flatPattern)
+        ?? result.sheetMetal?.development?.bendCount;
       // A confirmed flat pattern stays authoritative where it exists; the
       // measured development only fills the case it cannot cover, which is a
       // part with bends in it.

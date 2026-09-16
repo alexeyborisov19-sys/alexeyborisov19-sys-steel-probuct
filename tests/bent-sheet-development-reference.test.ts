@@ -119,13 +119,6 @@ test("the reference plate measures to its approved blank through the real kernel
  * taken from the same real kernel: a part carries production geometry into the
  * price when a flat pattern is confirmed or a development is measured, and the
  * area, blank, cut length and contour count are all present.
- *
- * A flat part is covered here. A bent one is not: this check was written for
- * the reference angle too and the kernel reported its area as undefined, even
- * though the test above proves its development measures to the approved blank.
- * A measured development reaches the price only once the blank's sides are
- * proved as well, and that is pricing logic, not a test fixture — so the gap is
- * reported rather than asserted away.
  */
 test("a flat reference plate produces everything the price is built from", async (t) => {
   const model = await analyze("reference-plate.step");
@@ -141,4 +134,23 @@ test("a flat reference plate produces everything the price is built from", async
   assert.ok((model.geometry.blankAreaMm2 ?? 0) > 0, `blank ${model.geometry.blankAreaMm2}`);
   assert.ok((model.geometry.cutLengthMm ?? 0) > 0, `cut ${model.geometry.cutLengthMm}`);
   assert.ok((model.geometry.contourCount ?? 0) > 0, `contours ${model.geometry.contourCount}`);
+});
+
+test("the reference angle produces everything the price is built from", async (t) => {
+  const model = await analyze("reference-angle.step");
+  if (!model) {
+    t.skip("occt-wasm is unavailable in this environment; the check did not run");
+    return;
+  }
+
+  const proven = model.sheetMetal?.flatPatternCandidate?.confidence === "high"
+    || model.sheetMetal?.development?.status === "measured";
+  assert.ok(proven, "the development measures to the approved blank, so it must reach the price");
+  assert.ok((model.geometry.areaMm2 ?? 0) > 0, `area ${model.geometry.areaMm2}`);
+  assert.ok((model.geometry.blankAreaMm2 ?? 0) > 0, `blank ${model.geometry.blankAreaMm2}`);
+  assert.ok((model.geometry.cutLengthMm ?? 0) > 0, `cut ${model.geometry.cutLengthMm}`);
+  assert.ok((model.geometry.contourCount ?? 0) > 0, `contours ${model.geometry.contourCount}`);
+  // A bent part priced without its bend count loses the bending, and one
+  // counted per face would charge twice for the single bend this part has.
+  assert.equal(model.geometry.bendCount, 1, `bends ${model.geometry.bendCount}`);
 });
