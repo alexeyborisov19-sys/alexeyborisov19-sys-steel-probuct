@@ -1,5 +1,5 @@
 import { CadReadError, type CadAnalysisAdapter, type NormalizedCadModel } from "@/lib/instant-quote/cad-model";
-import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
+import { decodeDxfText, parseAsciiDxf } from "@/lib/instant-quote/dxf";
 
 function mmScaleForInsUnits(code: number | null) {
   if (code === 1) return 25.4;   // inches
@@ -16,7 +16,7 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
 
   async analyze(request): Promise<NormalizedCadModel> {
     if (request.format !== "dxf") throw new Error("DXF adapter received a non-DXF file.");
-    const text = new TextDecoder("utf-8").decode(request.bytes);
+    const text = decodeDxfText(request.bytes);
     const parsed = parseAsciiDxf(text);
     const scale = mmScaleForInsUnits(parsed.unitsCode);
 

@@ -854,6 +854,26 @@ export function isBinaryDxf(bytes: Uint8Array) {
   return true;
 }
 
+/**
+ * A DXF carries no encoding declaration this parser can rely on, and the export
+ * fabricators ask for — "сохраните как DXF R12/R2000" — is written by a Russian
+ * AutoCAD or Компас in CP1251, one byte per character.
+ *
+ * Decoded as UTF-8 those bytes become replacement characters, so a layer named
+ * РАЗМЕРЫ stops being recognised as annotation and its dimension lines are
+ * counted as part of the part: a 200×100 plate was read as 200×140 with an
+ * 800 mm cut instead of 600. Strict UTF-8 first keeps every valid UTF-8 file
+ * byte-for-byte as it was; only a file that is not UTF-8 at all takes the
+ * CP1251 path, and such a file is unreadable today anyway.
+ */
+export function decodeDxfText(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder("windows-1251").decode(bytes);
+  }
+}
+
 export function parseAsciiDxf(text: string): ParsedDxf {
   const pairs = parsePairs(text);
   const units = detectUnits(pairs);

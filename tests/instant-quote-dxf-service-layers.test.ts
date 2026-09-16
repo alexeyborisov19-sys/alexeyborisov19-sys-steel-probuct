@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isServiceDxfLayer, parseAsciiDxf } from "../lib/instant-quote/dxf";
+import { decodeDxfText, isServiceDxfLayer, parseAsciiDxf } from "../lib/instant-quote/dxf";
 
 /**
  * Reference plate: 400x250 outline (one corner filleted R10), two d12 holes and
@@ -194,4 +194,64 @@ test("geometry on production layers survives the filter", () => {
   assert.equal(parsed.shapes.length, 8);
   assert.equal(parsed.shapes.filter((shape) => shape.kind === "circle").length, 2);
   assert.equal(parsed.shapes.filter((shape) => shape.kind === "polyline").length, 1);
+});
+
+/**
+ * CP1251 is what «сохраните как DXF R12/R2000» produces from a Russian CAD, and
+ * that export is exactly the one fabricators ask customers for. Its layer names
+ * are one byte per character, so decoding them as UTF-8 turned РАЗМЕРЫ into
+ * replacement characters and the dimension line below the part was priced as
+ * part of the part.
+ */
+function encodeCp1251(text: string) {
+  const out = new Uint8Array(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    // U+0410..U+044F (А..я) occupy 0xC0..0xFF in CP1251; the rest of this
+    // drawing is ASCII, which the two encodings share.
+    out[index] = code >= 0x0410 && code <= 0x044f ? code - 0x0410 + 0xc0 : code;
+  }
+  return out;
+}
+
+/** 200x100 part on КОНТУР, with a dimension line 40 mm below it on РАЗМЕРЫ. */
+const CYRILLIC_DXF = [
+  "0", "SECTION", "2", "HEADER",
+  "9", "$INSUNITS", "70", "4",
+  "0", "ENDSEC",
+  "0", "SECTION", "2", "ENTITIES",
+  "0", "LWPOLYLINE", "8", "КОНТУР", "90", "4", "70", "1",
+  "10", "0", "20", "0",
+  "10", "200", "20", "0",
+  "10", "200", "20", "100",
+  "10", "0", "20", "100",
+  "0", "LINE", "8", "РАЗМЕРЫ",
+  "10", "0", "20", "-40", "11", "200", "21", "-40",
+  "0", "ENDSEC", "0", "EOF",
+].join("\n") + "\n";
+
+test("a CP1251 drawing keeps its Cyrillic layer names", () => {
+  const parsed = parseAsciiDxf(decodeDxfText(encodeCp1251(CYRILLIC_DXF)));
+
+  // Decoded as UTF-8 the layer name was seven replacement characters, the
+  // dimension line counted as geometry, and the plate was priced as 200x140
+  // with an 800 mm cut instead of 200x100 and 600 mm.
+  assert.deepEqual(parsed.skippedServiceLayers, ["РАЗМЕРЫ"]);
+  assert.equal(parsed.width, 200);
+  assert.equal(parsed.height, 100);
+  assert.equal(parsed.minY, 0);
+  assert.ok(Math.abs(parsed.cutLength - 600) < 1, `cut length was ${parsed.cutLength}`);
+});
+
+test("a UTF-8 drawing is read exactly as before", () => {
+  const utf8 = new TextEncoder().encode(CYRILLIC_DXF);
+  assert.equal(decodeDxfText(utf8), CYRILLIC_DXF);
+
+  // Including the byte-order mark a Windows save puts in front of it.
+  const withBom = new Uint8Array([0xef, 0xbb, 0xbf, ...utf8]);
+  assert.equal(decodeDxfText(withBom), CYRILLIC_DXF);
+
+  const parsed = parseAsciiDxf(decodeDxfText(withBom));
+  assert.deepEqual(parsed.skippedServiceLayers, ["РАЗМЕРЫ"]);
+  assert.equal(parsed.height, 100);
 });
