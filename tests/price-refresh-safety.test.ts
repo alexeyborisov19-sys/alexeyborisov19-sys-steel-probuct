@@ -82,5 +82,19 @@ test("the timer resolves Next's build markers, which are not packages", async ()
   assert.equal(manifest.devDependencies?.["server-only"], undefined);
 
   assert.match(resolver, /BUILD_MARKERS[\s\S]*"server-only"[\s\S]*"client-only"/);
-  assert.match(resolver, /build-marker-module\.mjs/);
+
+  // Both sides have to be covered. tsx transpiles the project's TypeScript to
+  // CommonJS, so an import inside those files becomes a require, which
+  // module.register() hooks never see — registering only the ESM hook loaded
+  // the entry module and then died on the first require inside it.
+  const hook = await readFile("scripts/repo-alias-hook.mjs", "utf8");
+  assert.match(hook, /register\(/);
+  assert.match(hook, /Module\._resolveFilename/);
+  assert.match(resolver, /build-marker-module\.cjs/);
+
+  // CommonJS on purpose: tsx transpiles the project's TypeScript to CommonJS,
+  // so the marker is reached through require(), and an .mjs file would need a
+  // Node new enough to require ESM.
+  const marker = await readFile("scripts/build-marker-module.cjs", "utf8");
+  assert.match(marker, /module\.exports/);
 });
