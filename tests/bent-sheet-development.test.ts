@@ -4,7 +4,7 @@ import { measureBentSheetDevelopment } from "@/lib/instant-quote/bent-sheet-deve
 import type { SheetMetalTopologyObservations } from "@/lib/instant-quote/sheet-metal";
 
 /** A rectangular planar face: its boundary is what classifies it, not its box. */
-function plane(id: string, lengthMm: number, widthMm: number) {
+function plane(id: string, lengthMm: number, widthMm: number, edgeHashes: number[] = []) {
   return {
     id,
     areaMm2: lengthMm * widthMm,
@@ -12,17 +12,19 @@ function plane(id: string, lengthMm: number, widthMm: number) {
     normal: [0, 0, 1] as [number, number, number],
     uvSizeMm: [lengthMm, widthMm] as [number, number],
     boundaryLengthMm: 2 * (lengthMm + widthMm),
+    edgeHashes,
   };
 }
 
 /** A planar face of any shape, given directly as area and boundary length. */
-function ribbon(id: string, areaMm2: number, boundaryLengthMm: number) {
+function ribbon(id: string, areaMm2: number, boundaryLengthMm: number, edgeHashes: number[] = []) {
   return {
     id,
     areaMm2,
     centerMm: [0, 0, 0] as [number, number, number],
     normal: [0, 0, 1] as [number, number, number],
     boundaryLengthMm,
+    edgeHashes,
   };
 }
 
@@ -43,10 +45,10 @@ test("a flat plate develops to its own face, and its edge band gives the cut len
       planarFaces: [
         plane("top", 300, 200),
         plane("bottom", 300, 200),
-        plane("edge-a", 300, 2),
-        plane("edge-b", 300, 2),
-        plane("edge-c", 200, 2),
-        plane("edge-d", 200, 2),
+        plane("edge-a", 300, 2, [1, 2]),
+        plane("edge-b", 300, 2, [3, 4]),
+        plane("edge-c", 200, 2, [2, 3]),
+        plane("edge-d", 200, 2, [4, 1]),
       ],
     }),
     totalSurfaceAreaMm2: 60_000 * 2 + 1_000 * 2,
@@ -81,7 +83,7 @@ test("a bend develops along the middle of the material, with no factor chosen an
         plane("flange-a-in", widthMm, flangeAMm),
         plane("flange-b-out", widthMm, flangeBMm),
         plane("flange-b-in", widthMm, flangeBMm),
-        plane("edge-band", perimeterMm, thicknessMm),
+        plane("edge-band", perimeterMm, thicknessMm, [1]),
       ],
       cylindricalFaces: [
         cylinder("bend-inside", insideRadiusMm, sweepRad, widthMm),
@@ -112,7 +114,7 @@ test("an unclassified face stops the measurement instead of losing its area", ()
   const result = measureBentSheetDevelopment({
     thicknessMm: 2,
     observations: observations({
-      planarFaces: [plane("top", 300, 200), plane("bottom", 300, 200), plane("edge", 1_000, 2)],
+      planarFaces: [plane("top", 300, 200), plane("bottom", 300, 200), plane("edge", 1_000, 2, [1])],
       otherFaceCount: 1,
     }),
   });
@@ -126,7 +128,7 @@ test("a second body stops the measurement: two parts are not one blank", () => {
     thicknessMm: 2,
     bodyCount: 2,
     observations: observations({
-      planarFaces: [plane("top", 300, 200), plane("bottom", 300, 200), plane("edge", 1_000, 2)],
+      planarFaces: [plane("top", 300, 200), plane("bottom", 300, 200), plane("edge", 1_000, 2, [1])],
     }),
   });
 
@@ -139,7 +141,7 @@ test("surfaces that do not add up to the solid stop the measurement", () => {
     thicknessMm: 2,
     bodyCount: 1,
     observations: observations({
-      planarFaces: [plane("top", 300, 200), plane("bottom", 300, 200), plane("edge", 1_000, 2)],
+      planarFaces: [plane("top", 300, 200), plane("bottom", 300, 200), plane("edge", 1_000, 2, [1])],
     }),
     // A tenth of the surface is unexplained: the part was not fully understood.
     totalSurfaceAreaMm2: (60_000 * 2 + 2_000) * 1.1,
@@ -185,12 +187,12 @@ test("the approved reference angle measures to its approved blank and cut length
         plane("vertical-outside", widthMm, verticalFaceMm),
         plane("vertical-inside", widthMm, verticalFaceMm),
         // Flange tips: the sheet edge seen across the thickness.
-        plane("tip-horizontal", widthMm, thicknessMm),
-        plane("tip-vertical", widthMm, thicknessMm),
+        plane("tip-horizontal", widthMm, thicknessMm, [1, 2]),
+        plane("tip-vertical", widthMm, thicknessMm, [3, 4]),
         // End caps: L-shaped ribbons one thickness wide. Their bounding box is
         // 100 x 60, which is exactly why width has to come from the boundary.
-        ribbon("cap-near", 157.3197 * thicknessMm, 2 * 157.3197),
-        ribbon("cap-far", 157.3197 * thicknessMm, 2 * 157.3197),
+        ribbon("cap-near", 157.3197 * thicknessMm, 2 * 157.3197, [2, 3]),
+        ribbon("cap-far", 157.3197 * thicknessMm, 2 * 157.3197, [4, 1]),
       ],
       cylindricalFaces: [
         cylinder("bend-inside", insideRadiusMm, sweepRad, widthMm),
@@ -217,4 +219,57 @@ test("the approved reference angle measures to its approved blank and cut length
     Math.abs((result.cutLengthMm ?? 0) - 814.6) / 814.6 < 0.005,
     `approved cut 814,6 mm, measured ${(result.cutLengthMm ?? 0).toFixed(2)} mm`,
   );
+});
+
+test("a hole is a second contour, so it is a second pierce", () => {
+  // 300 x 200 x 2 plate with one round hole. The band around the outer profile
+  // and the band around the hole never touch, so they are two contours — and
+  // the laser pierces twice, which is what the price has to know.
+  const holeDiameterMm = 20;
+  const holePerimeterMm = Math.PI * holeDiameterMm;
+  const holeAreaMm2 = Math.PI * (holeDiameterMm / 2) ** 2;
+  const outerPerimeterMm = 2 * (300 + 200);
+
+  const result = measureBentSheetDevelopment({
+    thicknessMm: 2,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("top", 300, 200),
+        plane("bottom", 300, 200),
+        plane("outer-band", outerPerimeterMm, 2, [1]),
+        plane("hole-band", holePerimeterMm, 2, [2]),
+      ],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  assert.equal(result.contourCount, 2);
+  // Both bands are cut, so both count towards the cut length.
+  assert.ok(Math.abs((result.cutLengthMm ?? 0) - (outerPerimeterMm + holePerimeterMm)) < 1e-6);
+  // The faces here are declared without the hole subtracted, so the point of
+  // this case is the contour count, not the area.
+  assert.ok((result.developedAreaMm2 ?? 0) > holeAreaMm2);
+});
+
+test("touching edge-band faces stay one contour rather than counting twice", () => {
+  // The four sides of a rectangular blank meet at its corners. Sharing those
+  // edges is what keeps them one contour and one pierce.
+  const result = measureBentSheetDevelopment({
+    thicknessMm: 2,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("top", 300, 200),
+        plane("bottom", 300, 200),
+        plane("side-north", 300, 2, [1, 2]),
+        plane("side-east", 200, 2, [2, 3]),
+        plane("side-south", 300, 2, [3, 4]),
+        plane("side-west", 200, 2, [4, 1]),
+      ],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  assert.equal(result.contourCount, 1);
 });

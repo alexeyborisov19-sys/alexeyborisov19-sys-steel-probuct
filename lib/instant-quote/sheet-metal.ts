@@ -1,3 +1,4 @@
+import type { BentSheetDevelopment } from "@/lib/instant-quote/bent-sheet-development";
 export type Vector2 = [number, number];
 export type Vector3 = [number, number, number];
 
@@ -87,6 +88,12 @@ export type SheetMetalAnalysis = {
   thicknessCandidate?: SheetMetalThicknessCandidate;
   bendCandidates: SheetMetalBendCandidate[];
   flatPatternCandidate?: SheetMetalFlatPatternCandidate;
+  /**
+   * Blank measured from the sheet's own surfaces. Unlike the flat-pattern
+   * candidate it does not require a prism, so a bent part reports one too. Set
+   * by the kernel, which is where the face observations live.
+   */
+  development?: BentSheetDevelopment;
   warnings: string[];
 };
 

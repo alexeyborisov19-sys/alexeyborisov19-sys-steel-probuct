@@ -9,6 +9,7 @@ import {
   type SheetMetalBoundaryWirePreview,
   type Vector3,
 } from "@/lib/instant-quote/sheet-metal";
+import { measureBentSheetDevelopment } from "@/lib/instant-quote/bent-sheet-development";
 import type { StepKernelPort, StepKernelResult } from "@/lib/instant-quote/step-adapter";
 import {
   buildStepUnfoldGeometryEvidence,
@@ -360,10 +361,21 @@ function collectSheetMetalAnalysis(
     }
   }
 
-  const sheetMetal = analyzeSheetMetalTopology(
-    { planarFaces, cylindricalFaces, otherFaceCount },
-    { volumeMm3 },
-  );
+  const observations = { planarFaces, cylindricalFaces, otherFaceCount };
+  const sheetMetal = analyzeSheetMetalTopology(observations, { volumeMm3 });
+
+  // Measured here because this is where the face observations live; they stay
+  // internal to the kernel and only the derived blank travels on. The solid's
+  // total area is deliberately not passed: it would be the sum of these same
+  // faces, so reconciling against it proves nothing. What guards completeness
+  // is otherFaceCount, which the measurement refuses to see above zero.
+  const thicknessMm = sheetMetal.thicknessCandidate?.confidence === "medium"
+    ? sheetMetal.thicknessCandidate.thicknessMm
+    : null;
+  if (thicknessMm != null) {
+    sheetMetal.development = measureBentSheetDevelopment({ observations, thicknessMm });
+  }
+
   const unfoldGeometry = sheetMetal.thicknessCandidate?.confidence === "medium"
     ? buildStepUnfoldGeometryEvidence({
         sheetMetal,

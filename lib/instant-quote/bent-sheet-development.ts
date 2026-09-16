@@ -13,6 +13,8 @@ export type BentSheetDevelopment = {
   cutLengthMm?: number;
   wideAreaMm2?: number;
   narrowAreaMm2?: number;
+  /** Closed contours to cut: the outer profile plus one per hole or cut-out. */
+  contourCount?: number;
   /** How much of the solid's surface the classification failed to account for. */
   reconciliationError?: number;
   reasons: string[];
@@ -31,6 +33,51 @@ function edgeBandTolerance(thicknessMm: number) {
 
 /** Total surface of the solid must be accounted for within this fraction. */
 const MAX_RECONCILIATION_ERROR = 0.02;
+
+/**
+ * Counts the closed contours of the blank from the edge band alone.
+ *
+ * The band around the outer profile and the band around each hole never touch,
+ * so every connected group of edge-band faces is exactly one contour — and one
+ * laser pierce. Faces are joined when they share an edge of the solid, which is
+ * what the kernel's edge hashes identify.
+ */
+function countContours(faces: Array<{ id: string; edgeHashes?: number[] }>) {
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    let root = id;
+    while (parent.get(root) !== root) {
+      const next = parent.get(root);
+      if (next == null) return root;
+      parent.set(root, parent.get(next) ?? next);
+      root = parent.get(root) ?? next;
+    }
+    return root;
+  };
+  const union = (left: string, right: string) => {
+    const a = find(left);
+    const b = find(right);
+    if (a !== b) parent.set(a, b);
+  };
+
+  const ownersByEdge = new Map<number, string[]>();
+  for (const face of faces) {
+    parent.set(face.id, face.id);
+    for (const hash of face.edgeHashes ?? []) {
+      const owners = ownersByEdge.get(hash);
+      if (owners) owners.push(face.id);
+      else ownersByEdge.set(hash, [face.id]);
+    }
+  }
+
+  for (const owners of ownersByEdge.values()) {
+    for (let index = 1; index < owners.length; index += 1) union(owners[0], owners[index]);
+  }
+
+  const roots = new Set<string>();
+  for (const face of faces) roots.add(find(face.id));
+  return roots.size;
+}
 
 function unavailable(reasons: string[]): BentSheetDevelopment {
   return { source: "brep-surface-development", status: "unavailable", reasons };
@@ -102,21 +149,26 @@ export function measureBentSheetDevelopment(input: {
   }
 
   const tolerance = edgeBandTolerance(thicknessMm);
+  const narrowFaces: Array<{ id: string; edgeHashes?: number[] }> = [];
   let wideAreaMm2 = 0;
   let narrowAreaMm2 = 0;
 
   for (const face of observations.planarFaces) {
     const extent = planarExtentMm(face);
     if (extent == null) return unavailable(["У плоской грани нет длины контура, её нельзя отнести ни к полотну, ни к торцу."]);
-    if (Math.abs(extent - thicknessMm) <= tolerance) narrowAreaMm2 += face.areaMm2;
-    else wideAreaMm2 += face.areaMm2;
+    if (Math.abs(extent - thicknessMm) <= tolerance) {
+      narrowAreaMm2 += face.areaMm2;
+      narrowFaces.push(face);
+    } else wideAreaMm2 += face.areaMm2;
   }
 
   for (const face of observations.cylindricalFaces) {
     const extent = cylindricalExtentMm(face);
     if (extent == null) return unavailable(["У цилиндрической грани нет оси или развёртки, её нельзя отнести ни к гибу, ни к торцу."]);
-    if (Math.abs(extent - thicknessMm) <= tolerance) narrowAreaMm2 += face.areaMm2;
-    else wideAreaMm2 += face.areaMm2;
+    if (Math.abs(extent - thicknessMm) <= tolerance) {
+      narrowAreaMm2 += face.areaMm2;
+      narrowFaces.push(face);
+    } else wideAreaMm2 += face.areaMm2;
   }
 
   if (!(wideAreaMm2 > 0)) return unavailable(["Не найдено ни одной грани полотна листа."]);
@@ -124,6 +176,8 @@ export function measureBentSheetDevelopment(input: {
 
   const developedAreaMm2 = wideAreaMm2 / 2;
   const cutLengthMm = narrowAreaMm2 / thicknessMm;
+  const contourCount = countContours(narrowFaces);
+  if (!(contourCount > 0)) return unavailable(["Не удалось определить замкнутые контуры реза."]);
 
   let reconciliationError: number | undefined;
   const total = input.totalSurfaceAreaMm2;
@@ -146,6 +200,7 @@ export function measureBentSheetDevelopment(input: {
     cutLengthMm,
     wideAreaMm2,
     narrowAreaMm2,
+    contourCount,
     ...(reconciliationError == null ? {} : { reconciliationError }),
     reasons: [],
   };
