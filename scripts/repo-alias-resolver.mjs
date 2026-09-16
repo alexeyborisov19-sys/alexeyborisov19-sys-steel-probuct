@@ -21,7 +21,17 @@ function resolveFile(candidate) {
   return null;
 }
 
+/**
+ * Next.js build markers. They are not packages — Next substitutes them while
+ * bundling, and they carry no runtime behaviour — so outside Next they resolve
+ * to an empty module rather than failing to resolve at all.
+ */
+const BUILD_MARKERS = new Set(["server-only", "client-only"]);
+
 export async function resolve(specifier, context, nextResolve) {
+  if (BUILD_MARKERS.has(specifier)) {
+    return { url: new URL("./build-marker-module.mjs", import.meta.url).href, shortCircuit: true };
+  }
   if (specifier.startsWith("@/")) {
     const target = resolveFile(path.join(ROOT, specifier.slice(2)));
     if (target) return { url: pathToFileURL(target).href, shortCircuit: true };
