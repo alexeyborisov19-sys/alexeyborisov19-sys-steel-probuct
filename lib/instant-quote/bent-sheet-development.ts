@@ -15,6 +15,14 @@ export type BentSheetDevelopment = {
   narrowAreaMm2?: number;
   /** Closed contours to cut: the outer profile plus one per hole or cut-out. */
   contourCount?: number;
+  /**
+   * Sides of the blank, reported only when the developed shape is provably a
+   * rectangle. Area alone is not enough to buy or cut material by, and a shape
+   * that is not a rectangle cannot have its sides inferred from area and
+   * perimeter — such a part is left for an engineer rather than guessed at.
+   */
+  blankWidthMm?: number;
+  blankHeightMm?: number;
   /** How much of the solid's surface the classification failed to account for. */
   reconciliationError?: number;
   reasons: string[];
@@ -33,6 +41,41 @@ function edgeBandTolerance(thicknessMm: number) {
 
 /** Total surface of the solid must be accounted for within this fraction. */
 const MAX_RECONCILIATION_ERROR = 0.02;
+
+/** How closely width x height must reproduce the area to call a blank rectangular. */
+const MAX_RECTANGLE_ERROR = 0.01;
+
+/**
+ * Sides of the blank, when it is provably a rectangle.
+ *
+ * One side is already known: a bend runs across the sheet, so the bend face's
+ * own extent along its axis is the blank's width. For a rectangle the perimeter
+ * then fixes the other side, and multiplying the two back has to reproduce the
+ * measured area. A notch, a hole or a partial-width bend all break that
+ * identity, and then nothing is reported.
+ */
+function rectangularBlank(input: {
+  bendAxisExtentMm: number;
+  cutLengthMm: number;
+  developedAreaMm2: number;
+  contourCount: number;
+}) {
+  // A hole adds its own perimeter to the cut, so the outer profile can no
+  // longer be recovered from the total.
+  if (input.contourCount !== 1) return null;
+  if (!(input.bendAxisExtentMm > 0)) return null;
+
+  const otherSideMm = input.cutLengthMm / 2 - input.bendAxisExtentMm;
+  if (!(otherSideMm > 0)) return null;
+
+  const error = Math.abs(input.bendAxisExtentMm * otherSideMm - input.developedAreaMm2) / input.developedAreaMm2;
+  if (!Number.isFinite(error) || error > MAX_RECTANGLE_ERROR) return null;
+
+  return {
+    blankWidthMm: Math.max(input.bendAxisExtentMm, otherSideMm),
+    blankHeightMm: Math.min(input.bendAxisExtentMm, otherSideMm),
+  };
+}
 
 /**
  * Counts the closed contours of the blank from the edge band alone.
@@ -162,13 +205,19 @@ export function measureBentSheetDevelopment(input: {
     } else wideAreaMm2 += face.areaMm2;
   }
 
+  let bendAxisExtentMm = 0;
   for (const face of observations.cylindricalFaces) {
     const extent = cylindricalExtentMm(face);
     if (extent == null) return unavailable(["У цилиндрической грани нет оси или развёртки, её нельзя отнести ни к гибу, ни к торцу."]);
     if (Math.abs(extent - thicknessMm) <= tolerance) {
       narrowAreaMm2 += face.areaMm2;
       narrowFaces.push(face);
-    } else wideAreaMm2 += face.areaMm2;
+    } else {
+      wideAreaMm2 += face.areaMm2;
+      // A wide cylindrical face is a bend, and its extent along the axis is how
+      // far the bend runs across the sheet.
+      bendAxisExtentMm = Math.max(bendAxisExtentMm, extent);
+    }
   }
 
   if (!(wideAreaMm2 > 0)) return unavailable(["Не найдено ни одной грани полотна листа."]);
@@ -193,11 +242,14 @@ export function measureBentSheetDevelopment(input: {
     }
   }
 
+  const blank = rectangularBlank({ bendAxisExtentMm, cutLengthMm, developedAreaMm2, contourCount });
+
   return {
     source: "brep-surface-development",
     status: "measured",
     developedAreaMm2,
     cutLengthMm,
+    ...(blank ?? {}),
     wideAreaMm2,
     narrowAreaMm2,
     contourCount,

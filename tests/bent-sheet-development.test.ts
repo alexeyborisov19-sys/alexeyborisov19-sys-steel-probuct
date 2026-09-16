@@ -273,3 +273,101 @@ test("touching edge-band faces stay one contour rather than counting twice", () 
   assert.equal(result.status, "measured");
   assert.equal(result.contourCount, 1);
 });
+
+test("the reference angle's blank sides come out of the same measurement", () => {
+  const thicknessMm = 1.5;
+  const insideRadiusMm = 2;
+  const outsideRadiusMm = insideRadiusMm + thicknessMm;
+  const widthMm = 250;
+  const sweepRad = Math.PI / 2;
+  const horizontalFaceMm = 100 - outsideRadiusMm;
+  const verticalFaceMm = 60 - outsideRadiusMm;
+
+  const result = measureBentSheetDevelopment({
+    thicknessMm,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("horizontal-outside", widthMm, horizontalFaceMm),
+        plane("horizontal-inside", widthMm, horizontalFaceMm),
+        plane("vertical-outside", widthMm, verticalFaceMm),
+        plane("vertical-inside", widthMm, verticalFaceMm),
+        plane("tip-horizontal", widthMm, thicknessMm, [1, 2]),
+        plane("tip-vertical", widthMm, thicknessMm, [3, 4]),
+        ribbon("cap-near", 157.3197 * thicknessMm, 2 * 157.3197, [2, 3]),
+        ribbon("cap-far", 157.3197 * thicknessMm, 2 * 157.3197, [4, 1]),
+      ],
+      cylindricalFaces: [
+        cylinder("bend-inside", insideRadiusMm, sweepRad, widthMm),
+        cylinder("bend-outside", outsideRadiusMm, sweepRad, widthMm),
+      ],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  // The bend runs the full 250 mm, and the perimeter fixes the other side.
+  assert.ok(Math.abs((result.blankWidthMm ?? 0) - 250) < 0.5, `width ${result.blankWidthMm}`);
+  assert.ok(Math.abs((result.blankHeightMm ?? 0) - 157.3) < 0.5, `height ${result.blankHeightMm}`);
+});
+
+test("a blank with a hole reports no sides, because the perimeter no longer fixes them", () => {
+  const thicknessMm = 1.5;
+  const widthMm = 250;
+  const sweepRad = Math.PI / 2;
+
+  const result = measureBentSheetDevelopment({
+    thicknessMm,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("flange-a-out", widthMm, 80),
+        plane("flange-a-in", widthMm, 80),
+        plane("flange-b-out", widthMm, 60),
+        plane("flange-b-in", widthMm, 60),
+        plane("outer-band", 800, thicknessMm, [1]),
+        plane("hole-band", 60, thicknessMm, [2]),
+      ],
+      cylindricalFaces: [
+        cylinder("bend-inside", 2, sweepRad, widthMm),
+        cylinder("bend-outside", 3.5, sweepRad, widthMm),
+      ],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  assert.equal(result.contourCount, 2);
+  // Area and cut length are still measured; only the sides are withheld.
+  assert.ok((result.developedAreaMm2 ?? 0) > 0);
+  assert.equal(result.blankWidthMm, undefined);
+  assert.equal(result.blankHeightMm, undefined);
+});
+
+test("a blank that is not a rectangle reports no sides rather than inventing them", () => {
+  const thicknessMm = 1.5;
+  const widthMm = 250;
+  const sweepRad = Math.PI / 2;
+
+  // A notched outline: the cut is far longer than a rectangle of this area
+  // would need, so width x height cannot reproduce the area.
+  const result = measureBentSheetDevelopment({
+    thicknessMm,
+    bodyCount: 1,
+    observations: observations({
+      planarFaces: [
+        plane("flange-a-out", widthMm, 80),
+        plane("flange-a-in", widthMm, 80),
+        plane("flange-b-out", widthMm, 60),
+        plane("flange-b-in", widthMm, 60),
+        plane("outer-band", 2_400, thicknessMm, [1]),
+      ],
+      cylindricalFaces: [
+        cylinder("bend-inside", 2, sweepRad, widthMm),
+        cylinder("bend-outside", 3.5, sweepRad, widthMm),
+      ],
+    }),
+  });
+
+  assert.equal(result.status, "measured");
+  assert.equal(result.contourCount, 1);
+  assert.equal(result.blankWidthMm, undefined);
+});

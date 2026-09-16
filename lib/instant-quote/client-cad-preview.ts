@@ -107,6 +107,9 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
   // reason. Saying it here means the customer learns it on upload instead of
   // after configuring the position and pressing calculate.
   const bent = (model.geometry.bendCount ?? 0) > 0;
+  // Production geometry reached the summary, so this part has a price. For a
+  // bent part that is the difference between a number and a wait.
+  const priced = (model.geometry.cutLengthMm ?? 0) > 0 && (model.geometry.blankAreaMm2 ?? 0) > 0;
 
   return {
     kind: "client-cad-preview",
@@ -123,10 +126,12 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
     root: model.root,
     drawing: parsedDxf ? createClientDxfDrawingPreview(parsedDxf) : null,
     status: needsReview ? "needs-review" : "recognized",
-    message: bent
-      ? "Деталь с гибами. Гибы и толщина определены по модели, но размер развёртки подтверждает технолог, поэтому стоимость по этой позиции рассчитывается не автоматически."
-      : needsReview
-        ? "Модель загружена. Некоторые параметры потребуется уточнить перед окончательным расчётом."
-        : "Модель распознана и готова к настройке.",
+    message: bent && priced
+      ? "Деталь с гибами. Толщина, гибы и размер развёртки определены по модели — стоимость рассчитывается автоматически."
+      : bent
+        ? "Деталь с гибами. Гибы и толщина определены по модели, но развёртку этой детали автоматически подтвердить не удалось, поэтому её проверит технолог."
+        : needsReview
+          ? "Модель загружена. Некоторые параметры потребуется уточнить перед окончательным расчётом."
+          : "Модель распознана и готова к настройке.",
   };
 }
