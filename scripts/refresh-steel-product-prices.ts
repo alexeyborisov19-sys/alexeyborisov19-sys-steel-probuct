@@ -12,25 +12,25 @@
  *
  * Run with the react-server condition so the server-only guards resolve:
  *   node --conditions react-server --import tsx scripts/refresh-steel-product-prices.ts --commit
+ *
+ * The work sits in main() rather than at the top level on purpose: the project
+ * declares no module type, so tsx transpiles this to CommonJS, where top-level
+ * await does not exist.
  */
-// Marks the file as a module so top-level await is allowed: every import here
-// is dynamic, which on its own leaves TypeScript treating this as a script.
-export {};
-
-const args = new Set(process.argv.slice(2));
-const allowed = new Set(["--commit", "--dry-run"]);
-for (const arg of args) {
-  if (!allowed.has(String(arg))) {
-    console.error(`Unknown argument: ${String(arg)}`);
-    process.exitCode = 2;
+async function main() {
+  const args = new Set(process.argv.slice(2));
+  const allowed = new Set(["--commit", "--dry-run"]);
+  for (const arg of args) {
+    if (!allowed.has(String(arg))) {
+      console.error(`Unknown argument: ${String(arg)}`);
+      return 2;
+    }
   }
-}
-if (args.has("--commit") && args.has("--dry-run")) {
-  console.error("Choose either --commit or --dry-run, not both.");
-  process.exitCode = 2;
-}
+  if (args.has("--commit") && args.has("--dry-run")) {
+    console.error("Choose either --commit or --dry-run, not both.");
+    return 2;
+  }
 
-if (process.exitCode == null) {
   const commit = args.has("--commit");
 
   // Loaded dynamically so an environment that cannot resolve the server
@@ -41,27 +41,33 @@ if (process.exitCode == null) {
       console.error(`Supplier price refresh is not runnable here: ${error instanceof Error ? error.name : "unknown error"}`);
       return null;
     });
+  if (loaded == null) return 2;
 
-  if (loaded == null) {
-    process.exitCode = 2;
-  } else {
-    try {
-      const result = await loaded.refreshAtlantikPriceSnapshot(new Date(), { persist: commit });
-      console.log(JSON.stringify({
-        ok: true,
-        mode: commit ? "commit" : "dry-run",
-        sourceId: result.sourceId,
-        sourceDate: result.sourceDate,
-        fetchedAt: result.fetchedAt,
-        rowCount: result.rowCount,
-        materialCounts: result.materialCounts,
-        contentChanged: result.contentChanged,
-        persisted: result.persisted,
-      }));
-    } catch {
-      // Never dump the upstream page, parser internals or private storage paths.
-      console.error("Supplier price refresh failed.");
-      process.exitCode = 1;
-    }
+  try {
+    const result = await loaded.refreshAtlantikPriceSnapshot(new Date(), { persist: commit });
+    console.log(JSON.stringify({
+      ok: true,
+      mode: commit ? "commit" : "dry-run",
+      sourceId: result.sourceId,
+      sourceDate: result.sourceDate,
+      fetchedAt: result.fetchedAt,
+      rowCount: result.rowCount,
+      materialCounts: result.materialCounts,
+      contentChanged: result.contentChanged,
+      persisted: result.persisted,
+    }));
+    return 0;
+  } catch {
+    // Never dump the upstream page, parser internals or private storage paths.
+    console.error("Supplier price refresh failed.");
+    return 1;
   }
 }
+
+main().then(
+  (code) => { process.exitCode = code; },
+  () => {
+    console.error("Supplier price refresh failed.");
+    process.exitCode = 1;
+  },
+);

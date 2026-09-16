@@ -35,6 +35,13 @@ test("the timer's refresh holds no secret, because it makes no request", () => {
   // Persistence still requires the explicit flag, as it did over HTTP.
   assert.match(script, /args\.has\("--commit"\)/);
   assert.match(script, /persist: commit/);
+
+  // The project declares no module type, so tsx transpiles this to CommonJS,
+  // where top-level await does not exist. The timer failed its dry run on
+  // exactly that, so the work stays inside main().
+  assert.doesNotMatch(script, /^await /m);
+  assert.doesNotMatch(script, /^const \w+ = await /m);
+  assert.match(script, /^main\(\)\.then\(/m);
 });
 
 test("the timer unit runs the refresh the one way that resolves server-only", () => {
