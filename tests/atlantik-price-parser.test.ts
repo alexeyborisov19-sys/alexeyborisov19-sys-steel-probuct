@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  describeAtlantikSourceShape,
   extractAtlantikPriceDocumentDate,
   parseAtlantikSheetPriceText,
 } from "../lib/instant-quote/atlantik-price-parser";
@@ -70,4 +71,42 @@ test("deduplicates repeated extracted PDF tables and stamps source metadata", ()
   assert.equal(repeated[0].sourceDate, options.sourceDate);
   assert.equal(repeated[0].fetchedAt, options.fetchedAt);
   assert.equal(repeated[0].exactThickness, true);
+});
+
+test("describes the document's layout so a failed refresh can be diagnosed", () => {
+  const shape = describeAtlantikSourceShape(syntheticText);
+
+  assert.equal(shape.sectionHeadings.length, 4);
+  assert.ok(shape.sectionHeadings.some((heading) => /горячекатаный/i.test(heading)), shape.sectionHeadings.join(" | "));
+  assert.ok(shape.sizeLikeLineCount >= 7, String(shape.sizeLikeLineCount));
+  assert.equal(shape.lineCount > 0, true);
+});
+
+test("the description carries the layout and none of the prices", () => {
+  const shape = describeAtlantikSourceShape(syntheticText);
+  const samples = shape.sampleShapes.join("\n");
+
+  // Every digit is replaced, so the separators, column order and spacing are
+  // readable and the supplier's prices are not in the log.
+  assert.equal(/\d/.test(samples.replace(/9/g, "")), false, samples);
+  assert.equal(samples.includes("111 000"), false, samples);
+  assert.ok(samples.includes("9,9х9999х9999") || samples.includes("9х9999х9999"), samples);
+});
+
+test("a heading the section patterns miss is reported, because that is the usual break", () => {
+  // The refresh finds no rows when a heading stops matching: the section never
+  // opens and every row beneath it is skipped. Naming the heading turns that
+  // from a count of zero into a one-line fix.
+  // replaceAll, not replace: the fixture repeats the heading the way an
+  // extracted PDF repeats a table across pages.
+  const renamed = syntheticText.replaceAll("Лист горячекатаный ГОСТ", "Листы горячего проката ГОСТ");
+  const shape = describeAtlantikSourceShape(renamed);
+
+  assert.ok(
+    shape.unrecognisedSheetHeadings.some((heading) => /горячего проката/i.test(heading)),
+    shape.unrecognisedSheetHeadings.join(" | "),
+  );
+  assert.equal(shape.sectionHeadings.some((heading) => /горячекатан/i.test(heading)), false);
+  // The rows are still there — they are simply no longer attributed.
+  assert.ok(shape.sizeLikeLineCount >= 7, String(shape.sizeLikeLineCount));
 });

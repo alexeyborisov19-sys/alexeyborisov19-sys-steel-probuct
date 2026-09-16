@@ -6,6 +6,7 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
+  describeAtlantikSourceShape,
   extractAtlantikPriceDocumentDate,
   parseAtlantikSheetPriceText,
 } from "@/lib/instant-quote/atlantik-price-parser";
@@ -149,17 +150,8 @@ export type AtlantikRefreshOptions = {
   persist?: boolean;
 };
 
-/**
- * Downloads the official Atlantik PDF, extracts its text locally, validates the
- * parsed sheet rows and, only when explicitly requested, atomically replaces
- * Atlantik's private snapshot. On any error the previous snapshot remains
- * untouched. Supplier prices are never returned to the caller.
- */
-export async function refreshAtlantikPriceSnapshot(
-  now = new Date(),
-  options: AtlantikRefreshOptions = {},
-): Promise<AtlantikRefreshResult> {
-  const persist = options.persist === true;
+/** Downloads the official Atlantik PDF and extracts its text locally. */
+async function fetchPriceDocumentText() {
   const response = await fetch(SOURCE_URL, {
     redirect: "follow",
     cache: "no-store",
@@ -175,8 +167,33 @@ export async function refreshAtlantikPriceSnapshot(
   if (bytes.length === 0 || bytes.length > MAX_PDF_BYTES) throw new Error("Atlantik price PDF size is invalid");
   if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") throw new Error("Atlantik price response is not a PDF");
 
+  return { response, text: await extractPdfText(bytes) };
+}
+
+/**
+ * Read-only description of the supplier document's layout, with no prices in
+ * it. The refresh stops finding rows when the supplier changes the layout, and
+ * the number of rows it did not find cannot say which part changed. This is
+ * what a dry run prints so the next round is a fix rather than another guess.
+ */
+export async function inspectAtlantikSource() {
+  const { text } = await fetchPriceDocumentText();
+  return describeAtlantikSourceShape(text);
+}
+
+/**
+ * Downloads the official Atlantik PDF, extracts its text locally, validates the
+ * parsed sheet rows and, only when explicitly requested, atomically replaces
+ * Atlantik's private snapshot. On any error the previous snapshot remains
+ * untouched. Supplier prices are never returned to the caller.
+ */
+export async function refreshAtlantikPriceSnapshot(
+  now = new Date(),
+  options: AtlantikRefreshOptions = {},
+): Promise<AtlantikRefreshResult> {
+  const persist = options.persist === true;
+  const { response, text } = await fetchPriceDocumentText();
   const fetchedAt = now.toISOString();
-  const text = await extractPdfText(bytes);
   const effectiveSourceDate = extractAtlantikPriceDocumentDate(text) ?? httpSourceDate(response, now);
   const rows = parseAtlantikSheetPriceText(text, {
     sourceDate: effectiveSourceDate,
