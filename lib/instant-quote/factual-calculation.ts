@@ -172,15 +172,19 @@ function addLine(
   lines: FactualCalculationLine[],
   input: Omit<FactualCalculationLine, "amountRubEach" | "amountRubBatch"> & { quantityBatch: number },
 ) {
-  const amountRubEach = roundMoney(input.quantity * input.rateRub);
+  // The batch is rounded from the exact product, not from the rounded piece.
+  // Rounding twice pushed up to half a kopeck per piece into every unit of the
+  // batch, so a run of a thousand drifted by several roubles on each line and
+  // the batch stopped matching the price it was built from.
+  const exactRubEach = input.quantity * input.rateRub;
   lines.push({
     code: input.code,
     label: input.label,
     quantity: input.quantity,
     unit: input.unit,
     rateRub: input.rateRub,
-    amountRubEach,
-    amountRubBatch: roundMoney(amountRubEach * input.quantityBatch),
+    amountRubEach: roundMoney(exactRubEach),
+    amountRubBatch: roundMoney(exactRubEach * input.quantityBatch),
     source: input.source,
   });
 }
