@@ -74,7 +74,8 @@ test("a dry run also explains why the refresh itself failed", () => {
   // too, so an unreachable supplier, a changed price list and an unreadable
   // basis all printed one sentence and the dry run could diagnose none of them.
   assert.match(script, /Supplier price refresh failed: \$\{describeFailure\(error\)\}/);
-  assert.match(script, /commit\s*\n?\s*\?\s*"Supplier price refresh failed\."/);
+  // A commit run says that it failed and stops there.
+  assert.match(script, /if \(commit\) \{\s*\n\s*console\.error\("Supplier price refresh failed\."\);/);
 
   // Node reports a failed fetch as a bare "fetch failed" and keeps the reason
   // on the cause, so the cause is the part worth having.
@@ -82,6 +83,23 @@ test("a dry run also explains why the refresh itself failed", () => {
 
   // Disclosure still stops at filesystem paths.
   assert.match(script, /replace\(.*<path>.*\)/);
+});
+
+test("a failed dry run describes the supplier document it could not parse", () => {
+  const script = readFileSync("scripts/refresh-steel-product-prices.ts", "utf8");
+  const service = readFileSync("lib/server/instant-quote/refresh-atlantik-prices.ts", "utf8");
+
+  // "hot=0, cold=0, zinc=0" says the layout changed and nothing about which
+  // part of it. The shape of the document says which, and carries no prices:
+  // every digit in the samples is replaced by 9.
+  assert.match(script, /inspectAtlantikSource\(\)/);
+  assert.match(service, /export async function inspectAtlantikSource/);
+  assert.match(service, /describeAtlantikSourceShape/);
+
+  // Only the dry run. A commit run's output is not read by anyone who can act
+  // on it, so it says nothing beyond that it failed.
+  const commitBranch = script.slice(script.indexOf("if (commit) {"), script.indexOf("inspectAtlantikSource"));
+  assert.equal(commitBranch.includes("Source shape"), false);
 });
 
 test("the timer resolves Next's build markers, which are not packages", async () => {

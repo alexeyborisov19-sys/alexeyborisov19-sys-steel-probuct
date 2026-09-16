@@ -86,9 +86,20 @@ async function main() {
     // this every cause — an unreachable supplier, a price list whose layout
     // changed, an unreadable basis — printed the same one sentence, and the
     // dry run could not do the one thing it exists for.
-    console.error(commit
-      ? "Supplier price refresh failed."
-      : `Supplier price refresh failed: ${describeFailure(error)}`);
+    if (commit) {
+      console.error("Supplier price refresh failed.");
+      return 1;
+    }
+
+    console.error(`Supplier price refresh failed: ${describeFailure(error)}`);
+    // The refresh stops finding rows when the supplier changes the layout of
+    // its price list, and the count of rows it did not find cannot say which
+    // part changed. The shape of the document can, and carries no prices —
+    // every digit in the samples is replaced by 9.
+    await loaded.inspectAtlantikSource().then(
+      (shape) => console.error(`Source shape: ${JSON.stringify(shape, null, 2)}`),
+      (inspectError: unknown) => console.error(`Source shape unavailable: ${describeFailure(inspectError)}`),
+    );
     return 1;
   }
 }

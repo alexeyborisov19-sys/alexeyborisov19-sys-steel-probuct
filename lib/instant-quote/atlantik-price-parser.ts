@@ -98,6 +98,51 @@ function parseSheetRow(line: string) {
   };
 }
 
+export type AtlantikSourceShape = {
+  lineCount: number;
+  /** Headings the parser recognised as starting a sheet section. */
+  sectionHeadings: string[];
+  /** Lines that name a sheet but match no section pattern — the likely break. */
+  unrecognisedSheetHeadings: string[];
+  sizeLikeLineCount: number;
+  /** Size-like lines with every digit replaced by 9: layout without prices. */
+  sampleShapes: string[];
+};
+
+const SIZE_LIKE = /\d+(?:[,.]\d+)?\s*[xх×]\s*\d+\s*[xх×]\s*\d+/i;
+
+/**
+ * Describes the shape of an extracted price document without disclosing any of
+ * it. When the supplier changes the layout the refresh stops finding rows, and
+ * the count of rows it did not find says nothing about why — whether no section
+ * heading was recognised, or headings were found and the rows beneath them are
+ * written differently. Digits are replaced by 9 in the samples, so the layout
+ * is visible and the prices are not.
+ */
+export function describeAtlantikSourceShape(text: string): AtlantikSourceShape {
+  const lines = normalizedLines(text);
+  const sectionHeadings: string[] = [];
+  const unrecognisedSheetHeadings: string[] = [];
+  const sampleShapes: string[] = [];
+  let sizeLikeLineCount = 0;
+
+  for (const line of lines) {
+    if (SECTION_BY_TITLE.some((candidate) => candidate.pattern.test(line))) {
+      if (sectionHeadings.length < 12) sectionHeadings.push(line.slice(0, 120));
+      continue;
+    }
+    if (/лист/i.test(line) && !SIZE_LIKE.test(line) && unrecognisedSheetHeadings.length < 12) {
+      unrecognisedSheetHeadings.push(line.slice(0, 120));
+    }
+    if (SIZE_LIKE.test(line)) {
+      sizeLikeLineCount += 1;
+      if (sampleShapes.length < 8) sampleShapes.push(line.slice(0, 120).replace(/\d/g, "9"));
+    }
+  }
+
+  return { lineCount: lines.length, sectionHeadings, unrecognisedSheetHeadings, sizeLikeLineCount, sampleShapes };
+}
+
 /**
  * Parses only sheet-metal rows needed by Steel Product Online from text already
  * extracted from the official Atlantik price PDF. No network access happens in
