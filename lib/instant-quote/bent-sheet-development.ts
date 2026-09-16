@@ -23,6 +23,13 @@ export type BentSheetDevelopment = {
    */
   blankWidthMm?: number;
   blankHeightMm?: number;
+  /**
+   * Bends counted from the sheet's own surfaces, reported only when every bend
+   * face was matched to its opposite. Without it a bent part cannot be priced:
+   * charging for the metal and the cutting while silently dropping the bending
+   * is worse than not quoting at all.
+   */
+  bendCount?: number;
   /** How much of the solid's surface the classification failed to account for. */
   reconciliationError?: number;
   reasons: string[];
@@ -75,6 +82,46 @@ function rectangularBlank(input: {
     blankWidthMm: Math.max(input.bendAxisExtentMm, otherSideMm),
     blankHeightMm: Math.min(input.bendAxisExtentMm, otherSideMm),
   };
+}
+
+/**
+ * Counts the bends from the bend faces themselves.
+ *
+ * One bend shows the kernel two cylindrical faces: the inside radius r and the
+ * outside radius r + t. They span the same angle and run the same width across
+ * the sheet, so a bend is counted once and only when both halves are found.
+ * Three independent agreements have to hold, which is what keeps a rounded
+ * corner or an unrelated cylinder from being paired into a bend.
+ *
+ * A face left without its partner means the sheet is not built the way this
+ * reading assumes — a sharp bend with no inner radius, for one — and then no
+ * count is reported at all and the part goes to an engineer.
+ */
+function pairedBendCount(
+  bends: Array<{ id: string; radiusMm: number; sweepRad: number; extentMm: number }>,
+  thicknessMm: number,
+) {
+  if (!bends.length) return 0;
+
+  const radiusTolerance = Math.max(0.05, thicknessMm * 0.2);
+  const used = new Set<string>();
+  let count = 0;
+
+  for (const inner of [...bends].sort((a, b) => a.radiusMm - b.radiusMm)) {
+    if (used.has(inner.id)) continue;
+    const outer = bends.find((candidate) =>
+      candidate.id !== inner.id
+      && !used.has(candidate.id)
+      && Math.abs(candidate.radiusMm - inner.radiusMm - thicknessMm) <= radiusTolerance
+      && Math.abs(candidate.sweepRad - inner.sweepRad) <= 0.05
+      && Math.abs(candidate.extentMm - inner.extentMm) <= Math.max(0.5, inner.extentMm * 0.02));
+    if (!outer) return null;
+    used.add(inner.id);
+    used.add(outer.id);
+    count += 1;
+  }
+
+  return count;
 }
 
 /**
@@ -206,6 +253,7 @@ export function measureBentSheetDevelopment(input: {
   }
 
   let bendAxisExtentMm = 0;
+  const bendFaces: Array<{ id: string; radiusMm: number; sweepRad: number; extentMm: number }> = [];
   for (const face of observations.cylindricalFaces) {
     const extent = cylindricalExtentMm(face);
     if (extent == null) return unavailable(["У цилиндрической грани нет оси или развёртки, её нельзя отнести ни к гибу, ни к торцу."]);
@@ -217,6 +265,12 @@ export function measureBentSheetDevelopment(input: {
       // A wide cylindrical face is a bend, and its extent along the axis is how
       // far the bend runs across the sheet.
       bendAxisExtentMm = Math.max(bendAxisExtentMm, extent);
+      bendFaces.push({
+        id: face.id,
+        radiusMm: face.radiusMm,
+        sweepRad: face.angleSpanRad as number,
+        extentMm: extent,
+      });
     }
   }
 
@@ -243,6 +297,7 @@ export function measureBentSheetDevelopment(input: {
   }
 
   const blank = rectangularBlank({ bendAxisExtentMm, cutLengthMm, developedAreaMm2, contourCount });
+  const bendCount = pairedBendCount(bendFaces, thicknessMm);
 
   return {
     source: "brep-surface-development",
@@ -250,6 +305,7 @@ export function measureBentSheetDevelopment(input: {
     developedAreaMm2,
     cutLengthMm,
     ...(blank ?? {}),
+    ...(bendCount == null ? {} : { bendCount }),
     wideAreaMm2,
     narrowAreaMm2,
     contourCount,

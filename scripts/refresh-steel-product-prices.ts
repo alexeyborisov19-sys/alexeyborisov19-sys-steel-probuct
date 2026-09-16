@@ -55,12 +55,10 @@ async function main() {
   // modules reports that plainly instead of failing at parse time.
   const loaded = await import("@/lib/server/instant-quote/refresh-atlantik-prices")
     .catch((error: unknown) => {
-      // A dry run is the diagnostic mode: it writes nothing and is run by an
-      // operator who needs to see why. A commit run stays terse, because its
-      // output is not being read by anyone who can act on it.
-      console.error(commit
-        ? `Supplier price refresh is not runnable here: ${error instanceof Error ? error.name : "unknown error"}`
-        : `Supplier price refresh is not runnable here: ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`);
+      // One rule for every failure here: name it. The operator reads this
+      // either from the installer's dry run or from the server journal, and
+      // nothing in it reaches a customer.
+      console.error(`Supplier price refresh is not runnable here: ${describeFailure(error)}`);
       return null;
     });
   if (loaded == null) return 2;
@@ -80,18 +78,17 @@ async function main() {
     }));
     return 0;
   } catch (error) {
-    // Never dump the upstream page, parser internals or private storage paths.
-    // A dry run is the diagnostic mode, though: it writes nothing and is read
-    // by the operator installing the timer, so it names what failed. Before
-    // this every cause — an unreachable supplier, a price list whose layout
-    // changed, an unreadable basis — printed the same one sentence, and the
-    // dry run could not do the one thing it exists for.
-    if (commit) {
-      console.error("Supplier price refresh failed.");
-      return 1;
-    }
-
+    // Never dump the upstream page, parser internals or private storage paths —
+    // but do name the failure. Every cause used to print the same one sentence:
+    // an unreachable supplier, a price list whose layout changed, an unreadable
+    // basis. The commit run was kept silent on the reasoning that nobody reads
+    // its output when it fails, and that was wrong — it goes to the server
+    // journal, and the timer installer prints the last lines of it. Silence hid
+    // the one thing the operator needs and protected nobody: this never reaches
+    // a customer, and paths are stripped from the message either way.
     console.error(`Supplier price refresh failed: ${describeFailure(error)}`);
+    if (commit) return 1;
+
     // The refresh stops finding rows when the supplier changes the layout of
     // its price list, and the count of rows it did not find cannot say which
     // part changed. The shape of the document can, and carries no prices —
@@ -106,8 +103,10 @@ async function main() {
 
 main().then(
   (code) => { process.exitCode = code; },
-  () => {
-    console.error("Supplier price refresh failed.");
+  (error: unknown) => {
+    // Anything thrown outside main's own try, and just as much in need of a
+    // reason: this is what the server journal shows when the timer unit fails.
+    console.error(`Supplier price refresh failed: ${describeFailure(error)}`);
     process.exitCode = 1;
   },
 );
