@@ -110,3 +110,74 @@ test("a heading the section patterns miss is reported, because that is the usual
   // The rows are still there — they are simply no longer attributed.
   assert.ok(shape.sizeLikeLineCount >= 7, String(shape.sizeLikeLineCount));
 });
+
+// The layout the supplier actually prints: three products side by side, which
+// pdftotext flattens onto one text line. The section heading also lands at the
+// end of such a line rather than on one of its own.
+const columnarText = `
+04 сентября 2099 года
+Арматура А500/А500С Трубы профильные ТУ/ГОСТ (теор.вес) Лист оцинкованный
+до 3 т от 3 т за п/м до 3 т от 3 т за п/м до 3 т от 3 т за лист
+Ø 6 А500С 71 900 71 400 10,30 40х20х1,5 67 900 67 400 97,01 0,5х1250х2500 111 000 109 000 1 234,56
+Ø 8 А500С 71 900 71 400 15,60 40х40х2 67 900 67 400 162,95 0,7х1250х2500 112 000 110 000 1 345,67
+Ø 10 А500С 70 900 70 400 24,20 50х25х2 68 900 68 400 180,11 1х1250х2500 113 000 111 000 1 456,78
+Ø 12 А500С 70 900 70 400 34,80 60х30х2 68 900 68 400 210,45 Лист холоднокатаный ГОСТ за лист
+Ø 14 А500С 70 500 70 000 47,40 60х40х2 68 500 68 000 240,33 0,8х1250х2500 101 000 99 000 1 111,11
+Ø 16 А500С 70 500 70 000 61,90 80х40х3 68 500 68 000 310,77 1,5х1250х2500 102 000 100 000 1 222,22
+Ø 18 А500С 70 100 69 600 78,40 80х80х4 68 100 67 600 420,19 2х1250х2500 103 000 101 000 1 333,33
+Ø 20 А500С 70 100 69 600 96,80 100х50х3 68 100 67 600 350,02 Лист горячекатаный ГОСТ за лист
+Ø 22 А500С 69 900 69 400 117,20 100х100х4 67 900 67 400 520,64 1,5х1250х2500 91 000 89 000 2 222,22
+Ø 25 А500С 69 900 69 400 151,30 120х120х5 67 900 67 400 680,91 2х1250х2500 92 000 90 000 3 333,33
+Ø 28 А500С 69 500 69 000 189,80 140х140х5 67 500 67 000 790,15 3х1500х6000 93 000 91 000 4 444,44
+Ø 32 А500С 69 500 69 000 247,90 150х150х6 67 500 67 000 990,37 4х1500х6000 94 000 92 000 5 555,55
+Ø 36 А500С 69 100 68 600 313,90 160х160х6 67 100 66 600 1 090,22 5х1500х6000 95 000 93 000 6 666,66
+Ø 40 А500С 69 100 68 600 387,60 180х180х6 67 100 66 600 1 250,88 6х1500х6000 96 000 94 000 7 777,77
+`;
+
+test("a sheet row is read where the supplier actually prints it — in the middle of the line", () => {
+  // This is the whole failure: the row matcher was anchored to the start of the
+  // line, and in a three-column price list the sheet column never starts there.
+  // The refresh found no rows at all and reported hot=0, cold=0, zinc=0.
+  const rows = parseAtlantikSheetPriceText(columnarText, options);
+
+  const counts = { hot: 0, cold: 0, zinc: 0 } as Record<string, number>;
+  for (const row of rows) counts[row.materialId] = (counts[row.materialId] ?? 0) + 1;
+
+  assert.ok(counts.zinc >= 3, `zinc=${counts.zinc}`);
+  assert.ok(counts.cold >= 3, `cold=${counts.cold}`);
+  assert.ok(counts.hot >= 5, `hot=${counts.hot}`);
+
+  const zinc = rows.find((row) => row.materialId === "zinc" && row.thicknessMm === 0.5);
+  assert.equal(zinc?.rubPerTon, 111_000);
+  assert.equal(zinc?.rubPerTonFrom3t, 109_000);
+  assert.equal(zinc?.size, "0,5x1250x2500");
+
+  const hot = rows.find((row) => row.materialId === "hot" && row.thicknessMm === 6);
+  assert.equal(hot?.rubPerTon, 96_000);
+  assert.equal(hot?.size, "6x1500x6000");
+});
+
+test("the profile column on the same line is never priced as sheet", () => {
+  // 40х40х2 is a tube: three numbers and two prices, exactly the shape of a
+  // sheet row. Reading it as one would quote a customer profile prices for
+  // sheet metal. The sides decide: a sheet is cut from stock a metre and up.
+  const rows = parseAtlantikSheetPriceText(columnarText, options);
+
+  for (const row of rows) {
+    const [, width, length] = (row.size ?? "").split("x").map(Number);
+    assert.ok(width >= 500, `${row.size} was read as sheet`);
+    assert.ok(length >= 500, `${row.size} was read as sheet`);
+  }
+  assert.equal(rows.some((row) => row.thicknessMm >= 40), false, "a profile side was read as a thickness");
+  // The tube prices never reach any row.
+  assert.equal(rows.some((row) => row.rubPerTon === 67_900 || row.rubPerTon === 68_500), false);
+});
+
+test("a heading printed at the end of a columnar line still opens its section", () => {
+  const rows = parseAtlantikSheetPriceText(columnarText, options);
+  // The three headings arrive mid-line; each one must still hand the rows that
+  // follow it to the right material.
+  assert.equal(rows.find((row) => row.thicknessMm === 0.8)?.materialId, "cold");
+  assert.equal(rows.find((row) => row.thicknessMm === 3 && row.size === "3x1500x6000")?.materialId, "hot");
+  assert.equal(rows.find((row) => row.thicknessMm === 0.7)?.materialId, "zinc");
+});

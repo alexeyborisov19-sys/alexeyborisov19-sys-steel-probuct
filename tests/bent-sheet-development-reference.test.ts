@@ -111,3 +111,71 @@ test("the reference plate measures to its approved blank through the real kernel
   );
   assert.equal(development.contourCount, 3, "the reference plate has an outer profile, a hole and a cut-out");
 });
+
+/**
+ * The question the measurement tests cannot answer: does a STEP part actually
+ * reach a price? The gate lives in the calculation handler, so it is driven
+ * here rather than restated — a restatement would pass while production
+ * refused the same part.
+ */
+async function serverAnalysis(fixture: string) {
+  const bytes = await readFile(new URL(`./fixtures/cad/${fixture}`, import.meta.url));
+  try {
+    const { analyzePlanarStep } = await import("@/lib/server/instant-quote/calculation-handler");
+    return await analyzePlanarStep(
+      {
+        originalName: fixture,
+        safeName: fixture,
+        extension: "step",
+        browserMime: "application/step",
+        size: bytes.byteLength,
+        safety: "unverified-cad",
+        buffer: bytes,
+      },
+      "step",
+    );
+  } catch (error) {
+    if (isMissingKernelPackage(error)) return null;
+    throw error;
+  }
+}
+
+test("a flat reference plate carries production geometry into the price", async (t) => {
+  const analysis = await serverAnalysis("reference-plate.step");
+  if (!analysis) {
+    t.skip("occt-wasm is unavailable in this environment; the pricing gate did not run");
+    return;
+  }
+
+  const { model, productionReady } = analysis;
+  assert.equal(
+    productionReady,
+    true,
+    `a plain plate is the simplest case there is; if it is not priced, no STEP is. `
+      + `flatPattern=${model.sheetMetal?.flatPatternCandidate?.confidence ?? "none"} `
+      + `area=${model.geometry.areaMm2} blank=${model.geometry.blankAreaMm2} `
+      + `cut=${model.geometry.cutLengthMm} contours=${model.geometry.contourCount}`,
+  );
+});
+
+test("the reference angle carries its measured blank into the price", async (t) => {
+  const analysis = await serverAnalysis("reference-angle.step");
+  if (!analysis) {
+    t.skip("occt-wasm is unavailable in this environment; the pricing gate did not run");
+    return;
+  }
+
+  const { model, productionReady } = analysis;
+  // The development measures to the approved blank in the test above. This
+  // asserts the measurement is not then dropped on the way to the price.
+  assert.equal(
+    productionReady,
+    true,
+    `the development measures to the approved blank, so it must reach the price. `
+      + `development=${model.sheetMetal?.development?.status ?? "none"} `
+      + `area=${model.geometry.areaMm2} blank=${model.geometry.blankAreaMm2} `
+      + `cut=${model.geometry.cutLengthMm} contours=${model.geometry.contourCount} `
+      + `bends=${model.geometry.bendCount}`,
+  );
+  assert.equal(model.geometry.bendCount, 1, "a bent part priced without its bend count loses the bending");
+});

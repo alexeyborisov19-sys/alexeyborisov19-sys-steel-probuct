@@ -64,38 +64,58 @@ function integerPrice(value: string) {
   return Number(value.replace(/\s+/g, ""));
 }
 
-function parseSheetRow(line: string) {
-  // Black/galvanized sheet prices in Atlantik's extracted table are normally
-  // formatted as `123 400` (or occasionally as an unspaced integer). Do not
-  // use a greedy thousands pattern here: two adjacent price columns such as
-  // `123 400 121 900` must remain two independent values.
-  // Examples:
-  // 2х1250х2500 123 400 121 900 6 123,45
-  // 16x1500x6000 123 400 режем кратно 1 м
-  const match = line.match(
-    /^(\d+(?:[,.]\d+)?)\s*[xх×]\s*(\d+)\s*[xх×]\s*(\d+)\s+(\d{2,3}\s\d{3}|\d{4,6})(?:\s+(\d{2,3}\s\d{3}|\d{4,6}))?(?:\s|$)/i,
-  );
-  if (!match) return null;
+/**
+ * Sheet prices in Atlantik's extracted table are normally formatted as
+ * `123 400` (or occasionally as an unspaced integer). Do not use a greedy
+ * thousands pattern here: two adjacent price columns such as `123 400 121 900`
+ * must remain two independent values.
+ *
+ * The pattern is deliberately not anchored to the start of the line. The price
+ * list is printed in several columns side by side, and pdftotext puts one row
+ * from each column on a single text line, so a sheet row usually begins in the
+ * middle of it:
+ *
+ *   Ø 6 А500С 71 900 71 400 10,30 40х20х1,5 67 900 67 400 162,95 2х1250х2500 …
+ *   └ rebar ────────────────────┘ └ tube ──────────────────────┘ └ sheet ────
+ *
+ * Unanchored, the tube column matches the same shape, so the sides decide:
+ * a sheet is cut from stock a metre and up, a tube's third number is its wall.
+ */
+const SHEET_ROW =
+  /(?<![\d,.])(\d+(?:[,.]\d+)?)\s*[xх×]\s*(\d+)\s*[xх×]\s*(\d+)\s+(\d{2,3}\s\d{3}|\d{4,6})(?:\s+(\d{2,3}\s\d{3}|\d{4,6}))?(?=\s|$)/gi;
 
-  const thicknessMm = decimal(match[1]);
-  const widthMm = Number(match[2]);
-  const lengthMm = Number(match[3]);
-  const rubPerTon = integerPrice(match[4]);
-  const secondPrice = match[5] ? integerPrice(match[5]) : undefined;
+/** Below this a pair of sides is a profile, not a sheet cut from stock. */
+const MIN_SHEET_SIDE_MM = 500;
+/** Above this the first number is not a sheet thickness. */
+const MAX_SHEET_THICKNESS_MM = 50;
 
-  if (
-    !Number.isFinite(thicknessMm) || thicknessMm <= 0 ||
-    !Number.isFinite(widthMm) || widthMm <= 0 ||
-    !Number.isFinite(lengthMm) || lengthMm <= 0 ||
-    !Number.isFinite(rubPerTon) || rubPerTon <= 0
-  ) return null;
+function parseSheetRows(line: string) {
+  const rows: Array<{ thicknessMm: number; size: string; rubPerTon: number; rubPerTonFrom3t?: number }> = [];
+  SHEET_ROW.lastIndex = 0;
 
-  return {
-    thicknessMm,
-    size: `${String(thicknessMm).replace(".", ",")}x${widthMm}x${lengthMm}`,
-    rubPerTon,
-    rubPerTonFrom3t: secondPrice && secondPrice > 0 ? secondPrice : undefined,
-  };
+  for (let match = SHEET_ROW.exec(line); match; match = SHEET_ROW.exec(line)) {
+    const thicknessMm = decimal(match[1]);
+    const widthMm = Number(match[2]);
+    const lengthMm = Number(match[3]);
+    const rubPerTon = integerPrice(match[4]);
+    const secondPrice = match[5] ? integerPrice(match[5]) : undefined;
+
+    if (
+      !Number.isFinite(thicknessMm) || thicknessMm <= 0 || thicknessMm > MAX_SHEET_THICKNESS_MM ||
+      !Number.isFinite(widthMm) || widthMm < MIN_SHEET_SIDE_MM ||
+      !Number.isFinite(lengthMm) || lengthMm < MIN_SHEET_SIDE_MM ||
+      !Number.isFinite(rubPerTon) || rubPerTon <= 0
+    ) continue;
+
+    rows.push({
+      thicknessMm,
+      size: `${String(thicknessMm).replace(".", ",")}x${widthMm}x${lengthMm}`,
+      rubPerTon,
+      rubPerTonFrom3t: secondPrice && secondPrice > 0 ? secondPrice : undefined,
+    });
+  }
+
+  return rows;
 }
 
 export type AtlantikSourceShape = {
@@ -171,20 +191,19 @@ export function parseAtlantikSheetPriceText(
     }
 
     if (!section) continue;
-    const parsed = parseSheetRow(line);
-    if (!parsed) continue;
-
-    rows.push({
-      materialId: section,
-      thicknessMm: parsed.thicknessMm,
-      rubPerTon: parsed.rubPerTon,
-      ...(parsed.rubPerTonFrom3t ? { rubPerTonFrom3t: parsed.rubPerTonFrom3t } : {}),
-      source,
-      sourceDate: options.sourceDate,
-      fetchedAt: options.fetchedAt,
-      size: parsed.size,
-      exactThickness: true,
-    });
+    for (const parsed of parseSheetRows(line)) {
+      rows.push({
+        materialId: section,
+        thicknessMm: parsed.thicknessMm,
+        rubPerTon: parsed.rubPerTon,
+        ...(parsed.rubPerTonFrom3t ? { rubPerTonFrom3t: parsed.rubPerTonFrom3t } : {}),
+        source,
+        sourceDate: options.sourceDate,
+        fetchedAt: options.fetchedAt,
+        size: parsed.size,
+        exactThickness: true,
+      });
+    }
   }
 
   // Exact duplicate rows can appear when PDF extraction repeats a table. Keep

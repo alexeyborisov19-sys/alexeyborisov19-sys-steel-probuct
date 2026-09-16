@@ -58,7 +58,12 @@ export type OnlineCalculationHandlerDependencies = {
   analyzeStep: AnalyzeStep;
 };
 
-async function analyzePlanarStep(inspection: UploadInspection, format: "step" | "stp"): Promise<StepServerAnalysis> {
+/**
+ * Exported so the decision itself can be driven by a test against the real
+ * kernel. A test that re-stated these conditions would pass while production
+ * refused the same part.
+ */
+export async function analyzePlanarStep(inspection: UploadInspection, format: "step" | "stp"): Promise<StepServerAnalysis> {
   const [{ createStepCadAdapter }, { occtStepKernel }, { measurePrivateStepProductionEvidence }] = await Promise.all([
     import("@/lib/instant-quote/step-adapter"),
     import("@/lib/instant-quote/occt-step-kernel"),
