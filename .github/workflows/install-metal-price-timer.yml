@@ -87,8 +87,23 @@ jobs:
 
           PDFTOTEXT="$(command -v pdftotext || true)"
           if [ -z "$PDFTOTEXT" ]; then
-            echo "FAIL: pdftotext is missing. Install poppler-utils, then run this workflow again."
-            exit 1
+            # The supplier publishes the price list as a PDF, and pdftotext is
+            # what turns it into the text the parser reads. Installing it is
+            # part of enabling the timer, so enable mode does it; check mode
+            # changes nothing and only reports what enable would do.
+            if [ "$MODE" != "enable" ]; then
+              echo "FAIL: pdftotext is missing, and MODE=$MODE changes nothing."
+              echo "      Re-run with MODE=enable to install poppler-utils and continue."
+              exit 1
+            fi
+            echo "pdftotext is missing. Installing poppler-utils."
+            sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends poppler-utils
+            PDFTOTEXT="$(command -v pdftotext || true)"
+            if [ -z "$PDFTOTEXT" ]; then
+              echo "FAIL: poppler-utils was installed but pdftotext is still not on PATH."
+              exit 1
+            fi
           fi
           echo "OK: pdftotext at $PDFTOTEXT"
 
