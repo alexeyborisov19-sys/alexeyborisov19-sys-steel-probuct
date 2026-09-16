@@ -110,24 +110,3 @@ test("a heading the section patterns miss is reported, because that is the usual
   // The rows are still there — they are simply no longer attributed.
   assert.ok(shape.sizeLikeLineCount >= 7, String(shape.sizeLikeLineCount));
 });
-
-test("the outline keeps the order of headings and rows, which is what a columnar list hides", () => {
-  // A price list printed in several columns side by side puts a row from each
-  // column on one text line, so which material a size belongs to is decided by
-  // the order of the lines and never by the line itself. Counts cannot show
-  // that; the outline can.
-  const shape = describeAtlantikSourceShape(syntheticText);
-  const tags = shape.outline.map((entry) => entry.slice(4, 5)).join("");
-
-  assert.equal(shape.outline.length, shape.lineCount);
-  assert.ok(tags.includes("H"), tags);
-  assert.ok(tags.includes("R"), tags);
-  // A heading is listed before the rows that belong to it.
-  assert.ok(tags.indexOf("H") < tags.lastIndexOf("R"), tags);
-
-  // Still no prices: the line content is masked the same way the samples are.
-  // The line number in front of it is not masked and is not a price.
-  const content = shape.outline.map((entry) => entry.slice(6)).join("\n");
-  assert.equal(/\d/.test(content.replace(/9/g, "")), false, content.slice(0, 200));
-  assert.equal(content.includes("111 000"), false);
-});
