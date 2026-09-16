@@ -104,6 +104,25 @@ export function createClientDxfDrawingPreview(parsed: ParsedDxf): ClientCadDrawi
  * warnings. The test is whose knowledge it is, not whether a number is
  * geometric.
  */
+/**
+ * The kernel meshes in single precision, and widening those floats to JavaScript
+ * numbers exposes the binary tail: 12.3 is serialised as 12.300000190734863,
+ * nineteen characters where four would do. Rounding to a micron — three orders
+ * of magnitude finer than anything a preview of a 100–3000 mm part can show —
+ * more than halves the payload.
+ *
+ * Only the displayed copy is rounded. Nothing is measured from it: thickness,
+ * bends and the blank all come from the BRep analysis, never from this mesh.
+ */
+function displayMesh(mesh: NormalizedCadModel["meshes"][number]) {
+  const micron = (value: number) => Math.round(value * 1000) / 1000;
+  return {
+    ...mesh,
+    positions: mesh.positions.map(micron),
+    ...(mesh.normals ? { normals: mesh.normals.map((value) => Math.round(value * 10000) / 10000) } : {}),
+  };
+}
+
 export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: ParsedDxf): ClientCadPreview {
   const needsReview = model.warnings.length > 0;
   // A bent part is the one case where "needs review" has a specific, knowable
@@ -125,7 +144,7 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
       bendCountFromModel: model.geometry.bendCount ?? null,
       thicknessFromModelMm: measuredThicknessMm(model.sheetMetal),
     },
-    meshes: model.meshes,
+    meshes: model.meshes.map(displayMesh),
     root: model.root,
     drawing: parsedDxf ? createClientDxfDrawingPreview(parsedDxf) : null,
     status: needsReview ? "needs-review" : "recognized",

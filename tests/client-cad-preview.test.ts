@@ -263,3 +263,42 @@ test("a drawing with nothing excluded says nothing", () => {
   const preview = createClientCadPreview(geometryOnly, dxfWithPolylines([3]));
   assert.deepEqual(preview.drawing?.excludedLayers, []);
 });
+
+test("the displayed mesh keeps its shape but not the single-precision tail", () => {
+  // What the kernel hands over: Float32 values widened to JavaScript numbers,
+  // where 12.3 arrives as 12.300000190734863.
+  const positions = Array.from(new Float32Array([12.3, 0.1, 200.75, -45.125, 1000.4, 0.2]));
+  const normals = Array.from(new Float32Array([0, 0, 1, 0.7071, -0.7071, 0]));
+  const model = {
+    format: "step",
+    units: "mm",
+    geometry: { widthMm: 120, heightMm: 80, depthMm: 2 },
+    meshes: [{ id: "mesh-1", name: "STEP model", positions, normals, indices: [0, 1, 2] }],
+    root: null,
+    features: [],
+    metadata: { sourceFileName: "part.step", sourceBytes: 1, parser: "p", analyzedAt: "2026-09-14T00:00:00.000Z" },
+    warnings: [],
+  } as unknown as NormalizedCadModel;
+
+  const [mesh] = createClientCadPreview(model).meshes;
+
+  // Every vertex still there, in order, and no further than a micron from where
+  // the kernel put it — three orders finer than a preview of a 100-3000 mm part
+  // can show.
+  assert.equal(mesh.positions.length, positions.length);
+  assert.deepEqual(mesh.indices, [0, 1, 2]);
+  assert.equal(mesh.id, "mesh-1");
+  positions.forEach((value, index) => {
+    assert.ok(Math.abs(mesh.positions[index] - value) <= 0.0005, `vertex ${index}: ${mesh.positions[index]} vs ${value}`);
+  });
+  assert.equal(mesh.normals?.length, normals.length);
+  normals.forEach((value, index) => {
+    assert.ok(Math.abs((mesh.normals ?? [])[index] - value) <= 0.00005, `normal ${index}`);
+  });
+
+  // And the tail is what paid for it: the same geometry, less than half the wire.
+  assert.ok(
+    JSON.stringify(mesh.positions).length * 2 < JSON.stringify(positions).length,
+    `rounded ${JSON.stringify(mesh.positions).length} bytes vs raw ${JSON.stringify(positions).length}`,
+  );
+});
