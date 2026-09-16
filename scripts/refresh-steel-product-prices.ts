@@ -22,6 +22,19 @@
  * declares no module type, so tsx transpiles this to CommonJS, where top-level
  * await does not exist.
  */
+
+/**
+ * Error name, message and immediate cause, with absolute filesystem paths and
+ * URLs removed. Node reports a failed fetch as a bare "fetch failed" and keeps
+ * the real reason on the cause, so the cause is the part worth having.
+ */
+function describeFailure(error: unknown) {
+  const redact = (value: string) => value.replace(/(?:\/[\w.@~-]+){2,}/g, "<path>").slice(0, 300);
+  if (!(error instanceof Error)) return redact(String(error));
+  const cause = error.cause instanceof Error ? ` (${error.cause.name}: ${error.cause.message})` : "";
+  return redact(`${error.name}: ${error.message}${cause}`);
+}
+
 async function main() {
   const args = new Set(process.argv.slice(2));
   const allowed = new Set(["--commit", "--dry-run"]);
@@ -66,9 +79,16 @@ async function main() {
       persisted: result.persisted,
     }));
     return 0;
-  } catch {
+  } catch (error) {
     // Never dump the upstream page, parser internals or private storage paths.
-    console.error("Supplier price refresh failed.");
+    // A dry run is the diagnostic mode, though: it writes nothing and is read
+    // by the operator installing the timer, so it names what failed. Before
+    // this every cause — an unreachable supplier, a price list whose layout
+    // changed, an unreadable basis — printed the same one sentence, and the
+    // dry run could not do the one thing it exists for.
+    console.error(commit
+      ? "Supplier price refresh failed."
+      : `Supplier price refresh failed: ${describeFailure(error)}`);
     return 1;
   }
 }
