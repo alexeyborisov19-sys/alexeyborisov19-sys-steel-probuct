@@ -10,10 +10,13 @@ name: Live CAD preview probe
 # a 999 comment naming the exporter and no $INSUNITS at all, because that is how
 # LibreCAD, SolidWorks and Inkscape write the files that were being turned away.
 
+# Run by hand, after a deploy. It used to re-run itself whenever this file
+# changed, which is the wrong order for a probe that checks production: a case
+# added here is written against the build that is about to ship, not the one
+# currently serving. The arc case below made that concrete — against a server
+# without the fix it does not time out, it pins a core for good, which is the
+# very bug it checks for.
 on:
-  push:
-    paths:
-      - '.github/workflows/install-live-cad-probe.yml'
   workflow_dispatch:
 
 permissions:
@@ -68,6 +71,44 @@ jobs:
           // refuses a file that is not a drawing.
           await writeFile('/tmp/probe-not-a-drawing.dxf', '<!doctype html>\n<html><body>hi</body></html>\n', 'utf8');
 
+          // The same drawing a Russian CAD writes when asked for DXF R12/R2000:
+          // CP1251, one byte per character. Decoded as UTF-8 its РАЗМЕРЫ layer
+          // became replacement characters, stopped counting as annotation, and
+          // the dimension line 40 mm below the part inflated the priced blank
+          // from 200x100 to 200x140.
+          const cyrillic = [
+            '0', 'SECTION', '2', 'HEADER',
+            '9', '$INSUNITS', '70', '4',
+            '0', 'ENDSEC',
+            '0', 'SECTION', '2', 'ENTITIES',
+            '0', 'LWPOLYLINE', '8', 'КОНТУР', '90', '4', '70', '1',
+            '10', '0', '20', '0',
+            '10', '200', '20', '0',
+            '10', '200', '20', '100',
+            '10', '0', '20', '100',
+            '0', 'LINE', '8', 'РАЗМЕРЫ',
+            '10', '0', '20', '-40', '11', '200', '21', '-40',
+            '0', 'ENDSEC', '0', 'EOF',
+          ].join('\n') + '\n';
+          const cp1251 = Buffer.alloc(cyrillic.length);
+          for (let index = 0; index < cyrillic.length; index += 1) {
+            const code = cyrillic.charCodeAt(index);
+            // U+0410..U+044F (А..я) sit at 0xC0..0xFF; the rest is ASCII, which
+            // the two encodings share.
+            cp1251[index] = code >= 0x0410 && code <= 0x044f ? code - 0x0410 + 0xc0 : code;
+          }
+          await writeFile('/tmp/probe-cp1251.dxf', cp1251);
+
+          // An arc whose angles are finite but absurd. Reading it used to never
+          // return: normalizeArc subtracted 360 in a loop, and at this magnitude
+          // the subtraction gives back the same number for ever.
+          await writeFile('/tmp/probe-wild-arc.dxf', [
+            '0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC',
+            '0', 'SECTION', '2', 'ENTITIES',
+            '0', 'ARC', '8', 'CUT', '10', '1e308', '20', '0', '40', '1e308', '50', '0', '51', '1e308',
+            '0', 'ENDSEC', '0', 'EOF',
+          ].join('\n') + '\n', 'utf8');
+
           const kernel = await OcctKernel.init();
           const shape = kernel.makeBox(120, 80, 1);
           try {
@@ -119,6 +160,45 @@ jobs:
           jq -e '.ok == false' /tmp/bad.json >/dev/null
           jq -e '.error | test("[А-Яа-я]")' /tmp/bad.json >/dev/null
           echo 'Live refusal probe passed: the widened header check still rejects a non-drawing.'
+
+      - name: A CP1251 drawing keeps its Cyrillic annotation layers
+        run: |
+          set -uo pipefail
+          HTTP_CODE="$(curl -sS --max-time 90 -o /tmp/cp1251.json -w '%{http_code}' \
+            -F 'file=@/tmp/probe-cp1251.dxf;type=application/octet-stream' \
+            'https://www.steelprodukt.ru/api/online-order/cad/analyze')"
+          echo "HTTP $HTTP_CODE"
+          jq '{ok, error, cad: .preview.cad, excluded: .preview.drawing.excludedLayers}' /tmp/cp1251.json || cat /tmp/cp1251.json
+
+          set -e
+          test "$HTTP_CODE" = "200"
+          jq -e '.ok == true' /tmp/cp1251.json >/dev/null
+          # The part, not the part plus its dimension line: 200x100, not 200x140.
+          jq -e '.preview.cad.widthMm == 200' /tmp/cp1251.json >/dev/null
+          jq -e '.preview.cad.heightMm == 100' /tmp/cp1251.json >/dev/null
+          # And the layer is named back to the customer in readable Cyrillic.
+          jq -e '.preview.drawing.excludedLayers | index("РАЗМЕРЫ") != null' /tmp/cp1251.json >/dev/null
+          echo 'Live CP1251 probe passed: the R12/R2000 export from a Russian CAD is read at its true size.'
+
+      - name: An arc with absurd angles is refused rather than chewed on
+        run: |
+          set -uo pipefail
+          START="$(date +%s)"
+          HTTP_CODE="$(curl -sS --max-time 45 -o /tmp/arc.json -w '%{http_code}' \
+            -F 'file=@/tmp/probe-wild-arc.dxf;type=application/octet-stream' \
+            'https://www.steelprodukt.ru/api/online-order/cad/analyze')"
+          ELAPSED="$(( $(date +%s) - START ))"
+          echo "HTTP $HTTP_CODE in ${ELAPSED}s"
+          cat /tmp/arc.json
+
+          set -e
+          # The answer matters less than the fact that there is one: this file
+          # used to pin the request that read it.
+          test "$ELAPSED" -lt 30
+          test "$HTTP_CODE" != "200"
+          jq -e '.ok == false' /tmp/arc.json >/dev/null
+          jq -e '.error | test("[А-Яа-я]")' /tmp/arc.json >/dev/null
+          echo 'Live arc probe passed: the endpoint answered instead of hanging.'
 
       - name: A STEP solid is measured by OpenCascade on the server
         run: |
