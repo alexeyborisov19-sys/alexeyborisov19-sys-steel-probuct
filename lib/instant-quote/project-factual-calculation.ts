@@ -70,12 +70,20 @@ export function calculateProjectFactualCost(
   const parts = project.parts.map<ProjectFactualPartResult>((part) => {
     const evidence = evidenceByPartId[part.id] ?? {};
     if (!part.geometry?.widthMm || !part.geometry.heightMm) {
+      // The analysis already said why it has no geometry — units the drawing
+      // never declares, a thickness the solid contradicts, a blank it could not
+      // prove. Only one of these reasons is shown to the customer, and it was
+      // the generic sentence: the part that told them what to do came second
+      // and was never read.
+      const measured = evidence.reviewReasons ?? [];
       return {
         partId: part.id,
         status: "missing-geometry",
         calculation: null,
         dfmBlockingReasons: [],
-        dfmReviewReasons: ["Нормализованная производственная геометрия детали ещё не готова.", ...(evidence.reviewReasons ?? [])],
+        dfmReviewReasons: measured.length
+          ? [...measured]
+          : ["Производственную геометрию детали не удалось получить из файла."],
       };
     }
 
