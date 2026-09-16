@@ -107,6 +107,15 @@ export type AtlantikSourceShape = {
   sizeLikeLineCount: number;
   /** Size-like lines with every digit replaced by 9: layout without prices. */
   sampleShapes: string[];
+  /**
+   * Every line in order, digits replaced by 9, tagged H for a heading the
+   * section patterns match and R for a line that carries a size. Counts alone
+   * cannot show how the blocks interleave, and in a price list printed in
+   * several columns side by side that is the whole question: one text line
+   * holds a row from each column at once, so which material a size belongs to
+   * is decided by the order of the lines, not by the line itself.
+   */
+  outline: string[];
 };
 
 const SIZE_LIKE = /\d+(?:[,.]\d+)?\s*[xх×]\s*\d+\s*[xх×]\s*\d+/i;
@@ -124,7 +133,14 @@ export function describeAtlantikSourceShape(text: string): AtlantikSourceShape {
   const sectionHeadings: string[] = [];
   const unrecognisedSheetHeadings: string[] = [];
   const sampleShapes: string[] = [];
+  const outline: string[] = [];
   let sizeLikeLineCount = 0;
+
+  lines.slice(0, 200).forEach((line, index) => {
+    const heading = SECTION_BY_TITLE.some((candidate) => candidate.pattern.test(line));
+    const tag = heading ? "H" : SIZE_LIKE.test(line) ? "R" : ".";
+    outline.push(`${String(index).padStart(3, "0")} ${tag} ${line.replace(/\d/g, "9").slice(0, 140)}`);
+  });
 
   for (const line of lines) {
     if (SECTION_BY_TITLE.some((candidate) => candidate.pattern.test(line))) {
@@ -140,7 +156,7 @@ export function describeAtlantikSourceShape(text: string): AtlantikSourceShape {
     }
   }
 
-  return { lineCount: lines.length, sectionHeadings, unrecognisedSheetHeadings, sizeLikeLineCount, sampleShapes };
+  return { lineCount: lines.length, sectionHeadings, unrecognisedSheetHeadings, sizeLikeLineCount, sampleShapes, outline };
 }
 
 /**
