@@ -18,7 +18,7 @@
     "retention:cleanup": "node scripts/cleanup-expired-leads.mjs",
     "secrets:scan": "node scripts/run-gitleaks.mjs",
     "indexnow:submit": "node scripts/submit-indexnow.mjs",
-    "prices:refresh": "node --conditions react-server --import tsx scripts/refresh-steel-product-prices.ts",
+    "prices:refresh": "node --conditions react-server --import tsx --import ./scripts/repo-alias-hook.mjs scripts/refresh-steel-product-prices.ts",
     "pd:migrate": "node --import tsx scripts/pd-migrate.ts",
     "pd:migrate:status": "node --import tsx scripts/pd-migrate.ts --status",
     "pd:integrity-check": "node --import tsx scripts/pd-integrity-check.ts",

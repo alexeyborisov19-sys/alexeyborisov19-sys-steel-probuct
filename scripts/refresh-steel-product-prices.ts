@@ -11,7 +11,12 @@
  * disk on every calculation rather than caching it.
  *
  * Run with the react-server condition so the server-only guards resolve:
- *   node --conditions react-server --import tsx scripts/refresh-steel-product-prices.ts --commit
+ *   node --conditions react-server --import tsx \
+ *        --import ./scripts/repo-alias-hook.mjs \
+ *        scripts/refresh-steel-product-prices.ts --commit
+ *
+ * The alias hook resolves the project's "@/..." imports, which Next normally
+ * resolves from tsconfig and a plain node process does not know about.
  *
  * The work sits in main() rather than at the top level on purpose: the project
  * declares no module type, so tsx transpiles this to CommonJS, where top-level
@@ -37,8 +42,12 @@ async function main() {
   // modules reports that plainly instead of failing at parse time.
   const loaded = await import("@/lib/server/instant-quote/refresh-atlantik-prices")
     .catch((error: unknown) => {
-      // Keep failure output generic: it must not disclose private paths.
-      console.error(`Supplier price refresh is not runnable here: ${error instanceof Error ? error.name : "unknown error"}`);
+      // A dry run is the diagnostic mode: it writes nothing and is run by an
+      // operator who needs to see why. A commit run stays terse, because its
+      // output is not being read by anyone who can act on it.
+      console.error(commit
+        ? `Supplier price refresh is not runnable here: ${error instanceof Error ? error.name : "unknown error"}`
+        : `Supplier price refresh is not runnable here: ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`);
       return null;
     });
   if (loaded == null) return 2;
