@@ -101,10 +101,13 @@ export function calculateProjectFactualCost(
       // cut length, pierces or area the price is built from, so a part whose
       // drawing was only partly understood must not reach a published price —
       // an under-read contour would be quoted cheaper than it can be made.
+      // Annotation is not counted here: the parser records notes, dimensions,
+      // leaders and viewport frames as read, so what remains is geometry.
+      const unread = evidence.unsupportedEntities!.join(", ");
       dfm.push({
         code: "unsupported-dxf-entities",
-        title: "Неподдерживаемая геометрия DXF",
-        detail: evidence.unsupportedEntities!.join(", "),
+        title: `Чертёж прочитан не полностью: ${unread}. Расчлените блоки (РАСЧЛЕНИТЬ / EXPLODE) и сохраните контуры линиями, полилиниями, дугами или окружностями — тогда деталь рассчитается автоматически.`,
+        detail: unread,
         severity: "error",
       });
     }

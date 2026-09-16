@@ -27,6 +27,7 @@ function parsed(width: number, height: number, cutLength: number): ParsedDxf {
     areaStatus: "unavailable",
     units: "мм",
     unitsCode: 4,
+    unitsSource: "insunits",
     unsupportedEntities: [],
     skippedServiceLayers: [],
   };

@@ -261,3 +261,136 @@ test("legacy 3D or mesh POLYLINE is fail-closed instead of silently projected in
   assert.equal(parsed.unsupportedEntities.includes("SEQEND"), false);
   assert.equal(parsed.areaStatus, "unavailable");
 });
+
+function dxfWithHeader(header: string[], entities: string[]) {
+  return [
+    "0", "SECTION", "2", "HEADER",
+    ...header,
+    "0", "ENDSEC",
+    "0", "SECTION", "2", "ENTITIES",
+    ...entities,
+    "0", "ENDSEC", "0", "EOF",
+  ].join("\n");
+}
+
+const ONE_LINE = ["0", "LINE", "10", "0", "20", "0", "11", "100", "21", "50"];
+
+test("a drawing that declares no $INSUNITS is read through $MEASUREMENT", () => {
+  // Every R12 file omits $INSUNITS, and LibreCAD, Inkscape and several CAM
+  // post-processors write it as 0 (unitless). $MEASUREMENT is the drawing's
+  // other statement about its own system, so the file is still the source —
+  // refusing it outright turned away a large share of real exports.
+  const metric = parseAsciiDxf(dxfWithHeader(["9", "$MEASUREMENT", "70", "1"], ONE_LINE));
+  assert.equal(metric.unitsCode, 4);
+  assert.equal(metric.units, "мм");
+  assert.equal(metric.unitsSource, "measurement");
+
+  const imperial = parseAsciiDxf(dxfWithHeader(["9", "$MEASUREMENT", "70", "0"], ONE_LINE));
+  assert.equal(imperial.unitsCode, 1);
+  assert.equal(imperial.unitsSource, "measurement");
+});
+
+test("$INSUNITS 0 means unitless, so it falls through to $MEASUREMENT", () => {
+  const parsed = parseAsciiDxf(dxfWithHeader(
+    ["9", "$INSUNITS", "70", "0", "9", "$MEASUREMENT", "70", "1"],
+    ONE_LINE,
+  ));
+  assert.equal(parsed.unitsCode, 4);
+  assert.equal(parsed.unitsSource, "measurement");
+});
+
+test("a declared $INSUNITS outranks $MEASUREMENT", () => {
+  const parsed = parseAsciiDxf(dxfWithHeader(
+    ["9", "$INSUNITS", "70", "1", "9", "$MEASUREMENT", "70", "1"],
+    ONE_LINE,
+  ));
+  assert.equal(parsed.unitsCode, 1);
+  assert.equal(parsed.units, "дюймы");
+  assert.equal(parsed.unitsSource, "insunits");
+});
+
+test("a drawing that declares nothing stays unknown rather than guessed", () => {
+  const parsed = parseAsciiDxf(dxfWithHeader([], ONE_LINE));
+  assert.equal(parsed.unitsCode, null);
+  assert.equal(parsed.unitsSource, "unknown");
+});
+
+test("annotation inside ENTITIES counts as read, not as geometry left unread", () => {
+  // None of these carries a cut path, a pierce or any material, so recording
+  // one as unread geometry blocked the price on drawings that were fully
+  // understood — a note and a leader do not change what the part costs.
+  const parsed = parseAsciiDxf(dxf([
+    ...ONE_LINE,
+    "0", "LEADER", "8", "0",
+    "0", "MLEADER", "8", "0",
+    "0", "MULTILEADER", "8", "0",
+    "0", "TOLERANCE", "8", "0",
+    "0", "ATTDEF", "8", "0",
+    "0", "ATTRIB", "8", "0",
+    "0", "XLINE", "8", "0",
+    "0", "RAY", "8", "0",
+    "0", "VIEWPORT", "8", "0",
+    "0", "IMAGE", "8", "0",
+    "0", "WIPEOUT", "8", "0",
+    "0", "OLE2FRAME", "8", "0",
+    "0", "ACAD_TABLE", "8", "0",
+  ]));
+
+  assert.deepEqual(parsed.unsupportedEntities, []);
+  assert.equal(parsed.shapes.length, 1);
+});
+
+test("geometry the parser did not open stays unread so no price is built on it", () => {
+  // A block reference or a hatch boundary can be a real contour. Reading the
+  // drawing without them would quote a part below what it costs to cut.
+  const parsed = parseAsciiDxf(dxf([
+    ...ONE_LINE,
+    "0", "INSERT", "8", "0", "2", "HOLE",
+    "0", "HATCH", "8", "0",
+    "0", "SOLID", "8", "0",
+    "0", "3DFACE", "8", "0",
+  ]));
+
+  assert.deepEqual(parsed.unsupportedEntities, ["3DFACE", "HATCH", "INSERT", "SOLID"]);
+});
+
+test("a drawing whose only content is a block reference says so instead of failing blankly", () => {
+  assert.throws(
+    () => parseAsciiDxf(dxf(["0", "INSERT", "8", "0", "2", "PART"])),
+    (error: Error) => error.name === "CadReadError" && /INSERT/.test(error.message) && /EXPLODE/.test(error.message),
+  );
+});
+
+test("an ENTITIES section left unclosed does not swallow the next section", () => {
+  // Without ENDSEC the parser used to keep reading, and the records of the
+  // following section came back as unread geometry that blocked the price.
+  const parsed = parseAsciiDxf([
+    "0", "SECTION", "2", "HEADER",
+    "9", "$INSUNITS", "70", "4",
+    "0", "ENDSEC",
+    "0", "SECTION", "2", "ENTITIES",
+    ...ONE_LINE,
+    "0", "SECTION", "2", "OBJECTS",
+    "0", "DICTIONARY", "3", "ACAD_GROUP",
+    "0", "ENDSEC", "0", "EOF",
+  ].join("\n"));
+
+  assert.deepEqual(parsed.unsupportedEntities, []);
+  assert.equal(parsed.shapes.length, 1);
+});
+
+test("a blank line ahead of the first group code does not empty the drawing", () => {
+  // An empty line reads as the number 0, so the old fixed stride paired it with
+  // "0" and then read every value line as a code: a complete drawing came back
+  // with no geometry at all, and the customer was told their file had none.
+  const parsed = parseAsciiDxf(`\n${dxf(ONE_LINE)}`);
+  assert.equal(parsed.shapes.length, 1);
+  assert.equal(parsed.width, 100);
+  assert.equal(parsed.unitsCode, 4);
+});
+
+test("a byte-order mark ahead of the first group code is not read as part of it", () => {
+  const parsed = parseAsciiDxf(`\uFEFF${dxf(ONE_LINE)}`);
+  assert.equal(parsed.shapes.length, 1);
+  assert.equal(parsed.unitsCode, 4);
+});

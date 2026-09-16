@@ -1,4 +1,4 @@
-import type { CadAnalysisAdapter, NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import { CadReadError, type CadAnalysisAdapter, type NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { parseAsciiDxf } from "@/lib/instant-quote/dxf";
 
 function mmScaleForInsUnits(code: number | null) {
@@ -21,7 +21,9 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
     const scale = mmScaleForInsUnits(parsed.unitsCode);
 
     if (scale == null) {
-      throw new Error("В DXF не указаны поддерживаемые единицы измерения. Подтвердите единицы перед автоматическим расчётом.");
+      throw new CadReadError(
+        "В DXF не объявлены единицы измерения: нет ни $INSUNITS, ни $MEASUREMENT, поэтому габариты нельзя пересчитать в миллиметры. Сохраните чертёж из CAD с указанием единиц (обычно «Миллиметры») и загрузите снова.",
+      );
     }
 
     const widthMm = parsed.width * scale;
@@ -53,6 +55,9 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
       },
       warnings: [
         ...(scale !== 1 ? [`Геометрия автоматически нормализована из «${parsed.units}» в миллиметры.`] : []),
+        ...(parsed.unitsSource === "measurement"
+          ? [`В чертеже не задан $INSUNITS. Единицы «${parsed.units}» определены по заголовку $MEASUREMENT — подтвердите масштаб детали перед запуском в производство.`]
+          : []),
         ...(parsed.areaStatus !== "exact" ? ["Чистая площадь детали не подтверждена замкнутой топологией; это влияет на массу изделия, но металл всё равно считается по прямоугольной заготовке."] : []),
         ...parsed.unsupportedEntities.map((entity) => `Неподдерживаемая DXF-геометрия: ${entity}`),
       ],

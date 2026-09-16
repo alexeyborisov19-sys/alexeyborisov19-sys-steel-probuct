@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
-import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
+import { CadReadError, type NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { dxfCadAdapter } from "@/lib/instant-quote/dxf-adapter";
 import { isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
 import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
@@ -126,7 +126,10 @@ function serverProjectId(now: Date) {
 }
 
 function parseDxfInspection(inspection: UploadInspection) {
-  return parseAsciiDxf(inspection.buffer.toString("utf8"));
+  // Decoded the same way the adapter decodes it, so the evidence recorded for a
+  // part describes the same drawing that was priced. TextDecoder also drops a
+  // leading byte-order mark, which Buffer.toString keeps.
+  return parseAsciiDxf(new TextDecoder("utf-8").decode(inspection.buffer));
 }
 
 /**
@@ -227,13 +230,19 @@ async function buildAuthoritativeProject(
               : {}),
           };
           state = model.warnings.length ? "manual-review" : "configurable";
-        } catch {
+        } catch (error) {
           // One unreadable drawing is one position to check, not a failed
-          // project. The adapter refuses a DXF whose units it cannot establish
-          // — common enough on export — and before this that exception escaped
-          // and turned the whole request into a 503.
+          // project — before this the exception escaped and turned the whole
+          // request into a 503. The refusal carries its own reason (units the
+          // file never declares, no cuttable contour), and that reason is what
+          // the customer needs, so it is passed through rather than replaced by
+          // a single sentence covering every cause.
           evidenceByPartId[item.clientPartId] = {
-            reviewReasons: ["Единицы измерения в DXF не определены, поэтому габариты нельзя пересчитать в миллиметры автоматически. Сохраните чертёж с указанием единиц ($INSUNITS) или передайте его технологу."],
+            reviewReasons: [
+              error instanceof CadReadError
+                ? error.message
+                : "Чертёж не удалось разобрать автоматически. Передайте файл технологу — расчёт по непрочитанной геометрии был бы недостоверным.",
+            ],
           };
           analysisNotes.push(`DXF ${inspection.safeName}: adapter could not normalise the drawing; no production geometry was priced for this part.`);
         }

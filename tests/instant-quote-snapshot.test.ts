@@ -38,6 +38,7 @@ function parsed(): ParsedDxf {
     areaStatus: "exact",
     units: "мм",
     unitsCode: 4,
+    unitsSource: "insunits",
     unsupportedEntities: [],
     skippedServiceLayers: [],
   };

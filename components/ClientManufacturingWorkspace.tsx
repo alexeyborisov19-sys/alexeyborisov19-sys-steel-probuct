@@ -162,6 +162,11 @@ export function ClientManufacturingWorkspace() {
       }
 
       setAnalyzingByPartId((current) => ({ ...current, [partId]: true }));
+      // The server says which part of the file it could not use and what to
+      // change about it. Kept aside so the failure path shows that instead of a
+      // single sentence that fits every cause and helps with none of them; a
+      // transport failure has no such message and falls back below.
+      let refusal: string | null = null;
       try {
         const formData = new FormData();
         formData.set("file", file);
@@ -172,7 +177,8 @@ export function ClientManufacturingWorkspace() {
         });
         const payload = await response.json().catch(() => null) as CadAnalysisApiResponse | null;
         if (!response.ok || !payload?.ok || !isClientCadPreview(payload.preview)) {
-          throw new Error(payload?.error || "CAD analysis failed.");
+          refusal = typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : null;
+          throw new Error("CAD preview refused.");
         }
 
         const preview = payload.preview;
@@ -208,7 +214,8 @@ export function ClientManufacturingWorkspace() {
         setProject((current) => setPartState(current, partId, "manual-review"));
         setStatusByPartId((current) => ({
           ...current,
-          [partId]: "Не удалось построить предпросмотр модели. Попробуйте загрузить файл ещё раз или используйте другой CAD-файл.",
+          [partId]: refusal
+            ?? "Не удалось связаться с сервером расчёта. Проверьте соединение и загрузите файл ещё раз.",
         }));
       } finally {
         setAnalyzingByPartId((current) => ({ ...current, [partId]: false }));

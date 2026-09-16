@@ -100,7 +100,11 @@ test("geometry the DXF parser could not read blocks the price instead of warning
   // not reach a published price on a drawing that was only partly understood.
   assert.equal(result.parts[0].status, "blocked");
   assert.equal(result.parts[0].calculation, null);
-  assert.ok(result.parts[0].dfmBlockingReasons.includes("Неподдерживаемая геометрия DXF"));
+  // The blocking reason is what the customer reads, so it names the geometry
+  // that stayed unread and what to do about it.
+  const [reason] = result.parts[0].dfmBlockingReasons;
+  assert.ok(reason?.includes("SPLINE_UNSUPPORTED"), reason);
+  assert.ok(/EXPLODE/.test(reason ?? ""), reason);
   assert.equal(result.blockedParts, 1);
   assert.equal(result.completeParts, 0);
   assert.equal(result.confirmedDirectCostRub, 0);

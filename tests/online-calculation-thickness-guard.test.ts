@@ -202,8 +202,10 @@ test("a DXF without units puts one position in review instead of failing the pro
   assert.equal(res.status, 200);
   assert.equal(pricedGeometry, null);
   assert.equal(state, "manual-review");
+  // The reason names the two headers that would have settled it, so the
+  // customer can fix the export instead of guessing what "units" means.
   assert.ok(
-    reasons.some((reason) => reason.includes("Единицы измерения")),
+    reasons.some((reason) => reason.includes("единицы измерения") && reason.includes("$INSUNITS")),
     `expected a units reason, got: ${reasons.join(" | ")}`,
   );
 });
