@@ -1,5 +1,15 @@
 name: Live CAD preview probe
 
+# Checks the production CAD preview against the files customers actually send.
+#
+# It reads only. Nothing is written, nothing is quoted, no order is created —
+# the endpoint returns display geometry and a review state, and that is all this
+# probe looks at.
+#
+# The DXF case is the one that matters: the drawing carries a byte-order mark,
+# a 999 comment naming the exporter and no $INSUNITS at all, because that is how
+# LibreCAD, SolidWorks and Inkscape write the files that were being turned away.
+
 on:
   push:
     paths:
@@ -12,6 +22,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Get source
         uses: actions/checkout@v5
@@ -25,40 +36,106 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Generate a valid STEP solid
+      - name: Build the probe files
         run: |
           node --input-type=module <<'NODE'
           import { writeFile } from 'node:fs/promises';
           import { OcctKernel } from 'occt-wasm';
 
+          // A drawing shaped like the exports that were refused: byte-order
+          // mark, a 999 comment, no $INSUNITS, and annotation sitting in the
+          // ENTITIES section beside the part.
+          const drawing = [
+            '999', 'Exported by LibreCAD',
+            '0', 'SECTION', '2', 'HEADER',
+            '9', '$MEASUREMENT', '70', '1',
+            '0', 'ENDSEC',
+            '0', 'SECTION', '2', 'ENTITIES',
+            '0', 'LWPOLYLINE', '8', 'CONTOUR', '90', '4', '70', '1',
+            '10', '0', '20', '0',
+            '10', '200', '20', '0',
+            '10', '200', '20', '100',
+            '10', '0', '20', '100',
+            '0', 'MTEXT', '8', 'NOTES', '1', 'Stal 3 mm',
+            '0', 'DIMENSION', '8', 'NOTES',
+            '0', 'LEADER', '8', 'NOTES',
+            '0', 'ENDSEC', '0', 'EOF',
+          ].join('\n');
+          await writeFile('/tmp/probe-real-export.dxf', `﻿${drawing}\n`, 'utf8');
+
+          // A document renamed to .dxf. The signature check was widened to let
+          // comments and a byte-order mark through, so this proves it still
+          // refuses a file that is not a drawing.
+          await writeFile('/tmp/probe-not-a-drawing.dxf', '<!doctype html>\n<html><body>hi</body></html>\n', 'utf8');
+
           const kernel = await OcctKernel.init();
           const shape = kernel.makeBox(120, 80, 1);
           try {
             const step = kernel.exportStep(shape);
-            if (typeof step !== 'string' || step.length < 100 || !step.includes('ISO-10303-21')) {
+            if (typeof step !== 'string' || !step.includes('ISO-10303-21')) {
               throw new Error('Generated STEP text is invalid');
             }
-            await writeFile('/tmp/steelprodukt-live-probe.step', step, 'utf8');
-            console.log(`Generated STEP: ${Buffer.byteLength(step, 'utf8')} bytes`);
+            await writeFile('/tmp/probe-plate.step', step, 'utf8');
           } finally {
             kernel.release(shape);
             kernel.dispose?.();
           }
           NODE
 
-      - name: POST STEP to production CAD preview API
+      - name: A real-world DXF export is read, not refused
         run: |
-          set -euo pipefail
-          HTTP_CODE="$(curl -sS --max-time 90 \
-            -o /tmp/cad-response.json \
-            -w '%{http_code}' \
-            -F 'file=@/tmp/steelprodukt-live-probe.step;type=application/step' \
+          set -uo pipefail
+          HTTP_CODE="$(curl -sS --max-time 90 -o /tmp/dxf.json -w '%{http_code}' \
+            -F 'file=@/tmp/probe-real-export.dxf;type=application/octet-stream' \
             'https://www.steelprodukt.ru/api/online-order/cad/analyze')"
           echo "HTTP $HTTP_CODE"
-          jq '{ok, error, format, code, preview: (if .preview then {format: .preview.format, units: .preview.units, width: .preview.width, height: .preview.height, depth: .preview.depth, meshCount: (.preview.meshes | length), firstMeshPositions: (.preview.meshes[0].positions | length), firstMeshIndices: (.preview.meshes[0].indices | length)} else null end)}' /tmp/cad-response.json
+          jq '{ok, error, format: .preview.format, status: .preview.status, cad: .preview.cad,
+                polylines: (.preview.drawing.polylines | length // 0)}' /tmp/dxf.json || cat /tmp/dxf.json
+
+          set -e
           test "$HTTP_CODE" = "200"
-          jq -e '.ok == true' /tmp/cad-response.json >/dev/null
-          jq -e '(.preview.meshes | length) > 0' /tmp/cad-response.json >/dev/null
-          jq -e '(.preview.meshes[0].positions | length) > 0' /tmp/cad-response.json >/dev/null
-          jq -e '(.preview.meshes[0].indices | length) > 0' /tmp/cad-response.json >/dev/null
-          echo 'Live STEP -> OpenCascade -> mesh probe passed.'
+          jq -e '.ok == true' /tmp/dxf.json >/dev/null
+          jq -e '.preview.format == "dxf"' /tmp/dxf.json >/dev/null
+          # The part was read at its declared size, through $MEASUREMENT.
+          jq -e '.preview.cad.widthMm == 200' /tmp/dxf.json >/dev/null
+          jq -e '.preview.cad.heightMm == 100' /tmp/dxf.json >/dev/null
+          # And there is linework to draw, so the customer sees their part.
+          jq -e '(.preview.drawing.polylines | length) > 0' /tmp/dxf.json >/dev/null
+          echo 'Live DXF probe passed: comment header, byte-order mark and missing $INSUNITS are all read.'
+
+      - name: A file that only claims to be a DXF is still refused
+        run: |
+          set -uo pipefail
+          HTTP_CODE="$(curl -sS --max-time 60 -o /tmp/bad.json -w '%{http_code}' \
+            -F 'file=@/tmp/probe-not-a-drawing.dxf;type=application/octet-stream' \
+            'https://www.steelprodukt.ru/api/online-order/cad/analyze')"
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/bad.json
+
+          set -e
+          # Refused, and refused with a sentence the customer can act on rather
+          # than a developer string.
+          test "$HTTP_CODE" != "200"
+          jq -e '.ok == false' /tmp/bad.json >/dev/null
+          jq -e '.error | test("[А-Яа-я]")' /tmp/bad.json >/dev/null
+          echo 'Live refusal probe passed: the widened header check still rejects a non-drawing.'
+
+      - name: A STEP solid is measured by OpenCascade on the server
+        run: |
+          set -uo pipefail
+          HTTP_CODE="$(curl -sS --max-time 120 -o /tmp/step.json -w '%{http_code}' \
+            -F 'file=@/tmp/probe-plate.step;type=application/step' \
+            'https://www.steelprodukt.ru/api/online-order/cad/analyze')"
+          echo "HTTP $HTTP_CODE"
+          jq '{ok, error, code, format: .preview.format, status: .preview.status, cad: .preview.cad,
+                meshes: (.preview.meshes | length // 0)}' /tmp/step.json || cat /tmp/step.json
+
+          set -e
+          test "$HTTP_CODE" = "200"
+          jq -e '.ok == true' /tmp/step.json >/dev/null
+          jq -e '(.preview.meshes | length) > 0' /tmp/step.json >/dev/null
+          jq -e '(.preview.meshes[0].positions | length) > 0' /tmp/step.json >/dev/null
+          # Thickness measured from the solid is what keeps the default 1 mm
+          # from pricing a plate that was drawn thicker.
+          jq -e '.preview.cad.thicknessFromModelMm != null' /tmp/step.json >/dev/null
+          echo 'Live STEP probe passed: the solid was meshed and its thickness measured.'
