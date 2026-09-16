@@ -26,7 +26,7 @@ EnvironmentFile=/var/www/html/.env.production
 # The react-server condition resolves the server-only guards outside Next.js.
 # Invoked directly rather than through npm: ProtectHome=true hides the home
 # directory, and npm wants a cache there. The script is plain ESM.
-ExecStart=/usr/bin/node --conditions react-server --import tsx /var/www/html/scripts/refresh-steel-product-prices.ts --commit
+ExecStart=/usr/bin/node --conditions react-server --import tsx --import /var/www/html/scripts/repo-alias-hook.mjs /var/www/html/scripts/refresh-steel-product-prices.ts --commit
 PrivateTmp=true
 NoNewPrivileges=true
 ProtectSystem=strict

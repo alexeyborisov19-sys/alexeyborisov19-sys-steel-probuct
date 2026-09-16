@@ -122,7 +122,7 @@ jobs:
           # The deploy that ships this template and the run that installs it are
           # triggered by the same merge and race each other. Refuse to install a
           # stale template rather than enabling a unit that fails every run.
-          if ! grep -Eq '^ExecStart=/usr/bin/node .*--conditions react-server .*refresh-steel-product-prices\.ts --commit' "$UNIT_SRC/steelprodukt-metal-prices.service"; then
+          if ! grep -Eq '^ExecStart=/usr/bin/node .*--conditions react-server .*repo-alias-hook\.mjs .*refresh-steel-product-prices\.ts --commit' "$UNIT_SRC/steelprodukt-metal-prices.service"; then
             echo "FAIL: the unit template on the server is not the current one."
             echo "      The production deploy has probably not finished yet."
             echo "      Wait for 'Publish to Beget' to succeed, then re-run this workflow"
@@ -140,7 +140,7 @@ jobs:
             echo ". \"$ENV_FILE\""
             echo 'set +a'
             echo "cd \"$APP_PATH\""
-            echo "exec \"$NODE_BIN\" --conditions react-server --import tsx \"$SCRIPT\" --dry-run"
+            echo "exec \"$NODE_BIN\" --conditions react-server --import tsx --import \"$APP_PATH/scripts/repo-alias-hook.mjs\" \"$SCRIPT\" --dry-run"
           } > "$TMP/dryrun.sh"
           sudo install -m 0700 -o nodejs -g nodejs "$TMP/dryrun.sh" /tmp/steelprodukt-price-dryrun.sh
 

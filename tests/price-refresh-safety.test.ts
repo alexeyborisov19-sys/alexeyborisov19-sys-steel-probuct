@@ -51,4 +51,18 @@ test("the timer unit runs the refresh the one way that resolves server-only", ()
   // unless the react-server condition is set. Without it the unit would fail
   // on every run, so the flag is part of the contract, not a detail.
   assert.match(unit, /^ExecStart=.*--conditions react-server .*--import tsx .*refresh-steel-product-prices\.ts --commit$/m);
+
+  // The server modules import each other through the project's "@/" alias,
+  // which Next resolves from tsconfig and a plain node process does not know.
+  // Without the hook the timer dies on its first import.
+  assert.match(unit, /^ExecStart=.*repo-alias-hook\.mjs.*$/m);
+});
+
+test("a dry run explains why it could not start, a commit run does not", () => {
+  const script = readFileSync("scripts/refresh-steel-product-prices.ts", "utf8");
+
+  // A dry run writes nothing and is read by whoever is installing the timer,
+  // so it says what failed. A commit run's output is not being read by anyone
+  // who can act on it, so it stays terse and discloses no paths.
+  assert.match(script, /commit\s*\?[\s\S]*error\.name[\s\S]*:[\s\S]*error\.message/);
 });
