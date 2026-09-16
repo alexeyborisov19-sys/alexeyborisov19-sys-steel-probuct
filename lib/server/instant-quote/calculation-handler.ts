@@ -74,8 +74,15 @@ async function analyzePlanarStep(inspection: UploadInspection, format: "step" | 
     adapter.analyze({ fileName: inspection.safeName, format, bytes }),
     measurePrivateStepProductionEvidence(bytes).catch(() => null),
   ]);
+  // Two ways a STEP can carry production geometry, and no third. A flat part
+  // gets it from a confirmed planar flat pattern; a bent one from a blank
+  // measured off its own surfaces, which the adapter promotes only once both
+  // the blank's sides and the bend count are proven. Anything else is a part
+  // an engineer looks at.
   const flat = model.sheetMetal?.flatPatternCandidate;
-  const productionReady = flat?.confidence === "high"
+  const provenSource = flat?.confidence === "high"
+    || model.sheetMetal?.development?.status === "measured";
+  const productionReady = provenSource
     && (model.geometry.areaMm2 ?? 0) > 0
     && (model.geometry.blankAreaMm2 ?? 0) > 0
     && (model.geometry.cutLengthMm ?? 0) > 0

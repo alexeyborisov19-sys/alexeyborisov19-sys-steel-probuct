@@ -58,17 +58,30 @@ test("a measured thickness snaps onto a stocked one, or onto nothing at all", ()
   assert.equal(nearestThicknessOption(Number.NaN), null);
 });
 
-test("a bent part says on upload that it will not be priced automatically", () => {
+test("a bent part whose blank was not confirmed says so on upload", () => {
   const bent = modelWith(analysis(1.5, "medium"));
   bent.geometry.bendCount = 1;
   const preview = createClientCadPreview(bent);
 
-  // Without this the customer configures the whole position and only learns at
-  // "Рассчитать проект" that there is no automatic price for it.
+  // No production geometry reached the summary, so there is no price for this
+  // position. Said on upload, the customer does not configure it first and find
+  // out at "Рассчитать проект".
   assert.equal(preview.status, "recognized");
   assert.match(preview.message, /гибами/);
-  assert.match(preview.message, /не автоматически/);
+  assert.match(preview.message, /технолог/);
   // The bends and thickness it did read are still reported.
   assert.equal(preview.cad.bendCountFromModel, 1);
   assert.equal(preview.cad.thicknessFromModelMm, 1.5);
+});
+
+test("a bent part whose blank was measured is told it has a price", () => {
+  const bent = modelWith(analysis(1.5, "medium"));
+  bent.geometry.bendCount = 1;
+  bent.geometry.cutLengthMm = 814.6;
+  bent.geometry.blankAreaMm2 = 250 * 157.3;
+  const preview = createClientCadPreview(bent);
+
+  assert.match(preview.message, /гибами/);
+  assert.match(preview.message, /автоматически/);
+  assert.equal(preview.message.includes("технолог"), false);
 });
