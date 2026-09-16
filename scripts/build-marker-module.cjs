@@ -9,5 +9,10 @@
  *
  * At runtime the marker has no behaviour, so an empty module is the honest
  * equivalent of what Next substitutes.
+ *
+ * CommonJS on purpose: the project declares no module type, so tsx transpiles
+ * its TypeScript to CommonJS, and this is reached through require(). An .mjs
+ * file would need a Node new enough to require ESM; this one works either way,
+ * and an ESM import of it is still fine.
  */
-export {};
+module.exports = {};

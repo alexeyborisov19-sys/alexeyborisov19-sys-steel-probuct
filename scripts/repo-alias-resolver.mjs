@@ -8,6 +8,15 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 /** Same order tsx and Next try when an import omits its extension. */
 const EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs", ".json"];
 
+/**
+ * Next.js build markers. They are not packages — Next substitutes them while
+ * bundling, and they carry no runtime behaviour — so outside Next they resolve
+ * to an empty module rather than failing to resolve at all.
+ */
+const BUILD_MARKERS = new Set(["server-only", "client-only"]);
+
+const MARKER_FILE = path.join(ROOT, "scripts", "build-marker-module.cjs");
+
 function resolveFile(candidate) {
   if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
   for (const extension of EXTENSIONS) {
@@ -22,19 +31,18 @@ function resolveFile(candidate) {
 }
 
 /**
- * Next.js build markers. They are not packages — Next substitutes them while
- * bundling, and they carry no runtime behaviour — so outside Next they resolve
- * to an empty module rather than failing to resolve at all.
+ * The project's own mapping, as a filename. Returns null for anything this
+ * project does not claim, so normal resolution handles it.
  */
-const BUILD_MARKERS = new Set(["server-only", "client-only"]);
+export function resolveProjectSpecifier(specifier) {
+  if (BUILD_MARKERS.has(specifier)) return MARKER_FILE;
+  if (specifier.startsWith("@/")) return resolveFile(path.join(ROOT, specifier.slice(2)));
+  return null;
+}
 
+/** ESM side. The CommonJS side is patched in repo-alias-hook.mjs. */
 export async function resolve(specifier, context, nextResolve) {
-  if (BUILD_MARKERS.has(specifier)) {
-    return { url: new URL("./build-marker-module.mjs", import.meta.url).href, shortCircuit: true };
-  }
-  if (specifier.startsWith("@/")) {
-    const target = resolveFile(path.join(ROOT, specifier.slice(2)));
-    if (target) return { url: pathToFileURL(target).href, shortCircuit: true };
-  }
+  const target = resolveProjectSpecifier(specifier);
+  if (target) return { url: pathToFileURL(target).href, shortCircuit: true };
   return nextResolve(specifier, context);
 }
