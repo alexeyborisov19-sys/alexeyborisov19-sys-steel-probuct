@@ -89,3 +89,65 @@ test("unavailable antivirus fails closed and leaves the file blocked in quaranti
     else process.env.CLAMAV_COMMAND = previousCommand;
   }
 });
+
+function dxfUpload(text: string) {
+  return new File([new TextEncoder().encode(text)], "part.dxf", { type: "application/octet-stream" });
+}
+
+const DXF_BODY = [
+  "0", "SECTION", "2", "HEADER",
+  "9", "$INSUNITS", "70", "4",
+  "0", "ENDSEC",
+  "0", "SECTION", "2", "ENTITIES",
+  "0", "LINE", "8", "0", "10", "0", "20", "0", "11", "100", "21", "0",
+  "0", "ENDSEC", "0", "EOF", "",
+].join("\n");
+
+test("accepts the DXF headers real exporters write", async () => {
+  // Every one of these is a valid drawing that the signature check used to
+  // refuse, because it demanded SECTION on the very first line. 999 is the DXF
+  // comment group code — LibreCAD, SolidWorks and several CAM post-processors
+  // stamp their name there — and a byte-order mark is what any Windows editor
+  // adds when it saves as UTF-8.
+  const accepted: Array<[string, string]> = [
+    ["plain", DXF_BODY],
+    ["indented group codes", DXF_BODY.split("\n").map((line) => (line ? `  ${line}` : line)).join("\r\n")],
+    ["one 999 comment", `999\nExported by LibreCAD\n${DXF_BODY}`],
+    ["two 999 comments", `999\nSolidWorks\n999\nDXF export\n${DXF_BODY}`],
+    ["999 with an empty value", `999\n\n${DXF_BODY}`],
+    ["byte-order mark", `\uFEFF${DXF_BODY}`],
+    ["byte-order mark before a comment", `\uFEFF999\nLibreCAD\n${DXF_BODY}`],
+  ];
+
+  for (const [label, text] of accepted) {
+    const [inspection] = await inspectUploads([dxfUpload(text)], 1);
+    assert.equal(inspection.extension, "dxf", label);
+    assert.equal(inspection.safety, "unverified-cad", label);
+  }
+});
+
+test("still refuses a file that only claims to be a DXF", async () => {
+  // Widening the header check must not turn it off: without a section header
+  // there is no drawing, whatever the extension says.
+  for (const text of [
+    "<!doctype html>\n<html><body>hi</body></html>\n",
+    "#!/bin/sh\necho hi\n",
+    "\n\n\n",
+    "999\nonly a comment\n",
+    "0\nHEADER\n",
+  ]) {
+    await assert.rejects(inspectUploads([dxfUpload(text)], 1), UploadValidationError, text.slice(0, 24));
+  }
+});
+
+test("a binary DXF still passes the signature check so the parser can name it", async () => {
+  // The upload gate accepts it; the analyser recognises the sentinel and tells
+  // the customer to re-save as ASCII, which is a better answer than "format".
+  const binary = new File(
+    [new Uint8Array([...Buffer.from("AutoCAD Binary DXF\r\n", "latin1"), 0x1a, 0x00])],
+    "part.dxf",
+    { type: "application/octet-stream" },
+  );
+  const [inspection] = await inspectUploads([binary], 1);
+  assert.equal(inspection.safety, "unverified-cad");
+});

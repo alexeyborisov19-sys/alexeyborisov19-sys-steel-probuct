@@ -100,7 +100,11 @@ test("geometry the DXF parser could not read blocks the price instead of warning
   // not reach a published price on a drawing that was only partly understood.
   assert.equal(result.parts[0].status, "blocked");
   assert.equal(result.parts[0].calculation, null);
-  assert.ok(result.parts[0].dfmBlockingReasons.includes("Неподдерживаемая геометрия DXF"));
+  // The blocking reason is what the customer reads, so it names the geometry
+  // that stayed unread and what to do about it.
+  const [reason] = result.parts[0].dfmBlockingReasons;
+  assert.ok(reason?.includes("SPLINE_UNSUPPORTED"), reason);
+  assert.ok(/EXPLODE/.test(reason ?? ""), reason);
   assert.equal(result.blockedParts, 1);
   assert.equal(result.completeParts, 0);
   assert.equal(result.confirmedDirectCostRub, 0);
@@ -180,4 +184,27 @@ test("assembly and surface preparation stay partial until physical inputs are su
   assert.equal(completed.parts[0].calculation?.parameters.assemblyMinutesEach, 12);
   assert.equal(completed.parts[0].calculation?.parameters.surfacePreparationAreaM2Each, 0.4);
   assert.equal(completed.confirmedDirectCostRub, 9100);
+});
+test("a part without geometry leads with the reason the analysis measured", () => {
+  // Only the first reason reaches the customer, so a generic sentence in front
+  // of the real one is the same as not having the real one.
+  const withoutGeometry: InstantQuoteProject = {
+    ...project,
+    parts: project.parts.map((part) => ({ ...part, geometry: null })),
+  };
+  const reason = "Толщина STEP-модели 3 мм не совпадает с выбранной в расчёте 1 мм.";
+
+  const measured = calculateProjectFactualCost(
+    withoutGeometry,
+    { "part-1": { reviewReasons: [reason] } },
+    snapshots,
+    rateBook,
+    {},
+    now,
+  );
+  assert.equal(measured.parts[0].status, "missing-geometry");
+  assert.deepEqual(measured.parts[0].dfmReviewReasons, [reason]);
+
+  const silent = calculateProjectFactualCost(withoutGeometry, {}, snapshots, rateBook, {}, now);
+  assert.equal(silent.parts[0].dfmReviewReasons.length, 1);
 });

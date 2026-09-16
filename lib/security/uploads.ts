@@ -135,12 +135,45 @@ function hasExpectedSignature(extension: string, buffer: Buffer) {
   }
 }
 
-function plausibleCad(extension: string, buffer: Buffer) {
-  const start = buffer.subarray(0, Math.min(buffer.length, 256)).toString("latin1").trimStart();
-  if (extension === "dwg" || extension === "dwt" || extension === "dws") {
-    return /^AC10\d{2}/.test(start);
+/** UTF-8 byte-order mark as it decodes under latin1. */
+const UTF8_BOM = "\u00ef\u00bb\u00bf";
+
+/**
+ * An ASCII DXF opens with the group code 0 followed by SECTION — but not
+ * necessarily on the first line. Writers put a byte-order mark in front of it
+ * (any Windows export saved as UTF-8), and the comment group code 999 may
+ * repeat before the first section: LibreCAD, SolidWorks and several CAM
+ * exporters stamp their name there. Requiring SECTION on line one rejected all
+ * of those perfectly valid drawings, so the opening comments are skipped the
+ * way a DXF reader skips them, and the check then still demands a real section
+ * header — a renamed document or script has none.
+ */
+function opensAsAsciiDxf(head: string) {
+  const body = head.startsWith(UTF8_BOM) ? head.slice(UTF8_BOM.length) : head;
+  const lines = body.split(/\r\n|\r|\n/).map((line) => line.trim());
+  let index = 0;
+  const skipBlank = () => {
+    while (index < lines.length && lines[index] === "") index += 1;
+  };
+
+  skipBlank();
+  while (lines[index] === "999" && index + 1 < lines.length) {
+    index += 2;
+    skipBlank();
   }
-  if (extension === "dxf") return /^(0\s*[\r\n]+\s*SECTION|AutoCAD Binary DXF)/i.test(start);
+  return lines[index] === "0" && lines[index + 1]?.toUpperCase() === "SECTION";
+}
+
+function plausibleCad(extension: string, buffer: Buffer) {
+  // Wide enough to hold a byte-order mark and a run of 999 comment lines
+  // before the first group code, which is all this inspection reads.
+  const start = buffer.subarray(0, Math.min(buffer.length, 4096)).toString("latin1");
+  if (extension === "dwg" || extension === "dwt" || extension === "dws") {
+    return /^AC10\d{2}/.test(start.trimStart());
+  }
+  if (extension === "dxf") {
+    return start.trimStart().startsWith("AutoCAD Binary DXF") || opensAsAsciiDxf(start);
+  }
   if (extension === "step" || extension === "stp") return start.includes("ISO-10303-21");
   if (extension === "iges" || extension === "igs") return buffer.length >= 80;
   return isZip(buffer) || isCompoundOffice(buffer);

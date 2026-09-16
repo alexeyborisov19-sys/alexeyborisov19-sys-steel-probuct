@@ -42,3 +42,32 @@ test("a binary DXF is recognised rather than decoded into an empty drawing", () 
   assert.equal(isBinaryDxf(new Uint8Array(Buffer.from("Auto", "utf8"))), false);
   assert.equal(isBinaryDxf(new Uint8Array(0)), false);
 });
+
+test("a refusal tells the customer what is wrong with their file", async () => {
+  const source = await readFile(routePath, "utf8");
+
+  // A file this system can read but cannot turn into production geometry
+  // carries its own reason — units the drawing never declares, no cuttable
+  // contour, a binary DXF. That reason reaches the customer; anything else
+  // fails behind one generic answer, because an internal kernel message is not
+  // a customer's to read.
+  assert.match(source, /error instanceof CadReadError/);
+  assert.match(source, /CadReadError\)\s*\{\s*\n\s*return NextResponse\.json\(\{ ok: false, error: error\.message \}/);
+
+  // Every answer the upload panel prints is written for the person reading it.
+  assert.equal(/error: "[A-Za-z][^"]*\."/.test(source), false, "an English developer string reaches the customer");
+});
+
+test("the calculator shows the refusal instead of one sentence for every cause", async () => {
+  const source = await readFile(
+    new URL("../components/ClientManufacturingWorkspace.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The endpoint's reason used to be thrown away and replaced by "try another
+  // CAD file", which is the same advice whether the drawing had no units, was
+  // saved as binary, or the network dropped.
+  assert.match(source, /refusal = typeof payload\?\.error === "string"/);
+  assert.match(source, /\[partId\]: refusal/);
+  assert.equal(source.includes("Не удалось построить предпросмотр модели."), false);
+});

@@ -1,3 +1,5 @@
+import { CadReadError } from "@/lib/instant-quote/cad-model";
+
 export type Point2D = { x: number; y: number };
 
 export type DxfShape =
@@ -6,6 +8,8 @@ export type DxfShape =
   | { kind: "circle"; c: Point2D; r: number }
   | { kind: "arc"; c: Point2D; r: number; start: number; end: number }
   | { kind: "ellipse"; c: Point2D; major: Point2D; ratio: number; start: number; end: number };
+
+export type DxfUnitsSource = "insunits" | "measurement" | "unknown";
 
 export type ParsedDxf = {
   shapes: DxfShape[];
@@ -24,6 +28,8 @@ export type ParsedDxf = {
   areaStatus: "exact" | "unavailable";
   units: string;
   unitsCode: number | null;
+  /** Which header variable the units came from, or that none declared them. */
+  unitsSource: DxfUnitsSource;
   unsupportedEntities: string[];
   /** Annotation layers whose geometry was excluded from every metric. */
   skippedServiceLayers: string[];
@@ -74,15 +80,37 @@ export function normalizeArc(start: number, end: number) {
 
 function parsePairs(text: string): Pair[] {
   const lines = text.replace(/\r/g, "").split("\n");
+  // A DXF is read two lines at a time: an integer group code, then its value.
+  // The stride only holds if it starts on a code. Exporters do leave a blank
+  // line ahead of the first one, and an empty line reads as the number 0, so
+  // pairing from index zero would take every value line for a code and hand
+  // back an empty drawing instead of the part. Find the first real code and
+  // pair from there; a value may legitimately be blank, so only the run before
+  // the first code is skipped.
+  let start = 0;
+  while (start + 1 < lines.length && !/^-?\d+$/.test(lines[start].trim())) start += 1;
+
   const pairs: Pair[] = [];
-  for (let i = 0; i + 1 < lines.length; i += 2) {
+  for (let i = start; i + 1 < lines.length; i += 2) {
     const code = Number(lines[i].trim());
     if (Number.isFinite(code)) pairs.push([code, lines[i + 1].trim()]);
   }
   return pairs;
 }
 
-function detectUnits(pairs: Pair[]) {
+function headerFlag(pairs: Pair[], variable: string) {
+  for (let i = 0; i < pairs.length - 1; i++) {
+    if (pairs[i][0] !== 9 || pairs[i][1] !== variable) continue;
+    for (let j = i + 1; j < Math.min(i + 6, pairs.length); j++) {
+      if (pairs[j][0] !== 70) continue;
+      const code = Number(pairs[j][1]);
+      return Number.isFinite(code) ? code : null;
+    }
+  }
+  return null;
+}
+
+function detectUnits(pairs: Pair[]): { code: number | null; label: string; source: DxfUnitsSource } {
   const labels: Record<number, string> = {
     1: "дюймы",
     2: "футы",
@@ -91,16 +119,23 @@ function detectUnits(pairs: Pair[]) {
     6: "м",
   };
 
-  for (let i = 0; i < pairs.length - 2; i++) {
-    if (pairs[i][0] !== 9 || pairs[i][1] !== "$INSUNITS") continue;
-    for (let j = i + 1; j < Math.min(i + 6, pairs.length); j++) {
-      if (pairs[j][0] !== 70) continue;
-      const code = Number(pairs[j][1]);
-      return { code, label: labels[code] ?? `код ${code}` };
-    }
+  const insunits = headerFlag(pairs, "$INSUNITS");
+  if (insunits != null && insunits !== 0) {
+    return { code: insunits, label: labels[insunits] ?? `код ${insunits}`, source: "insunits" };
   }
 
-  return { code: null, label: "не указаны" };
+  // $INSUNITS 0 means "unitless", and plenty of exporters omit the variable
+  // altogether — every R12 file does, and LibreCAD, Inkscape and several CAM
+  // post-processors do too. $MEASUREMENT is the drawing's other statement about
+  // its own system: 1 metric, 0 imperial. A mechanical drawing in either system
+  // is drawn in millimetres or in inches respectively, so this is still the file
+  // speaking rather than an assumption — but it is one step weaker than
+  // $INSUNITS, so the source travels with the result and the caller says so.
+  const measurement = headerFlag(pairs, "$MEASUREMENT");
+  if (measurement === 1) return { code: 4, label: "мм", source: "measurement" };
+  if (measurement === 0) return { code: 1, label: "дюймы", source: "measurement" };
+
+  return { code: null, label: "не указаны", source: "unknown" };
 }
 
 function collectEntityFields(pairs: Pair[], start: number) {
@@ -781,6 +816,29 @@ function parseLinearPlanarSpline(fields: Pair[]) {
 }
 
 /**
+ * Entities that live in the ENTITIES section but describe the drawing rather
+ * than the part: notes, dimensions and their leaders, block attributes,
+ * construction lines of infinite length, raster underlays, embedded objects and
+ * layout viewport frames. None of them carries a cut path, a pierce or any
+ * material, so skipping one cannot make a part cheaper than it can be made —
+ * they are recorded as read. Everything else stays unread on purpose, INSERT
+ * and HATCH included: a block reference or a hatch boundary can be real
+ * geometry this parser did not open, and an under-read contour would be quoted
+ * below its cost.
+ */
+const NON_MANUFACTURING_ENTITIES = new Set([
+  "TEXT", "MTEXT", "POINT",
+  "DIMENSION", "TOLERANCE",
+  "LEADER", "MLEADER", "MULTILEADER",
+  "ATTDEF", "ATTRIB",
+  "XLINE", "RAY",
+  "VIEWPORT",
+  "IMAGE", "WIPEOUT",
+  "OLEFRAME", "OLE2FRAME",
+  "ACAD_TABLE", "TABLE",
+]);
+
+/**
  * AutoCAD Binary DXF sentinel. Such a file is a valid DXF, but this parser
  * reads the ASCII grouped-code form only, so decoding one as text yields
  * silence rather than geometry. Detecting it lets the caller say so instead of
@@ -807,8 +865,11 @@ export function parseAsciiDxf(text: string): ParsedDxf {
   for (let i = 0; i < pairs.length; i++) {
     const [code, value] = pairs[i];
     if (code === 0 && value === "SECTION") {
+      // Assign rather than only set: a drawing whose ENTITIES section is never
+      // closed with ENDSEC would otherwise keep reading the next section's
+      // records as entities.
       const next = pairs[i + 1];
-      if (next?.[0] === 2 && next[1] === "ENTITIES") inEntities = true;
+      inEntities = next?.[0] === 2 && next[1] === "ENTITIES";
       continue;
     }
     if (inEntities && code === 0 && value === "ENDSEC") {
@@ -890,10 +951,16 @@ export function parseAsciiDxf(text: string): ParsedDxf {
       continue;
     }
 
-    if (!["TEXT", "MTEXT", "DIMENSION", "POINT"].includes(value)) unsupported.add(value);
+    if (!NON_MANUFACTURING_ENTITIES.has(value)) unsupported.add(value);
   }
 
-  if (!shapes.length) throw new Error("В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, POLYLINE, CIRCLE, ARC, ELLIPSE или безопасный линейный SPLINE.");
+  if (!shapes.length) {
+    throw new CadReadError(
+      unsupported.size
+        ? `В DXF не найдено ни одного контура, который можно раскроить: вся геометрия чертежа — ${[...unsupported].sort().join(", ")}. Расчлените блоки (команда РАСЧЛЕНИТЬ / EXPLODE) и сохраните контур линиями, полилиниями, дугами или окружностями.`
+        : "В DXF не найдены поддерживаемые 2D-объекты LINE, LWPOLYLINE, POLYLINE, CIRCLE, ARC, ELLIPSE или безопасный линейный SPLINE.",
+    );
+  }
 
   const pointsForBounds: Point2D[] = [];
   let cutLength = 0;
@@ -954,6 +1021,7 @@ export function parseAsciiDxf(text: string): ParsedDxf {
     areaStatus: topology.status,
     units: units.label,
     unitsCode: units.code,
+    unitsSource: units.source,
     unsupportedEntities: [...unsupported].sort(),
     skippedServiceLayers: [...skippedServiceLayers].sort(),
   };

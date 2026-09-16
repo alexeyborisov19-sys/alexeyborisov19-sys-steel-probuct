@@ -140,6 +140,7 @@ test("DXF client drawing contains display points only", () => {
     areaStatus: "unavailable",
     units: "мм",
     unitsCode: 4,
+    unitsSource: "insunits",
     unsupportedEntities: ["PRIVATE_DETAIL"],
   } as ParsedDxf;
 

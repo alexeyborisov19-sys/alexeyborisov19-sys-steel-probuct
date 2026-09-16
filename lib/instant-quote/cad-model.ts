@@ -6,6 +6,22 @@ import type {
   StepUnfoldGeometryEvidence,
 } from "@/lib/instant-quote/unfold-geometry";
 
+/**
+ * A CAD file this system could read but cannot turn into production geometry —
+ * a drawing with no cuttable objects, one whose units it does not declare, one
+ * saved in a form the parser does not read. The message states what is wrong
+ * with the file and what to do about it, so it is written for the customer and
+ * is safe to return from a public endpoint. Anything else that fails stays
+ * behind a generic answer: an internal kernel message is not a customer's to
+ * read.
+ */
+export class CadReadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CadReadError";
+  }
+}
+
 export type CadVector3 = [number, number, number];
 
 export type CadMeshPrimitive = {
