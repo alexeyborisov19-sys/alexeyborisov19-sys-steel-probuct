@@ -58,6 +58,26 @@ test("the timer unit runs the refresh the one way that resolves server-only", ()
   assert.match(unit, /^ExecStart=.*repo-alias-hook\.mjs.*$/m);
 });
 
+test("the timer may write the snapshot it now produces itself", async () => {
+  const unit = readFileSync("deploy/systemd/steelprodukt-metal-prices.service", "utf8");
+  const installer = readFileSync(".github/workflows/install-metal-price-timer.yml", "utf8");
+
+  // ProtectSystem=strict makes the whole filesystem read-only. The unit used to
+  // post to the app on loopback and let the app store the snapshot; removing
+  // that shared secret moved the write into the unit itself, and the sandbox
+  // was never widened to match. Every run then fetched and parsed the price
+  // list correctly and died on EROFS.
+  assert.match(unit, /^ProtectSystem=strict$/m);
+  assert.match(unit, /^ReadWritePaths=/m);
+
+  // The path is not hardcoded: it comes from the same .env.production the
+  // application reads it from, so the two cannot drift apart.
+  assert.match(installer, /STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH=\/\/p/);
+  assert.match(installer, /__PRIVATE_BASIS_DIR__#\$BASIS_DIR/);
+  // And an unsubstituted template is refused rather than installed.
+  assert.match(installer, /grep -q '\^ReadWritePaths=\/' "\$TMP\/service"/);
+});
+
 test("a run that could not start says why, whichever mode it is in", () => {
   const script = readFileSync("scripts/refresh-steel-product-prices.ts", "utf8");
 

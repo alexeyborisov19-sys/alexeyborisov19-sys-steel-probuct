@@ -122,7 +122,8 @@ jobs:
           # The deploy that ships this template and the run that installs it are
           # triggered by the same merge and race each other. Refuse to install a
           # stale template rather than enabling a unit that fails every run.
-          if ! grep -Eq '^ExecStart=/usr/bin/node .*--conditions react-server .*repo-alias-hook\.mjs .*refresh-steel-product-prices\.ts --commit' "$UNIT_SRC/steelprodukt-metal-prices.service"; then
+          if ! grep -Eq '^ExecStart=/usr/bin/node .*--conditions react-server .*repo-alias-hook\.mjs .*refresh-steel-product-prices\.ts --commit' "$UNIT_SRC/steelprodukt-metal-prices.service" \
+            || ! grep -q '^ReadWritePaths=__PRIVATE_BASIS_DIR__' "$UNIT_SRC/steelprodukt-metal-prices.service"; then
             echo "FAIL: the unit template on the server is not the current one."
             echo "      The production deploy has probably not finished yet."
             echo "      Wait for 'Publish to Beget' to succeed, then re-run this workflow"
@@ -160,9 +161,23 @@ jobs:
 
           echo
           echo "== 3. Install units =="
+          # The one directory this unit may write to: where the application keeps
+          # the private basis. ProtectSystem=strict makes everything else
+          # read-only, and the refresh writes the snapshot itself now.
+          BASIS_PATH="$(sed -n 's/^STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH=//p' "$ENV_FILE" | tail -n 1 | tr -d '\042\047')"
+          if [ -z "$BASIS_PATH" ]; then
+            echo "FAIL: STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH is not set in .env.production."
+            echo "      The refresh would fetch and parse the price list and then fail to store it."
+            exit 1
+          fi
+          BASIS_DIR="$(dirname "$BASIS_PATH")"
+          echo "OK: snapshot directory resolved from .env.production."
+
           # Templates are written for /var/www/html; point them at the real path.
           sed -e "s#/var/www/html#$APP_PATH#g" -e "s#^ExecStart=/usr/bin/node#ExecStart=$NODE_BIN#" \
+            -e "s#__PRIVATE_BASIS_DIR__#$BASIS_DIR#" \
             "$UNIT_SRC/steelprodukt-metal-prices.service" > "$TMP/service"
+          grep -q '^ReadWritePaths=/' "$TMP/service" || { echo "FAIL: snapshot directory was not substituted into the unit."; exit 1; }
           cp "$UNIT_SRC/steelprodukt-metal-prices.timer" "$TMP/timer"
           sudo install -m 0644 -o root -g root "$TMP/service" /etc/systemd/system/steelprodukt-metal-prices.service
           sudo install -m 0644 -o root -g root "$TMP/timer" /etc/systemd/system/steelprodukt-metal-prices.timer
