@@ -66,3 +66,21 @@ test("a dry run explains why it could not start, a commit run does not", () => {
   // who can act on it, so it stays terse and discloses no paths.
   assert.match(script, /commit\s*\?[\s\S]*error\.name[\s\S]*:[\s\S]*error\.message/);
 });
+
+test("the timer resolves Next's build markers, which are not packages", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const [resolver, packageJson] = await Promise.all([
+    readFile("scripts/repo-alias-resolver.mjs", "utf8"),
+    readFile("package.json", "utf8"),
+  ]);
+
+  // "server-only" is a build marker Next substitutes while bundling, not a
+  // dependency — it is in neither the manifest nor the lockfile. Outside Next
+  // nothing resolves it, and the refresh dies on its first import.
+  const manifest = JSON.parse(packageJson) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  assert.equal(manifest.dependencies?.["server-only"], undefined);
+  assert.equal(manifest.devDependencies?.["server-only"], undefined);
+
+  assert.match(resolver, /BUILD_MARKERS[\s\S]*"server-only"[\s\S]*"client-only"/);
+  assert.match(resolver, /build-marker-module\.mjs/);
+});
