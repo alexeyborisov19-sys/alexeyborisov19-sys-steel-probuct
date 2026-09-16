@@ -14,7 +14,7 @@ on:
       - 'components/CadMeshViewer.tsx'
       - 'lib/instant-quote/**'
       - 'lib/server/instant-quote/**'
-      - 'scripts/refresh-steel-product-prices.mjs'
+      - 'scripts/refresh-steel-product-prices.ts'
       - 'tests/instant-quote-*.test.ts'
       - 'tests/price-refresh-*.test.ts'
       - 'tests/online-order-confidentiality.test.ts'

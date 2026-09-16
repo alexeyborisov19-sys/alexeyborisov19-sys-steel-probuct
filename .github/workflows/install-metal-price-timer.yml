@@ -68,7 +68,7 @@ jobs:
           trap 'rm -rf "$TMP" /tmp/steelprodukt-price-dryrun.sh' EXIT
 
           ENV_FILE="$APP_PATH/.env.production"
-          SCRIPT="$APP_PATH/scripts/refresh-steel-product-prices.mjs"
+          SCRIPT="$APP_PATH/scripts/refresh-steel-product-prices.ts"
           UNIT_SRC="$APP_PATH/deploy/systemd"
 
           echo "== 1. Preconditions =="
@@ -81,15 +81,9 @@ jobs:
 
           test -s "$ENV_FILE" || { echo "FAIL: $ENV_FILE is missing."; exit 1; }
 
-          # Length only: the token value is never printed, logged or exported here.
-          TOKEN_LEN="$(sudo sed -n 's/^STEEL_PRODUCT_PRICE_REFRESH_TOKEN=//p' "$ENV_FILE" | head -n 1 | tr -d '"'"'"'\r\n' | wc -c | tr -d ' ')"
-          if [ "${TOKEN_LEN:-0}" -lt 32 ]; then
-            echo "FAIL: STEEL_PRODUCT_PRICE_REFRESH_TOKEN is missing or shorter than 32 characters (length ${TOKEN_LEN:-0})."
-            echo "      The refresh endpoint rejects anything shorter, so the timer would fail on every run."
-            echo "      Add a 32+ character token to $ENV_FILE and run this workflow again."
-            exit 1
-          fi
-          echo "OK: refresh token present (length $TOKEN_LEN)."
+          # No refresh token is required any more: the timer calls the refresh
+          # directly instead of posting to the application's own loopback
+          # endpoint, so there is no secret for the server to present to itself.
 
           PDFTOTEXT="$(command -v pdftotext || true)"
           if [ -z "$PDFTOTEXT" ]; then
@@ -103,13 +97,17 @@ jobs:
           echo "OK: node at $NODE_BIN"
 
           test -s "$SCRIPT" || { echo "FAIL: $SCRIPT is missing. Deploy current main first."; exit 1; }
+          # The refresh is TypeScript and runs under tsx, which npm ci installs
+          # with the rest of the dependencies. Without it the unit cannot start.
+          test -d "$APP_PATH/node_modules/tsx" || { echo "FAIL: tsx is not installed in $APP_PATH/node_modules. Deploy current main first."; exit 1; }
+          echo "OK: tsx present."
           test -s "$UNIT_SRC/steelprodukt-metal-prices.service" || { echo "FAIL: service template missing."; exit 1; }
           test -s "$UNIT_SRC/steelprodukt-metal-prices.timer" || { echo "FAIL: timer template missing."; exit 1; }
 
           # The deploy that ships this template and the run that installs it are
           # triggered by the same merge and race each other. Refuse to install a
           # stale template rather than enabling a unit that fails every run.
-          if ! grep -Eq '^ExecStart=/usr/bin/node .*refresh-steel-product-prices\.mjs --commit' "$UNIT_SRC/steelprodukt-metal-prices.service"; then
+          if ! grep -Eq '^ExecStart=/usr/bin/node .*--conditions react-server .*refresh-steel-product-prices\.ts --commit' "$UNIT_SRC/steelprodukt-metal-prices.service"; then
             echo "FAIL: the unit template on the server is not the current one."
             echo "      The production deploy has probably not finished yet."
             echo "      Wait for 'Publish to Beget' to succeed, then re-run this workflow"
@@ -127,7 +125,7 @@ jobs:
             echo ". \"$ENV_FILE\""
             echo 'set +a'
             echo "cd \"$APP_PATH\""
-            echo "exec \"$NODE_BIN\" \"$SCRIPT\" --dry-run"
+            echo "exec \"$NODE_BIN\" --conditions react-server --import tsx \"$SCRIPT\" --dry-run"
           } > "$TMP/dryrun.sh"
           sudo install -m 0700 -o nodejs -g nodejs "$TMP/dryrun.sh" /tmp/steelprodukt-price-dryrun.sh
 

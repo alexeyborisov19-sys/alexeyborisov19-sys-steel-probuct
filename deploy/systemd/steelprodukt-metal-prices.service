@@ -20,9 +20,13 @@ Group=nodejs
 UMask=0077
 WorkingDirectory=/var/www/html
 EnvironmentFile=/var/www/html/.env.production
+# Calls the refresh directly rather than posting to the app's own loopback
+# endpoint: that removed a shared secret whose only job was letting the server
+# authenticate to itself, and the refresh no longer depends on the site being up.
+# The react-server condition resolves the server-only guards outside Next.js.
 # Invoked directly rather than through npm: ProtectHome=true hides the home
 # directory, and npm wants a cache there. The script is plain ESM.
-ExecStart=/usr/bin/node /var/www/html/scripts/refresh-steel-product-prices.mjs --commit
+ExecStart=/usr/bin/node --conditions react-server --import tsx /var/www/html/scripts/refresh-steel-product-prices.ts --commit
 PrivateTmp=true
 NoNewPrivileges=true
 ProtectSystem=strict
