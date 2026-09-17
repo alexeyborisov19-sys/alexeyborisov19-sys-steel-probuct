@@ -3,9 +3,9 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-// Нижняя граница показа, а не пауза: заставка уходит по событию load, как только
-// страница готова. Держим небольшой порог, чтобы на закешированной навигации
-// оверлей не мигнул одним кадром.
+// A floor on how briefly the intro shows, not a pause: it leaves on the load event,
+// as soon as the page is ready. The small threshold only stops the overlay flashing
+// for a single frame on a cached navigation.
 const INTRO_DURATION = 300;
 const EXIT_DURATION = 420;
 
@@ -51,8 +51,8 @@ export function SitePreloader() {
 
   if (!visible) return null;
 
-  // Логотип заставки виден сразу, поэтому грузим его eager. Но это не LCP-элемент
-  // страницы, и priority здесь отбирал бы раннюю полосу у настоящего героя.
+  // The intro logo is visible immediately, so it loads eager. It is not the page's LCP
+  // element though, and priority here would steal early bandwidth from the real hero.
   return (
     <div className={`site-preloader${leaving ? " site-preloader--leaving" : ""}`} aria-hidden="true">
       <div className="site-preloader__grid" />

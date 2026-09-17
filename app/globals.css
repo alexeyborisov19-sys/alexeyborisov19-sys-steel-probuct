@@ -142,10 +142,9 @@ a { color: inherit; text-decoration: none; }
   .quote-print-root, .quote-print-root * { visibility: visible !important; }
 }
 
-/* Баннер согласия на cookies — регулируемый элемент: до выбора пользователя он
-   должен оставаться видимым и нажимаемым, поэтому перекрывать его нельзя. Липкая
-   панель с итогом расчёта вместо этого поднимается ровно на занятую баннером
-   высоту, которую баннер публикует сам. Пока баннера нет, переменной нет тоже и
-   панель стоит у нижнего края. Значение задаётся здесь, а не утилитой bottom-0,
-   чтобы порядок Tailwind-классов не решал исход. */
+/* The cookie consent banner is a regulated element: until the visitor chooses, it has
+   to stay visible and clickable, so nothing may cover it. The sticky quote bar lifts by
+   exactly the height the banner occupies and publishes itself instead. With no banner
+   there is no variable either, and the bar sits at the bottom edge. The value lives here
+   rather than in a bottom-0 utility so Tailwind class order cannot decide the outcome. */
 .mobile-quote-bar { bottom: var(--cookie-consent-space, 0px); }

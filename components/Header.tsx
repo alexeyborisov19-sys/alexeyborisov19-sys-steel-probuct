@@ -21,9 +21,9 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const solutionsButtonRef = useRef<HTMLAnchorElement>(null);
-  // Escape закрывает меню и возвращает фокус на пункт «Решения». Фокус сам по себе
-  // раскрывает меню, поэтому возврат пришлось бы считать открытием — и Escape стал бы
-  // пустым действием. Флаг гасит ровно одно такое открытие.
+  // Escape closes the menu and returns focus to the "Решения" item. Focus alone opens
+  // the menu, so that return would count as an open and Escape would do nothing at all.
+  // This flag swallows exactly one such open.
   const skipFocusOpenRef = useRef(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();

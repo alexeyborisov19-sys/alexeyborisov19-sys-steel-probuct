@@ -76,11 +76,11 @@ export function CookieConsent() {
     return () => window.removeEventListener(settingsEvent, openSettings);
   }, []);
 
-  // Баннер — механизм получения согласия на аналитику, поэтому он обязан
-  // оставаться видимым и нажимаемым: перекрывать его нельзя ничем. Чтобы липкая
-  // панель расчёта при этом не пряталась под ним, баннер публикует занимаемую им
-  // высоту, а панель поднимается ровно на неё. Значение снимается, как только
-  // баннер уходит, и панель возвращается к нижнему краю.
+  // The banner is how analytics consent is collected, so it has to stay visible and
+  // clickable and must never be covered. So that the sticky quote bar does not end up
+  // hidden underneath it, the banner publishes the height it occupies and the bar lifts
+  // by exactly that much. The value is cleared the moment the banner leaves, and the bar
+  // returns to the bottom edge.
   useEffect(() => {
     const root = document.documentElement;
     const clear = () => root.style.removeProperty("--cookie-consent-space");
@@ -93,7 +93,7 @@ export function CookieConsent() {
     const node = bannerRef.current;
     if (!node) return;
 
-    // Высота баннера плюс его собственный отступ снизу и зазор до панели.
+    // The banner height plus its own bottom offset and a gap before the bar.
     const publish = () => root.style.setProperty("--cookie-consent-space", `${node.offsetHeight + 28}px`);
     publish();
 

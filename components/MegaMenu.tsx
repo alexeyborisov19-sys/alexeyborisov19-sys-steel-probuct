@@ -27,9 +27,9 @@ export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void
   const active = solutions[activeIndex];
   const isArchitecture = activeIndex === 0;
   const activeHref = active.href;
-  // Разметка меню отдаётся всегда и скрывается атрибутом hidden, а не условным
-  // рендером: иначе ссылки на решения и продукцию не попадают в серверный HTML,
-  // и у раздела /solutions не остаётся ни одной входящей ссылки из шапки.
+  // The menu markup is always rendered and hidden through the hidden attribute rather
+  // than conditional rendering: otherwise its solution and product links never reach the
+  // server HTML, leaving /solutions with no inbound link from the header at all.
   return (
     <div hidden={!open} className="container absolute left-1/2 top-full z-50 w-full -translate-x-1/2 pt-3">
       <section
