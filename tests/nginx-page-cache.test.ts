@@ -16,11 +16,10 @@ function publicLocationBlock(config: string) {
   return config.slice(start, index);
 }
 
-test("TLS listeners enable HTTP/2 and text responses are compressed", () => {
+test("TLS listeners enable HTTP/2 and site compression does not redeclare global gzip", () => {
   assert.equal((nginxConfig.match(/listen 443 ssl http2;/g) ?? []).length, 2);
   assert.equal((nginxConfig.match(/listen \[::\]:443 ssl http2;/g) ?? []).length, 2);
-  assert.match(nginxConfig, /gzip on;/);
-  assert.match(nginxConfig, /gzip_vary on;/);
+  assert.doesNotMatch(nginxConfig, /^\s*gzip(?:\s|_)/m);
   assert.match(nginxConfig, /brotli on;/);
   assert.match(nginxConfig, /brotli_types[^;]*application\/javascript[^;]*image\/svg\+xml;/);
 });
