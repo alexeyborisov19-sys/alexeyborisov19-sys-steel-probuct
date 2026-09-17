@@ -50,7 +50,7 @@ export function ProductionCycle({ stages }: ProductionCycleProps) {
           <Image
             src={`/images/web/cycle-${image}`}
             fill
-            sizes="(max-width: 1023px) 100vw, 100vw"
+            sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 190px"
             // Each frame shows the stage it is labelled with, so it carries its own
             // meaning and belongs in image search rather than being skipped as decor.
             alt={`${title} — этап производства изделий из листового металла`}
