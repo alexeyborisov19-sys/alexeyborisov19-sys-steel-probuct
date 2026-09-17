@@ -42,29 +42,26 @@ export function EngineeringVoiceProfile() {
       }
     };
 
-    const speakWithSystemFallback = (utterance: SpeechSynthesisUtterance) => {
-      // Fallback only: keep the native voice neutral instead of reshaping it
-      // with a low pitch, which was the main source of the robotic sound.
-      utterance.pitch = 1;
-      utterance.rate = 0.98;
-      utterance.volume = 1;
-      nativeSpeak.call(synthesis, utterance);
+    const finishWithoutSystemVoice = (utterance: SpeechSynthesisUtterance) => {
+      // Do not fall back to the operating-system voice: the user explicitly
+      // prefers silence over the robotic browser speech if local neural TTS is unavailable.
+      fireUtteranceEnd(utterance);
     };
 
-    const speakWithNeuralVoice = (utterance: SpeechSynthesisUtterance) => {
+    const speakWithLocalNeuralVoice = (utterance: SpeechSynthesisUtterance) => {
       stopNeuralPlayback();
       const generation = playbackGeneration;
       const AudioContextCtor = window.AudioContext
         || (window as AudioWindow).webkitAudioContext;
 
       if (!AudioContextCtor) {
-        speakWithSystemFallback(utterance);
+        finishWithoutSystemVoice(utterance);
         return;
       }
 
       audioContext ??= new AudioContextCtor();
-      // Resume synchronously from the user's click so iOS/Safari keeps audio
-      // permission while the neural speech is being generated on the server.
+      // Resume from the user's click so iOS/Safari keeps playback permission
+      // while the local server synthesizes the WAV file.
       void audioContext.resume();
 
       const controller = new AbortController();
@@ -79,7 +76,7 @@ export function EngineeringVoiceProfile() {
             cache: "no-store",
             signal: controller.signal,
           });
-          if (!response.ok) throw new Error("neural-voice-unavailable");
+          if (!response.ok) throw new Error("local-neural-voice-unavailable");
 
           const encodedAudio = await response.arrayBuffer();
           if (generation !== playbackGeneration) return;
@@ -105,7 +102,7 @@ export function EngineeringVoiceProfile() {
         } catch {
           if (controller.signal.aborted || generation !== playbackGeneration) return;
           activeRequest = null;
-          speakWithSystemFallback(utterance);
+          finishWithoutSystemVoice(utterance);
         }
       })();
     };
@@ -120,7 +117,7 @@ export function EngineeringVoiceProfile() {
         return;
       }
 
-      speakWithNeuralVoice(utterance);
+      speakWithLocalNeuralVoice(utterance);
     };
 
     const cancelEngineeringVoice = () => {
