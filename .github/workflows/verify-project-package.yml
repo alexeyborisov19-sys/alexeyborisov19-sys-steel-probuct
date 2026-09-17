@@ -28,6 +28,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Audit low-contrast white tokens
+        run: |
+          echo '---LOW_CONTRAST_TOKENS_BEGIN---'
+          grep -RInE 'text-white/(1[0-9]|2[0-9]|3[0-9])' components app || true
+          echo '---LOW_CONTRAST_TOKENS_END---'
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
