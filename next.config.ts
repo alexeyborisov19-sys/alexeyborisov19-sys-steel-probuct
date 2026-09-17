@@ -63,9 +63,9 @@ const nextConfig: NextConfig = {
     // Filenames under public/ are stable and unhashed, so keeping optimized copies for
     // a day is safer than regenerating them every minute.
     minimumCacheTTL: 86400,
-    // AVIF is deliberately left off: the optimizer's response varies by Accept, but
-    // proxy_cache_key in deploy/nginx/steelprodukt.conf does not include it, so a browser
-    // that never asked for AVIF could be served one from cache. Fix the cache key first.
+    // nginx varies its page-cache key by the browser's Accept header, so optimized
+    // AVIF and WebP responses cannot cross-contaminate clients with different support.
+    formats: ["image/avif", "image/webp"],
   },
   async redirects() {
     return [

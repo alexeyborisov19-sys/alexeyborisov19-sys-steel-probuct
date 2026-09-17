@@ -133,11 +133,21 @@ jobs:
           paths_file="$RUNNER_TEMP/indexnow-paths.txt"
           : > "$paths_file"
 
+          append_article_paths() {
+            printf '/articles\n' >> "$paths_file"
+            for source in data/articles.ts data/article-editorial.ts; do
+              sed -n 's/^[[:space:]]*slug: "\([^"]*\)",[[:space:]]*$/\/articles\/\1/p' "$source" >> "$paths_file"
+            done
+          }
+
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             while IFS= read -r file; do
               case "$file" in
                 "app/(public)/page.tsx")
                   printf '/\n' >> "$paths_file"
+                  ;;
+                app/\(public\)/articles/*|data/articles.ts|data/article-editorial.ts|data/article-quality-rewrites.ts)
+                  append_article_paths
                   ;;
                 app/\(public\)/*/page.tsx)
                   route="${file#app/(public)}"
@@ -157,9 +167,6 @@ jobs:
                   ;;
                 app/sitemap.ts)
                   printf '/sitemap.xml\n' >> "$paths_file"
-                  ;;
-                data/articles.ts)
-                  printf '/articles\n' >> "$paths_file"
                   ;;
                 data/products.ts|data/commercial-product-landings.ts)
                   printf '/products\n' >> "$paths_file"

@@ -32,14 +32,14 @@ test("nginx forces every public host variant onto the canonical HTTPS www origin
   assert.match(httpRedirect, /return\s+301\s+https:\/\/www\.steelprodukt\.ru\$request_uri;/);
 
   const bareHttpsRedirect = blocks.find((block) =>
-    /listen\s+443\s+ssl;/.test(block)
+    /listen\s+443\s+ssl(?:\s+http2)?;/.test(block)
     && /server_name\s+steelprodukt\.ru;/.test(block),
   );
   assert.ok(bareHttpsRedirect, "HTTPS bare-domain redirect block must exist");
   assert.match(bareHttpsRedirect, /return\s+301\s+https:\/\/www\.steelprodukt\.ru\$request_uri;/);
 
   const canonicalApp = blocks.find((block) =>
-    /listen\s+443\s+ssl;/.test(block)
+    /listen\s+443\s+ssl(?:\s+http2)?;/.test(block)
     && /server_name\s+www\.steelprodukt\.ru;/.test(block),
   );
   assert.ok(canonicalApp, "canonical HTTPS www application block must exist");

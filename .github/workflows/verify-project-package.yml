@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - feat/project-galleries-exhibitions-obninsk-sep12
-  pull_request:
-    branches:
-      - main
+  pull_request: {}
   workflow_dispatch:
 
 permissions:

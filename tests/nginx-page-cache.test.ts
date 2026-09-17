@@ -16,6 +16,23 @@ function publicLocationBlock(config: string) {
   return config.slice(start, index);
 }
 
+test("TLS listeners enable HTTP/2 and text responses are compressed", () => {
+  assert.equal((nginxConfig.match(/listen 443 ssl http2;/g) ?? []).length, 2);
+  assert.equal((nginxConfig.match(/listen \[::\]:443 ssl http2;/g) ?? []).length, 2);
+  assert.match(nginxConfig, /gzip on;/);
+  assert.match(nginxConfig, /gzip_vary on;/);
+  assert.match(nginxConfig, /brotli on;/);
+  assert.match(nginxConfig, /brotli_types[^;]*application\/javascript[^;]*image\/svg\+xml;/);
+});
+
+test("the page cache varies image responses by Accept", () => {
+  const block = publicLocationBlock(nginxConfig);
+  assert.match(
+    block,
+    /proxy_cache_key "\$scheme:\/\/\$host\$request_uri\|accept=\$http_accept";/,
+  );
+});
+
 test("the page cache honours its own ten-minute lifetime", () => {
   const block = publicLocationBlock(nginxConfig);
 

@@ -13,7 +13,6 @@ const navigation = [
   { label: "Решения для объектов", href: "/industries" },
   { label: "Производство", href: "/production" },
   { label: "Проекты", href: "/projects" },
-  { label: "Инженерный журнал", href: "/articles" },
   { label: "Контакты", href: "/contacts" },
 ];
 
@@ -84,8 +83,6 @@ export function Header() {
       <div
         role="status"
         data-site-status="test-mode"
-        // min-height rather than a fixed height: the notice wraps to two lines on
-        // narrow screens, and a fixed 28px strip clipped it there.
         className="flex min-h-[28px] items-center justify-center bg-steel-orange px-4 py-1 text-center text-[10px] font-bold uppercase leading-tight tracking-[.14em] text-black sm:text-[11px]"
       >
         {siteMode.label}

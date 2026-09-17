@@ -1,0 +1,51 @@
+/*
+ * Shared accessibility corrections for the approved dark/graphite design system.
+ *
+ * White at 25–38% opacity is below WCAG 1.4.3 for normal text on the darkest
+ * approved graphite surfaces. The correction is intentionally scoped to text-
+ * bearing elements so decorative separators and graphic elements keep their
+ * original opacity. 60% white remains above 4.5:1 even on #3e454b.
+ */
+:where(
+  p,
+  span,
+  a,
+  button,
+  label,
+  li,
+  dt,
+  dd,
+  small,
+  figcaption,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  th,
+  td,
+  strong,
+  em,
+  div:not(:has(*)):not(:empty)
+):not([aria-hidden="true"]):is(
+  .text-white\/25,
+  .text-white\/28,
+  .text-white\/30,
+  .text-white\/35,
+  .text-white\/38
+) {
+  color: rgb(255 255 255 / 0.6);
+}
+
+/*
+ * One press-feedback rule covers native buttons and links, including Next.js
+ * Link output, without replacing each component with a one-off active class.
+ */
+:where(a[href], button:not(:disabled)) {
+  -webkit-tap-highlight-color: rgb(234 91 12 / 0.22);
+}
+
+:where(a[href], button:not(:disabled)):active {
+  opacity: 0.82;
+}
