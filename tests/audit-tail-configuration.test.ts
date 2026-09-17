@@ -15,7 +15,9 @@ test("IndexNow expands article changes to concrete article URLs", () => {
       "app/\\(public\\)/articles/*|data/articles.ts|data/article-editorial.ts|data/article-quality-rewrites.ts)",
     ),
   );
-  assert.ok(indexNowWorkflow.includes("/articles/\\1"));
+  assert.ok(indexNowWorkflow.includes("sed -n"));
+  assert.ok(indexNowWorkflow.includes("slug:"));
+  assert.ok(indexNowWorkflow.includes("articles\\/\\1"));
 });
 
 test("the commercial sitemap priority boundary remains intentional", () => {
