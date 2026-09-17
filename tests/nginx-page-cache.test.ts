@@ -16,12 +16,11 @@ function publicLocationBlock(config: string) {
   return config.slice(start, index);
 }
 
-test("TLS listeners enable HTTP/2 and site compression does not redeclare global gzip", () => {
+test("TLS listeners enable HTTP/2 and site config only uses compression available in production", () => {
   assert.equal((nginxConfig.match(/listen 443 ssl http2;/g) ?? []).length, 2);
   assert.equal((nginxConfig.match(/listen \[::\]:443 ssl http2;/g) ?? []).length, 2);
   assert.doesNotMatch(nginxConfig, /^\s*gzip(?:\s|_)/m);
-  assert.match(nginxConfig, /brotli on;/);
-  assert.match(nginxConfig, /brotli_types[^;]*application\/javascript[^;]*image\/svg\+xml;/);
+  assert.doesNotMatch(nginxConfig, /^\s*brotli(?:\s|_)/m);
 });
 
 test("the page cache varies image responses by Accept", () => {
