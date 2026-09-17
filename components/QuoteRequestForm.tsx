@@ -212,10 +212,10 @@ export function QuoteRequestForm() {
     <label className="sr-only" aria-hidden="true">Не заполняйте это поле<input name="website" tabIndex={-1} autoComplete="off" /></label>
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="text-sm font-semibold text-white">Имя *
-        <input name="name" required className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Как к вам обращаться" autoComplete="name" />
+        <input name="name" required className="mt-2 w-full border border-white/35 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/48 focus:border-steel-orange" placeholder="Как к вам обращаться" autoComplete="name" />
       </label>
       <label className="text-sm font-semibold text-white">Компания
-        <input name="company" className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Название компании" autoComplete="organization" />
+        <input name="company" className="mt-2 w-full border border-white/35 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/48 focus:border-steel-orange" placeholder="Название компании" autoComplete="organization" />
       </label>
     </div>
 
@@ -228,16 +228,16 @@ export function QuoteRequestForm() {
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-semibold text-white">Телефон
-          <input name="phone" aria-describedby="quote-contact-rule" className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="+7 ___ ___ __ __" type="tel" autoComplete="tel" />
+          <input name="phone" aria-describedby="quote-contact-rule" className="mt-2 w-full border border-white/35 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/48 focus:border-steel-orange" placeholder="+7 ___ ___ __ __" type="tel" autoComplete="tel" />
         </label>
         <label className="text-sm font-semibold text-white">Электронная почта
-          <input name="email" aria-describedby="quote-contact-rule" className="mt-2 w-full border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="name@company.ru" type="email" autoComplete="email" />
+          <input name="email" aria-describedby="quote-contact-rule" className="mt-2 w-full border border-white/35 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/48 focus:border-steel-orange" placeholder="name@company.ru" type="email" autoComplete="email" />
         </label>
       </div>
     </fieldset>
 
     <label className="text-sm font-semibold text-white">Задача
-      <textarea name="message" value={message} onChange={(event) => setMessage(event.target.value)} className="mt-2 min-h-36 w-full resize-y border border-white/20 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/30 focus:border-steel-orange" placeholder="Что необходимо изготовить, в каком объёме и в какие сроки?" />
+      <textarea name="message" value={message} onChange={(event) => setMessage(event.target.value)} className="mt-2 min-h-36 w-full resize-y border border-white/35 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/48 focus:border-steel-orange" placeholder="Что необходимо изготовить, в каком объёме и в какие сроки?" />
     </label>
 
     <div className="border border-white/15 bg-black/20 p-4 sm:p-5">

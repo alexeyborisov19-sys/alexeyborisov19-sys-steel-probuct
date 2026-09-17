@@ -8,6 +8,7 @@ import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
 import { ClientOperationControls } from "@/components/instant-quote/ClientOperationControls";
 import { ClientQuotePrintout } from "@/components/instant-quote/ClientQuotePrintout";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
+import { siteConfig } from "@/lib/site";
 import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
 import { isClientCadPreview, isClientCalculationView, type CadAnalysisApiResponse, type CalculationApiResponse } from "@/lib/instant-quote/client-api-contracts";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
@@ -76,6 +77,10 @@ export function ClientManufacturingWorkspace() {
   const [statusByPartId, setStatusByPartId] = useState<Record<string, string>>({});
   const [isCalculating, setIsCalculating] = useState(false);
   const [projectCalculationMessage, setProjectCalculationMessage] = useState<string | null>(null);
+  // A failed run and a normal status share one message slot, so the slot alone cannot
+  // say which one it is holding. Without this the visitor who just uploaded a model
+  // reads a server error in the same grey line that reports progress.
+  const [calculationFailed, setCalculationFailed] = useState(false);
   const [calculation, setCalculation] = useState<ClientProjectCalculationView | null>(null);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
 
@@ -331,6 +336,7 @@ export function ClientManufacturingWorkspace() {
     // from the previous run while the total read «—» and, if the second run
     // failed, beside an error saying there was no result.
     dropStaleCalculation({ message: RECALCULATING_MESSAGE });
+    setCalculationFailed(false);
     setProjectCalculationMessage("Проверяем CAD и рассчитываем проект…");
 
     try {
@@ -373,6 +379,7 @@ export function ClientManufacturingWorkspace() {
         }
         return next;
       });
+      setCalculationFailed(true);
       setProjectCalculationMessage(error instanceof Error ? error.message : "Не удалось выполнить расчёт. Попробуйте ещё раз.");
     } finally {
       setIsCalculating(false);
@@ -483,9 +490,9 @@ export function ClientManufacturingWorkspace() {
             <div className="border-b border-white/10 p-5"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Параметры</p><h2 className="mt-2 text-xl font-semibold">Конфигурация изделия</h2></div>
             {activePart ? <>
               <div className="space-y-5 p-5">
-                <div><p id="part-material-label" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
-                <div><label htmlFor="part-thickness" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
-                <div><label htmlFor="part-quantity" className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>
+                <div><p id="part-material-label" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
+                <div><label htmlFor="part-thickness" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
+                <div><label htmlFor="part-quantity" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>
                 <ClientOperationControls
                   operations={activePart.configuration.operations}
                   operationInputs={activePart.configuration.operationInputs ?? {}}
@@ -498,7 +505,16 @@ export function ClientManufacturingWorkspace() {
                 <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">
                   {calculateLabel}
                 </button>
-                {projectCalculationMessage && <p className="mt-3 text-xs leading-relaxed text-white/50">{projectCalculationMessage}</p>}
+                {projectCalculationMessage && <div
+                  role={calculationFailed ? "alert" : "status"}
+                  className={`mt-3 border px-3 py-3 text-xs leading-relaxed ${calculationFailed ? "border-steel-orange/50 bg-steel-orange/[.08] text-white/85" : "border-white/12 bg-white/[.03] text-white/70"}`}
+                >
+                  <p>{projectCalculationMessage}</p>
+                  {calculationFailed && <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                    <button type="button" onClick={() => void calculateProject()} className="font-bold uppercase tracking-[.1em] text-steel-orange transition hover:text-white">Повторить расчёт</button>
+                    <a href={`tel:${siteConfig.telephone}`} className="font-bold uppercase tracking-[.1em] text-steel-orange transition hover:text-white">Позвонить инженеру {siteConfig.telephoneDisplay}</a>
+                  </div>}
+                </div>}
                 {activeCalculation?.price.status === "approved" && typeof activeCalculation.price.totalRub === "number" && <div className="mt-4 border border-steel-orange/40 bg-steel-orange/[.08] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Стоимость позиции</p><p className="mt-2 text-2xl font-semibold">{fmt(activeCalculation.price.totalRub)} ₽</p>{approvedProjectTotalRub != null && calculation && calculation.parts.length > 1 && <p className="mt-2 text-xs text-white/50">Итого по проекту: {fmt(approvedProjectTotalRub)} ₽</p>}</div>}
                 <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Статус проекта</p><p className="mt-3 text-sm leading-relaxed text-white/60">{statusByPartId[activePart.id] ?? "Проверьте параметры изделия и запустите расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/45">{CALCULATION_DISCLAIMER} Оплата на сайте не подключена.</p></div>
               </div>
