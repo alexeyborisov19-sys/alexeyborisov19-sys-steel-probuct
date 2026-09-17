@@ -1,0 +1,106 @@
+name: Diagnose production TTS
+
+on:
+  push:
+    branches:
+      - diagnostic/tts-production-20260917
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Probe SpeechKit from production host
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
+            "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          ENV_FILE="$APP_PATH/.env.production"
+          test -f "$ENV_FILE"
+
+          set -a
+          . "$ENV_FILE"
+          set +a
+
+          API_KEY="${YANDEX_TTS_API_KEY:-${YANDEX_AI_API_KEY:-}}"
+          IAM_TOKEN="${YANDEX_TTS_IAM_TOKEN:-}"
+          FOLDER_ID="${YANDEX_TTS_FOLDER_ID:-${YANDEX_AI_FOLDER_ID:-}}"
+
+          if [ -n "$YANDEX_TTS_API_KEY" ]; then echo "YANDEX_TTS_API_KEY=present"; else echo "YANDEX_TTS_API_KEY=missing"; fi
+          if [ -n "$YANDEX_AI_API_KEY" ]; then echo "YANDEX_AI_API_KEY=present"; else echo "YANDEX_AI_API_KEY=missing"; fi
+          if [ -n "$IAM_TOKEN" ]; then echo "YANDEX_TTS_IAM_TOKEN=present"; else echo "YANDEX_TTS_IAM_TOKEN=missing"; fi
+          if [ -n "$FOLDER_ID" ]; then echo "YANDEX_FOLDER_ID=present"; else echo "YANDEX_FOLDER_ID=missing"; fi
+
+          if [ -z "$API_KEY" ] && [ -z "$IAM_TOKEN" ]; then
+            echo "DIAGNOSIS=no_tts_credentials"
+            exit 2
+          fi
+
+          BODY_FILE="$(mktemp)"
+          trap 'rm -f "$BODY_FILE"' EXIT
+
+          AUTH_HEADER=""
+          if [ -n "$API_KEY" ]; then
+            AUTH_HEADER="Authorization: Api-Key $API_KEY"
+          else
+            AUTH_HEADER="Authorization: Bearer $IAM_TOKEN"
+          fi
+
+          CURL_ARGS=(
+            --silent --show-error
+            --output "$BODY_FILE"
+            --write-out '%{http_code}'
+            --header "$AUTH_HEADER"
+            --header 'Content-Type: application/json'
+          )
+          if [ -z "$API_KEY" ] && [ -n "$FOLDER_ID" ]; then
+            CURL_ARGS+=(--header "x-folder-id: $FOLDER_ID")
+          fi
+
+          HTTP_CODE="$(curl "${CURL_ARGS[@]}" \
+            --data '{"text":"Проверка естественного голоса.","hints":[{"voice":"alexander"},{"role":"neutral"},{"speed":"0.96"}],"outputAudioSpec":{"containerAudio":{"containerAudioType":"MP3"}},"loudnessNormalizationType":"LUFS"}' \
+            'https://tts.api.cloud.yandex.net/tts/v3/utteranceSynthesis')"
+
+          echo "speechkit_http=$HTTP_CODE"
+          if [ "$HTTP_CODE" = "200" ] && grep -q 'audioChunk' "$BODY_FILE"; then
+            echo "DIAGNOSIS=speechkit_audio_ok"
+            exit 0
+          fi
+
+          echo "DIAGNOSIS=speechkit_failed"
+          python3 - "$BODY_FILE" <<'PY'
+          import json, sys
+          path = sys.argv[1]
+          raw = open(path, 'r', encoding='utf-8', errors='replace').read()[:4000]
+          try:
+              data = json.loads(raw)
+              allowed = {}
+              for key in ('code', 'message', 'status', 'error_code', 'error_message'):
+                  if key in data:
+                      allowed[key] = data[key]
+              print('speechkit_error=' + json.dumps(allowed, ensure_ascii=False))
+          except Exception:
+              print('speechkit_error_body_unparsed=' + raw[:500].replace('\n', ' '))
+          PY
+          exit 3
+          REMOTE
