@@ -72,7 +72,10 @@ const areaServed = [
 export function organizationSchema(): JsonLd {
   return {
     "@context": "https://schema.org",
-    "@type": ["Organization", "LocalBusiness", "Manufacturer"],
+    // Schema.org has no Manufacturer type — manufacturer is a property of Product.
+    // A strict parser can drop the whole @type array over the unknown member, taking
+    // Organization and LocalBusiness down with it.
+    "@type": ["Organization", "LocalBusiness"],
     "@id": `${siteConfig.url}/#organization`,
     name: siteConfig.name,
     legalName: legalOperator.name,

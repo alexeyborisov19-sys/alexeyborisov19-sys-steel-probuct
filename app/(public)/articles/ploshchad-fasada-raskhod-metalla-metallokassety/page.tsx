@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
 import { JsonLd } from "@/components/JsonLd";
-import { articleSchema, breadcrumbSchema, faqSchema } from "@/lib/schema";
+import { articleSchema, faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const path = "/articles/ploshchad-fasada-raskhod-metalla-metallokassety";
@@ -55,16 +55,16 @@ export default function FacadeAreaMetalConsumptionArticle() {
           dateModified: "2026-09-12",
           citations: ["/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf"],
         }),
-        breadcrumbSchema([
-          { name: "Главная", path: "/" },
-          { name: "Инженерный журнал", path: "/articles" },
-          { name: "Расход металла на фасаде", path },
-        ]),
         faqSchema(faqItems),
       ]} />
 
       <PageLayout
         path={path}
+        breadcrumbs={[
+          { name: "Главная", path: "/" },
+          { name: "Инженерный журнал", path: "/articles" },
+          { name: "Расход металла на фасаде", path },
+        ]}
         eyebrow="Инженерный журнал · Фасадная практика"
         title="Почему площадь фасада не равна площади металла"
         description="Русты, замки, крайние кассеты и проёмы меняют количество изделий и фактический расход. Разбираем расчёт без производственных формул и без иллюзии точности там, где нужна раскладка."

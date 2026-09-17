@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
 import { JsonLd } from "@/components/JsonLd";
-import { articleSchema, breadcrumbSchema, faqSchema } from "@/lib/schema";
+import { articleSchema, faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const path = "/articles/uzly-fasada-metallokassety";
@@ -65,16 +65,16 @@ export default function FacadeNodesArticle() {
           dateModified: "2026-09-12",
           citations: ["/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf"],
         }),
-        breadcrumbSchema([
-          { name: "Главная", path: "/" },
-          { name: "Инженерный журнал", path: "/articles" },
-          { name: "Узлы фасада из металлокассет", path },
-        ]),
         faqSchema(faqItems),
       ]} />
 
       <PageLayout
         path={path}
+        breadcrumbs={[
+          { name: "Главная", path: "/" },
+          { name: "Инженерный журнал", path: "/articles" },
+          { name: "Узлы фасада из металлокассет", path },
+        ]}
         eyebrow="Инженерный журнал · Фасадная практика"
         title="Узлы важнее рядовой кассеты"
         description="Рядовая кассета повторяется сотни раз, но геометрия фасада чаще всего решается в местах, которые встречаются один раз: у окна, угла, парапета, цоколя и деформационного шва."
