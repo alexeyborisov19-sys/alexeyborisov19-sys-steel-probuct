@@ -107,7 +107,7 @@ export default function Home() {
               Решения для ваших задач
             </h2>
             <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {solutions.map((solution, index) => {
+              {solutions.map((solution) => {
                 const cardImage = solutionCardImages[solution.title];
                 return (
                   <Link
