@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Footer } from "@/components/Footer";
@@ -86,14 +87,12 @@ function ArticleCard({ article, compact = false }: { article: Article; compact?:
   return (
     <article className={`journal-card group grid h-full overflow-hidden border border-white/12 bg-[#101519] transition duration-300 hover:border-steel-orange/75 ${compact ? "sm:grid-cols-[120px_minmax(0,1fr)]" : ""}`}>
       <div className={`relative overflow-hidden ${compact ? "min-h-48 sm:min-h-full" : "aspect-[16/9]"}`}>
-        <img
+        <Image
           src={article.image}
           alt={article.title}
-          width={960}
-          height={540}
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 h-full w-full object-cover brightness-[1.14] contrast-[1.02] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.2]"
+          fill
+          sizes={compact ? "(max-width: 639px) 100vw, 120px" : "(max-width: 1279px) 100vw, 45vw"}
+          className="object-cover brightness-[1.14] contrast-[1.02] transition duration-700 group-hover:scale-[1.035] group-hover:brightness-[1.2]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0c1013]/80 via-transparent to-transparent" />
       </div>
@@ -182,7 +181,7 @@ export default function ArticlesPage() {
       <Header />
       <main id="main-content" tabIndex={-1}>
         <section className="journal-hero relative overflow-hidden border-b border-white/12 pt-[76px]">
-          <img src="/images/web/hero-main.webp" alt="" width={1800} height={920} loading="eager" fetchPriority="high" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center brightness-[.62] contrast-[1.08]" />
+          <Image src="/images/web/hero-main.webp" alt="" fill priority sizes="100vw" className="object-cover object-center brightness-[.62] contrast-[1.08]" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,10,12,.98)_0%,rgba(7,10,12,.88)_48%,rgba(7,10,12,.34)_100%)]" />
           <div className="journal-grid-overlay absolute inset-0" />
           <div className="container relative z-10 grid min-h-[440px] items-end gap-10 py-16 lg:grid-cols-[minmax(0,1fr)_330px] lg:py-20">
@@ -225,7 +224,7 @@ export default function ArticlesPage() {
                 {featuredEngineeringArticle ? (
                   <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
                     <article className="journal-card-feature group relative min-h-[510px] overflow-hidden border border-steel-orange/45 bg-[#101519]">
-                      <img src={featuredEngineeringArticle.image} alt={featuredEngineeringArticle.title} width={1200} height={760} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover brightness-[.82] contrast-[1.05] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[.9]" />
+                      <Image src={featuredEngineeringArticle.image} alt={featuredEngineeringArticle.title} fill sizes="(max-width: 1279px) 100vw, 60vw" className="object-cover brightness-[.82] contrast-[1.05] transition duration-700 group-hover:scale-[1.025] group-hover:brightness-[.9]" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#080b0d] via-[#080b0d]/58 to-transparent" />
                       <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
                         <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-[.09em]"><span className="text-steel-orange">Главный инженерный материал</span><time dateTime={featuredEngineeringArticle.publishedAt} className="text-white/55">{formatDate(featuredEngineeringArticle.publishedAt)}</time></div>
@@ -253,7 +252,7 @@ export default function ArticlesPage() {
                   ))}
                 </div>
                 <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-feature-link group mt-5 grid overflow-hidden border border-steel-orange/35 bg-[#101519] md:grid-cols-[280px_minmax(0,1fr)]">
-                  <div className="relative min-h-56 overflow-hidden"><img src="/images/industries/business-center.jpg" alt="Фасадные выставки России, Китая и Дубая" width={900} height={600} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover brightness-[1.12] transition duration-700 group-hover:scale-[1.035]" /></div>
+                  <div className="relative min-h-56 overflow-hidden"><Image src="/images/industries/business-center.jpg" alt="Фасадные выставки России, Китая и Дубая" fill sizes="(max-width: 767px) 100vw, 280px" className="object-cover brightness-[1.12] transition duration-700 group-hover:scale-[1.035]" /></div>
                   <div className="flex flex-col justify-center p-6 sm:p-8"><p className="eyebrow">Календарь 2026–2027</p><h3 className="mt-3 text-xl font-semibold uppercase">Выставки фасадов России, Китая и Дубая</h3><p className="mt-3 text-sm leading-7 text-white/56">Даты, площадки, основные темы и официальные сайты профильных событий.</p><span className="mt-5 text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span></div>
                 </Link>
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">{articles.filter((article) => article.direction === "facades").map((article) => <ArticleCard key={article.slug} article={article} />)}</div>
@@ -263,7 +262,7 @@ export default function ArticlesPage() {
                 <SectionHeading {...sectionCopy.metalworking} />
                 <Link href="/articles/china-tech" className="journal-feature-link group mt-7 grid overflow-hidden border border-steel-orange/35 bg-[#101519] md:grid-cols-[minmax(0,1fr)_300px]">
                   <div className="flex flex-col justify-center p-6 sm:p-8"><p className="eyebrow">Мировые технологии</p><h3 className="mt-3 text-xl font-semibold uppercase">Инженерная разведка для современного производства</h3><p className="mt-3 text-sm leading-7 text-white/56">Роботизированная гибка, умные линии, лазерная обработка и цифровое управление.</p><span className="mt-5 text-xs font-bold uppercase text-steel-orange">Перейти в рубрику&nbsp; →</span></div>
-                  <div className="relative min-h-56 overflow-hidden"><img src="/images/web/cycle-bending.jpg" alt="Современная гибка листового металла" width={900} height={600} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover brightness-[1.16] transition duration-700 group-hover:scale-[1.035]" /></div>
+                  <div className="relative min-h-56 overflow-hidden"><Image src="/images/web/cycle-bending.jpg" alt="Современная гибка листового металла" fill sizes="(max-width: 767px) 100vw, 300px" className="object-cover brightness-[1.16] transition duration-700 group-hover:scale-[1.035]" /></div>
                 </Link>
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">{articles.filter((article) => article.direction === "metalworking").map((article) => <ArticleCard key={article.slug} article={article} />)}</div>
               </section>

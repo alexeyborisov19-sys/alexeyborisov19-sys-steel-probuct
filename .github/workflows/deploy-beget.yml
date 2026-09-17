@@ -309,6 +309,7 @@ jobs:
             --include='.env.example' \
             --exclude='.env*' \
             --exclude='public/video/company-film-flat.mp4' \
+            --exclude='public/design-reference/' \
             -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
             ./ "$BEGET_USER@$BEGET_HOST:$BEGET_APP_PATH/"
 
