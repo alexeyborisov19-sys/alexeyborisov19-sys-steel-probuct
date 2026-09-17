@@ -101,6 +101,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
   const [completedRequestId, setCompletedRequestId] = useState<string | null>(null);
   const messageEnd = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -112,6 +113,31 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
       window.setTimeout(() => inputRef.current?.focus(), 180);
     }
   }, [open, leadFormOpen]);
+
+  // Escape is the only way out of the panel for a keyboard user: the launcher sits
+  // behind it and every other control belongs to the conversation. Focus goes back to
+  // the launcher so the next Tab continues from where the visitor left the page.
+  //
+  // No focus trap and no aria-modal on purpose. The panel floats over the page without
+  // a backdrop and the page stays visible and scrollable, so this is a non-modal dialog:
+  // trapping Tab inside it would strand anyone who wants to get back to the page, and
+  // aria-modal would tell assistive technology the rest of the document is inert when it
+  // is not.
+  useEffect(() => {
+    if (!open) return;
+
+    // KeyboardEvent is imported from react in this file, so the bare name resolves to
+    // React's synthetic event. A document listener receives the DOM one.
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+      launcherRef.current?.focus();
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
 
   function toggleAssistant() {
     setOpen((current) => {
@@ -528,7 +554,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                     </label>
 
                     {leadFeedback ? (
-                      <p className={`border px-3 py-3 text-xs leading-relaxed ${
+                      <p role={leadFeedback.type === "error" ? "alert" : "status"} className={`border px-3 py-3 text-xs leading-relaxed ${
                         leadFeedback.type === "success"
                           ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
                           : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"
@@ -557,6 +583,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
       </AnimatePresence>
 
       <motion.button
+        ref={launcherRef}
         type="button"
         onClick={toggleAssistant}
         whileHover={{ scale: 1.025 }}
