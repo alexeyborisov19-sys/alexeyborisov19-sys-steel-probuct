@@ -16,9 +16,12 @@ type PageMetadataInput = {
 // object rather than extending it. The layout declares the feed for autodiscovery, so
 // every page built through this factory silently dropped that link. Declaring it here,
 // from the one place both sides read, puts it back on all of them.
-export const feedAlternateTypes = {
+// Typed against Next's own shape rather than inferred: `as const` would make the array
+// readonly, which the metadata type does not accept, and the annotation catches that here
+// instead of at every call site.
+export const feedAlternateTypes: NonNullable<NonNullable<Metadata["alternates"]>["types"]> = {
   "application/rss+xml": [{ url: "/feed.xml", title: `Инженерный журнал «${siteConfig.name}»` }],
-} as const;
+};
 
 function socialImagePath(image: string) {
   // Project/article content can legitimately use an attributed external photo,
