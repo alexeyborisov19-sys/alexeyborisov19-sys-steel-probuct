@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { legalLinks } from "@/lib/legal";
 
 const consentKey = "steelprodukt-cookie-consent-v2";
@@ -67,6 +67,7 @@ export function CookieSettingsButton({ className = "" }: { className?: string })
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
+  const bannerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setVisible(readChoice() === null);
@@ -74,6 +75,38 @@ export function CookieConsent() {
     window.addEventListener(settingsEvent, openSettings);
     return () => window.removeEventListener(settingsEvent, openSettings);
   }, []);
+
+  // The banner is how analytics consent is collected, so it has to stay visible and
+  // clickable and must never be covered. So that the sticky quote bar does not end up
+  // hidden underneath it, the banner publishes the height it occupies and the bar lifts
+  // by exactly that much. The value is cleared the moment the banner leaves, and the bar
+  // returns to the bottom edge.
+  useEffect(() => {
+    const root = document.documentElement;
+    const clear = () => root.style.removeProperty("--cookie-consent-space");
+
+    if (!visible) {
+      clear();
+      return;
+    }
+
+    const node = bannerRef.current;
+    if (!node) return;
+
+    // The banner height plus its own bottom offset and a gap before the bar.
+    const publish = () => root.style.setProperty("--cookie-consent-space", `${node.offsetHeight + 28}px`);
+    publish();
+
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(publish) : null;
+    observer?.observe(node);
+    window.addEventListener("resize", publish);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", publish);
+      clear();
+    };
+  }, [visible]);
 
   function choose(analytics: boolean) {
     const previousChoice = readChoice();
@@ -90,7 +123,7 @@ export function CookieConsent() {
 
   if (!visible) return null;
 
-  return <aside className="fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5" aria-label="Настройки cookies">
+  return <aside ref={bannerRef} className="cookie-consent-bar fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5" aria-label="Настройки cookies">
     <p className="text-sm font-semibold text-white">Настройки cookies</p>
     <p className="mt-2 text-xs leading-relaxed text-white/60">Сайт использует только необходимые технические данные до вашего выбора. Яндекс Метрика загружается исключительно после отдельного согласия. Выбор можно изменить в подвале сайта. Подробнее — в <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.cookies}>политике cookies</Link> и <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">

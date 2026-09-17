@@ -22,13 +22,16 @@ const quickLinks = [
   { label: "Производство", href: "/production" },
 ] as const;
 
-export function MegaMenu({ onClose }: { onClose: () => void }) {
+export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const active = solutions[activeIndex];
   const isArchitecture = activeIndex === 0;
   const activeHref = active.href;
+  // The menu markup is always rendered and hidden through the hidden attribute rather
+  // than conditional rendering: otherwise its solution and product links never reach the
+  // server HTML, leaving /solutions with no inbound link from the header at all.
   return (
-    <div className="container absolute left-1/2 top-full z-50 w-full -translate-x-1/2 pt-3">
+    <div hidden={!open} className="container absolute left-1/2 top-full z-50 w-full -translate-x-1/2 pt-3">
       <section
         id="solutions-mega-menu"
         aria-label="Раздел решений"

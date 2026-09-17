@@ -82,7 +82,7 @@ export default function IndustriesPage() {
                       src={`/images/industries/${visual}`}
                       alt={`${industry.title} — решения из листового металла`}
                       fill
-                      priority={index < 2}
+                      loading={index < 2 ? "eager" : "lazy"}
                       sizes="(max-width: 1023px) 100vw, 50vw"
                       className="object-cover"
                     />

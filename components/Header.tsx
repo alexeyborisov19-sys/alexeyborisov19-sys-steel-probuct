@@ -20,7 +20,11 @@ const navigation = [
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
-  const solutionsButtonRef = useRef<HTMLButtonElement>(null);
+  const solutionsButtonRef = useRef<HTMLAnchorElement>(null);
+  // Escape closes the menu and returns focus to the "Решения" item. Focus alone opens
+  // the menu, so that return would count as an open and Escape would do nothing at all.
+  // This flag swallows exactly one such open.
+  const skipFocusOpenRef = useRef(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -43,6 +47,10 @@ export function Header() {
         : solutionsOpen
           ? solutionsButtonRef.current
           : null;
+
+      if (trigger && trigger === solutionsButtonRef.current) {
+        skipFocusOpenRef.current = true;
+      }
 
       setMobileOpen(false);
       setSolutionsOpen(false);
@@ -87,24 +95,32 @@ export function Header() {
       <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
       <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch xl:flex">
         <Link className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></Link>
-        <button
+        <Link
           ref={solutionsButtonRef}
-          type="button"
+          href="/solutions"
           className={navClass(pathname.startsWith("/solutions") || solutionsOpen)}
           onMouseEnter={() => setSolutionsOpen(true)}
-          onClick={() => setSolutionsOpen((value) => !value)}
+          onFocus={() => {
+            if (skipFocusOpenRef.current) {
+              skipFocusOpenRef.current = false;
+              return;
+            }
+            setSolutionsOpen(true);
+          }}
+          onBlur={() => { skipFocusOpenRef.current = false; }}
+          aria-current={pathname.startsWith("/solutions") ? "page" : undefined}
           aria-expanded={solutionsOpen}
           aria-haspopup="true"
           aria-controls="solutions-mega-menu"
-        ><span>Решения</span><b aria-hidden="true">{solutionsOpen ? "⌃" : "⌄"}</b></button>
+        ><span>Решения</span><b aria-hidden="true">{solutionsOpen ? "⌃" : "⌄"}</b></Link>
         {navigation.slice(1).map((item) => {
           const active = isActive(item.href);
           return <Link key={item.href} className={navClass(active)} href={item.href} aria-current={active ? "page" : undefined}><span>{item.label}</span></Link>;
         })}
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 xl:flex">
-        <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold 2xl:block">{siteConfig.telephoneDisplay}</a>
-        <Link href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="clip-corner whitespace-nowrap border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black">Расчёт по CAD</Link>
+        <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold xl:block">{siteConfig.telephoneDisplay}</a>
+        <Link href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="clip-corner hidden whitespace-nowrap border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black 2xl:block">Расчёт по CAD</Link>
         <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Получить расчёт</Link>
       </div>
       <button
@@ -117,7 +133,7 @@ export function Header() {
         aria-controls="mobile-navigation"
       ><span className="text-xl" aria-hidden="true">{mobileOpen ? "×" : "☰"}</span></button>
     </div>
-    {solutionsOpen && <MegaMenu onClose={() => setSolutionsOpen(false)} />}
+    <MegaMenu open={solutionsOpen} onClose={() => setSolutionsOpen(false)} />
     {mobileOpen && <nav id="mobile-navigation" aria-label="Мобильная навигация" className="header-mobile-nav container flex flex-col border-t border-white/15 py-4 xl:hidden">
       <Link href="/solutions" aria-current={pathname.startsWith("/solutions") ? "page" : undefined}>Решения</Link>
       {navigation.map((item) => {

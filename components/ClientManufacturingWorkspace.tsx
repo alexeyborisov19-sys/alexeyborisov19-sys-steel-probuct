@@ -507,7 +507,7 @@ export function ClientManufacturingWorkspace() {
         </div>
       </section>
       {project.parts.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-white/12 bg-[#101416]/95 px-4 py-3 backdrop-blur-sm xl:hidden">
+        <div className="mobile-quote-bar fixed inset-x-0 z-[80] flex items-center gap-3 border-t border-white/12 bg-[#101416]/95 px-4 py-3 backdrop-blur-sm xl:hidden">
           <div className="min-w-0 grow">
             <p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/35" title={CALCULATION_DISCLAIMER}>{CALCULATION_DISCLAIMER_SHORT}</p>
             <p className="truncate text-lg font-semibold tabular-nums text-steel-orange">

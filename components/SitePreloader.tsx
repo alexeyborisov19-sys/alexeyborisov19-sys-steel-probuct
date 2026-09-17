@@ -3,7 +3,10 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-const INTRO_DURATION = 1700;
+// A floor on how briefly the intro shows, not a pause: it leaves on the load event,
+// as soon as the page is ready. The small threshold only stops the overlay flashing
+// for a single frame on a cached navigation.
+const INTRO_DURATION = 300;
 const EXIT_DURATION = 420;
 
 export function SitePreloader() {
@@ -48,6 +51,8 @@ export function SitePreloader() {
 
   if (!visible) return null;
 
+  // The intro logo is visible immediately, so it loads eager. It is not the page's LCP
+  // element though, and priority here would steal early bandwidth from the real hero.
   return (
     <div className={`site-preloader${leaving ? " site-preloader--leaving" : ""}`} aria-hidden="true">
       <div className="site-preloader__grid" />
@@ -62,7 +67,7 @@ export function SitePreloader() {
           alt=""
           width={1851}
           height={402}
-          priority
+          loading="eager"
           sizes="(max-width: 640px) 82vw, 620px"
         />
         <p>Инженерные решения из листового металла</p>
