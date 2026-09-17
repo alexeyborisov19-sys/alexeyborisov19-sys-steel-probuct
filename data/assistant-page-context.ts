@@ -370,7 +370,7 @@ export function assistantSuggestionsForPage(
 ) {
   const context = getAssistantPageContext(pathname);
   const text = query.toLowerCase();
-  const asksAboutPage = /калькулятор|как пользоваться|поле|формат|результат|dxf|step|stp|dwg|pdf|загруз|файл|черт[её]ж|исходн|что нужно|длина реза|заготов|масса|металлокассет|корзин|кронштейн|корпус|шкаф|кожух|закладн|реш[её]тк|люк|oem|производ|лазер|гибк|сварк|окраск|проект/.test(text);
+  const asksAboutPage = /калькулятор|как пользоваться|поле|формат|результат|dxf|step|stp|dwg|pdf|загруз|файл|черт[её]ж|исходн|что нужно|какие.*данн|подготов.*заяв|для расч[её]т|длина реза|заготов|масса/.test(text);
   return context.id !== "general" && asksAboutPage ? context.suggestions : fallback;
 }
 
