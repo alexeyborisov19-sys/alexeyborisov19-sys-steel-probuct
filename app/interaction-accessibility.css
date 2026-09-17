@@ -1,0 +1,30 @@
+/*
+ * Shared accessibility layer for the approved dark/graphite design system.
+ *
+ * White at 25–38% opacity falls below WCAG 1.4.3 for normal text on the
+ * project's dark surfaces. 60% keeps normal text above 4.5:1 even on the
+ * approved graphite token (#3e454b), while preserving the muted hierarchy.
+ * Keeping the correction in the utilities layer also lets Tailwind generate
+ * responsive/state variants from the same corrected utility when they are used.
+ */
+@layer utilities {
+  .text-white\/25,
+  .text-white\/28,
+  .text-white\/30,
+  .text-white\/35,
+  .text-white\/38 {
+    color: rgb(255 255 255 / 0.6);
+  }
+}
+
+/*
+ * One press-feedback rule covers native buttons and links, including Next.js
+ * Link output, without replacing each component with a one-off active class.
+ */
+:where(a[href], button:not(:disabled)) {
+  -webkit-tap-highlight-color: rgb(234 91 12 / 0.22);
+}
+
+:where(a[href], button:not(:disabled)):active {
+  opacity: 0.82;
+}
