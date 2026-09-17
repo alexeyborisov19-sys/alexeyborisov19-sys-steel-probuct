@@ -122,7 +122,6 @@ export default function Home() {
                         src={cardImage.src}
                         alt={`${solution.title} — изделия из листового металла`}
                         fill
-                        priority={index === 0}
                         sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 20vw"
                         style={{ objectPosition: cardImage.position }}
                         className="object-cover brightness-[1.06] contrast-[1.02] saturate-[1.04] transition duration-500 group-hover:scale-[1.035] group-hover:brightness-[1.14]"

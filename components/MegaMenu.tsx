@@ -22,13 +22,16 @@ const quickLinks = [
   { label: "Производство", href: "/production" },
 ] as const;
 
-export function MegaMenu({ onClose }: { onClose: () => void }) {
+export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const active = solutions[activeIndex];
   const isArchitecture = activeIndex === 0;
   const activeHref = active.href;
+  // Разметка меню отдаётся всегда и скрывается атрибутом hidden, а не условным
+  // рендером: иначе ссылки на решения и продукцию не попадают в серверный HTML,
+  // и у раздела /solutions не остаётся ни одной входящей ссылки из шапки.
   return (
-    <div className="container absolute left-1/2 top-full z-50 w-full -translate-x-1/2 pt-3">
+    <div hidden={!open} className="container absolute left-1/2 top-full z-50 w-full -translate-x-1/2 pt-3">
       <section
         id="solutions-mega-menu"
         aria-label="Раздел решений"

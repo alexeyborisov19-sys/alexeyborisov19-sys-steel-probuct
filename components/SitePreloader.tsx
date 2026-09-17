@@ -3,7 +3,10 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-const INTRO_DURATION = 1700;
+// Нижняя граница показа, а не пауза: заставка уходит по событию load, как только
+// страница готова. Держим небольшой порог, чтобы на закешированной навигации
+// оверлей не мигнул одним кадром.
+const INTRO_DURATION = 300;
 const EXIT_DURATION = 420;
 
 export function SitePreloader() {
@@ -48,6 +51,8 @@ export function SitePreloader() {
 
   if (!visible) return null;
 
+  // Логотип заставки виден сразу, поэтому грузим его eager. Но это не LCP-элемент
+  // страницы, и priority здесь отбирал бы раннюю полосу у настоящего героя.
   return (
     <div className={`site-preloader${leaving ? " site-preloader--leaving" : ""}`} aria-hidden="true">
       <div className="site-preloader__grid" />
@@ -62,7 +67,7 @@ export function SitePreloader() {
           alt=""
           width={1851}
           height={402}
-          priority
+          loading="eager"
           sizes="(max-width: 640px) 82vw, 620px"
         />
         <p>Инженерные решения из листового металла</p>

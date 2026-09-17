@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { InnerHero } from "./InnerHero";
@@ -102,6 +104,20 @@ export function PageLayout({ children, path, ...hero }: PageLayoutProps) {
     <Header />
     <main id="main-content" tabIndex={-1}>
       <InnerHero {...hero} {...contextualAction} />
+      {path && path !== "/" ? (
+        <nav aria-label="Хлебные крошки" className="border-b border-white/10 bg-[#0d1012]">
+          <ol className="container flex flex-wrap items-center gap-2 py-3 text-xs text-white/62">
+            {pageBreadcrumbs(path, name).map((crumb, index, all) => (
+              <li key={crumb.path} className="flex items-center gap-2">
+                {index > 0 ? <span aria-hidden="true" className="text-white/35">/</span> : null}
+                {index === all.length - 1
+                  ? <span aria-current="page" className="text-white/85">{crumb.name}</span>
+                  : <Link href={crumb.path} className="transition hover:text-steel-orange">{crumb.name}</Link>}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      ) : null}
       {path === "/projects" ? (
         <section className="border-b border-white/10 bg-[#0a0e11] py-10 sm:py-12">
           <div className="container">
