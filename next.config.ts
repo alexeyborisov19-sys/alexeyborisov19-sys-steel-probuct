@@ -56,6 +56,16 @@ const nextConfig: NextConfig = {
     // and local publication requires a documented right in
     // LEGAL_MEDIA_RIGHTS_REGISTER.md.
     remotePatterns: [],
+    // No master in public/ is wider than 1920px, so the 2048 and 3840 variants only
+    // burn optimizer CPU and disk on the single worker.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 190, 256, 384],
+    // Filenames under public/ are stable and unhashed, so keeping optimized copies for
+    // a day is safer than regenerating them every minute.
+    minimumCacheTTL: 86400,
+    // AVIF is deliberately left off: the optimizer's response varies by Accept, but
+    // proxy_cache_key in deploy/nginx/steelprodukt.conf does not include it, so a browser
+    // that never asked for AVIF could be served one from cache. Fix the cache key first.
   },
   async redirects() {
     return [

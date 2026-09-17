@@ -7,6 +7,7 @@ import { SitePreloader } from "@/components/SitePreloader";
 import { YandexEcommerce } from "@/components/YandexEcommerce";
 import { brandEntitySchema, legalOperatorEntitySchema } from "@/lib/entity-schema";
 import { websiteSchema } from "@/lib/schema";
+import { feedAlternateTypes } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -21,9 +22,7 @@ export const metadata: Metadata = {
   creator: siteConfig.name,
   publisher: siteConfig.name,
   category: "Производство изделий из листового металла",
-  alternates: {
-    types: { "application/rss+xml": [{ url: "/feed.xml", title: "Инженерный журнал «Сталь Продукт»" }] },
-  },
+  alternates: { types: feedAlternateTypes },
   icons: {
     icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml", sizes: "any" }],
     // Yandex reads the legacy shortcut link and does not accept an SVG there,

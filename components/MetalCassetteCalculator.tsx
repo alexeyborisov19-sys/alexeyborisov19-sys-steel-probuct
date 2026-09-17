@@ -134,8 +134,8 @@ export function MetalCassetteCalculator() {
             </p>
           </div>
           <div className="grid grid-cols-2 border border-white/12 bg-[#0c1013] p-1">
-            <button type="button" onClick={() => setMode("area")} aria-pressed={mode === "area"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "area" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>По площади</button>
-            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-white" : "text-white/60 hover:text-white"}`}>По стене</button>
+            <button type="button" onClick={() => setMode("area")} aria-pressed={mode === "area"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "area" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По площади</button>
+            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По стене</button>
           </div>
         </div>
       </div>
@@ -189,7 +189,7 @@ export function MetalCassetteCalculator() {
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {thicknesses.map((item) => {
                 const selected = thickness === item.value;
-                return <button key={item.value} type="button" aria-pressed={selected} onClick={() => selectThickness(item.value)} className={`min-h-12 border px-3 text-sm font-semibold transition ${selected ? "border-steel-orange bg-steel-orange text-white" : "border-white/12 bg-[#0c1013] text-white/68 hover:border-steel-orange/60"}`}>{item.label} мм</button>;
+                return <button key={item.value} type="button" aria-pressed={selected} onClick={() => selectThickness(item.value)} className={`min-h-12 border px-3 text-sm font-semibold transition ${selected ? "border-steel-orange bg-steel-orange text-black" : "border-white/12 bg-[#0c1013] text-white/68 hover:border-steel-orange/60"}`}>{item.label} мм</button>;
               })}
             </div>
           </fieldset>
