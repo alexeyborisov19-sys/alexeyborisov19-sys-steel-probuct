@@ -12,6 +12,17 @@ type PageMetadataInput = {
   modifiedTime?: string;
 };
 
+// Next merges metadata per key: a page's own `alternates` replaces the layout's whole
+// object rather than extending it. The layout declares the feed for autodiscovery, so
+// every page built through this factory silently dropped that link. Declaring it here,
+// from the one place both sides read, puts it back on all of them.
+// Typed against Next's own shape rather than inferred: `as const` would make the array
+// readonly, which the metadata type does not accept, and the annotation catches that here
+// instead of at every call site.
+export const feedAlternateTypes: NonNullable<NonNullable<Metadata["alternates"]>["types"]> = {
+  "application/rss+xml": [{ url: "/feed.xml", title: `Инженерный журнал «${siteConfig.name}»` }],
+};
+
 function socialImagePath(image: string) {
   // Project/article content can legitimately use an attributed external photo,
   // but Open Graph images should stay on our own domain. This keeps social
@@ -38,7 +49,11 @@ export function createPageMetadata({
     siteName: siteConfig.name,
     title,
     description,
-    images: [{ url: absoluteUrl(socialImage), width: 1200, height: 630, alt: title }],
+    // No width/height on purpose. Pages pass their own image and the default master is
+    // 1672x941, so the 1200x630 that used to stand here was wrong on every page — wrong
+    // pixels and wrong ratio. A platform that trusts those numbers lays the card out for
+    // a shape the file does not have; no numbers at all makes it measure the real file.
+    images: [{ url: absoluteUrl(socialImage), alt: title }],
     ...(openGraphType === "article"
       ? {
           publishedTime,
@@ -52,7 +67,7 @@ export function createPageMetadata({
     title,
     description,
     keywords: [...keywords],
-    alternates: { canonical },
+    alternates: { canonical, types: feedAlternateTypes },
     robots: {
       index: true,
       follow: true,
