@@ -2,14 +2,16 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ChangeEvent,
   FormEvent,
-  KeyboardEvent,
+  KeyboardEvent as ReactKeyboardEvent,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { getAssistantPageContext } from "@/data/assistant-page-context";
 import { trackLeadEvent } from "@/lib/analytics";
 import { legalLinks } from "@/lib/legal";
 
@@ -27,10 +29,32 @@ type AssistantResponse = {
   suggestions?: string[];
 };
 
-const initialMessage: ChatMessage = {
-  id: "welcome",
-  role: "assistant",
-  content: "Опишите изделие или производственную задачу. Я уточню исходные данные и подготовлю технически корректную заявку.",
+type SpeechRecognitionResultLike = {
+  [index: number]: { transcript?: string };
+};
+
+type SpeechRecognitionEventLike = {
+  results: {
+    [index: number]: SpeechRecognitionResultLike;
+    length: number;
+  };
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+type SpeechWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
 };
 
 const acceptedFiles = [
@@ -39,13 +63,6 @@ const acceptedFiles = [
   ".webp", ".tif", ".tiff", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".rar", ".7z",
 ].join(",");
 
-const assistantQuickQuestions = [
-  "Рассчитать изделие",
-  "Возможности производства",
-  "Подготовка чертежа",
-  "Порошковая окраска",
-] as const;
-
 function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
   return `${(bytes / 1024 / 1024).toFixed(1).replace(".0", "")} МБ`;
@@ -53,6 +70,10 @@ function formatFileSize(bytes: number) {
 
 function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function welcomeMessage(content: string): ChatMessage {
+  return { id: "welcome", role: "assistant", content };
 }
 
 function EngineerBrandMark({ compact = false }: { compact?: boolean }) {
@@ -88,10 +109,12 @@ function EngineerBrandMark({ compact = false }: { compact?: boolean }) {
 }
 
 export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: boolean }) {
+  const pathname = usePathname();
+  const pageContext = getAssistantPageContext(pathname);
   const [open, setOpen] = useState(initialOpen);
-  const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage(pageContext.greeting)]);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([...assistantQuickQuestions]);
+  const [suggestions, setSuggestions] = useState<string[]>([...pageContext.suggestions]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [leadFormOpen, setLeadFormOpen] = useState(false);
@@ -99,9 +122,14 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
   const [leadFeedback, setLeadFeedback] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [submittingLead, setSubmittingLead] = useState(false);
   const [completedRequestId, setCompletedRequestId] = useState<string | null>(null);
+  const [voiceInputSupported, setVoiceInputSupported] = useState(false);
+  const [voiceOutputSupported, setVoiceOutputSupported] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const messageEnd = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -114,27 +142,49 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     }
   }, [open, leadFormOpen]);
 
-  // Escape is the only way out of the panel for a keyboard user: the launcher sits
-  // behind it and every other control belongs to the conversation. Focus goes back to
-  // the launcher so the next Tab continues from where the visitor left the page.
-  //
-  // No focus trap and no aria-modal on purpose. The panel floats over the page without
-  // a backdrop and the page stays visible and scrollable, so this is a non-modal dialog:
-  // trapping Tab inside it would strand anyone who wants to get back to the page, and
-  // aria-modal would tell assistive technology the rest of the document is inert when it
-  // is not.
+  useEffect(() => {
+    setMessages((current) => (
+      current.length === 1 && current[0]?.id === "welcome"
+        ? [welcomeMessage(pageContext.greeting)]
+        : current
+    ));
+    setSuggestions((current) => (
+      messages.length === 1 && messages[0]?.id === "welcome"
+        ? [...pageContext.suggestions]
+        : current
+    ));
+    // The conversation stays intact after the visitor starts chatting; only an untouched
+    // welcome state follows navigation to another public calculator/page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  useEffect(() => {
+    const speechWindow = window as SpeechWindow;
+    setVoiceInputSupported(Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition));
+    setVoiceOutputSupported("speechSynthesis" in window && "SpeechSynthesisUtterance" in window);
+    return () => {
+      recognitionRef.current?.stop();
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      window.speechSynthesis?.cancel();
+      setSpeakingMessageId(null);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
-
-    // KeyboardEvent is imported from react in this file, so the bare name resolves to
-    // React's synthetic event. A document listener receives the DOM one.
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
       setOpen(false);
       launcherRef.current?.focus();
     };
-
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
@@ -148,8 +198,12 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
   }
 
   function returnToAssistantHome() {
-    setMessages([initialMessage]);
-    setSuggestions([...assistantQuickQuestions]);
+    recognitionRef.current?.stop();
+    window.speechSynthesis?.cancel();
+    setListening(false);
+    setSpeakingMessageId(null);
+    setMessages([welcomeMessage(pageContext.greeting)]);
+    setSuggestions([...pageContext.suggestions]);
     setInput("");
     setLoading(false);
     setLeadFormOpen(false);
@@ -160,6 +214,61 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     window.setTimeout(() => inputRef.current?.focus(), 120);
   }
 
+  function toggleVoiceInput() {
+    const speechWindow = window as SpeechWindow;
+    const Recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    if (!Recognition) return;
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.lang = "ru-RU";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript?.trim();
+      if (transcript) {
+        setInput((current) => `${current}${current ? " " : ""}${transcript}`.slice(0, 1400));
+        window.setTimeout(() => inputRef.current?.focus(), 50);
+      }
+    };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => {
+      setListening(false);
+      recognitionRef.current = null;
+    };
+    recognitionRef.current = recognition;
+    setListening(true);
+    try {
+      recognition.start();
+      trackLeadEvent("assistant_voice_input", { assistant: "engineering" });
+    } catch {
+      setListening(false);
+      recognitionRef.current = null;
+    }
+  }
+
+  function speakMessage(message: ChatMessage) {
+    if (!voiceOutputSupported || message.role !== "assistant") return;
+    if (speakingMessageId === message.id) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message.content);
+    utterance.lang = "ru-RU";
+    utterance.rate = 0.98;
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+    setSpeakingMessageId(message.id);
+    window.speechSynthesis.speak(utterance);
+    trackLeadEvent("assistant_voice_output", { assistant: "engineering" });
+  }
+
   async function sendQuestion(question: string) {
     const content = question.trim();
     if (!content || loading) return;
@@ -168,7 +277,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     setInput("");
     setLoading(true);
     setSuggestions([]);
-    trackLeadEvent("assistant_question", { assistant: "engineering" });
+    trackLeadEvent("assistant_question", { assistant: "engineering", page_context: pageContext.id });
 
     try {
       const response = await fetch("/api/assistant", {
@@ -177,6 +286,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
         body: JSON.stringify({
           message: content,
           sessionId,
+          pathname,
         }),
       });
       const payload = await response.json() as AssistantResponse;
@@ -211,7 +321,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     void sendQuestion(suggestion);
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void sendQuestion(input);
@@ -264,7 +374,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     }
     if (sessionId) formData.set("sessionId", sessionId);
     formData.set("consentTimestamp", new Date().toISOString());
-    if (typeof window !== "undefined") formData.set("pageUrl", window.location.href);
+    formData.set("pageUrl", window.location.href);
     files.forEach((file) => formData.append("files", file));
     setSubmittingLead(true);
     setLeadFeedback(null);
@@ -313,7 +423,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
               <div className="min-w-0 flex-1">
                 <p className="whitespace-nowrap text-xs font-bold leading-none uppercase tracking-[.16em] text-steel-orange">ИИ-инженер</p>
                 <h2 className="mt-1 truncate text-sm font-semibold leading-none text-white">Помощник «Сталь Продукт»</h2>
-                <p className="mt-1 truncate text-xs leading-none text-white/45">Технологии · изделия · подготовка заявки</p>
+                <p className="mt-1 truncate text-xs leading-none text-white/45">{pageContext.label}</p>
               </div>
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
                 <button
@@ -359,6 +469,19 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                           : "max-w-[92%] border-l-2 border-steel-orange bg-[#15191c] px-4 py-3 text-sm leading-relaxed text-white/78"
                         }>
                           <p className="whitespace-pre-line">{message.content}</p>
+                          {message.role === "assistant" && voiceOutputSupported ? (
+                            <button
+                              type="button"
+                              onClick={() => speakMessage(message)}
+                              className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-white/40 transition hover:text-steel-orange"
+                              aria-label={speakingMessageId === message.id ? "Остановить озвучивание" : "Озвучить ответ"}
+                            >
+                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
+                                <path d="M5 10v4h3l4 3V7l-4 3H5Zm10.2-.8a4 4 0 0 1 0 5.6M17.8 6.6a7.5 7.5 0 0 1 0 10.8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                              </svg>
+                              {speakingMessageId === message.id ? "Остановить" : "Озвучить"}
+                            </button>
+                          ) : null}
                         </div>
                       </motion.div>
                     ))}
@@ -402,9 +525,27 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       onChange={(event) => setInput(event.target.value.slice(0, 1400))}
                       onKeyDown={handleKeyDown}
                       rows={1}
-                      placeholder="Опишите задачу или задайте вопрос"
+                      placeholder={listening ? "Слушаю…" : "Опишите задачу или задайте вопрос"}
                       className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-white outline-none placeholder:text-white/28"
                     />
+                    {voiceInputSupported ? (
+                      <button
+                        type="button"
+                        onClick={toggleVoiceInput}
+                        className={`grid h-11 w-11 shrink-0 place-items-center border transition ${
+                          listening
+                            ? "border-steel-orange bg-steel-orange/15 text-steel-orange"
+                            : "border-white/12 text-white/55 hover:border-steel-orange hover:text-white"
+                        }`}
+                        aria-label={listening ? "Остановить голосовой ввод" : "Задать вопрос голосом"}
+                        title={listening ? "Остановить запись" : "Голосовой ввод"}
+                      >
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                          <rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                          <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0M12 17v4M9 21h6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       disabled={!input.trim() || loading}
@@ -415,6 +556,11 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       ↑
                     </button>
                   </div>
+                  {voiceInputSupported ? (
+                    <p className="mt-2 text-xs leading-4 text-white/35">
+                      Микрофон работает в браузере по вашему нажатию. Перед отправкой распознанный текст можно проверить и исправить.
+                    </p>
+                  ) : null}
                   <p className="mt-2 text-xs leading-4 text-white/35">
                     Не указывайте в диалоге контакты и персональные данные. Чертежи передавайте только через защищённую форму. Подробнее — в <Link href={legalLinks.services} className="text-white/55 hover:text-steel-orange">описании сервисов</Link>.
                   </p>
