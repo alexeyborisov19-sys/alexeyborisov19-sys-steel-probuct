@@ -42,12 +42,14 @@ jobs:
           . "$ENV_FILE"
           set +a
 
-          API_KEY="${YANDEX_TTS_API_KEY:-${YANDEX_AI_API_KEY:-}}"
+          TTS_API_KEY="${YANDEX_TTS_API_KEY:-}"
+          AI_API_KEY="${YANDEX_AI_API_KEY:-}"
+          API_KEY="${TTS_API_KEY:-$AI_API_KEY}"
           IAM_TOKEN="${YANDEX_TTS_IAM_TOKEN:-}"
           FOLDER_ID="${YANDEX_TTS_FOLDER_ID:-${YANDEX_AI_FOLDER_ID:-}}"
 
-          if [ -n "$YANDEX_TTS_API_KEY" ]; then echo "YANDEX_TTS_API_KEY=present"; else echo "YANDEX_TTS_API_KEY=missing"; fi
-          if [ -n "$YANDEX_AI_API_KEY" ]; then echo "YANDEX_AI_API_KEY=present"; else echo "YANDEX_AI_API_KEY=missing"; fi
+          if [ -n "$TTS_API_KEY" ]; then echo "YANDEX_TTS_API_KEY=present"; else echo "YANDEX_TTS_API_KEY=missing"; fi
+          if [ -n "$AI_API_KEY" ]; then echo "YANDEX_AI_API_KEY=present"; else echo "YANDEX_AI_API_KEY=missing"; fi
           if [ -n "$IAM_TOKEN" ]; then echo "YANDEX_TTS_IAM_TOKEN=present"; else echo "YANDEX_TTS_IAM_TOKEN=missing"; fi
           if [ -n "$FOLDER_ID" ]; then echo "YANDEX_FOLDER_ID=present"; else echo "YANDEX_FOLDER_ID=missing"; fi
 
