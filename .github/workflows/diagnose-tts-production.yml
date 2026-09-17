@@ -35,8 +35,8 @@ jobs:
           set -euo pipefail
           WORK="$(mktemp -d)"
           trap 'rm -rf "$WORK"' EXIT
-          python3 -m venv "$WORK/venv"
-          "$WORK/venv/bin/pip" install --disable-pip-version-check --no-cache-dir 'piper-tts==1.8.0' >/dev/null
+          python3 -m pip --version
+          python3 -m pip install --disable-pip-version-check --no-cache-dir --target "$WORK/site" 'piper-tts==1.8.0' >/dev/null
           MODEL="$WORK/ru_RU-dmitri-medium.onnx"
           CONFIG="$MODEL.json"
           BASE='https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/ru/ru_RU/dmitri/medium'
@@ -44,7 +44,7 @@ jobs:
           curl -fsSL "$BASE/ru_RU-dmitri-medium.onnx.json" -o "$CONFIG"
           printf '%s  %s\n' 'f073356ebc4bd0f80c5af58df2953a5988bd5bdab1eb38635ce960b071fbefcb' "$MODEL" | sha256sum -c -
           START="$(date +%s%3N)"
-          "$WORK/venv/bin/python" - "$MODEL" "$WORK/test.wav" <<'PY'
+          PYTHONPATH="$WORK/site" python3 - "$MODEL" "$WORK/test.wav" <<'PY'
           import sys, wave
           from piper import PiperVoice, SynthesisConfig
           model, out = sys.argv[1], sys.argv[2]
