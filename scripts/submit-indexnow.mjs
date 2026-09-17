@@ -4,10 +4,7 @@ const requestedPaths = process.argv.slice(2).filter((path) => path !== "--");
 const endpoint = process.env.INDEXNOW_ENDPOINT || "https://api.indexnow.org/indexnow";
 const maxAttempts = 4;
 const retryDelayMs = 3000;
-// Article pages carry priority 0.8 in the sitemap, so a 0.85 floor silently dropped
-// every one of them from IndexNow. The floor has to track that tier, not sit above it.
-// Everything below stays out: legal pages are 0.2 and the fallback tier is 0.75.
-const minimumSitemapPriority = 0.8;
+const minimumSitemapPriority = 0.85;
 const maximumBatchSize = 10_000;
 
 function decodeXmlText(value) {
