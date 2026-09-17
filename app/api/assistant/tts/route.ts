@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     const folderId = process.env.YANDEX_TTS_FOLDER_ID || process.env.YANDEX_AI_FOLDER_ID;
 
     if (!apiKey && !iamToken) {
-      safeSecurityLog("assistant", "not_configured", ownerKey);
+      safeSecurityLog("assistant", "configuration_error", ownerKey, { code: "tts_not_configured" });
       return NextResponse.json({ message: "Нейросетевая озвучка временно недоступна." }, { status: 503 });
     }
 
@@ -121,17 +121,17 @@ export async function POST(request: Request) {
       });
 
       if (!upstream.ok) {
-        safeSecurityLog("assistant", `upstream_${upstream.status}`, ownerKey);
+        safeSecurityLog("assistant", "upstream_fallback", ownerKey, { code: `tts_upstream_${upstream.status}` });
         return NextResponse.json({ message: "Нейросетевая озвучка временно недоступна." }, { status: 503 });
       }
 
       const audio = collectAudio(await upstream.text());
       if (!audio?.length) {
-        safeSecurityLog("assistant", "empty_audio", ownerKey);
+        safeSecurityLog("assistant", "upstream_fallback", ownerKey, { code: "tts_empty_audio" });
         return NextResponse.json({ message: "Нейросетевая озвучка временно недоступна." }, { status: 503 });
       }
 
-      safeSecurityLog("assistant", "accepted", ownerKey);
+      safeSecurityLog("assistant", "accepted", ownerKey, { code: "tts_neural" });
       return new Response(audio, {
         status: 200,
         headers: {
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
     if (error instanceof PayloadTooLargeError) {
       return NextResponse.json({ message: "Текст слишком большой." }, { status: 413 });
     }
-    safeSecurityLog("assistant", "bad_request", ownerKey);
+    safeSecurityLog("assistant", "bad_request", ownerKey, { code: "tts_bad_request" });
     return NextResponse.json({ message: "Не удалось озвучить ответ." }, { status: 400 });
   }
 }
