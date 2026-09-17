@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";
 import { PageLayout } from "@/components/PageLayout";
-import { breadcrumbSchema, faqSchema } from "@/lib/schema";
+import { faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
@@ -86,15 +86,15 @@ export default function MetalCassetteCalculatorPage() {
     <>
       <JsonLd data={[
         calculatorSchema,
-        breadcrumbSchema([
-          { name: "Главная", path: "/" },
-          { name: "Металлокассеты", path: "/products/metallokassety" },
-          { name: "Калькулятор металлокассет", path },
-        ]),
         faqSchema(faqItems),
       ]} />
       <PageLayout
         path={path}
+        breadcrumbs={[
+          { name: "Главная", path: "/" },
+          { name: "Металлокассеты", path: "/products/metallokassety" },
+          { name: "Калькулятор металлокассет", path },
+        ]}
         eyebrow="Цена и количество"
         title="Калькулятор металлокассет"
         description="Быстрая оценка фасада по площади или габаритам стены. Выберите открытый или закрытый тип, толщину металла и получите ориентировочное количество и бюджет."

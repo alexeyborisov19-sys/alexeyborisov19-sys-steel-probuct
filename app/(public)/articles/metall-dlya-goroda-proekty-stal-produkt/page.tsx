@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
 import { type RealProject, type RealProjectCategory } from "@/data/real-projects";
 import { realProjectsShowcase as realProjects } from "@/data/real-project-showcase";
-import { articleSchema, breadcrumbSchema } from "@/lib/schema";
+import { articleSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const path = "/articles/metall-dlya-goroda-proekty-stal-produkt";
@@ -109,14 +109,14 @@ export default function MetalForCityArticle() {
           datePublished: "2026-09-12",
           dateModified: "2026-09-12",
         }),
-        breadcrumbSchema([
-          { name: "Главная", path: "/" },
-          { name: "Инженерный журнал", path: "/articles" },
-          { name: "Металл для города", path },
-        ]),
       ]} />
       <PageLayout
         path={path}
+        breadcrumbs={[
+          { name: "Главная", path: "/" },
+          { name: "Инженерный журнал", path: "/articles" },
+          { name: "Металл для города", path },
+        ]}
         eyebrow="Инженерный журнал · Инженерная практика"
         title="Металл для города: где работают изделия Сталь Продукт"
         description="От крупной жилой застройки до новых медицинских корпусов и школ. Металлокассеты, вентиляционные решётки, кронштейны, корпуса и нестандартные изделия в реальных строительных проектах."

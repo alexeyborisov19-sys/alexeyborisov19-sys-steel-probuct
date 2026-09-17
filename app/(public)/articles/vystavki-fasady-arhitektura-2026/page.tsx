@@ -9,7 +9,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
 import { TrackedPromotionLink } from "@/components/TrackedPromotionLink";
 import { facadeExhibitions2026 } from "@/data/facade-exhibitions-2026";
-import { articleSchema, breadcrumbSchema, eventListSchema, faqSchema } from "@/lib/schema";
+import { articleSchema, eventListSchema, faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const pagePath = "/articles/vystavki-fasady-arhitektura-2026";
@@ -244,6 +244,11 @@ export default function FacadeExhibitions2026Page() {
   return (
     <PageLayout
       path={pagePath}
+      breadcrumbs={[
+        { name: "Главная", path: "/" },
+        { name: "Инженерный журнал", path: "/articles" },
+        { name: pageTitle, path: pagePath },
+      ]}
       eyebrow="Фасады · Архитектура · Международный календарь"
       title="Выставки фасадов и архитектуры — 2026–2027"
       description="Профессиональные события 2026 года и уже подтверждённые даты 2027 года: материалы, фасадные системы, архитектурное стекло, оборудование и технологии оболочки здания."
@@ -252,11 +257,6 @@ export default function FacadeExhibitions2026Page() {
     >
       <JsonLd
         data={[
-          breadcrumbSchema([
-            { name: "Главная", path: "/" },
-            { name: "Инженерный журнал «Сталь Продукт»", path: "/articles" },
-            { name: pageTitle, path: pagePath },
-          ]),
           articleSchema({
             headline: pageTitle,
             description: pageDescription,

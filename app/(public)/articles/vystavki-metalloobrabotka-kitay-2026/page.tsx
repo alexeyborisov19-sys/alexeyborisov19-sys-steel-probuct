@@ -9,7 +9,7 @@ import { ExhibitionChoiceTable, type ExhibitionChoiceRow } from "@/components/Ex
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
 import { chinaExhibitions2026 } from "@/data/china-exhibitions-2026";
-import { articleSchema, breadcrumbSchema } from "@/lib/schema";
+import { articleSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const pagePath = "/articles/vystavki-metalloobrabotka-kitay-2026";
@@ -133,6 +133,11 @@ export default function ChinaExhibitions2026Page() {
   return (
     <PageLayout
       path={pagePath}
+      breadcrumbs={[
+        { name: "Главная", path: "/" },
+        { name: "Инженерный журнал", path: "/articles" },
+        { name: pageTitle, path: pagePath },
+      ]}
       eyebrow="Промышленный календарь · Китай"
       title={pageTitle}
       description="Крупные профессиональные площадки 2026 года и уже подтверждённые даты 2027 года: официальные ссылки, состав оборудования и понятная навигация по задачам."
@@ -141,11 +146,6 @@ export default function ChinaExhibitions2026Page() {
     >
       <JsonLd
         data={[
-          breadcrumbSchema([
-            { name: "Главная", path: "/" },
-            { name: "Статьи", path: "/articles" },
-            { name: pageTitle, path: pagePath },
-          ]),
           articleSchema({
             headline: pageTitle,
             description: pageDescription,

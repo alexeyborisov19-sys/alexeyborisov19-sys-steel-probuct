@@ -8,7 +8,24 @@ import { MetalCassetteAnnualOutput } from "./MetalCassetteAnnualOutput";
 import { MetalCassetteProjectsProof } from "./MetalCassetteProjectsProof";
 import { breadcrumbSchema, webPageSchema, type Breadcrumb } from "@/lib/schema";
 
-type PageLayoutProps = { eyebrow: string; title: string; titleAccent?: string; description: string; image?: string; imageAlt?: string; imageBrightness?: boolean; path?: string; children: React.ReactNode };
+type PageLayoutProps = {
+  eyebrow: string;
+  title: string;
+  titleAccent?: string;
+  description: string;
+  image?: string;
+  imageAlt?: string;
+  imageBrightness?: boolean;
+  path?: string;
+  /** A chain the page states itself, when it knows its place better than the parent
+   *  lookup does. It feeds both the visible trail and the markup, so the two cannot
+   *  drift apart. */
+  breadcrumbs?: Breadcrumb[];
+  /** The page already emits a page-level node (AboutPage, Article…) under this URL's
+   *  #webpage id, so no generic WebPage may be added beside it. */
+  ownPageSchema?: boolean;
+  children: React.ReactNode;
+};
 
 type SecondaryAction = { secondaryHref: string; secondaryLabel: string };
 
@@ -88,26 +105,29 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
   return undefined;
 }
 
-export function PageLayout({ children, path, ...hero }: PageLayoutProps) {
+export function PageLayout({ children, path, breadcrumbs, ownPageSchema = false, ...hero }: PageLayoutProps) {
   const name = [hero.title, hero.titleAccent].filter(Boolean).join(" ");
   const contextualAction = secondaryAction(path);
+  const trail = breadcrumbs ?? (path ? pageBreadcrumbs(path, name) : null);
 
   return <>
     {path ? (
       <JsonLd
         data={[
-          webPageSchema({ name, description: hero.description, path }),
-          breadcrumbSchema(pageBreadcrumbs(path, name)),
+          // Two nodes sharing one @id merge into a single node carrying both names and
+          // both descriptions, so a page that declares its own keeps it alone.
+          ...(ownPageSchema ? [] : [webPageSchema({ name, description: hero.description, path })]),
+          ...(trail ? [breadcrumbSchema(trail)] : []),
         ]}
       />
     ) : null}
     <Header />
     <main id="main-content" tabIndex={-1}>
       <InnerHero {...hero} {...contextualAction} />
-      {path && path !== "/" ? (
+      {trail && path !== "/" ? (
         <nav aria-label="Хлебные крошки" className="border-b border-white/10 bg-[#0d1012]">
           <ol className="container flex flex-wrap items-center gap-2 py-3 text-xs text-white/62">
-            {pageBreadcrumbs(path, name).map((crumb, index, all) => (
+            {trail.map((crumb, index, all) => (
               <li key={crumb.path} className="flex items-center gap-2">
                 {index > 0 ? <span aria-hidden="true" className="text-white/35">/</span> : null}
                 {index === all.length - 1

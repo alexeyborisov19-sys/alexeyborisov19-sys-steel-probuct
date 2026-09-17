@@ -62,6 +62,7 @@ export default function CompanyFactsPage() {
       <JsonLd data={[companyFactsAboutPageSchema(), faqSchema(factsFaq)]} />
       <PageLayout
         path="/company/facts"
+        ownPageSchema
         eyebrow="Проверенные данные"
         title="Факты о производстве «Сталь Продукт»"
         description="Краткая справочная страница с подтверждёнными данными о бренде, юридическом операторе, производственной площадке, оборудовании и границах работ."
