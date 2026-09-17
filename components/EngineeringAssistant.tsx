@@ -126,7 +126,9 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
   useEffect(() => {
     if (!open) return;
 
-    const closeOnEscape = (event: KeyboardEvent) => {
+    // KeyboardEvent is imported from react in this file, so the bare name resolves to
+    // React's synthetic event. A document listener receives the DOM one.
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
       setOpen(false);
