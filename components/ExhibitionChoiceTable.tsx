@@ -49,10 +49,10 @@ export function ExhibitionChoiceTable({ rows }: { rows: ExhibitionChoiceRow[] })
         <table className="w-full border-collapse text-left">
           <thead className="bg-[#0b0f12]">
             <tr className="text-xs uppercase tracking-[.12em] text-white/48">
-              <th className="w-[24%] border-r border-white/10 p-5">Что интересует</th>
-              <th className="w-[20%] border-r border-white/10 p-5 text-steel-orange">Основной выбор</th>
-              <th className="w-[20%] border-r border-white/10 p-5">Дополнительно</th>
-              <th className="p-5">Что смотреть на выставке</th>
+              <th scope="col" className="w-[24%] border-r border-white/10 p-5">Что интересует</th>
+              <th scope="col" className="w-[20%] border-r border-white/10 p-5 text-steel-orange">Основной выбор</th>
+              <th scope="col" className="w-[20%] border-r border-white/10 p-5">Дополнительно</th>
+              <th scope="col" className="p-5">Что смотреть на выставке</th>
             </tr>
           </thead>
           <tbody className="text-sm">
