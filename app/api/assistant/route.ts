@@ -9,6 +9,7 @@ import {
   getAssistantPageContext,
   normalizeAssistantPathname,
   pageSpecificKnowledgeAnswer,
+  steelProduktBrandKnowledge,
 } from "@/data/assistant-page-context";
 import {
   enforceSafeAnswer,
@@ -108,6 +109,9 @@ async function answerWithYandex(
   }));
   const pageContext = getAssistantPageContext(pathname);
   const trustedPagePrompt = [
+    "ДОВЕРЕННЫЕ УТОЧНЕНИЯ",
+    steelProduktBrandKnowledge,
+    "Не называй «Сталь Продукт» юридическим лицом или наименованием организации. Когда речь идёт о нём самом, используй слова «бренд», «производство» или «производственное направление» по смыслу.",
     "КОНТЕКСТ ТЕКУЩЕЙ СТРАНИЦЫ",
     `Раздел: ${pageContext.label}.`,
     pageContext.knowledge,
