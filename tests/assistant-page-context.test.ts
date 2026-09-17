@@ -39,6 +39,14 @@ test("calculator result help stays explicitly preliminary", () => {
   assert.match(answer, /не окончательное коммерческое предложение/i);
 });
 
+test("assistant describes Steel Produkt as a brand, not a legal entity", () => {
+  const answer = pageSpecificKnowledgeAnswer("Расскажите про Сталь Продукт", "/");
+  assert.ok(answer);
+  assert.match(answer, /«Сталь Продукт» — бренд/i);
+  assert.match(answer, /не наименование юридического лица/i);
+  assert.match(answer, /монтаж на объекте не выполняется/i);
+});
+
 test("page suggestions override generic suggestions only for page-specific questions", () => {
   const generic = ["Рассчитать изделие"];
   const contextual = assistantSuggestionsForPage(
