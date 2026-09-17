@@ -1,3 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
+import { constants as fsConstants } from "node:fs";
+import { access, readFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { NextResponse } from "next/server";
 import { clientKey } from "@/lib/security/client-ip";
 import { consumeRules, type RateLimitRule } from "@/lib/security/rate-limit";
@@ -9,6 +15,8 @@ export const runtime = "nodejs";
 
 const MAX_JSON_BYTES = 8 * 1024;
 const MAX_TTS_CHARS = 1400;
+const LOCAL_TTS_ROOT = "/var/lib/steelprodukt/tts";
+const LOCAL_TTS_TIMEOUT_MS = 30_000;
 const ttsRateRules: RateLimitRule[] = [
   { id: "assistant-tts-minute", limit: 12, windowMs: 60_000 },
   { id: "assistant-tts-day", limit: 120, windowMs: 86_400_000 },
@@ -18,36 +26,74 @@ type TtsRequest = {
   text?: unknown;
 };
 
-type SpeechKitEnvelope = {
-  result?: { audioChunk?: { data?: string } };
-  audioChunk?: { data?: string };
-};
-
-function collectAudio(raw: string) {
-  const chunks: Buffer[] = [];
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  const candidates = trimmed.split(/\r?\n/).filter(Boolean);
-  for (const candidate of candidates) {
-    try {
-      const payload = JSON.parse(candidate) as SpeechKitEnvelope;
-      const encoded = payload.result?.audioChunk?.data ?? payload.audioChunk?.data;
-      if (encoded) chunks.push(Buffer.from(encoded, "base64"));
-    } catch {
-      // SpeechKit REST v3 may stream newline-delimited JSON chunks. Ignore
-      // non-JSON transport fragments and fail only if no audio was collected.
-    }
-  }
-
-  return chunks.length ? Buffer.concat(chunks) : null;
-}
-
 function rateLimitResponse(retryAfterSeconds: number) {
   return NextResponse.json(
     { message: "Слишком много запросов на озвучивание. Повторите позже." },
     { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } },
   );
+}
+
+async function synthesizeLocally(text: string) {
+  const root = process.env.STEELPRODUKT_TTS_ROOT || LOCAL_TTS_ROOT;
+  const pythonRoot = path.join(root, "python");
+  const model = process.env.STEELPRODUKT_TTS_MODEL || path.join(root, "ru_RU-dmitri-medium.onnx");
+  const config = `${model}.json`;
+  const script = path.join(process.cwd(), "deploy", "local-tts", "synthesize.py");
+  const outputPath = path.join(tmpdir(), `steelprodukt-tts-${randomUUID()}.wav`);
+
+  await Promise.all([
+    access(pythonRoot, fsConstants.R_OK),
+    access(model, fsConstants.R_OK),
+    access(config, fsConstants.R_OK),
+    access(script, fsConstants.R_OK),
+  ]);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const pythonPath = [pythonRoot, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter);
+      const child = spawn("python3", [script, outputPath], {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PYTHONPATH: pythonPath,
+          STEELPRODUKT_TTS_MODEL: model,
+        },
+        stdio: ["pipe", "ignore", "ignore"],
+      });
+
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill("SIGKILL");
+        reject(new Error("local-tts-timeout"));
+      }, LOCAL_TTS_TIMEOUT_MS);
+
+      child.once("error", (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        reject(error);
+      });
+
+      child.once("close", (code) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (code === 0) resolve();
+        else reject(new Error(`local-tts-exit-${code ?? "unknown"}`));
+      });
+
+      child.stdin.on("error", () => undefined);
+      child.stdin.end(text, "utf8");
+    });
+
+    const audio = await readFile(outputPath);
+    if (audio.length <= 44) throw new Error("local-tts-empty-audio");
+    return audio;
+  } finally {
+    await unlink(outputPath).catch(() => undefined);
+  }
 }
 
 export async function POST(request: Request) {
@@ -79,69 +125,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Нет текста для озвучивания." }, { status: 400 });
     }
 
-    const apiKey = process.env.YANDEX_TTS_API_KEY || process.env.YANDEX_AI_API_KEY;
-    const iamToken = process.env.YANDEX_TTS_IAM_TOKEN;
-    const folderId = process.env.YANDEX_TTS_FOLDER_ID || process.env.YANDEX_AI_FOLDER_ID;
-
-    if (!apiKey && !iamToken) {
-      safeSecurityLog("assistant", "configuration_error", ownerKey, { code: "tts_not_configured" });
-      return NextResponse.json({ message: "Нейросетевая озвучка временно недоступна." }, { status: 503 });
-    }
-
-    const endpoint = process.env.YANDEX_TTS_ENDPOINT
-      || "https://tts.api.cloud.yandex.net/tts/v3/utteranceSynthesis";
-    const headers: Record<string, string> = {
-      Authorization: apiKey ? `Api-Key ${apiKey}` : `Bearer ${iamToken}`,
-      "Content-Type": "application/json",
-    };
-    if (!apiKey && folderId) headers["x-folder-id"] = folderId;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20_000);
-
     try {
-      const upstream = await fetch(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          text,
-          unsafeMode: true,
-          hints: [
-            { voice: process.env.YANDEX_TTS_VOICE || "alexander" },
-            { role: process.env.YANDEX_TTS_ROLE || "neutral" },
-            { speed: process.env.YANDEX_TTS_SPEED || "0.96" },
-          ],
-          outputAudioSpec: {
-            containerAudio: { containerAudioType: "MP3" },
-          },
-          loudnessNormalizationType: "LUFS",
-        }),
-        cache: "no-store",
-        signal: controller.signal,
-      });
-
-      if (!upstream.ok) {
-        safeSecurityLog("assistant", "upstream_fallback", ownerKey, { code: `tts_upstream_${upstream.status}` });
-        return NextResponse.json({ message: "Нейросетевая озвучка временно недоступна." }, { status: 503 });
-      }
-
-      const audio = collectAudio(await upstream.text());
-      if (!audio?.length) {
-        safeSecurityLog("assistant", "upstream_fallback", ownerKey, { code: "tts_empty_audio" });
-        return NextResponse.json({ message: "Нейросетевая озвучка временно недоступна." }, { status: 503 });
-      }
-
-      safeSecurityLog("assistant", "accepted", ownerKey, { code: "tts_neural" });
+      const audio = await synthesizeLocally(text);
+      safeSecurityLog("assistant", "accepted", ownerKey, { code: "tts_local_piper" });
       return new Response(audio, {
         status: 200,
         headers: {
-          "Content-Type": "audio/mpeg",
+          "Content-Type": "audio/wav",
           "Cache-Control": "private, no-store, max-age=0",
           "Content-Length": String(audio.length),
+          "X-TTS-Engine": "local-piper",
         },
       });
-    } finally {
-      clearTimeout(timeout);
+    } catch {
+      safeSecurityLog("assistant", "configuration_error", ownerKey, { code: "tts_local_unavailable" });
+      return NextResponse.json({ message: "Нейросетевая озвучка временно недоступна." }, { status: 503 });
     }
   } catch (error) {
     if (error instanceof PayloadTooLargeError) {
