@@ -16,7 +16,14 @@ export function ProjectPhotoGallery({ photos, className = "", tall = false }: Pr
 
   return (
     <div className={`relative overflow-hidden bg-[#172026] ${className}`}>
-      <div className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:thin] [scrollbar-color:rgba(224,86,36,.65)_rgba(255,255,255,.08)]">
+      {/* A horizontally scrolling region reachable only by dragging is out of reach for a
+          keyboard: focus gives it arrow-key scrolling, and the label says what it holds. */}
+      <div
+        tabIndex={0}
+        role="group"
+        aria-label={`Фотографии объекта, ${photos.length} шт.`}
+        className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:thin] [scrollbar-color:rgba(224,86,36,.65)_rgba(255,255,255,.08)]"
+      >
         {photos.map((photo, index) => (
           <figure key={`${photo.src}-${index}`} className="relative min-w-full snap-center">
             <div className={`relative w-full ${tall ? "h-[420px] sm:h-[520px]" : "h-64 sm:h-72"}`}>
