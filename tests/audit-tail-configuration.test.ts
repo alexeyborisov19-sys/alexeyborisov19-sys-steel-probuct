@@ -9,10 +9,13 @@ const interactionCss = fs.readFileSync("app/interaction-accessibility.css", "utf
 const rootLayout = fs.readFileSync("app/layout.tsx", "utf8");
 
 test("IndexNow expands article changes to concrete article URLs", () => {
-  assert.match(indexNowWorkflow, /append_article_paths\(\)/);
-  assert.match(indexNowWorkflow, /app\/\\\(public\\\)\/articles\/\*/);
-  assert.match(indexNowWorkflow, /data\/articles\.ts\|data\/article-editorial\.ts\|data\/article-quality-rewrites\.ts/);
-  assert.match(indexNowWorkflow, /\\\/articles\\\/\\1/);
+  assert.ok(indexNowWorkflow.includes("append_article_paths()"));
+  assert.ok(
+    indexNowWorkflow.includes(
+      "app/\\(public\\)/articles/*|data/articles.ts|data/article-editorial.ts|data/article-quality-rewrites.ts)",
+    ),
+  );
+  assert.ok(indexNowWorkflow.includes("/articles/\\1"));
 });
 
 test("the commercial sitemap priority boundary remains intentional", () => {
@@ -25,10 +28,10 @@ test("project verification runs for pull requests targeting any base branch", ()
 });
 
 test("shared interaction accessibility rules are loaded once at the root", () => {
-  assert.match(rootLayout, /import "\.\/interaction-accessibility\.css";/);
+  assert.ok(rootLayout.includes('import "./interaction-accessibility.css";'));
   for (const opacity of ["25", "28", "30", "35", "38"]) {
-    assert.match(interactionCss, new RegExp(`\\.text-white\\\\/${opacity}`));
+    assert.ok(interactionCss.includes(`.text-white\\/${opacity}`));
   }
-  assert.match(interactionCss, /button:not\(:disabled\)\)\):active/);
-  assert.match(interactionCss, /-webkit-tap-highlight-color/);
+  assert.ok(interactionCss.includes(":where(a[href], button:not(:disabled)):active"));
+  assert.ok(interactionCss.includes("-webkit-tap-highlight-color"));
 });
