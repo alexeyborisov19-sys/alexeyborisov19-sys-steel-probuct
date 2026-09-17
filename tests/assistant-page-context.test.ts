@@ -20,7 +20,8 @@ test("DXF online order does not claim automatic STEP calculation", () => {
   assert.ok(answer);
   assert.match(answer, /рассчитан на DXF/i);
   assert.match(answer, /STEP\/STP можно передать через инженерную заявку/i);
-  assert.doesNotMatch(answer, /STEP.*автоматически рассчитывается/i);
+  assert.match(answer, /не следует считать, что он автоматически рассчитывается/i);
+  assert.doesNotMatch(answer, /STEP\/STP автоматически рассчитывается/i);
 });
 
 test("DXF help explains the real public workflow", () => {
