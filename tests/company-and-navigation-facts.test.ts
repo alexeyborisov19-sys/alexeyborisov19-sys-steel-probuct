@@ -4,6 +4,7 @@ import test from "node:test";
 
 const companyPath = new URL("../app/(public)/company/page.tsx", import.meta.url);
 const footerPath = new URL("../components/Footer.tsx", import.meta.url);
+const headerPath = new URL("../components/Header.tsx", import.meta.url);
 const pageLayoutPath = new URL("../components/PageLayout.tsx", import.meta.url);
 const innerHeroPath = new URL("../components/InnerHero.tsx", import.meta.url);
 
@@ -22,6 +23,17 @@ test("company page stays synchronized with centralized production equipment", as
 test("footer does not advertise certificates until a real certificate destination exists", async () => {
   const footer = await readFile(footerPath, "utf8");
   assert.doesNotMatch(footer, /Сертификаты/);
+});
+
+test("header keeps the engineering journal in desktop and mobile navigation", async () => {
+  const header = await readFile(headerPath, "utf8");
+
+  assert.match(
+    header,
+    /\{ label: "Проекты", href: "\/projects" \},\s*\{ label: "Инженерный журнал", href: "\/articles" \},\s*\{ label: "Контакты", href: "\/contacts" \}/,
+  );
+  assert.match(header, /navigation\.slice\(1\)\.map/);
+  assert.match(header, /navigation\.map/);
 });
 
 test("internal hero secondary actions match the current content context", async () => {
