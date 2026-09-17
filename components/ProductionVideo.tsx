@@ -45,7 +45,10 @@ export function ProductionShowreel() {
       setIsPlaying(false);
       return;
     }
-    if (!reducedMotion) void startVideo();
+    // Autoplay on scroll pulled 9.58 MB for everyone who merely scrolled past the
+    // section. Playback now starts from the button only; this branch exists to resume
+    // what the visitor started themselves.
+    if (!reducedMotion && manualPlaybackRef.current) void startVideo();
   }, [startVideo]);
 
   useEffect(() => {
