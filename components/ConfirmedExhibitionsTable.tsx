@@ -48,11 +48,11 @@ export function ConfirmedExhibitionsTable({
         <table className="w-full border-collapse text-left">
           <thead className="bg-[#0b0f12]">
             <tr className="text-xs uppercase tracking-[.12em] text-white/48">
-              <th className="w-[22%] border-r border-white/10 p-5">Выставка</th>
-              <th className="w-[17%] border-r border-white/10 p-5 text-steel-orange">Даты</th>
-              <th className="w-[22%] border-r border-white/10 p-5">Город и площадка</th>
-              <th className="border-r border-white/10 p-5">Основная тематика</th>
-              <th className="w-[13%] p-5">Источник</th>
+              <th scope="col" className="w-[22%] border-r border-white/10 p-5">Выставка</th>
+              <th scope="col" className="w-[17%] border-r border-white/10 p-5 text-steel-orange">Даты</th>
+              <th scope="col" className="w-[22%] border-r border-white/10 p-5">Город и площадка</th>
+              <th scope="col" className="border-r border-white/10 p-5">Основная тематика</th>
+              <th scope="col" className="w-[13%] p-5">Источник</th>
             </tr>
           </thead>
           <tbody className="text-sm">

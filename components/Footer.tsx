@@ -90,7 +90,7 @@ export function Footer() {
       </div>
       <div className="mt-5 border-t border-white/10 pt-5">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-white/60">Правовые документы</p>
-        <nav className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+        <nav className="mt-3 flex flex-wrap gap-x-5 gap-y-2" aria-label="Правовые документы и настройки">
           {legalDocuments.map(([label, href]) => <Link key={href} href={href} prefetch={false} className="text-xs text-white/60 transition hover:text-steel-orange">{label}</Link>)}
           <CookieSettingsButton className="text-left text-xs text-white/60 transition hover:text-steel-orange" />
           <a href="/sitemap.xml" className="text-xs text-white/60 transition hover:text-steel-orange">Карта сайта</a>
