@@ -38,6 +38,7 @@ export default function SolutionsPage() {
       title="Инженерные решения из листового металла"
       description="Готовые решения и производство изделий по техническому заданию для строительства, промышленности и инженерной инфраструктуры."
       image="/images/web/hero-main.webp"
+      imageAlt="Иллюстративный визуал: фасад промышленного здания из тёмных металлокассет с перфорированным экраном"
     >
       <section className="bg-[#0c1013] py-14">
         <div className="container grid gap-4 md:grid-cols-2 xl:grid-cols-3">
