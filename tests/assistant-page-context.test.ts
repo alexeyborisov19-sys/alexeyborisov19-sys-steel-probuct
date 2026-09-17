@@ -43,11 +43,12 @@ test("calculator result help stays explicitly preliminary", () => {
   assert.match(answer, /не окончательное коммерческое предложение/i);
 });
 
-test("assistant describes Steel Produkt as a brand, not a legal entity", () => {
+test("assistant uses Steel Produkt publicly without legal-status explanations", () => {
   const answer = pageSpecificKnowledgeAnswer("Расскажите про Сталь Продукт", "/");
   assert.ok(answer);
-  assert.match(answer, /«Сталь Продукт» — бренд/i);
-  assert.match(answer, /не наименование юридического лица/i);
+  assert.match(answer, /«Сталь Продукт» выполняет инженерную подготовку и производство/i);
+  assert.doesNotMatch(answer, /бренд, а не/i);
+  assert.doesNotMatch(answer, /не наименование юридического лица/i);
   assert.match(answer, /монтаж на объекте не выполняется/i);
 });
 
