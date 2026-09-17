@@ -18,7 +18,7 @@ type ProductCollectionPageProps = {
 };
 
 export function ProductCollectionPage({ path, eyebrow, title, description, heading, intro, slugs, faq }: ProductCollectionPageProps) {
-  return <>{path && faq ? <JsonLd data={faqSchema(faq)} /> : null}<PageLayout path={path} eyebrow={eyebrow} title={title} description={description} image="/images/web/hero-main.webp">
+  return <>{path && faq ? <JsonLd data={faqSchema(faq)} /> : null}<PageLayout path={path} eyebrow={eyebrow} title={title} description={description} image="/images/web/hero-main.webp" imageAlt="Иллюстративный визуал: фасад промышленного здания из тёмных металлокассет с перфорированным экраном">
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="max-w-3xl border-l-2 border-steel-orange pl-5"><p className="text-lg font-semibold leading-relaxed">{intro}</p></div>

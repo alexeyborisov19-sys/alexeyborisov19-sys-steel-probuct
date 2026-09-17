@@ -59,7 +59,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     productSchema(product),
     faqSchema(faqItems),
   ]} /><Header /><main id="main-content" tabIndex={-1}>
-    <InnerHero eyebrow={product.category} title={product.title} description={product.lead} image="/images/web/hero-main.webp" />
+    <InnerHero eyebrow={product.category} title={product.title} description={product.lead} image="/images/web/hero-main.webp" imageAlt="Иллюстративный визуал: фасад промышленного здания из тёмных металлокассет с перфорированным экраном" />
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="mb-8 text-xs text-white/45"><Link className="transition hover:text-steel-orange" href="/products">Продукция</Link><span className="mx-2 text-steel-orange">/</span>{product.title}</div>
