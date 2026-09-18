@@ -46,10 +46,12 @@ test("calculator result help stays explicitly preliminary", () => {
 test("assistant uses Steel Produkt publicly without legal-status explanations", () => {
   const answer = pageSpecificKnowledgeAnswer("Расскажите про Сталь Продукт", "/");
   assert.ok(answer);
-  assert.match(answer, /«Сталь Продукт» выполняет инженерную подготовку и производство/i);
+  assert.match(answer, /«Сталь Продукт» — инженерно-производственный бренд/i);
+  assert.match(answer, /Мы начинаем не со станка, а с задачи/i);
+  assert.match(answer, /серийное и OEM-производство/i);
   assert.doesNotMatch(answer, /бренд, а не/i);
   assert.doesNotMatch(answer, /не наименование юридического лица/i);
-  assert.match(answer, /монтаж на объекте не выполняется/i);
+  assert.match(answer, /Монтаж на объектах мы не выполняем/i);
 });
 
 test("main solution pages get separate trusted engineering contexts", () => {
