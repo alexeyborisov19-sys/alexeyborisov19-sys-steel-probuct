@@ -1,4 +1,4 @@
-name: Diagnose production TTS
+name: Install production local TTS
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  install:
     runs-on: ubuntu-latest
     steps:
       - name: Configure secure server access
@@ -23,7 +23,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Test pinned local Piper voice on production host
+      - name: Install pinned Piper runtime and voice on Beget
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -33,30 +33,71 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
             "$BEGET_USER@$BEGET_HOST" 'bash -s' <<'REMOTE'
           set -euo pipefail
-          WORK="$(mktemp -d)"
-          trap 'rm -rf "$WORK"' EXIT
-          python3 -m pip --version
-          python3 -m pip install --disable-pip-version-check --no-cache-dir --target "$WORK/site" 'piper-tts==1.8.0' >/dev/null
-          MODEL="$WORK/ru_RU-dmitri-medium.onnx"
+          APP_USER=nodejs
+          APP_GROUP="$(id -gn "$APP_USER")"
+          ROOT=/var/lib/steelprodukt/tts
+          PYTHON_DIR="$ROOT/python"
+          MODEL="$ROOT/ru_RU-dmitri-medium.onnx"
           CONFIG="$MODEL.json"
-          BASE='https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/ru/ru_RU/dmitri/medium'
-          curl -fsSL "$BASE/ru_RU-dmitri-medium.onnx" -o "$MODEL"
-          curl -fsSL "$BASE/ru_RU-dmitri-medium.onnx.json" -o "$CONFIG"
-          printf '%s  %s\n' 'f073356ebc4bd0f80c5af58df2953a5988bd5bdab1eb38635ce960b071fbefcb' "$MODEL" | sha256sum -c -
-          START="$(date +%s%3N)"
-          PYTHONPATH="$WORK/site" python3 - "$MODEL" "$WORK/test.wav" <<'PY'
-          import sys, wave
+          CARD="$ROOT/MODEL_CARD.ru_RU-dmitri-medium"
+          LICENSE="$ROOT/PIPER-COPYING-GPL-3.0-or-later"
+          VERSION="$ROOT/runtime-version"
+          PIPER_VERSION=1.8.0
+          VOICE_VERSION=v1.0.0
+          EXPECTED_SHA=f073356ebc4bd0f80c5af58df2953a5988bd5bdab1eb38635ce960b071fbefcb
+          BASE="https://huggingface.co/rhasspy/piper-voices/resolve/$VOICE_VERSION/ru/ru_RU/dmitri/medium"
+
+          install -d -m 0700 -o "$APP_USER" -g "$APP_GROUP" "$ROOT"
+
+          TEMP_PY="$(mktemp -d "$ROOT/python.XXXXXX")"
+          trap 'rm -rf "${TEMP_PY:-}" "${TMP_MODEL:-}" "${TMP_CONFIG:-}" "${TMP_CARD:-}" "${TMP_LICENSE:-}" /tmp/steelprodukt-tts-production-check.wav' EXIT
+          python3 -m pip install --disable-pip-version-check --no-cache-dir --target "$TEMP_PY" "piper-tts==$PIPER_VERSION" >/dev/null
+          rm -rf "$PYTHON_DIR"
+          mv "$TEMP_PY" "$PYTHON_DIR"
+          TEMP_PY=""
+
+          TMP_MODEL="$(mktemp "$ROOT/model.XXXXXX")"
+          curl -fsSL "$BASE/ru_RU-dmitri-medium.onnx" -o "$TMP_MODEL"
+          printf '%s  %s\n' "$EXPECTED_SHA" "$TMP_MODEL" | sha256sum -c -
+          mv "$TMP_MODEL" "$MODEL"
+          TMP_MODEL=""
+
+          TMP_CONFIG="$(mktemp "$ROOT/config.XXXXXX")"
+          curl -fsSL "$BASE/ru_RU-dmitri-medium.onnx.json" -o "$TMP_CONFIG"
+          python3 -m json.tool "$TMP_CONFIG" >/dev/null
+          mv "$TMP_CONFIG" "$CONFIG"
+          TMP_CONFIG=""
+
+          TMP_CARD="$(mktemp "$ROOT/card.XXXXXX")"
+          curl -fsSL "$BASE/MODEL_CARD" -o "$TMP_CARD"
+          mv "$TMP_CARD" "$CARD"
+          TMP_CARD=""
+
+          TMP_LICENSE="$(mktemp "$ROOT/license.XXXXXX")"
+          curl -fsSL "https://raw.githubusercontent.com/OHF-Voice/piper1-gpl/v$PIPER_VERSION/COPYING" -o "$TMP_LICENSE"
+          mv "$TMP_LICENSE" "$LICENSE"
+          TMP_LICENSE=""
+
+          printf '%s\n' "piper-tts=$PIPER_VERSION;voice=ru_RU-dmitri-medium@$VOICE_VERSION" > "$VERSION"
+          chown -R "$APP_USER:$APP_GROUP" "$ROOT"
+          find "$ROOT" -type d -exec chmod 0700 {} +
+          find "$ROOT" -type f -exec chmod 0600 {} +
+
+          PYTHONPATH="$PYTHON_DIR" STEELPRODUKT_TTS_MODEL="$MODEL" python3 - /tmp/steelprodukt-tts-production-check.wav <<'PY'
+          import os, sys, wave
           from piper import PiperVoice, SynthesisConfig
-          model, out = sys.argv[1], sys.argv[2]
-          voice = PiperVoice.load(model)
-          with wave.open(out, 'wb') as wav:
-              voice.synthesize_wav('Здравствуйте. Я инженер Сталь Продукт. Чем могу помочь?', wav, syn_config=SynthesisConfig(length_scale=1.04))
+          out = sys.argv[1]
+          voice = PiperVoice.load(os.environ["STEELPRODUKT_TTS_MODEL"])
+          with wave.open(out, "wb") as wav:
+              voice.synthesize_wav(
+                  "Здравствуйте. Я инженер Сталь Продукт.",
+                  wav,
+                  syn_config=SynthesisConfig(length_scale=1.04),
+              )
           PY
-          END="$(date +%s%3N)"
-          test -s "$WORK/test.wav"
-          echo "piper_version=1.8.0"
-          echo "voice=ru_RU-dmitri-medium@v1.0.0"
-          echo "wav_bytes=$(stat -c%s "$WORK/test.wav")"
-          echo "synthesis_ms=$((END-START))"
-          echo "DIAGNOSIS=local_piper_ok"
+          test -s /tmp/steelprodukt-tts-production-check.wav
+          echo "runtime=$(cat "$VERSION")"
+          echo "model_sha=$(sha256sum "$MODEL" | awk '{print $1}')"
+          echo "wav_bytes=$(stat -c%s /tmp/steelprodukt-tts-production-check.wav)"
+          echo "INSTALL=local_piper_ready"
           REMOTE
