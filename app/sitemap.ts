@@ -31,7 +31,7 @@ const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
   "/": new Date("2026-09-18T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
-  "/company/facts": new Date("2026-09-12T00:00:00.000Z"),
+  "/company/facts": new Date("2026-09-18T00:00:00.000Z"),
   "/contacts": new Date("2026-08-25T17:32:36.000Z"),
   "/production": new Date("2026-08-25T21:24:08.000Z"),
   "/solutions": discoveryHubsModifiedAt,
