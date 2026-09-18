@@ -1,3 +1,4 @@
+import { steelProductBrandStory } from "./assistant-brand-story";
 import {
   bendingEquipmentSummary,
   engineeringCenterSummary,
@@ -32,11 +33,7 @@ export type AssistantPageContext = {
   suggestions: string[];
 };
 
-export const steelProduktBrandKnowledge = [
-  "«Сталь Продукт» выполняет инженерную подготовку и производство изделий из листового металла для строительства, промышленности и инженерной инфраструктуры.",
-  "Публично описанная технологическая цепочка включает инженерно-конструкторскую подготовку, лазерный раскрой, гибку, сварку, сборку, подготовку поверхности, порошковую окраску, контроль качества, комплектацию, упаковку и организацию отгрузки.",
-  "Монтаж на объекте не выполняется.",
-].join(" ");
+export const steelProduktBrandKnowledge = steelProductBrandStory;
 
 const fileFormatKnowledge = [
   "Для плоского контура на лазерную резку предпочтителен DXF в масштабе 1:1.",
