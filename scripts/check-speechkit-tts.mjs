@@ -43,7 +43,25 @@ try {
   });
 
   if (!response.ok) {
-    console.log(`SpeechKit premium voice unavailable: API status ${response.status}; local fallback remains active.`);
+    let diagnostic = "";
+    try {
+      const errorPayload = await response.json();
+      const code = typeof errorPayload?.code === "number" || typeof errorPayload?.code === "string"
+        ? String(errorPayload.code)
+        : "";
+      const message = typeof errorPayload?.message === "string"
+        ? errorPayload.message.replace(/[\r\n]+/g, " ").slice(0, 300)
+        : "";
+      diagnostic = [code && `code=${code}`, message && `message=${message}`]
+        .filter(Boolean)
+        .join("; ");
+    } catch {
+      diagnostic = response.statusText ? `message=${response.statusText.slice(0, 120)}` : "";
+    }
+
+    console.log(
+      `SpeechKit premium voice unavailable: API status ${response.status}${diagnostic ? `; ${diagnostic}` : ""}; local fallback remains active.`,
+    );
     process.exit(0);
   }
 
