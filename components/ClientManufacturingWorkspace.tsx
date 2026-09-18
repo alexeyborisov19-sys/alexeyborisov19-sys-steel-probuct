@@ -60,7 +60,7 @@ function fmtMetric(value: number | null) {
 
 function materialIdOf(value: string | null): MaterialId {
   if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
-  return "cold";
+  return "hot";
 }
 
 function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
@@ -175,8 +175,12 @@ export function ClientManufacturingWorkspace() {
 
     accepting.forEach((file, index) => {
       try {
-        nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, new Date(Date.now() + index));
+        const addedAt = new Date(Date.now() + index);
+        nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, addedAt);
         const partId = nextProject.activePartId;
+        if (partId) {
+          nextProject = setPartMaterial(nextProject, partId, "cold", addedAt);
+        }
         const part = partId ? nextProject.parts.find((item) => item.id === partId) : null;
         if (partId && part) jobs.push({ file, partId, format: part.format });
       } catch {
