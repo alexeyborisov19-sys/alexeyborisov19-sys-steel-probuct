@@ -122,8 +122,8 @@ if [ -z "$smtp_envelope_email" ] || [ "$smtp_envelope_raw" != "$smtp_envelope_em
 fi
 
 set_environment_value NEXT_PUBLIC_SITE_URL "https://www.steelprodukt.ru"
-set_environment_value NEXT_PUBLIC_YM_COUNTER_ID "111263638"
-set_default_environment_value NEXT_PUBLIC_YM_WEBVISOR "false"
+set_environment_value NEXT_PUBLIC_YM_COUNTER_ID "112542227"
+set_environment_value NEXT_PUBLIC_YM_WEBVISOR "true"
 set_environment_value QUOTE_STORAGE_PATH "/var/lib/steelprodukt/quote-leads"
 set_environment_value ASSISTANT_LEAD_STORAGE_PATH "/var/lib/steelprodukt/assistant-leads"
 set_environment_value UPLOAD_QUARANTINE_PATH "/var/lib/steelprodukt/quarantine"
