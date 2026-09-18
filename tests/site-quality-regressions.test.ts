@@ -4,7 +4,6 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const publicLayoutPath = new URL("../app/(public)/layout.tsx", import.meta.url);
-const preloaderPath = new URL("../components/SitePreloader.tsx", import.meta.url);
 const productPagePath = new URL("../app/(public)/products/[slug]/page.tsx", import.meta.url);
 const productionPagePath = new URL("../app/(public)/production/page.tsx", import.meta.url);
 const projectsPagePath = new URL("../app/(public)/projects/page.tsx", import.meta.url);
@@ -21,16 +20,11 @@ const pricingFactorsPath = new URL("../components/ProductPricingFactors.tsx", im
 const eslintPath = new URL("../eslint.config.mjs", import.meta.url);
 const deployWorkflowPath = new URL("../.github/workflows/deploy-beget.yml", import.meta.url);
 
-test("the approved branded preloader stays enabled without undoing reduced-motion support", async () => {
-  const [layout, preloader] = await Promise.all([
-    readFile(publicLayoutPath, "utf8"),
-    readFile(preloaderPath, "utf8"),
-  ]);
+test("public shell keeps the first paint unblocked by the legacy preloader", async () => {
+  const layout = await readFile(publicLayoutPath, "utf8");
 
-  assert.match(layout, /import \{ SitePreloader \} from "@\/components\/SitePreloader"/);
-  assert.match(layout, /<SitePreloader \/>/);
-  assert.match(preloader, /prefers-reduced-motion: reduce/);
-  assert.match(preloader, /Инженерные решения из листового металла/);
+  assert.doesNotMatch(layout, /import \{ SitePreloader \} from "@\/components\/SitePreloader"/);
+  assert.doesNotMatch(layout, /<SitePreloader \/>/);
 });
 
 test("technical product specifications keep a project-specific qualification", async () => {
