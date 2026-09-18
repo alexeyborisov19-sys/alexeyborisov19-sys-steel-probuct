@@ -60,7 +60,7 @@ function fmtMetric(value: number | null) {
 
 function materialIdOf(value: string | null): MaterialId {
   if (value === "hot" || value === "cold" || value === "zinc" || value === "inox" || value === "alu" || value === "copper" || value === "brass") return value;
-  return "hot";
+  return "cold";
 }
 
 function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
@@ -362,10 +362,13 @@ export function ClientManufacturingWorkspace() {
         for (const part of calculationResult.parts) next[part.partId] = part.message;
         return next;
       });
+      const allPricesApproved = calculationResult.parts.every(
+        (part) => part.status === "ready" && part.price.status === "approved",
+      );
       setProjectCalculationMessage(
-        calculationResult.parts.every((part) => part.status === "ready")
+        allPricesApproved
           ? "Расчёт проекта завершён."
-          : "Проект обработан. Для некоторых позиций потребуется уточнение параметров.",
+          : "Расчёт выполнен, но автоматическая цена для части позиций не сформирована. Проверьте материал, толщину и исходные данные выбранных операций.",
       );
     } catch (error) {
       setCalculation(null);
@@ -435,12 +438,16 @@ export function ClientManufacturingWorkspace() {
             <div className="border-t border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-steel-orange">
-                {approvedProjectTotalRub == null ? "—" : `${fmt(approvedProjectTotalRub)} ₽`}
+                {approvedProjectTotalRub == null
+                ? (calculation ? "Нужны данные" : "—")
+                : `${fmt(approvedProjectTotalRub)} ₽`}
               </p>
               <p className="mt-1 text-[10px] text-white/35">
                 {project.parts.length === 0
                   ? "Позиции не добавлены"
-                  : `${project.parts.length} поз.${approvedProjectTotalRub == null ? " · расчёт не выполнен" : ""}`}
+                  : approvedProjectTotalRub == null
+                    ? `${project.parts.length} поз. · ${calculation ? "требуется уточнение" : "расчёт не выполнен"}`
+                    : `${project.parts.length} поз.`}
               </p>
               <Link
                 href={quoteHandoffHref}
