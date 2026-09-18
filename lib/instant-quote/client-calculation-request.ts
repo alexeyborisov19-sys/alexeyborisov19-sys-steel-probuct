@@ -13,7 +13,7 @@ const PUBLIC_OPERATIONS = new Set<ManufacturingOperation>([
 
 function publicMaterial(value: string | null): MaterialId {
   if (value === "hot" || value === "cold" || value === "zinc") return value;
-  return "hot";
+  return "cold";
 }
 
 /** Sends a quantity only for an operation the customer actually selected. */
