@@ -326,6 +326,56 @@ jobs:
             -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p $BEGET_SSH_PORT" \
             ./next-candidate/ "$BEGET_USER@$BEGET_HOST:$BEGET_APP_PATH/.next-candidate/"
 
+      - name: Sync SpeechKit API key
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+          YANDEX_SPEECHKIT_API_KEY: ${{ secrets.YANDEX_SPEECHKIT_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${YANDEX_SPEECHKIT_API_KEY:-}" ]; then
+            echo "SpeechKit GitHub secret is not configured; keeping the existing server value."
+            exit 0
+          fi
+
+          umask 077
+          SECRET_FILE="$(mktemp)"
+          trap 'rm -f "$SECRET_FILE"' EXIT
+          printf '%s' "$YANDEX_SPEECHKIT_API_KEY" > "$SECRET_FILE"
+
+          REMOTE_SECRET="$BEGET_APP_PATH/.speechkit-key-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          scp -q -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT"             "$SECRET_FILE" "$BEGET_USER@$BEGET_HOST:$REMOTE_SECRET"
+
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT"             "$BEGET_USER@$BEGET_HOST"             "APP_PATH='$BEGET_APP_PATH' SECRET_PATH='$REMOTE_SECRET' bash -s" <<'REMOTE'
+          set -euo pipefail
+          test -n "$APP_PATH"
+          test -s "$SECRET_PATH"
+
+          ENV_FILE="$APP_PATH/.env.production"
+          touch "$ENV_FILE"
+          ENV_TMP="$(mktemp "$APP_PATH/.env.production.XXXXXX")"
+          cleanup() {
+            rm -f "$SECRET_PATH"
+            if [ -n "${ENV_TMP:-}" ]; then rm -f "$ENV_TMP"; fi
+          }
+          trap cleanup EXIT
+
+          grep -v '^YANDEX_SPEECHKIT_API_KEY=' "$ENV_FILE" > "$ENV_TMP" || true
+          printf 'YANDEX_SPEECHKIT_API_KEY=' >> "$ENV_TMP"
+          cat "$SECRET_PATH" >> "$ENV_TMP"
+          printf '\n' >> "$ENV_TMP"
+
+          chown nodejs:nodejs "$ENV_TMP"
+          chmod 0600 "$ENV_TMP"
+          mv "$ENV_TMP" "$ENV_FILE"
+          ENV_TMP=""
+          rm -f "$SECRET_PATH"
+          trap - EXIT
+          echo "SpeechKit credential synchronized to protected production environment."
+          REMOTE
+
       - name: Restart application on Beget
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
