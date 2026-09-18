@@ -36,3 +36,12 @@ test("production checks premium SpeechKit availability without exposing credenti
   assert.match(speechkitCheck, /tts\/v3\/utteranceSynthesis/);
   assert.doesNotMatch(speechkitCheck, /console\.log\([^\n]*(API_KEY|apiKey)/);
 });
+
+test("deploy securely syncs the SpeechKit GitHub secret to Beget", () => {
+  assert.match(deploy, /YANDEX_SPEECHKIT_API_KEY: \$\{\{ secrets\.YANDEX_SPEECHKIT_API_KEY \}\}/);
+  assert.match(deploy, /name: Sync SpeechKit API key/);
+  assert.match(deploy, /SpeechKit credential synchronized to protected production environment/);
+  assert.match(deploy, /chmod 0600/);
+  assert.doesNotMatch(deploy, /echo "\$YANDEX_SPEECHKIT_API_KEY"/);
+  assert.doesNotMatch(deploy, /YANDEX_SPEECHKIT_API_KEY='\$YANDEX_SPEECHKIT_API_KEY'/);
+});
