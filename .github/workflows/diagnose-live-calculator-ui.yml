@@ -1,0 +1,96 @@
+name: Diagnose live calculator UI
+
+on:
+  push:
+    branches:
+      - diagnose/cad-calculator-20260918
+    paths:
+      - .github/workflows/diagnose-live-calculator-ui.yml
+
+permissions:
+  contents: read
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise production UI
+        run: |
+          cat > /tmp/part.dxf <<'DXF'
+          0
+          SECTION
+          2
+          HEADER
+          9
+          $INSUNITS
+          70
+          4
+          0
+          ENDSEC
+          0
+          SECTION
+          2
+          ENTITIES
+          0
+          LWPOLYLINE
+          8
+          CUT
+          90
+          4
+          70
+          1
+          10
+          0
+          20
+          0
+          10
+          100
+          20
+          0
+          10
+          100
+          20
+          100
+          10
+          0
+          20
+          100
+          0
+          ENDSEC
+          0
+          EOF
+          DXF
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+            const requests = [];
+            page.on('response', r => {
+              if (r.url().includes('/api/online-order/')) requests.push({url:r.url(), status:r.status()});
+            });
+            await page.goto('https://www.steelprodukt.ru/online-order', {waitUntil:'networkidle'});
+            const input = page.locator('input[type=file]');
+            console.log('fileInputs='+await input.count());
+            await input.setInputFiles('/tmp/part.dxf');
+            await page.getByText('Рассчитать проект', {exact:false}).waitFor({state:'visible', timeout:90000});
+            const button = page.getByRole('button', {name:/Рассчитать/}).last();
+            console.log('buttonDisabled='+await button.isDisabled());
+            await button.click();
+            await page.getByText(/Стоимость позиции|Расчёт проекта завершён/).waitFor({state:'visible', timeout:90000});
+            const body = await page.locator('body').innerText();
+            console.log('hasApprovedPrice='+/Стоимость позиции/.test(body));
+            console.log('hasFinished='+/Расчёт проекта завершён/.test(body));
+            console.log('requests='+JSON.stringify(requests));
+            await browser.close();
+          })().catch(e => { console.error(e); process.exit(1); });
+          NODE
