@@ -4,6 +4,7 @@ import type { NormalizedCadModel } from "../lib/instant-quote/cad-model";
 import { createOnlineCalculationHandler } from "../lib/server/instant-quote/calculation-handler";
 import type { OnlineCalculationHandlerDependencies } from "../lib/server/instant-quote/calculation-handler";
 import { rateLimitStore } from "../lib/security/rate-limit";
+import { resolveEffectiveFactualInputs } from "../lib/instant-quote/factual-input-resolution";
 
 const dxf = `0
 SECTION
@@ -153,6 +154,7 @@ function stepDependencies(input: {
   model?: NormalizedCadModel;
   throwAnalysis?: boolean;
   authoritativePowderAreaM2?: number;
+  authoritativeBendCount?: number;
   onAnalysis?: (format: "step" | "stp") => void;
   onRun?: (
     project: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]>[0],
@@ -198,11 +200,12 @@ function stepDependencies(input: {
           cutLengthMm: 400,
           contourCount: 1,
           pierceCount: 1,
-          bendCount: 0,
+          bendCount: input.authoritativeBendCount ?? 0,
         }),
-        authoritativeFactualInputs: input.authoritativePowderAreaM2 == null
-          ? undefined
-          : { powderAreaM2: input.authoritativePowderAreaM2 },
+        authoritativeFactualInputs: {
+          ...(input.authoritativePowderAreaM2 == null ? {} : { powderAreaM2: input.authoritativePowderAreaM2 }),
+          ...(input.authoritativeBendCount == null ? {} : { bendCount: input.authoritativeBendCount }),
+        },
       };
     },
     runCalculation: async (project, evidence, inputs) => {
@@ -368,4 +371,80 @@ test("invalid private operation is rejected before calculation", async () => {
   assert.equal(res.status, 400);
   const body = await res.json() as { code?: string };
   assert.equal(body.code, "INVALID_CONFIGURATION");
+});
+
+for (const declaredBendCount of [0, 1, 4]) {
+  test(`bent STEP with ${declaredBendCount} declared bends cannot override three measured bends`, async () => {
+    let observed: Parameters<OnlineCalculationHandlerDependencies["runCalculation"]> | undefined;
+    const handler = createOnlineCalculationHandler(stepDependencies({
+      productionReady: true,
+      authoritativeBendCount: 3,
+      onRun: (...args) => { observed = args; },
+    }));
+
+    const res = await handler(stepRequest({
+      ...stepManifest,
+      parts: [{
+        ...stepManifest.parts[0],
+        operations: ["bending"],
+        operationInputs: { bendCount: declaredBendCount },
+      }],
+    }));
+    assert.equal(res.status, 200);
+    assert.ok(observed);
+    const [project, evidence, inputs] = observed;
+    assert.equal(project.parts[0].geometry, null);
+    assert.equal(project.parts[0].state, "manual-review");
+    assert.ok(evidence["step-part-1"].reviewReasons?.some((reason) => /гибов.*3.*не совпадает/.test(reason)));
+    assert.equal(inputs?.authoritativeFactualByPartId?.["step-part-1"], undefined);
+    const body = await res.json() as { calculation: { parts: Array<{ status: string; cad: { widthMm: number | null } }> } };
+    assert.equal(body.calculation.parts[0].status, "needs-review");
+    assert.equal(body.calculation.parts[0].cad.widthMm, null);
+  });
+}
+
+for (const declaredBendCount of [undefined, 3]) {
+  test(`bent STEP keeps measured bends when declared count is ${declaredBendCount}`, async () => {
+    const handler = createOnlineCalculationHandler(stepDependencies({
+      productionReady: true,
+      authoritativeBendCount: 3,
+      onRun: (project, _evidence, inputs) => {
+        assert.ok(project.parts[0].geometry);
+        const resolved = resolveEffectiveFactualInputs(project, inputs?.factualByPartId ?? {}, {}, inputs?.authoritativeFactualByPartId);
+        assert.equal(resolved["step-part-1"].bendCount, 3);
+      },
+    }));
+
+    const res = await handler(stepRequest({
+      ...stepManifest,
+      parts: [{
+        ...stepManifest.parts[0],
+        operations: ["bending"],
+        operationInputs: { bendCount: declaredBendCount },
+      }],
+    }));
+    assert.equal(res.status, 200);
+  });
+}
+
+test("flat STEP still permits customer-requested bends to be added to its blank", async () => {
+  const handler = createOnlineCalculationHandler(stepDependencies({
+    productionReady: true,
+    authoritativeBendCount: 0,
+    onRun: (project, _evidence, inputs) => {
+      assert.ok(project.parts[0].geometry);
+      const resolved = resolveEffectiveFactualInputs(project, inputs?.factualByPartId ?? {}, {}, inputs?.authoritativeFactualByPartId);
+      assert.equal(resolved["step-part-1"].bendCount, 2);
+    },
+  }));
+
+  const res = await handler(stepRequest({
+    ...stepManifest,
+    parts: [{
+      ...stepManifest.parts[0],
+      operations: ["bending"],
+      operationInputs: { bendCount: 2 },
+    }],
+  }));
+  assert.equal(res.status, 200);
 });
