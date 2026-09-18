@@ -82,11 +82,16 @@ jobs:
             const input = page.locator('input[type=file]');
             console.log('fileInputs='+await input.count());
             await input.setInputFiles('/tmp/part.dxf');
-            await page.getByText('Рассчитать проект', {exact:false}).waitFor({state:'visible', timeout:90000});
-            const button = page.getByRole('button', {name:/Рассчитать/}).last();
-            console.log('buttonDisabled='+await button.isDisabled());
+            const buttons = page.getByRole('button', {name:/Рассчитать/});
+            await buttons.last().waitFor({state:'visible', timeout:90000});
+            console.log('calcButtons='+await buttons.count());
+            for (let i=0;i<await buttons.count();i++) {
+              console.log('button'+i+'Visible='+await buttons.nth(i).isVisible());
+              console.log('button'+i+'Disabled='+await buttons.nth(i).isDisabled());
+            }
+            const button = buttons.filter({visible:true}).last();
             await button.click();
-            await page.getByText(/Стоимость позиции|Расчёт проекта завершён/).waitFor({state:'visible', timeout:90000});
+            await page.getByText(/Стоимость позиции|Расчёт проекта завершён/).first().waitFor({state:'visible', timeout:90000});
             const body = await page.locator('body').innerText();
             console.log('hasApprovedPrice='+/Стоимость позиции/.test(body));
             console.log('hasFinished='+/Расчёт проекта завершён/.test(body));
