@@ -5,15 +5,15 @@ APP_USER="${1:-nodejs}"
 APP_GROUP="$(id -gn "$APP_USER")"
 TTS_ROOT="/var/lib/steelprodukt/tts"
 PYTHON_DIR="$TTS_ROOT/python"
-MODEL="$TTS_ROOT/ru_RU-dmitri-medium.onnx"
+MODEL="$TTS_ROOT/ru_RU-denis-medium.onnx"
 CONFIG="$MODEL.json"
-MODEL_CARD="$TTS_ROOT/MODEL_CARD.ru_RU-dmitri-medium"
+MODEL_CARD="$TTS_ROOT/MODEL_CARD.ru_RU-denis-medium"
 PIPER_LICENSE="$TTS_ROOT/PIPER-COPYING-GPL-3.0-or-later"
 VERSION_FILE="$TTS_ROOT/runtime-version"
 PIPER_VERSION="1.8.0"
 VOICE_VERSION="v1.0.0"
-EXPECTED_MODEL_SHA256="f073356ebc4bd0f80c5af58df2953a5988bd5bdab1eb38635ce960b071fbefcb"
-VOICE_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/$VOICE_VERSION/ru/ru_RU/dmitri/medium"
+EXPECTED_MODEL_SHA256="15fab56e11a097858ee115545d0f697fc2a316c41a291a5362349fb870411b0a"
+VOICE_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/$VOICE_VERSION/ru/ru_RU/denis/medium"
 PIPER_LICENSE_URL="https://raw.githubusercontent.com/OHF-Voice/piper1-gpl/v$PIPER_VERSION/COPYING"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -23,10 +23,10 @@ fi
 
 install -d -m 0700 -o "$APP_USER" -g "$APP_GROUP" "$TTS_ROOT"
 
-runtime_signature="piper-tts=$PIPER_VERSION;voice=ru_RU-dmitri-medium@$VOICE_VERSION"
+runtime_signature="piper-tts=$PIPER_VERSION;voice=ru_RU-denis-medium@$VOICE_VERSION"
 current_signature="$(cat "$VERSION_FILE" 2>/dev/null || true)"
 
-if [ "$current_signature" != "$runtime_signature" ] || [ ! -d "$PYTHON_DIR/piper" ]; then
+if [ ! -d "$PYTHON_DIR/piper" ] || [[ "$current_signature" != piper-tts=$PIPER_VERSION* ]]; then
   temp_python="$(mktemp -d "$TTS_ROOT/python.XXXXXX")"
   trap 'rm -rf "${temp_python:-}" "${temp_model:-}" "${temp_config:-}" "${temp_card:-}" "${temp_license:-}"' EXIT
   python3 -m pip install \
@@ -49,7 +49,7 @@ fi
 
 if [ "$model_ok" != true ]; then
   temp_model="$(mktemp "$TTS_ROOT/model.XXXXXX")"
-  curl -fsSL "$VOICE_BASE/ru_RU-dmitri-medium.onnx" -o "$temp_model"
+  curl -fsSL "$VOICE_BASE/ru_RU-denis-medium.onnx" -o "$temp_model"
   printf '%s  %s\n' "$EXPECTED_MODEL_SHA256" "$temp_model" | sha256sum -c -
   mv "$temp_model" "$MODEL"
   temp_model=""
@@ -57,7 +57,7 @@ fi
 
 if [ ! -s "$CONFIG" ]; then
   temp_config="$(mktemp "$TTS_ROOT/config.XXXXXX")"
-  curl -fsSL "$VOICE_BASE/ru_RU-dmitri-medium.onnx.json" -o "$temp_config"
+  curl -fsSL "$VOICE_BASE/ru_RU-denis-medium.onnx.json" -o "$temp_config"
   python3 -m json.tool "$temp_config" >/dev/null
   mv "$temp_config" "$CONFIG"
   temp_config=""
