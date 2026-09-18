@@ -63,7 +63,7 @@ test("brand and legal operator are separate structured-data entities", () => {
   assert.match(entities, /addressLocality: "Смоленск"/);
 
   const canonicalBrandReference = /brand: \{ "@id": `\$\{siteConfig\.url\}\/\#brand` \}/g;
-  assert.equal((schemas.match(canonicalBrandReference) ?? []).length, 3);
+  assert.equal((schemas.match(canonicalBrandReference) ?? []).length, 4);
   assert.doesNotMatch(schemas, /brand: \{ "@type": "Brand", name: siteConfig\.name \}/);
 });
 
