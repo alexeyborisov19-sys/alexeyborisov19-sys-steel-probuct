@@ -82,6 +82,7 @@ jobs:
             const input = page.locator('input[type=file]');
             console.log('fileInputs='+await input.count());
             await input.setInputFiles('/tmp/part.dxf');
+            await page.getByRole('button', {name:'Сталь х/к'}).click();
             const buttons = page.getByRole('button', {name:/Рассчитать/});
             await buttons.last().waitFor({state:'visible', timeout:90000});
             console.log('calcButtons='+await buttons.count());
