@@ -343,6 +343,9 @@ jobs:
             exit 1
           }
           chown -R nodejs:nodejs "$APP_PATH"
+          # Install the preferred Russian local voice before restart. The previous
+          # Dmitri model remains on disk as a runtime fallback.
+          bash "$APP_PATH/deploy/install-local-tts.sh" nodejs
           bash "$APP_PATH/deploy/prepare-production.sh" "$APP_PATH" nodejs
           # Passed positionally: sudo -i starts a login shell and resets the
           # environment, so an exported variable would arrive empty and the
