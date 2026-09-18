@@ -23,7 +23,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Report production Metrica state
+      - name: Verify production Metrica after restart
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -33,35 +33,32 @@ jobs:
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
             "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
-          set -u
+          set -euo pipefail
           ENV_FILE="$APP_PATH/.env.production"
           BUILD_DIR="$APP_PATH/.next/static"
           BUILD_COMMIT="$APP_PATH/.next/BUILD_COMMIT"
+          EXPECTED_BUILD="c1c36c20f5e25eeffacbb58c47be2c25deb45285"
 
           counter="$(sed -n 's/^NEXT_PUBLIC_YM_COUNTER_ID=//p' "$ENV_FILE" | tail -n1 | tr -d '\r\n"' | tr -d "'")"
           webvisor="$(sed -n 's/^NEXT_PUBLIC_YM_WEBVISOR=//p' "$ENV_FILE" | tail -n1 | tr -d '\r\n"' | tr -d "'")"
+          build_commit="$(cat "$BUILD_COMMIT")"
 
           canonical_files="$( (grep -rlF '112542227' "$BUILD_DIR" 2>/dev/null || true) | wc -l | tr -d ' ')"
           legacy_111263638="$( (grep -rlF '111263638' "$BUILD_DIR" 2>/dev/null || true) | wc -l | tr -d ' ')"
           legacy_112129777="$( (grep -rlF '112129777' "$BUILD_DIR" 2>/dev/null || true) | wc -l | tr -d ' ')"
 
-          [ "$counter" = "112542227" ] && counter_match=yes || counter_match=no
-          [ "$webvisor" = "true" ] && webvisor_match=yes || webvisor_match=no
-          [ "$canonical_files" -gt 0 ] && canonical_present=yes || canonical_present=no
-          [ "$legacy_111263638" = "0" ] && legacy1_absent=yes || legacy1_absent=no
-          [ "$legacy_112129777" = "0" ] && legacy2_absent=yes || legacy2_absent=no
+          test "$counter" = "112542227"
+          test "$webvisor" = "true"
+          test "$build_commit" = "$EXPECTED_BUILD"
+          test "$canonical_files" -gt 0
+          test "$legacy_111263638" = "0"
+          test "$legacy_112129777" = "0"
 
-          echo "counter_match=$counter_match"
-          echo "webvisor_match=$webvisor_match"
-          echo "canonical_present=$canonical_present"
+          echo "counter=112542227"
+          echo "webvisor=true"
           echo "canonical_bundle_files=$canonical_files"
-          echo "legacy_111263638_absent=$legacy1_absent"
           echo "legacy_111263638_files=$legacy_111263638"
-          echo "legacy_112129777_absent=$legacy2_absent"
           echo "legacy_112129777_files=$legacy_112129777"
-          if [ -f "$BUILD_COMMIT" ]; then
-            echo "build_commit=$(cat "$BUILD_COMMIT")"
-          else
-            echo "build_commit=missing"
-          fi
+          echo "build_commit=$build_commit"
+          echo "METRICA=production_consistent_after_restart"
           REMOTE
