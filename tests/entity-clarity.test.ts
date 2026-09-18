@@ -51,6 +51,9 @@ test("brand and legal operator are separate structured-data entities", () => {
   assert.match(schemas, /"@type": "Organization"/);
   assert.doesNotMatch(schemas, /"@type": \["Organization", "LocalBusiness"\]/);
   assert.match(schemas, /name: legalOperator\.shortName/);
+  assert.match(schemas, /legalAddress: \{/);
+  assert.match(schemas, /\.\.\.siteConfig\.address/);
+  assert.doesNotMatch(schemas, /legalAddress:[\\s\\S]{0,240}productionAddress/);
   assert.match(schemas, /location: \{ "@id": `\$\{siteConfig\.url\}\/\#production-site` \}/);
 
   assert.match(entities, /"@type": "Place"/);
