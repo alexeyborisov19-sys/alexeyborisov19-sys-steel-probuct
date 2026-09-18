@@ -346,6 +346,7 @@ jobs:
           # Install the preferred Russian local voice before restart. The previous
           # Dmitri model remains on disk as a runtime fallback.
           bash "$APP_PATH/deploy/install-local-tts.sh" nodejs
+          node "$APP_PATH/scripts/check-speechkit-tts.mjs" "$APP_PATH/.env.production"
           bash "$APP_PATH/deploy/prepare-production.sh" "$APP_PATH" nodejs
           # Passed positionally: sudo -i starts a login shell and resets the
           # environment, so an exported variable would arrive empty and the
