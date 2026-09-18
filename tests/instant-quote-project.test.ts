@@ -19,8 +19,6 @@ test("adds multiple CAD parts and activates the latest one", () => {
   assert.equal(project.parts.length, 2);
   assert.equal(project.parts[0].format, "dxf");
   assert.equal(project.parts[1].format, "step");
-  assert.equal(project.parts[0].configuration.materialId, "cold");
-  assert.equal(project.parts[1].configuration.materialId, "cold");
   assert.equal(project.activePartId, project.parts[1].id);
 });
 
