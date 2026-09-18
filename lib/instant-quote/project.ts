@@ -27,7 +27,7 @@ export function addPartToProject(
     state: "queued",
     geometry: null,
     configuration: {
-      materialId: "cold",
+      materialId: "hot",
       thicknessMm: 1,
       quantity: 1,
       operations: ["laser-cutting"],
