@@ -24,11 +24,15 @@ export function brandEntitySchema(): JsonLd {
 export function productionSiteEntitySchema(): JsonLd {
   return {
     "@context": "https://schema.org",
-    "@type": "Place",
+    "@type": "LocalBusiness",
     "@id": `${siteConfig.url}/#production-site`,
     name: `Производственная площадка «${siteConfig.name}»`,
     description: `Производственная площадка бренда «${siteConfig.name}» в Смоленске.`,
     url: absoluteUrl("/production"),
+    parentOrganization: { "@id": `${siteConfig.url}/#organization` },
+    brand: { "@id": `${siteConfig.url}/#brand` },
+    telephone: siteConfig.telephone,
+    email: siteConfig.email,
     address: {
       "@type": "PostalAddress",
       streetAddress: `${siteConfig.productionAddress.line1}, ${siteConfig.productionAddress.line2}`,
