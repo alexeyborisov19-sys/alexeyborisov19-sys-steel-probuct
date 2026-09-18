@@ -1,4 +1,4 @@
-name: Diagnose production Metrica
+name: Smoke-test production AI engineer brand story
 
 on:
   push:
@@ -9,56 +9,25 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure secure server access
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-
-      - name: Verify production Metrica after restart
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_USER: ${{ secrets.BEGET_USER }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+      - name: Verify live brand story answer
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
-            "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
-          set -euo pipefail
-          ENV_FILE="$APP_PATH/.env.production"
-          BUILD_DIR="$APP_PATH/.next/static"
-          BUILD_COMMIT="$APP_PATH/.next/BUILD_COMMIT"
-          EXPECTED_BUILD="c1c36c20f5e25eeffacbb58c47be2c25deb45285"
+          RESPONSE="$(mktemp)"
+          trap 'rm -f "$RESPONSE"' EXIT
 
-          counter="$(sed -n 's/^NEXT_PUBLIC_YM_COUNTER_ID=//p' "$ENV_FILE" | tail -n1 | tr -d '\r\n"' | tr -d "'")"
-          webvisor="$(sed -n 's/^NEXT_PUBLIC_YM_WEBVISOR=//p' "$ENV_FILE" | tail -n1 | tr -d '\r\n"' | tr -d "'")"
-          build_commit="$(cat "$BUILD_COMMIT")"
+          HTTP_CODE="$(curl --silent --show-error             --output "$RESPONSE"             --write-out '%{http_code}'             --request POST             --header 'Origin: https://www.steelprodukt.ru'             --header 'Referer: https://www.steelprodukt.ru/'             --header 'Content-Type: application/json'             --data '{"message":"Расскажите про Сталь Продукт","pathname":"/"}'             'https://www.steelprodukt.ru/api/assistant')"
 
-          canonical_files="$( (grep -rlF '112542227' "$BUILD_DIR" 2>/dev/null || true) | wc -l | tr -d ' ')"
-          legacy_111263638="$( (grep -rlF '111263638' "$BUILD_DIR" 2>/dev/null || true) | wc -l | tr -d ' ')"
-          legacy_112129777="$( (grep -rlF '112129777' "$BUILD_DIR" 2>/dev/null || true) | wc -l | tr -d ' ')"
+          test "$HTTP_CODE" = "200"
+          jq -e '.answer | contains("инженерно-производственный бренд")' "$RESPONSE" >/dev/null
+          jq -e '.answer | contains("Мы начинаем не со станка, а с задачи")' "$RESPONSE" >/dev/null
+          jq -e '.answer | contains("серийное и OEM-производство")' "$RESPONSE" >/dev/null
+          jq -e '.answer | contains("Монтаж на объектах мы не выполняем")' "$RESPONSE" >/dev/null
+          jq -e '.mode == "knowledge" or .mode == "ai"' "$RESPONSE" >/dev/null
 
-          test "$counter" = "112542227"
-          test "$webvisor" = "true"
-          test "$build_commit" = "$EXPECTED_BUILD"
-          test "$canonical_files" -gt 0
-          test "$legacy_111263638" = "0"
-          test "$legacy_112129777" = "0"
-
-          echo "counter=112542227"
-          echo "webvisor=true"
-          echo "canonical_bundle_files=$canonical_files"
-          echo "legacy_111263638_files=$legacy_111263638"
-          echo "legacy_112129777_files=$legacy_112129777"
-          echo "build_commit=$build_commit"
-          echo "METRICA=production_consistent_after_restart"
-          REMOTE
+          echo "http=$HTTP_CODE"
+          echo "mode=$(jq -r '.mode' "$RESPONSE")"
+          echo "answer_chars=$(jq -r '.answer | length' "$RESPONSE")"
+          echo "BRAND_STORY=production_ok"
