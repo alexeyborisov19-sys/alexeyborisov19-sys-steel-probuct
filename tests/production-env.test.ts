@@ -10,8 +10,8 @@ function validProductionEnvironment(): NodeJS.ProcessEnv {
   return {
     NODE_ENV: "production",
     NEXT_PUBLIC_SITE_URL: "https://www.steelprodukt.ru",
-    NEXT_PUBLIC_YM_COUNTER_ID: "111263638",
-    NEXT_PUBLIC_YM_WEBVISOR: "false",
+    NEXT_PUBLIC_YM_COUNTER_ID: "112542227",
+    NEXT_PUBLIC_YM_WEBVISOR: "true",
     SMTP_HOST: "smtp.example.ru",
     SMTP_PORT: "587",
     SMTP_SECURE: "false",
@@ -69,15 +69,17 @@ test("reports missing variables by key before a quote is accepted", () => {
   );
 });
 
-test("rejects a wrong counter, public storage, weak salts and untrusted proxy mode", () => {
+test("rejects legacy Metrica settings, public storage, weak salts and untrusted proxy mode", () => {
   const environment = validProductionEnvironment();
-  environment.NEXT_PUBLIC_YM_COUNTER_ID = "123";
+  environment.NEXT_PUBLIC_YM_COUNTER_ID = "111263638";
+  environment.NEXT_PUBLIC_YM_WEBVISOR = "false";
   environment.QUOTE_STORAGE_PATH = "/var/www/html/public/quotes";
   environment.IP_HASH_SALT = "short";
   environment.TRUST_NGINX_PROXY = "false";
   const keys = validateProductionEnvironment(environment, { force: true }).map((issue) => issue.key);
   assert.deepEqual(keys, [
     "NEXT_PUBLIC_YM_COUNTER_ID",
+    "NEXT_PUBLIC_YM_WEBVISOR",
     "QUOTE_STORAGE_PATH",
     "IP_HASH_SALT",
     "TRUST_NGINX_PROXY",

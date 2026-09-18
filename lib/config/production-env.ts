@@ -82,11 +82,11 @@ export function validateProductionEnvironment(
   if (environment.NEXT_PUBLIC_SITE_URL && environment.NEXT_PUBLIC_SITE_URL !== "https://www.steelprodukt.ru") {
     add("NEXT_PUBLIC_SITE_URL", "must use the canonical production origin");
   }
-  if (environment.NEXT_PUBLIC_YM_COUNTER_ID && environment.NEXT_PUBLIC_YM_COUNTER_ID !== "111263638") {
+  if (environment.NEXT_PUBLIC_YM_COUNTER_ID && environment.NEXT_PUBLIC_YM_COUNTER_ID !== "112542227") {
     add("NEXT_PUBLIC_YM_COUNTER_ID", "must equal the approved Yandex Metrica counter");
   }
-  if (environment.NEXT_PUBLIC_YM_WEBVISOR && !isBoolean(environment.NEXT_PUBLIC_YM_WEBVISOR)) {
-    add("NEXT_PUBLIC_YM_WEBVISOR", "must be true or false");
+  if (environment.NEXT_PUBLIC_YM_WEBVISOR && environment.NEXT_PUBLIC_YM_WEBVISOR !== "true") {
+    add("NEXT_PUBLIC_YM_WEBVISOR", "must be true for the canonical production analytics configuration");
   }
 
   if (environment.SMTP_PORT && (!/^\d+$/.test(environment.SMTP_PORT) || Number(environment.SMTP_PORT) > 65_535)) {
