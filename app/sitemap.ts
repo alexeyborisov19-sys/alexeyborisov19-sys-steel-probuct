@@ -29,7 +29,7 @@ const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
 const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/": discoveryHubsModifiedAt,
+  "/": new Date("2026-09-18T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
   "/company/facts": new Date("2026-09-12T00:00:00.000Z"),
   "/contacts": new Date("2026-08-25T17:32:36.000Z"),
@@ -48,9 +48,9 @@ const staticModifiedAt: Record<string, Date> = {
   "/online-order": new Date("2026-09-15T00:00:00.000Z"),
   "/products/metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
-  "/products/korziny-dlya-konditsionerov": commercialProductPagesModifiedAt,
+  "/products/korziny-dlya-konditsionerov": new Date("2026-09-18T00:00:00.000Z"),
   "/products/ventilyacionnye-reshetki": commercialProductPagesModifiedAt,
-  "/products/metallicheskie-korpusa": commercialProductPagesModifiedAt,
+  "/products/metallicheskie-korpusa": new Date("2026-09-18T00:00:00.000Z"),
   "/products/zakladnye-detali": commercialProductPagesModifiedAt,
 };
 
