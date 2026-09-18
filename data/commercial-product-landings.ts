@@ -61,7 +61,7 @@ export const commercialProductLandings: CommercialProductLanding[] = [
       { question: "Можно сделать свой рисунок перфорации?", answer: "Да, если рисунок технологичен и сохраняет требуемую жёсткость и открытую площадь." },
     ],
     related: [
-      { label: "Все решения для кондиционирования", href: "/solutions/climate" },
+      { label: "Комплексные решения для климатического оборудования", href: "/solutions/climate" },
       { label: "Гибка листового металла", href: "/production/gibka-listovogo-metalla" },
       { label: "Порошковая окраска по RAL", href: "/production/poroshkovaya-okraska-metalla" },
       { label: "Передать проект на расчёт", href: "/contacts#contact-form" },
@@ -153,7 +153,7 @@ export const commercialProductLandings: CommercialProductLanding[] = [
       { question: "Можно выпускать корпуса серийно?", answer: "Да. После согласования конструкции фиксируем технологический маршрут, контрольные параметры, маркировку и упаковку." },
     ],
     related: [
-      { label: "Решения для промышленности", href: "/solutions/industry" },
+      { label: "Контрактное и OEM-производство для промышленности", href: "/solutions/industry" },
       { label: "Проектирование и подготовка КД", href: "/production/proektirovanie-metalloizdeliy" },
       { label: "Сварка и сборка", href: "/production/svarka-i-sborka-metalloizdeliy" },
       { label: "Получить расчёт", href: "/contacts#contact-form" },

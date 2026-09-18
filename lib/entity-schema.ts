@@ -21,6 +21,28 @@ export function brandEntitySchema(): JsonLd {
   };
 }
 
+export function productionSiteEntitySchema(): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": `${siteConfig.url}/#production-site`,
+    name: `Производственная площадка «${siteConfig.name}»`,
+    description: `Производственная площадка бренда «${siteConfig.name}» в Смоленске.`,
+    url: absoluteUrl("/production"),
+    parentOrganization: { "@id": `${siteConfig.url}/#organization` },
+    brand: { "@id": `${siteConfig.url}/#brand` },
+    telephone: siteConfig.telephone,
+    email: siteConfig.email,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: `${siteConfig.productionAddress.line1}, ${siteConfig.productionAddress.line2}`,
+      addressLocality: "Смоленск",
+      addressRegion: "Смоленская область",
+      addressCountry: "RU",
+    },
+  };
+}
+
 export function legalOperatorEntitySchema(): JsonLd {
   const base = organizationSchema();
 
@@ -51,15 +73,17 @@ export function companyFactsAboutPageSchema(): JsonLd {
     name: `Факты о производстве «${siteConfig.name}»`,
     description: "Проверенные сведения о бренде, юридическом операторе, производственной площадке, оборудовании и границах работ.",
     inLanguage: siteConfig.language,
-    dateModified: "2026-09-12",
+    dateModified: "2026-09-18",
     isPartOf: { "@id": `${siteConfig.url}/#website` },
     about: [
       { "@id": `${siteConfig.url}/#brand` },
       { "@id": `${siteConfig.url}/#organization` },
+      { "@id": `${siteConfig.url}/#production-site` },
     ],
     mainEntity: [
       { "@id": `${siteConfig.url}/#brand` },
       { "@id": `${siteConfig.url}/#organization` },
+      { "@id": `${siteConfig.url}/#production-site` },
     ],
     citation: legalOperatorExternalReferences.map((reference) => ({
       "@type": "WebPage",
