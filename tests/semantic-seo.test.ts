@@ -99,7 +99,7 @@ test("drawing production and industrial housings use one strong landing page per
   assert.ok(drawingArticle);
   assert.ok(housingArticle);
   assert.ok(getArticleCommercialLinks(drawingArticle).some((link) => link.href === "/solutions/custom"));
-  assert.ok(getArticleCommercialLinks(housingArticle).some((link) => link.href === "/solutions/industry"));
+  assert.ok(getArticleCommercialLinks(housingArticle).some((link) => link.href === "/products/metallicheskie-korpusa"));
 });
 
 test("product and industry landing pages keep unique intent metadata", () => {
