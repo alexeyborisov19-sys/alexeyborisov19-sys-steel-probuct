@@ -45,7 +45,19 @@ test("brand and legal operator are separate structured-data entities", () => {
   assert.match(references, /spark-interfax\.ru\/smolenskaya-oblast-smolensk\/ooo-energoalyans-inn-6732110789-ogrn-1156733014657/);
   assert.match(layout, /brandEntitySchema\(\)/);
   assert.match(layout, /legalOperatorEntitySchema\(\)/);
+  assert.match(layout, /productionSiteEntitySchema\(\)/);
   assert.doesNotMatch(layout, /organizationSchema\(\)/);
+
+  assert.match(schemas, /"@type": "Organization"/);
+  assert.doesNotMatch(schemas, /"@type": \["Organization", "LocalBusiness"\]/);
+  assert.match(schemas, /name: legalOperator\.shortName/);
+  assert.match(schemas, /location: \{ "@id": `\$\{siteConfig\.url\}\/\#production-site` \}/);
+
+  assert.match(entities, /"@type": "Place"/);
+  assert.match(entities, /`\$\{siteConfig\.url\}\/\#production-site`/);
+  assert.match(entities, /siteConfig\.productionAddress\.line1/);
+  assert.match(entities, /siteConfig\.productionAddress\.line2/);
+  assert.match(entities, /addressLocality: "Смоленск"/);
 
   const canonicalBrandReference = /brand: \{ "@id": `\$\{siteConfig\.url\}\/\#brand` \}/g;
   assert.equal((schemas.match(canonicalBrandReference) ?? []).length, 3);
@@ -85,6 +97,7 @@ test("verified production facts page is sourced from manufacturing-facts and dis
   assert.match(entities, /"@type": "AboutPage"/);
   assert.match(entities, /about: \[/);
   assert.match(entities, /mainEntity: \[/);
+  assert.match(entities, /\#production-site/);
   assert.match(entities, /citation: legalOperatorExternalReferences\.map/);
 
   assert.match(compact, /\/company\/facts/);
