@@ -41,9 +41,9 @@ jobs:
           counter="$(sed -n 's/^NEXT_PUBLIC_YM_COUNTER_ID=//p' "$ENV_FILE" | tail -n1 | tr -d '\r\n"' | tr -d "'")"
           webvisor="$(sed -n 's/^NEXT_PUBLIC_YM_WEBVISOR=//p' "$ENV_FILE" | tail -n1 | tr -d '\r\n"' | tr -d "'")"
 
-          canonical_files="$(grep -rlF '112542227' "$BUILD_DIR" 2>/dev/null | wc -l | tr -d ' ')"
-          legacy_111263638="$(grep -rlF '111263638' "$BUILD_DIR" 2>/dev/null | wc -l | tr -d ' ')"
-          legacy_112129777="$(grep -rlF '112129777' "$BUILD_DIR" 2>/dev/null | wc -l | tr -d ' ')"
+          canonical_files="$( (grep -rlF '112542227' \"$BUILD_DIR\" 2>/dev/null || true) | wc -l | tr -d ' ')"
+          legacy_111263638="$( (grep -rlF '111263638' \"$BUILD_DIR\" 2>/dev/null || true) | wc -l | tr -d ' ')"
+          legacy_112129777="$( (grep -rlF '112129777' \"$BUILD_DIR\" 2>/dev/null || true) | wc -l | tr -d ' ')"
 
           test "$counter" = "112542227"
           test "$webvisor" = "true"
