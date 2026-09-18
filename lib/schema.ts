@@ -87,7 +87,7 @@ export function organizationSchema(): JsonLd {
     description: siteConfig.description,
     email: siteConfig.email,
     telephone: siteConfig.telephone,
-    address: {
+    legalAddress: {
       "@type": "PostalAddress",
       ...siteConfig.address,
     },
