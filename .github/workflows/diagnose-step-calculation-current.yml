@@ -1,0 +1,53 @@
+name: Diagnose current STEP calculation result
+
+on:
+  push:
+    branches:
+      - diagnose/cad-calculator-20260918
+    paths:
+      - .github/workflows/diagnose-step-calculation-current.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Generate a 100x100x1 mm STEP plate and calculate it
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { writeFile } from 'node:fs/promises';
+          import { OcctKernel } from 'occt-wasm';
+          const kernel = await OcctKernel.init();
+          try {
+            const shape = kernel.makeBox(100, 100, 1);
+            try {
+              await writeFile('/tmp/diag.step', kernel.exportStep(shape), 'utf8');
+            } finally {
+              kernel.release(shape);
+            }
+          } finally {
+            kernel.dispose?.();
+          }
+          NODE
+          cat > /tmp/manifest.json <<'JSON'
+          {"title":"STEP calculation diagnostic","parts":[{"clientPartId":"diag-step","fileIndex":0,"materialId":"zinc","thicknessMm":1,"quantity":1,"operations":[],"operationInputs":{}}]}
+          JSON
+          HTTP_CODE="$(curl --silent --show-error --output /tmp/response.json --write-out '%{http_code}' \
+            -H 'Origin: https://www.steelprodukt.ru' \
+            -H 'Referer: https://www.steelprodukt.ru/online-order' \
+            -F 'manifest=</tmp/manifest.json' \
+            -F 'files=@/tmp/diag.step;type=application/step' \
+            https://www.steelprodukt.ru/api/online-order/calculate)"
+          echo "HTTP=$HTTP_CODE"
+          jq '{ok,code,status:(.calculation.parts[0].status // null),price:(.calculation.parts[0].price // null),message:(.calculation.parts[0].message // .message // null)}' /tmp/response.json
+          test "$HTTP_CODE" = "200"
