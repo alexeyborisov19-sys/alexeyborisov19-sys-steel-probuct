@@ -1,0 +1,71 @@
+name: Verify Metrika browser runtime
+
+on:
+  push:
+    branches:
+      - check-yandex-api-20260919
+    paths:
+      - '.github/workflows/check-metrika-browser.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Open site with analytics consent and inspect Metrika requests
+        run: |
+          cat > /tmp/check.mjs <<'EOF'
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage();
+
+          const requests = [];
+          const consoleErrors = [];
+
+          page.on('request', req => {
+            const u = req.url();
+            if (u.includes('mc.yandex.') || u.includes('metrika')) requests.push(u);
+          });
+          page.on('console', msg => {
+            if (msg.type() === 'error') consoleErrors.push(msg.text());
+          });
+          page.on('pageerror', err => consoleErrors.push(String(err)));
+
+          await page.goto('https://www.steelprodukt.ru/', {waitUntil:'domcontentloaded', timeout:60000});
+          await page.evaluate(() => {
+            localStorage.setItem('steelprodukt-cookie-consent-v2', JSON.stringify({
+              version: 2,
+              necessary: true,
+              analytics: true,
+              updatedAt: new Date().toISOString()
+            }));
+          });
+          await page.reload({waitUntil:'networkidle', timeout:60000});
+          await page.waitForTimeout(7000);
+
+          const state = await page.evaluate(() => ({
+            consent: localStorage.getItem('steelprodukt-cookie-consent-v2'),
+            ymType: typeof window.ym,
+            scripts: [...document.scripts].map(s => s.src).filter(Boolean).filter(s => s.includes('yandex') || s.includes('metrika')),
+          }));
+
+          console.log('STATE='+JSON.stringify(state));
+          console.log('METRIKA_REQUEST_COUNT='+requests.length);
+          console.log('METRIKA_REQUESTS='+JSON.stringify(requests.slice(0,30)));
+          console.log('CONSOLE_ERRORS='+JSON.stringify(consoleErrors.slice(0,30)));
+
+          await browser.close();
+          if (state.ymType !== 'function' || requests.length === 0) process.exit(1);
+          EOF
+
+          node /tmp/check.mjs
