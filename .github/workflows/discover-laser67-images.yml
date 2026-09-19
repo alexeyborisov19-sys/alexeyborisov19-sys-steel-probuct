@@ -56,14 +56,13 @@ jobs:
               for m in pat.finditer(html.unescape(raw)):
                   u=m.group('u').replace('\\/','/')
                   full=urllib.parse.urljoin(url,u)
-                  if full.startswith(base):
-                      found.append(full)
+                  found.append(full)
               # Also capture quoted strings with common image-ish endpoint paths.
               for m in re.finditer(r'''["']([^"']*(?:image|photo|upload|media)[^"']*)["']''', raw, re.I):
                   s=html.unescape(m.group(1)).replace('\\/','/')
                   if any(ext in s.lower() for ext in ('.jpg','.jpeg','.png','.webp','.avif')):
                       full=urllib.parse.urljoin(url,s)
-                      if full.startswith(base): found.append(full)
+                      found.append(full)
               uniq=[]; seen=set()
               for u in found:
                   if u in seen: continue
