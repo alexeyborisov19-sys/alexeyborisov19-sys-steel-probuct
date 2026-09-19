@@ -132,7 +132,7 @@ test("never passes personal data to the Yandex goal callback", () => {
   });
 });
 
-test("Metrika runtime is absent from the initial pre-consent client path", () => {
+test("Metrika runtime stays dynamically imported and honors explicit opt-out", () => {
   const layout = readFileSync(resolve("app/(public)/layout.tsx"), "utf8");
   const gate = readFileSync(resolve("components/ConsentGatedAnalytics.tsx"), "utf8");
   const runtime = readFileSync(resolve("components/Analytics.tsx"), "utf8");
@@ -142,6 +142,7 @@ test("Metrika runtime is absent from the initial pre-consent client path", () =>
   assert.match(layout, /<ConsentGatedAnalytics \/>/);
   assert.match(gate, /await import\("\.\/Analytics"\)/);
   assert.match(gate, /hasAnalyticsConsent\(\)/);
+  assert.match(consent, /return readChoice\(\)\?\.analytics !== false/);
   assert.equal(gate.includes("mc.yandex.ru"), false);
   assert.equal(gate.includes("mc.yandex.com"), false);
   assert.equal(runtime.includes("mc.yandex.ru"), false);
