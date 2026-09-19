@@ -8,6 +8,7 @@ export type CommercialProductLanding = {
   metaDescription: string;
   description: string;
   image: string;
+  gallery?: Array<{ src: string; alt: string }>;
   category: string;
   keywords: string[];
   introduction: string;
@@ -121,6 +122,15 @@ export const commercialProductLandings: CommercialProductLanding[] = [
     metaDescription: "Металлические корпуса и шкафы по КД, STEP, DXF и чертежам: прототип, лазерная резка, гибка, сварка, порошковая окраска и серийное производство.",
     description: "Изготавливаем корпуса, шкафы, панели и кожухи из листового металла по документации заказчика — от опытного образца до повторяемой серии.",
     image: "/images/web/solution-industry.jpg",
+    gallery: [
+      { src: "/images/real-products/laser67/korpusa/electrical-cabinet-enclosures.jpg", alt: "Металлические корпуса для электрошкафов — реальное изделие производства" },
+      { src: "/images/real-products/laser67/korpusa/power-supply-enclosure.jpg", alt: "Корпус для блока питания из листового металла" },
+      { src: "/images/real-products/laser67/korpusa/power-supply-enclosure-ral.jpg", alt: "Окрашенный металлический корпус для блока питания" },
+      { src: "/images/real-products/laser67/korpusa/aggregate-cabinet-enclosure.jpg", alt: "Корпус агрегатного шкафа из листового металла" },
+      { src: "/images/real-products/laser67/korpusa/industrial-equipment-cover-1.jpg", alt: "Защитный кожух для промышленного оборудования" },
+      { src: "/images/real-products/laser67/korpusa/industrial-equipment-cover-2.jpg", alt: "Металлический кожух промышленного оборудования" },
+      { src: "/images/real-products/laser67/korpusa/electrical-equipment-enclosure.jpg", alt: "Корпус для электрооборудования — реальное изделие" },
+    ],
     category: "Металлические корпуса и шкафы",
     keywords: ["металлические корпуса на заказ", "корпуса из листового металла", "изготовление корпусов по чертежам", "корпуса электрооборудования", "корпуса автоматики", "серийное производство металлических корпусов"],
     introduction: "До запуска корпуса проверяем доступ к узлам, двери и панели, отверстия, крепёж, вентиляционные зоны, последовательность сборки и видимые поверхности. Работаем по готовой КД или подключаем инженерную подготовку.",
@@ -167,6 +177,11 @@ export const commercialProductLandings: CommercialProductLanding[] = [
     metaDescription: "Изготовление закладных деталей по КМ, КМД и чертежам заказчика: пластины, отверстия, сварные узлы, покрытие, маркировка и серийные партии.",
     description: "Изготавливаем закладные детали и сварные узлы по КМ, КМД, рабочим чертежам и спецификациям заказчика с контролем геометрии и комплектности партии.",
     image: "/images/real-production/welding-station.jpg",
+    gallery: [
+      { src: "/images/real-products/laser67/zakladnye/support-shoe.jpg", alt: "Опорный башмак из металла — реальное изделие" },
+      { src: "/images/real-products/laser67/zakladnye/column-heads.jpg", alt: "Металлические оголовки для колонн — реальное изделие" },
+      { src: "/images/real-products/laser67/zakladnye/structural-support.jpg", alt: "Металлическая опора для конструкции — реальное изделие" },
+    ],
     category: "Закладные детали и сварные узлы",
     keywords: ["закладные детали", "закладные детали на заказ", "изготовление закладных деталей", "закладные детали по чертежам", "закладные детали КМ КМД", "сварные закладные детали"],
     introduction: "Закладная деталь должна соответствовать документации по геометрии, отверстиям, расположению сварных элементов, материалу и защите поверхности. Расчёт нагрузок, подбор анкеров и назначение ответственных соединений остаются в проектной документации.",
