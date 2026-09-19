@@ -1,0 +1,82 @@
+name: Check Yandex Business access
+
+on:
+  push:
+    branches:
+      - check-yandex-api-20260919
+    paths:
+      - '.github/workflows/check-yandex-business-api.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Businesses API
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+
+          cat >/tmp/request.json <<'JSON'
+          {
+            "method": "get",
+            "params": {
+              "SelectionCriteria": {},
+              "FieldNames": [
+                "Id",
+                "Name",
+                "Address",
+                "Phone",
+                "ProfileUrl",
+                "InternalUrl",
+                "IsPublished",
+                "MergedIds",
+                "Rubric",
+                "Urls",
+                "HasOffice"
+              ],
+              "Page": {
+                "Limit": 100,
+                "Offset": 0
+              }
+            }
+          }
+          JSON
+
+          code=$(curl -sS -o /tmp/response.json -w "%{http_code}"             -X POST             -H "Authorization: Bearer $TOKEN"             -H "Accept-Language: ru"             -H "Content-Type: application/json; charset=utf-8"             --data @/tmp/request.json             "https://api.direct.yandex.com/json/v501/businesses")
+
+          echo "HTTP=$code"
+
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/response.json'))
+          if 'error' in d:
+              e=d['error']
+              print('API_ERROR='+json.dumps({
+                'error_code':e.get('error_code'),
+                'error_string':e.get('error_string'),
+                'error_detail':e.get('error_detail')
+              },ensure_ascii=False))
+              raise SystemExit(2)
+
+          items=(d.get('result') or {}).get('Businesses') or []
+          safe=[]
+          for x in items:
+              safe.append({
+                'Id':x.get('Id'),
+                'Name':x.get('Name'),
+                'Address':x.get('Address'),
+                'Phone':x.get('Phone'),
+                'ProfileUrl':x.get('ProfileUrl'),
+                'InternalUrl':x.get('InternalUrl'),
+                'IsPublished':x.get('IsPublished'),
+                'Rubric':x.get('Rubric'),
+                'Urls':x.get('Urls'),
+                'HasOffice':x.get('HasOffice')
+              })
+          print('BUSINESSES='+json.dumps(safe,ensure_ascii=False))
+          PY
