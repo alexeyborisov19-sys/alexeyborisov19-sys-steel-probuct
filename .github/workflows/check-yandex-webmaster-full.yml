@@ -1,0 +1,198 @@
+name: Check Yandex Webmaster full access
+
+on:
+  push:
+    branches:
+      - check-yandex-webmaster-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  check-webmaster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Query Yandex Webmaster safely
+        env:
+          TOKEN_WEBMASTER: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+          TOKEN_DIRECT: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          TOKEN="${TOKEN_WEBMASTER:-${TOKEN_DIRECT:-}}"
+          if [ -z "$TOKEN" ]; then
+            echo "YANDEX_WEBMASTER_TOKEN_MISSING"
+            exit 1
+          fi
+
+          api_get() {
+            local url="$1"
+            local out="$2"
+            curl -sS -o "$out" -w "%{http_code}"               -H "Authorization: OAuth $TOKEN"               -H "Accept: application/json"               "$url"
+          }
+
+          USER_CODE=$(api_get "https://api.webmaster.yandex.net/v4/user" /tmp/user.json)
+          echo "USER_HTTP=$USER_CODE"
+          test "$USER_CODE" = "200"
+
+          USER_ID=$(python3 - <<'PY'
+          import json
+          print(json.load(open("/tmp/user.json")).get("user_id",""))
+          PY
+          )
+          test -n "$USER_ID"
+
+          HOSTS_CODE=$(api_get "https://api.webmaster.yandex.net/v4/user/$USER_ID/hosts" /tmp/hosts.json)
+          echo "HOSTS_HTTP=$HOSTS_CODE"
+          test "$HOSTS_CODE" = "200"
+
+          HOST_ID=$(python3 - <<'PY'
+          import json, sys
+          data=json.load(open("/tmp/hosts.json"))
+          matches=[]
+          for h in data.get("hosts",[]):
+              u=(h.get("unicode_host_url") or h.get("ascii_host_url") or "").lower()
+              if "steelprodukt.ru" in u:
+                  matches.append(h)
+          if not matches:
+              sys.exit(2)
+          preferred=next((h for h in matches if (h.get("unicode_host_url") or h.get("ascii_host_url") or "").lower().startswith("https://www.steelprodukt.ru")), matches[0])
+          print(preferred.get("host_id",""))
+          PY
+          )
+          test -n "$HOST_ID"
+
+          python3 - <<'PY'
+          import json
+          data=json.load(open("/tmp/hosts.json"))
+          for h in data.get("hosts",[]):
+              u=(h.get("unicode_host_url") or h.get("ascii_host_url") or "").lower()
+              if "steelprodukt.ru" in u:
+                  print("HOST="+str(h.get("unicode_host_url") or h.get("ascii_host_url")))
+                  print("VERIFIED="+str(bool(h.get("verified"))).lower())
+          PY
+
+          BASE="https://api.webmaster.yandex.net/v4/user/$USER_ID/hosts/$HOST_ID"
+
+          SUMMARY_CODE=$(api_get "$BASE/summary" /tmp/summary.json)
+          echo "SUMMARY_HTTP=$SUMMARY_CODE"
+
+          DIAG_CODE=$(api_get "$BASE/diagnostics" /tmp/diagnostics.json)
+          echo "DIAGNOSTICS_HTTP=$DIAG_CODE"
+
+          SITEMAPS_CODE=$(api_get "$BASE/sitemaps?limit=100" /tmp/sitemaps.json)
+          echo "SITEMAPS_HTTP=$SITEMAPS_CODE"
+
+          USER_SITEMAPS_CODE=$(api_get "$BASE/user-added-sitemaps?limit=100&offset=0" /tmp/user-sitemaps.json)
+          echo "USER_SITEMAPS_HTTP=$USER_SITEMAPS_CODE"
+
+          INDEXING_CODE=$(api_get "$BASE/indexing/samples?limit=100&offset=0" /tmp/indexing.json)
+          echo "INDEXING_SAMPLES_HTTP=$INDEXING_CODE"
+
+          SEARCH_CODE=$(api_get "$BASE/search-urls/in-search/samples?limit=100&offset=0" /tmp/in-search.json)
+          echo "IN_SEARCH_SAMPLES_HTTP=$SEARCH_CODE"
+
+          EVENTS_CODE=$(api_get "$BASE/search-urls/events/samples?limit=100&offset=0" /tmp/events.json)
+          echo "SEARCH_EVENTS_HTTP=$EVENTS_CODE"
+
+          HISTORY_CODE=$(api_get "$BASE/search-urls/events/history" /tmp/events-history.json)
+          echo "SEARCH_EVENTS_HISTORY_HTTP=$HISTORY_CODE"
+
+          QUERIES_CODE=$(api_get "$BASE/search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&limit=100&offset=0" /tmp/queries.json)
+          echo "POPULAR_QUERIES_HTTP=$QUERIES_CODE"
+
+          python3 - <<'PY'
+          import json, os, collections
+          def load(path):
+              try:
+                  return json.load(open(path))
+              except Exception:
+                  return {}
+
+          s=load("/tmp/summary.json")
+          print("SUMMARY_SQI="+str(s.get("sqi","")))
+          print("SUMMARY_SEARCHABLE_PAGES="+str(s.get("searchable_pages_count","")))
+          print("SUMMARY_EXCLUDED_PAGES="+str(s.get("excluded_pages_count","")))
+          problems=s.get("site_problems",{}) or {}
+          print("SUMMARY_SITE_PROBLEMS="+json.dumps(problems, ensure_ascii=False, separators=(",",":")))
+
+          d=load("/tmp/diagnostics.json")
+          active=[]
+          for name, info in (d.get("problems",{}) or {}).items():
+              if isinstance(info,dict) and info.get("state")=="PRESENT":
+                  active.append({
+                      "type":name,
+                      "severity":info.get("severity"),
+                      "updated":info.get("last_state_update"),
+                  })
+          print("ACTIVE_DIAGNOSTICS="+json.dumps(active, ensure_ascii=False, separators=(",",":")))
+
+          sm=load("/tmp/sitemaps.json")
+          safe_sm=[]
+          for x in sm.get("sitemaps",[]) or []:
+              safe_sm.append({
+                  "url":x.get("sitemap_url"),
+                  "urls":x.get("urls_count"),
+                  "errors":x.get("errors_count"),
+                  "last_access":x.get("last_access_date"),
+                  "type":x.get("sitemap_type"),
+                  "sources":x.get("sources"),
+              })
+          print("SITEMAPS="+json.dumps(safe_sm, ensure_ascii=False, separators=(",",":")))
+
+          us=load("/tmp/user-sitemaps.json")
+          print("USER_ADDED_SITEMAPS_COUNT="+str(us.get("count", len(us.get("sitemaps",[]) or []))))
+
+          idx=load("/tmp/indexing.json")
+          idx_samples=idx.get("samples",[]) or []
+          status_counts=collections.Counter(str(x.get("status")) for x in idx_samples)
+          http_counts=collections.Counter(str(x.get("http_code")) for x in idx_samples if x.get("http_code") is not None)
+          print("INDEXING_AVAILABLE_COUNT="+str(idx.get("count","")))
+          print("INDEXING_FIRST100_STATUS="+json.dumps(status_counts, ensure_ascii=False, separators=(",",":")))
+          print("INDEXING_FIRST100_HTTP="+json.dumps(http_counts, ensure_ascii=False, separators=(",",":")))
+
+          ins=load("/tmp/in-search.json")
+          print("IN_SEARCH_AVAILABLE_COUNT="+str(ins.get("count","")))
+          search_samples=ins.get("samples",[]) or []
+          latest=sorted(search_samples, key=lambda x: str(x.get("last_access","")), reverse=True)[:15]
+          safe_latest=[{
+              "url":x.get("url"),
+              "last_access":x.get("last_access"),
+              "title":x.get("title"),
+          } for x in latest]
+          print("LATEST_IN_SEARCH_SAMPLE="+json.dumps(safe_latest, ensure_ascii=False, separators=(",",":")))
+
+          ev=load("/tmp/events.json")
+          evs=ev.get("samples",[]) or []
+          removed=[x for x in evs if x.get("event")=="REMOVED_FROM_SEARCH"]
+          removed=sorted(removed, key=lambda x: str(x.get("event_date","")), reverse=True)[:30]
+          safe_removed=[{
+              "url":x.get("url"),
+              "date":x.get("event_date"),
+              "reason":x.get("excluded_url_status"),
+              "http":x.get("bad_http_status"),
+              "target":x.get("target_url"),
+          } for x in removed]
+          print("SEARCH_EVENTS_AVAILABLE_COUNT="+str(ev.get("count","")))
+          print("RECENT_REMOVED_SAMPLE="+json.dumps(safe_removed, ensure_ascii=False, separators=(",",":")))
+
+          hist=load("/tmp/events-history.json")
+          indicators=hist.get("indicators",{}) or {}
+          compact={}
+          for k, rows in indicators.items():
+              if isinstance(rows,list):
+                  compact[k]=rows[-10:]
+          print("SEARCH_EVENTS_HISTORY="+json.dumps(compact, ensure_ascii=False, separators=(",",":")))
+
+          q=load("/tmp/queries.json")
+          print("POPULAR_QUERIES_AVAILABLE_COUNT="+str(q.get("count","")))
+          print("POPULAR_QUERIES_DATE_FROM="+str(q.get("date_from","")))
+          print("POPULAR_QUERIES_DATE_TO="+str(q.get("date_to","")))
+          # Query text is intentionally not printed because this repository is public.
+          vals=[]
+          for row in q.get("queries",[]) or []:
+              v=(row.get("indicators") or {}).get("TOTAL_SHOWS")
+              if isinstance(v,(int,float)):
+                  vals.append(v)
+          print("TOP100_TOTAL_SHOWS_SUM="+str(sum(vals)))
+          PY
