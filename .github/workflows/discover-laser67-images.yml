@@ -1,0 +1,71 @@
+name: Discover Laser67 product images
+
+on:
+  push:
+    branches:
+      - check-yandex-api-20260919
+    paths:
+      - '.github/workflows/discover-laser67-images.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Crawl Laser67 product categories
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import html.parser, urllib.parse, urllib.request, json, re
+
+          base='https://laser67.ru'
+          ua={'User-Agent':'Mozilla/5.0 (compatible; SteelProduktImageAudit/1.0)'}
+
+          def get(url):
+              req=urllib.request.Request(url,headers=ua)
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  return r.read().decode('utf-8','ignore')
+
+          class P(html.parser.HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.links=[]; self.images=[]
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  if tag=='a' and a.get('href'): self.links.append(a['href'])
+                  if tag=='img':
+                      cand=a.get('src') or a.get('data-src') or a.get('data-original') or a.get('data-lazy-src')
+                      srcset=a.get('srcset') or a.get('data-srcset')
+                      if srcset:
+                          parts=[x.strip().split(' ')[0] for x in srcset.split(',') if x.strip()]
+                          if parts: cand=parts[-1]
+                      if cand: self.images.append((cand,a.get('alt','').strip(),a.get('title','').strip()))
+
+          home=P(); home.feed(get(base+'/'))
+          cats=[]
+          for href in home.links:
+              u=urllib.parse.urljoin(base,href)
+              if '/products/category/' in u:
+                  cats.append(u.split('#')[0].split('?')[0])
+          cats=sorted(set(cats))
+          print('CATEGORIES='+json.dumps(cats,ensure_ascii=False))
+
+          for url in cats:
+              try:
+                  p=P(); p.feed(get(url))
+              except Exception as e:
+                  print('ERROR',url,repr(e)); continue
+              rows=[]
+              for src,alt,title in p.images:
+                  full=urllib.parse.urljoin(url,src)
+                  if full.startswith(base):
+                      rows.append({'src':full,'alt':alt,'title':title})
+              # de-dupe preserving order
+              seen=set(); uniq=[]
+              for x in rows:
+                  if x['src'] in seen: continue
+                  seen.add(x['src']); uniq.append(x)
+              print('CATEGORY='+url)
+              print('IMAGES='+json.dumps(uniq,ensure_ascii=False))
+          PY
