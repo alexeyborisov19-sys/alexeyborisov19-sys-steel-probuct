@@ -17,6 +17,18 @@ function verificationTokens(fromEnvironment: string | undefined, fallback: reado
   return tokens.length > 0 ? tokens : undefined;
 }
 
+function maxContactUrl(fromEnvironment: string | undefined) {
+  if (!fromEnvironment) return undefined;
+
+  try {
+    const url = new URL(fromEnvironment);
+    if (url.protocol !== "https:" || url.hostname !== "max.ru") return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.steelprodukt.ru").replace(/\/$/, "");
 const siteHostDisplay = new URL(siteUrl).hostname.replace(/^www\./, "");
 
@@ -31,6 +43,7 @@ export const siteConfig = {
   email: "info@steelprodukt.ru",
   telephone: "+79107803723",
   telephoneDisplay: "+7 910 780 37 23",
+  maxUrl: maxContactUrl(process.env.NEXT_PUBLIC_MAX_URL),
   // The registered address, matching the entry in the state register and in
   // lib/legal.ts. Search engines check a business against that record, so the
   // markup follows it; the production site is a separate address and is quoted
