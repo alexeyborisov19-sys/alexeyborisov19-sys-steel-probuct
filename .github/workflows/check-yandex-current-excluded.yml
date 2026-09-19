@@ -1,0 +1,66 @@
+name: Check Yandex current excluded candidate
+
+on:
+  push:
+    branches:
+      - check-yandex-webmaster-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  current-excluded:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve current excluded candidate from Webmaster events
+        env:
+          TOKEN_WEBMASTER: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+          TOKEN_DIRECT: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          TOKEN="${TOKEN_WEBMASTER:-${TOKEN_DIRECT:-}}"
+          test -n "$TOKEN"
+          get() { curl -sS -H "Authorization: OAuth $TOKEN" -H "Accept: application/json" "$1"; }
+
+          get "https://api.webmaster.yandex.net/v4/user" >/tmp/u.json
+          UIDX=$(python3 -c 'import json;print(json.load(open("/tmp/u.json"))["user_id"])')
+          get "https://api.webmaster.yandex.net/v4/user/$UIDX/hosts" >/tmp/h.json
+          HID=$(python3 - <<'PY'
+          import json
+          hs=json.load(open("/tmp/h.json")).get("hosts",[])
+          m=[h for h in hs if "steelprodukt.ru" in (h.get("unicode_host_url") or h.get("ascii_host_url") or "").lower()]
+          p=next((h for h in m if (h.get("unicode_host_url") or "").lower().startswith("https://www.steelprodukt.ru")),m[0])
+          print(p["host_id"])
+          PY
+          )
+          BASE="https://api.webmaster.yandex.net/v4/user/$UIDX/hosts/$HID"
+          get "$BASE/summary" >/tmp/s.json
+          get "$BASE/search-urls/events/samples?limit=100&offset=0" >/tmp/e0.json
+          get "$BASE/search-urls/events/samples?limit=100&offset=100" >/tmp/e1.json
+
+          python3 - <<'PY'
+          import json
+          from datetime import datetime
+          s=json.load(open("/tmp/s.json"))
+          rows=[]
+          for p in ("/tmp/e0.json","/tmp/e1.json"):
+              rows += json.load(open(p)).get("samples",[]) or []
+          latest={}
+          for x in rows:
+              u=x.get("url")
+              if not u: continue
+              d=x.get("event_date") or ""
+              if u not in latest or d > (latest[u].get("event_date") or ""):
+                  latest[u]=x
+          removed=[x for x in latest.values() if x.get("event")=="REMOVED_FROM_SEARCH"]
+          removed=sorted(removed,key=lambda x:x.get("event_date") or "",reverse=True)
+          print("SUMMARY_EXCLUDED_PAGES="+str(s.get("excluded_pages_count","")))
+          print("LATEST_REMOVED_CANDIDATES_COUNT="+str(len(removed)))
+          print("LATEST_REMOVED_CANDIDATES="+json.dumps([{
+              "url":x.get("url"),
+              "date":x.get("event_date"),
+              "reason":x.get("excluded_url_status"),
+              "target":x.get("target_url"),
+              "http":x.get("bad_http_status"),
+          } for x in removed],ensure_ascii=False,separators=(",",":")))
+          PY
