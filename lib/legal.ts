@@ -22,19 +22,19 @@ export const legalOperator = {
 } as const;
 
 export const legalDocumentVersions = {
-  privacy: "2026-09-13",
+  privacy: "2026-09-19",
   personalDataConsent: "2026-08-27",
   marketingConsent: "2026-07-30",
   cookies: "2026-09-13",
   terms: "2026-07-30",
-  services: "2026-09-13",
+  services: "2026-09-19",
 } as const;
 
 export const legalDocumentDisplayDates = {
-  privacy: "13 сентября 2026 года",
+  privacy: "19 сентября 2026 года",
   personalDataConsent: "27 августа 2026 года",
   cookies: "13 сентября 2026 года",
-  services: "13 сентября 2026 года",
+  services: "19 сентября 2026 года",
 } as const;
 
 export const legalLinks = {

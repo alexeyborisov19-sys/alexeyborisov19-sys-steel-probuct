@@ -20,6 +20,8 @@ test("public contact surfaces use the centralized site configuration", async () 
   assert.match(site, /email: "info@steelprodukt\.ru"/);
   assert.match(site, /telephone: "\+79107803723"/);
   assert.match(site, /telephoneDisplay: "\+7 910 780 37 23"/);
+  assert.match(site, /maxUrl: maxContactUrl\(process\.env\.NEXT_PUBLIC_MAX_URL\)/);
+  assert.match(site, /url\.hostname !== "max\.ru"/);
   assert.match(site, /hostDisplay: siteHostDisplay/);
   assert.match(site, /productionAddress:/);
   assert.match(site, /line1: "г\. Смоленск, Рославльское шоссе"/);
@@ -30,6 +32,8 @@ test("public contact surfaces use the centralized site configuration", async () 
   assert.match(contacts, /siteConfig\.telephoneDisplay/);
   assert.match(contacts, /href=\{`mailto:\$\{siteConfig\.email\}`\}/);
   assert.match(contacts, /siteConfig\.hostDisplay/);
+  assert.match(contacts, /siteConfig\.maxUrl/);
+  assert.match(contacts, /Написать в MAX/);
   assert.match(contacts, /siteConfig\.productionAddress\.line1/);
   assert.match(contacts, /siteConfig\.productionAddress\.line2/);
   assert.doesNotMatch(contacts, /tel:\+79107803723/);
@@ -45,6 +49,8 @@ test("public contact surfaces use the centralized site configuration", async () 
   assert.match(footer, /import \{ siteConfig \} from "@\/lib\/site"/);
   assert.match(footer, /siteConfig\.telephoneDisplay/);
   assert.match(footer, /siteConfig\.email/);
+  assert.match(footer, /siteConfig\.maxUrl/);
+  assert.match(footer, /MAX — написать/);
   assert.match(footer, /siteConfig\.hostDisplay/);
   assert.match(footer, /siteConfig\.productionAddress\.line1/);
   assert.match(footer, /siteConfig\.productionAddress\.line2/);

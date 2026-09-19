@@ -39,15 +39,15 @@ test("published services page describes controls without exposing internal imple
 test("public legal version identifiers match their displayed dates", async () => {
   const legal = await readFile(join(root, "lib/legal.ts"), "utf8");
 
-  assert.match(legal, /privacy: "2026-09-13"/);
+  assert.match(legal, /privacy: "2026-09-19"/);
   assert.match(legal, /personalDataConsent: "2026-08-27"/);
   assert.match(legal, /cookies: "2026-09-13"/);
-  assert.match(legal, /services: "2026-09-13"/);
+  assert.match(legal, /services: "2026-09-19"/);
 
-  assert.match(legal, /privacy: "13 сентября 2026 года"/);
+  assert.match(legal, /privacy: "19 сентября 2026 года"/);
   assert.match(legal, /personalDataConsent: "27 августа 2026 года"/);
   assert.match(legal, /cookies: "13 сентября 2026 года"/);
-  assert.match(legal, /services: "13 сентября 2026 года"/);
+  assert.match(legal, /services: "19 сентября 2026 года"/);
 });
 
 test("every public form leads with the separate consent document", async () => {
@@ -78,4 +78,20 @@ test("every public form leads with the separate consent document", async () => {
     assert.ok(consent < privacy, `${name}: the consent document must be linked before the policy`);
     assert.match(body, /name="personalDataConsent"[^/]*required/);
   }
+});
+
+
+test("MAX is disclosed as a user-initiated external link, not automatic form forwarding", async () => {
+  const [privacy, services, environment] = await Promise.all([
+    readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/services/page.tsx"), "utf8"),
+    readFile(join(root, ".env.example"), "utf8"),
+  ]);
+
+  assert.match(environment, /^NEXT_PUBLIC_MAX_URL=$/m);
+  assert.match(services, /обычная внешняя ссылка на официальный профиль или чат-бот/);
+  assert.match(services, /не передаёт в MAX поля формы/);
+  assert.match(services, /Автоматическая пересылка заявок или файлов из формы steelprodukt\.ru в MAX не подключена/);
+  assert.match(privacy, /обычная внешняя ссылка на официальный профиль или чат-бот Оператора в MAX/);
+  assert.match(privacy, /до самостоятельного перехода пользователя сайт не передаёт в MAX поля формы/);
 });
