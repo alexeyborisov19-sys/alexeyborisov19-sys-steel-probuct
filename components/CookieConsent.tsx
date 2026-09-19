@@ -52,7 +52,9 @@ function saveChoice(analytics: boolean) {
 }
 
 function hasAnalyticsConsent() {
-  return readChoice()?.analytics === true;
+  // Analytics is enabled by default unless the visitor explicitly opts out.
+  // The cookie banner remains available so this preference can be changed at any time.
+  return readChoice()?.analytics !== false;
 }
 
 export function CookieSettingsButton({ className = "" }: { className?: string }) {
@@ -109,14 +111,14 @@ export function CookieConsent() {
   }, [visible]);
 
   function choose(analytics: boolean) {
-    const previousChoice = readChoice();
+    const analyticsWasAllowed = hasAnalyticsConsent();
     saveChoice(analytics);
     setVisible(false);
 
-    // If analytics was already loaded during this page session, unmounting the
-    // Script component cannot undo JavaScript that the vendor tag has executed.
-    // Reload after a withdrawal so the next document starts without the tag.
-    if (previousChoice?.analytics === true && analytics === false) {
+    // If analytics was active during this page session, unmounting the Script
+    // component cannot undo JavaScript that the vendor tag has already executed.
+    // Reload after an opt-out so the next document starts without the tag.
+    if (analyticsWasAllowed && analytics === false) {
       window.location.reload();
     }
   }
@@ -125,7 +127,7 @@ export function CookieConsent() {
 
   return <aside ref={bannerRef} className="cookie-consent-bar fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5" aria-label="Настройки cookies">
     <p className="text-sm font-semibold text-white">Настройки cookies</p>
-    <p className="mt-2 text-xs leading-relaxed text-white/60">Сайт использует только необходимые технические данные до вашего выбора. Яндекс Метрика загружается исключительно после отдельного согласия. Выбор можно изменить в подвале сайта. Подробнее — в <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.cookies}>политике cookies</Link> и <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
+    <p className="mt-2 text-xs leading-relaxed text-white/60">Сайт использует Яндекс Метрику для статистики посещаемости. Аналитика включена по умолчанию, но её можно отключить кнопкой «Продолжить без аналитики» и в любой момент изменить выбор в подвале сайта. Подробнее — в <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.cookies}>политике cookies</Link> и <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={() => choose(false)} className="border border-white/25 px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white/80 transition hover:border-steel-orange hover:text-steel-orange">Продолжить без аналитики</button>
       <button type="button" onClick={() => choose(true)} className="clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper">Разрешить аналитику</button>

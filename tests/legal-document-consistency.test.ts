@@ -46,7 +46,7 @@ test("public consent states how the data subject is identified", async () => {
   assert.match(consent, /не является удостоверением личности по документу/);
 });
 
-test("public legal texts describe analytics hosts without exposing literal third-party hosts pre-consent", async () => {
+test("public legal texts describe analytics hosts without exposing literal third-party hosts in source", async () => {
   const [privacy, consent, cookies, services, nextConfig, hostLabel, footer] = await Promise.all([
     readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
     readFile(join(root, "app/(public)/legal/personal-data-consent/page.tsx"), "utf8"),
@@ -66,9 +66,9 @@ test("public legal texts describe analytics hosts without exposing literal third
   assert.match(hostLabel, /<span>mc<\/span>/);
   assert.match(hostLabel, /<span>\.yandex<\/span>/);
   assert.match(hostLabel, /<span>\.<\/span>/);
-  assert.match(privacy, /только после отдельного согласия на аналитику/);
+  assert.match(privacy, /Если пользователь не отключил аналитику/);
   assert.match(consent, /не распространяется на аналитические cookies/);
-  assert.match(services, /Необязательная веб-аналитика активируется только после отдельного выбора пользователя/);
+  assert.match(services, /Веб-аналитика Яндекс Метрики используется по умолчанию/);
   assert.match(footer, /legalDocuments\.map[\s\S]*prefetch=\{false\}/);
   assert.doesNotMatch(nextConfig, /images\.unsplash\.com/);
 });

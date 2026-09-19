@@ -8,9 +8,9 @@ type AnalyticsComponent = ComponentType;
 
 /**
  * Keeps the vendor-specific analytics implementation out of the initial client
- * bundle. The Analytics module is requested only after the visitor has granted
- * analytics consent. This prevents static scanners and browsers from seeing or
- * downloading the vendor bootstrap code before consent.
+ * bundle. The Analytics module is requested only while analytics is allowed by
+ * the visitor's cookie preference. With no saved preference, analytics is
+ * allowed by default; an explicit opt-out keeps the vendor module unloaded.
  */
 export function ConsentGatedAnalytics() {
   const [AnalyticsComponent, setAnalyticsComponent] = useState<AnalyticsComponent | null>(null);
