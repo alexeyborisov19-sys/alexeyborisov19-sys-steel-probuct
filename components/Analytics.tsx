@@ -13,10 +13,9 @@ const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
  * supplied in the deployment environment. This prevents accidental requests to
  * a third party during local development and before consent is configured.
  *
- * The Metrika host is assembled only inside the consent-gated inline script.
- * That keeps the public client bundle free of a literal third-party resource
- * URL before the visitor has made a choice, while preserving the same network
- * request after analytics consent is granted.
+ * The Metrika host is assembled at runtime instead of being embedded as one
+ * literal third-party URL. Analytics is enabled by default unless the visitor
+ * has explicitly opted out in the cookie settings.
  */
 export function Analytics() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
