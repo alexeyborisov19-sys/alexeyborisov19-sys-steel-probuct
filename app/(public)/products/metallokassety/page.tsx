@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
@@ -50,6 +51,12 @@ const cassetteSlugs = [
   "metallokassety-relef",
   "metallokassety-azhur",
 ];
+
+const realProductPhotos = [
+  { src: "/images/real-products/laser67/metallokassety/open-type.jpg", alt: "Фасадные металлокассеты открытого типа — реальное изделие" },
+  { src: "/images/real-products/laser67/metallokassety/closed-type.png", alt: "Фасадные металлокассеты закрытого типа — реальное изделие" },
+  { src: "/images/real-products/laser67/metallokassety/hook-on-panel.jpg", alt: "Потолочная металлическая панель HOOK-ON — реальное изделие" },
+] as const;
 
 const comparison = [
   ["Крепёж", "Доступен со стороны межкассетного шва", "Скрывается следующей кассетой"],
@@ -149,6 +156,24 @@ export default function MetalCassetteCollectionPage() {
               <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs font-bold uppercase">
                 <Link href="/products/metallokassety-standart" className="text-steel-orange">Открытые кассеты&nbsp; →</Link>
                 <Link href="/products/metallokassety-premium" className="text-steel-orange">Закрытые кассеты&nbsp; →</Link>
+              </div>
+            </section>
+
+            <section className="mt-16">
+              <div className="border-b border-white/12 pb-5">
+                <p className="eyebrow">Реальные изделия</p>
+                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Фотографии готовых металлокассет</h2>
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-white/60">Фотографии из собственного производственного архива. Изображения сохранены локально на steelprodukt.ru — без внешних ссылок на второй сайт.</p>
+              </div>
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                {realProductPhotos.map((photo) => (
+                  <figure key={photo.src} className="overflow-hidden border border-white/12 bg-[#111519]">
+                    <div className="relative aspect-[4/3] bg-black/25">
+                      <Image src={photo.src} alt={photo.alt} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-contain p-2" />
+                    </div>
+                    <figcaption className="border-t border-white/10 px-4 py-3 text-xs leading-5 text-white/55">{photo.alt}</figcaption>
+                  </figure>
+                ))}
               </div>
             </section>
 
