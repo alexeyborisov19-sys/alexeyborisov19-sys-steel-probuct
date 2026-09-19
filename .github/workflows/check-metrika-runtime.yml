@@ -47,7 +47,11 @@ jobs:
             "name":c.get("name"),
             "site":c.get("site"),
             "status":c.get("status"),
+            "code_status":c.get("code_status"),
+            "activity_status":c.get("activity_status"),
+            "create_time":c.get("create_time"),
             "type":c.get("type"),
+            "counter_flags":c.get("counter_flags"),
             "webvisor":c.get("webvisor"),
           },ensure_ascii=False))
           totals=s.get("totals") or []
