@@ -13,59 +13,62 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Crawl Laser67 product categories
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import html.parser, urllib.parse, urllib.request, json, re
+          import html.parser, urllib.parse, urllib.request, json, re, html
 
           base='https://laser67.ru'
           ua={'User-Agent':'Mozilla/5.0 (compatible; SteelProduktImageAudit/1.0)'}
 
           def get(url):
               req=urllib.request.Request(url,headers=ua)
-              with urllib.request.urlopen(req,timeout=30) as r:
+              with urllib.request.urlopen(req,timeout=20) as r:
                   return r.read().decode('utf-8','ignore')
 
           class P(html.parser.HTMLParser):
               def __init__(self):
-                  super().__init__(); self.links=[]; self.images=[]
+                  super().__init__(); self.links=[]
               def handle_starttag(self,tag,attrs):
                   a=dict(attrs)
                   if tag=='a' and a.get('href'): self.links.append(a['href'])
-                  if tag=='img':
-                      cand=a.get('src') or a.get('data-src') or a.get('data-original') or a.get('data-lazy-src')
-                      srcset=a.get('srcset') or a.get('data-srcset')
-                      if srcset:
-                          parts=[x.strip().split(' ')[0] for x in srcset.split(',') if x.strip()]
-                          if parts: cand=parts[-1]
-                      if cand: self.images.append((cand,a.get('alt','').strip(),a.get('title','').strip()))
 
-          home=P(); home.feed(get(base+'/'))
-          cats=[]
-          for href in home.links:
-              u=urllib.parse.urljoin(base,href)
-              if '/products/category/' in u:
-                  cats.append(u.split('#')[0].split('?')[0])
-          cats=sorted(set(cats))
+          home_html=get(base+'/')
+          home=P(); home.feed(home_html)
+          cats=sorted(set(
+              urllib.parse.urljoin(base,h).split('#')[0].split('?')[0]
+              for h in home.links
+              if '/products/category/' in urllib.parse.urljoin(base,h)
+          ))
           print('CATEGORIES='+json.dumps(cats,ensure_ascii=False))
+
+          pat=re.compile(r'''(?P<u>(?:https?:)?//[^"'\s<>]+?\.(?:jpe?g|png|webp|avif)(?:\?[^"'\s<>]*)?|(?:/|\.\.?/)[^"'\s<>]+?\.(?:jpe?g|png|webp|avif)(?:\?[^"'\s<>]*)?)''',re.I)
 
           for url in cats:
               try:
-                  p=P(); p.feed(get(url))
+                  raw=get(url)
               except Exception as e:
                   print('ERROR',url,repr(e)); continue
-              rows=[]
-              for src,alt,title in p.images:
-                  full=urllib.parse.urljoin(url,src)
+              found=[]
+              for m in pat.finditer(html.unescape(raw)):
+                  u=m.group('u').replace('\\/','/')
+                  full=urllib.parse.urljoin(url,u)
                   if full.startswith(base):
-                      rows.append({'src':full,'alt':alt,'title':title})
-              # de-dupe preserving order
-              seen=set(); uniq=[]
-              for x in rows:
-                  if x['src'] in seen: continue
-                  seen.add(x['src']); uniq.append(x)
+                      found.append(full)
+              # Also capture quoted strings with common image-ish endpoint paths.
+              for m in re.finditer(r'''["']([^"']*(?:image|photo|upload|media)[^"']*)["']''', raw, re.I):
+                  s=html.unescape(m.group(1)).replace('\\/','/')
+                  if any(ext in s.lower() for ext in ('.jpg','.jpeg','.png','.webp','.avif')):
+                      full=urllib.parse.urljoin(url,s)
+                      if full.startswith(base): found.append(full)
+              uniq=[]; seen=set()
+              for u in found:
+                  if u in seen: continue
+                  seen.add(u); uniq.append(u)
               print('CATEGORY='+url)
-              print('IMAGES='+json.dumps(uniq,ensure_ascii=False))
+              print('IMAGE_URLS='+json.dumps(uniq,ensure_ascii=False))
+              print('HTML_BYTES='+str(len(raw)))
           PY
