@@ -140,7 +140,7 @@ jobs:
               st=x.get("status","UNKNOWN")
               statuses[st]=statuses.get(st,0)+1
               if st!="HTTP_2XX":
-                  bad.append({"url":x.get("url"),"status":st,"http_code":x.get("http_code"),"access_date":x.get("access_date")})
+                  bad.append({"url":x.get("sitemap_url"),"status":st,"http_code":x.get("http_code"),"access_date":x.get("access_date")})
           print("INDEXING_SAMPLES_COUNT="+str(ix.get("count")))
           print("INDEXING_STATUS_SAMPLE="+json.dumps(statuses,ensure_ascii=False))
           print("NON_2XX_SAMPLE="+json.dumps(bad[:30],ensure_ascii=False))
@@ -161,7 +161,9 @@ jobs:
           python3 - <<'PY'
           import json
           sm=json.load(open("/tmp/webmaster_sitemaps.json"))
-          q=json.load(open("/tmp/webmaster_queries.json"))
+          q=json.load(open("/tmp/webmaster_queries_shows.json"))
+          qc=json.load(open("/tmp/webmaster_queries_clicks.json"))
+          qp=json.load(open("/tmp/webmaster_queries_positions.json"))
           safe_sitemaps=[]
           for x in sm.get("sitemaps",[]):
               safe_sitemaps.append({
@@ -173,15 +175,21 @@ jobs:
                 "last_access_date":x.get("last_access_date"),
               })
           print("SITEMAPS="+json.dumps(safe_sitemaps,ensure_ascii=False))
-          rows=q.get("queries") or q.get("query") or []
+          def rows_by_text(payload):
+              return {x.get("query_text"): x for x in (payload.get("queries") or []) if x.get("query_text")}
+          shows=rows_by_text(q)
+          clicks=rows_by_text(qc)
+          positions=rows_by_text(qp)
           safe=[]
-          for x in rows[:20]:
+          for x in (q.get("queries") or [])[:20]:
+              t=x.get("query_text")
               safe.append({
-                "query_text":x.get("query_text"),
-                "shows":x.get("indicators",{}).get("TOTAL_SHOWS") if isinstance(x.get("indicators"),dict) else x.get("shows"),
-                "clicks":x.get("indicators",{}).get("TOTAL_CLICKS") if isinstance(x.get("indicators"),dict) else x.get("clicks"),
-                "avg_show_position":x.get("indicators",{}).get("AVG_SHOW_POSITION") if isinstance(x.get("indicators"),dict) else x.get("avg_show_position"),
+                "query_text":t,
+                "shows":(shows.get(t,{}).get("indicators") or {}).get("TOTAL_SHOWS"),
+                "clicks":(clicks.get(t,{}).get("indicators") or {}).get("TOTAL_CLICKS"),
+                "avg_show_position":(positions.get(t,{}).get("indicators") or {}).get("AVG_SHOW_POSITION"),
               })
+          print("QUERY_RANGE="+str(q.get("date_from"))+".."+str(q.get("date_to")))
           print("TOP_QUERIES="+json.dumps(safe,ensure_ascii=False))
           PY
 
