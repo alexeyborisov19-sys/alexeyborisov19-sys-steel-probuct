@@ -194,8 +194,12 @@ export function ClientManufacturingWorkspace() {
 
     accepting.forEach((file, index) => {
       try {
-        nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, new Date(Date.now() + index));
+        const addedAt = new Date(Date.now() + index);
+        nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, addedAt);
         const partId = nextProject.activePartId;
+        if (partId) {
+          nextProject = setPartMaterial(nextProject, partId, "cold", addedAt);
+        }
         const part = partId ? nextProject.parts.find((item) => item.id === partId) : null;
         if (partId && part) jobs.push({ file, partId, format: part.format });
       } catch {
@@ -401,10 +405,13 @@ export function ClientManufacturingWorkspace() {
         for (const part of calculationResult.parts) next[part.partId] = part.message;
         return next;
       });
+      const allPricesApproved = calculationResult.parts.every(
+        (part) => part.status === "ready" && part.price.status === "approved",
+      );
       setProjectCalculationMessage(
-        calculationResult.parts.every((part) => part.status === "ready")
+        allPricesApproved
           ? "Расчёт проекта завершён."
-          : "Проект обработан. Для некоторых позиций потребуется уточнение параметров.",
+          : "Расчёт выполнен, но автоматическая цена для части позиций не сформирована. Проверьте материал, толщину и исходные данные выбранных операций.",
       );
     } catch (error) {
       if (calculationRequestRef.current !== controller) return;
@@ -484,12 +491,16 @@ export function ClientManufacturingWorkspace() {
             <div className="border-t border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-steel-orange">
-                {approvedProjectTotalRub == null ? "—" : `${fmt(approvedProjectTotalRub)} ₽`}
+                {approvedProjectTotalRub == null
+                ? (calculation ? "Нужны данные" : "—")
+                : `${fmt(approvedProjectTotalRub)} ₽`}
               </p>
               <p className="mt-1 text-[10px] text-white/35">
                 {project.parts.length === 0
                   ? "Позиции не добавлены"
-                  : `${project.parts.length} поз.${approvedProjectTotalRub == null ? " · расчёт не выполнен" : ""}`}
+                  : approvedProjectTotalRub == null
+                    ? `${project.parts.length} поз. · ${calculation ? "требуется уточнение" : "расчёт не выполнен"}`
+                    : `${project.parts.length} поз.`}
               </p>
               <Link
                 href={quoteHandoffHref}

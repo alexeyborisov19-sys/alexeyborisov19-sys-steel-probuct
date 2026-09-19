@@ -44,6 +44,8 @@ test("the homepage hero restores equipment proof instead of laser envelope figur
 test("homepage search copy leaves laser envelope details to the production landing", () => {
   const homepageSearchText = collectPublicStrings([homeMetadata, Home()]).join(" ");
 
+  assert.match(String(homeMetadata.title ?? ""), /Производство изделий из листового металла/i);
+
   assert.doesNotMatch(homepageSearchText, /0,5[–-]40 мм/);
   assert.doesNotMatch(homepageSearchText, /1500\s*[×x]\s*3000 мм/);
   assert.match(homepageSearchText, /производств[ао] полного цикла/i);
@@ -64,5 +66,5 @@ test("the changed homepage tells crawlers its current modification date", () => 
   const homepage = sitemap().find((entry) => entry.url === "https://www.steelprodukt.ru/");
 
   assert.ok(homepage?.lastModified);
-  assert.ok(new Date(homepage.lastModified).getTime() >= Date.parse("2026-08-26T00:00:00.000Z"));
+  assert.ok(new Date(homepage.lastModified).getTime() >= Date.parse("2026-09-18T00:00:00.000Z"));
 });

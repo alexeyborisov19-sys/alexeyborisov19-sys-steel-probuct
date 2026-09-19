@@ -22,6 +22,12 @@ test("the browser stops at the same project size the server enforces", async () 
   assert.equal(uploadLimits.maximumFiles, 10);
 });
 
+test("the public CAD workspace starts a new uploaded part with the priced cold-rolled option", async () => {
+  const workspace = await readFile(workspacePath, "utf8");
+
+  assert.match(workspace, /setPartMaterial\(nextProject, partId, "cold", addedAt\)/);
+});
+
 test("a thickness read from the model is selected, not left at the default", async () => {
   const workspace = await readFile(workspacePath, "utf8");
 

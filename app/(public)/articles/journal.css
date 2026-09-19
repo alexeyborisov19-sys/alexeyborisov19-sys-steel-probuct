@@ -1,0 +1,19 @@
+.journal-grid-overlay { opacity: .13; background-image: linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px); background-size: 64px 64px; mask-image: linear-gradient(90deg, #000, rgba(0,0,0,.7), transparent); pointer-events: none; }
+.journal-sidebar-link { position: relative; transition: background-color .2s ease, border-color .2s ease; }
+.journal-sidebar-link::before { position: absolute; top: 50%; left: 0; width: 2px; height: 0; content: ""; background: var(--orange); box-shadow: 0 0 12px rgba(234,91,12,.7); transform: translateY(-50%); transition: height .24s ease; }
+.journal-sidebar-link:hover { background: rgba(255,255,255,.035); }
+.journal-sidebar-link:hover::before { height: calc(100% - 18px); }
+.journal-card, .journal-card-feature, .journal-feature-link, .journal-event-card { position: relative; isolation: isolate; }
+.journal-card::after, .journal-card-feature::after, .journal-feature-link::after, .journal-event-card::after { position: absolute; z-index: 4; right: 0; bottom: 0; left: 0; height: 2px; content: ""; background: var(--orange); transform: scaleX(0); transform-origin: left; transition: transform .35s ease; pointer-events: none; }
+.journal-card:hover::after, .journal-card-feature:hover::after, .journal-feature-link:hover::after, .journal-event-card:hover::after { transform: scaleX(1); }
+.journal-section-heading > span { line-height: 1; text-shadow: 0 0 20px rgba(234,91,12,.16); }
+@media (max-width: 1023px) {
+  .journal-sidebar { overflow-x: auto; scrollbar-width: thin; }
+  .journal-sidebar > div:first-child { min-width: 840px; }
+  .journal-sidebar > div:first-child > div { display: none; }
+  .journal-sidebar nav { display: grid; grid-template-columns: 140px repeat(4, minmax(165px, 1fr)); }
+  .journal-sidebar-link { min-height: 76px; border-right: 1px solid rgba(255,255,255,.08); border-bottom: 0; padding: .8rem 1rem; }
+  .journal-sidebar-link:last-child { border-right: 0; }
+  .journal-sidebar + div { margin-top: 0; }
+  .journal-sidebar > div:last-child { display: none; }
+}

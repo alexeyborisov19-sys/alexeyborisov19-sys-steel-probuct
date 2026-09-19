@@ -72,28 +72,27 @@ const areaServed = [
 export function organizationSchema(): JsonLd {
   return {
     "@context": "https://schema.org",
-    // Schema.org has no Manufacturer type — manufacturer is a property of Product.
-    // A strict parser can drop the whole @type array over the unknown member, taking
-    // Organization and LocalBusiness down with it.
-    "@type": ["Organization", "LocalBusiness"],
+    "@type": "Organization",
     "@id": `${siteConfig.url}/#organization`,
-    name: siteConfig.name,
+    name: legalOperator.shortName,
     legalName: legalOperator.name,
     taxID: legalOperator.inn,
     // The state registration number identifies the legal entity in Russian
     // registries, which taxID alone does not.
     identifier: [{ "@type": "PropertyValue", propertyID: "OGRN", value: legalOperator.ogrn }],
-    alternateName: "СП Сталь Продукт",
+    alternateName: legalOperator.name,
     url: siteConfig.url,
     logo: absoluteUrl(siteConfig.logo),
     image: absoluteUrl(siteConfig.defaultOgImage),
     description: siteConfig.description,
     email: siteConfig.email,
     telephone: siteConfig.telephone,
-    address: {
+    legalAddress: {
       "@type": "PostalAddress",
       ...siteConfig.address,
     },
+    brand: { "@id": `${siteConfig.url}/#brand` },
+    location: { "@id": `${siteConfig.url}/#production-site` },
     areaServed,
     contactPoint: [{
       "@type": "ContactPoint",

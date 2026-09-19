@@ -108,7 +108,7 @@ const linksByTopic: Record<string, CommercialLink[]> = {
     { title: "Инженерная подготовка", description: "Развёртки, сопряжения, допуски и технологичность до передачи в цех.", href: "/production/proektirovanie-metalloizdeliy" },
   ],
   "kak-proverit-tehnologichnost-korpusa-iz-listovogo-metalla": [
-    { title: "Металлические корпуса на заказ", description: "Корпуса, шкафы и кожухи: от DFM-проверки и образца до серийной поставки.", href: "/solutions/industry" },
+    { title: "Металлические корпуса на заказ", description: "Корпуса, шкафы и кожухи: от DFM-проверки и образца до серийной поставки.", href: "/products/metallicheskie-korpusa" },
     { title: "Сварка и сборка корпусов", description: "Подготовка соединений, сборочная последовательность и контроль геометрии.", href: "/production/svarka-i-sborka-metalloizdeliy" },
   ],
   "kak-vybrat-tolshchinu-listovogo-metalla": [
@@ -116,14 +116,14 @@ const linksByTopic: Record<string, CommercialLink[]> = {
     { title: "Лазерный раскрой", description: "Резка листовой стали, нержавейки, алюминия и оцинкованного металла по файлам.", href: "/production/lazernaya-rezka-metalla" },
   ],
   "oshibki-proektirovaniya-korzin-kondicionerov": [
-    { title: "Корзины и экраны кондиционеров", description: "Подбор габаритов, вентиляции, крепления и покрытия под фасад.", href: "/solutions/climate" },
+    { title: "Фасадные корзины для кондиционеров", description: "Подбор габаритов, вентиляции, крепления и покрытия под фасад.", href: "/products/korziny-dlya-konditsionerov" },
   ],
   "kak-snizit-stoimost-metalloizdeliya": [
     { title: "Проектирование под производство", description: "Оптимизация раскроя, гибов, соединений и сборки до запуска партии.", href: "/production/proektirovanie-metalloizdeliy" },
     { title: "Серийное изготовление", description: "Повторяемый выпуск, контроль, маркировка и согласованный график поставок.", href: "/solutions/custom" },
   ],
   "lokalizaciya-importnogo-korpusa-v-rossii": [
-    { title: "Корпуса и шкафы по чертежам", description: "Опытный образец и серийный выпуск корпусов для оборудования и автоматизации.", href: "/solutions/industry" },
+    { title: "Корпуса и шкафы по чертежам", description: "Опытный образец и серийный выпуск корпусов для оборудования и автоматизации.", href: "/products/metallicheskie-korpusa" },
     { title: "Российское контрактное производство", description: "Адаптация документации и технологии для локального выпуска изделия.", href: "/solutions/custom" },
   ],
 };

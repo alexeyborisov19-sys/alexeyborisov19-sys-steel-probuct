@@ -10,7 +10,7 @@ from pathlib import Path
 
 from piper import PiperVoice, SynthesisConfig
 
-DEFAULT_MODEL = "/var/lib/steelprodukt/tts/ru_RU-dmitri-medium.onnx"
+DEFAULT_MODEL = "/var/lib/steelprodukt/tts/ru_RU-denis-medium.onnx"
 MAX_INPUT_CHARS = 1400
 
 
@@ -30,10 +30,11 @@ def main() -> int:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     voice = PiperVoice.load(str(model_path))
     synthesis = SynthesisConfig(
-        # A slightly calmer pace works better for compact technical answers.
-        length_scale=1.04,
-        noise_scale=0.667,
-        noise_w_scale=0.8,
+        # Calm, neutral delivery for Russian technical speech: slightly slower
+        # and less variable than the Piper defaults.
+        length_scale=1.06,
+        noise_scale=0.55,
+        noise_w_scale=0.70,
         normalize_audio=True,
     )
 

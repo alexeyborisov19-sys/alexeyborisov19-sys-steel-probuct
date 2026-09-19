@@ -3,9 +3,8 @@ import { ConsentGatedAnalytics } from "@/components/ConsentGatedAnalytics";
 import { CookieConsent } from "@/components/CookieConsent";
 import { EngineeringAssistantLauncher } from "@/components/EngineeringAssistantLauncher";
 import { JsonLd } from "@/components/JsonLd";
-import { SitePreloader } from "@/components/SitePreloader";
 import { YandexEcommerce } from "@/components/YandexEcommerce";
-import { brandEntitySchema, legalOperatorEntitySchema } from "@/lib/entity-schema";
+import { brandEntitySchema, legalOperatorEntitySchema, productionSiteEntitySchema } from "@/lib/entity-schema";
 import { websiteSchema } from "@/lib/schema";
 import { feedAlternateTypes } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
@@ -68,10 +67,9 @@ export const viewport: Viewport = {
 export default function PublicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      <JsonLd data={[brandEntitySchema(), legalOperatorEntitySchema(), websiteSchema()]} />
+      <JsonLd data={[brandEntitySchema(), legalOperatorEntitySchema(), productionSiteEntitySchema(), websiteSchema()]} />
       <ConsentGatedAnalytics />
       <YandexEcommerce />
-      <SitePreloader />
       {children}
       <EngineeringAssistantLauncher />
       <CookieConsent />
