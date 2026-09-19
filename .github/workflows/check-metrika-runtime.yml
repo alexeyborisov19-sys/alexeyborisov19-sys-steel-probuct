@@ -24,7 +24,7 @@ jobs:
           curl -fsS \
             -H "Authorization: OAuth $TOKEN" \
             -H "Accept: application/json" \
-            "https://api-metrika.yandex.net/management/v1/counter/112542227" \
+            "https://api-metrika.yandex.net/management/v1/counter/112542227?field=counter_flags" \
             > /tmp/counter.json
 
           curl -fsS -G \
