@@ -7,6 +7,7 @@ const contactsPath = new URL("../app/(public)/contacts/page.tsx", import.meta.ur
 const conversionPath = new URL("../components/ConversionActions.tsx", import.meta.url);
 const footerPath = new URL("../components/Footer.tsx", import.meta.url);
 const quoteFormPath = new URL("../components/QuoteRequestForm.tsx", import.meta.url);
+const deployWorkflowPath = new URL("../.github/workflows/deploy-beget.yml", import.meta.url);
 
 test("public contact surfaces use the centralized site configuration", async () => {
   const [site, contacts, conversion, footer, quoteForm] = await Promise.all([
@@ -61,4 +62,15 @@ test("public contact surfaces use the centralized site configuration", async () 
   assert.match(quoteForm, /import \{ siteConfig \} from "@\/lib\/site"/);
   assert.match(quoteForm, /href=\{`mailto:\$\{siteConfig\.email\}`\}/);
   assert.doesNotMatch(quoteForm, /mailto:info@steelprodukt\.ru/);
+});
+
+
+test("production deploy forwards the optional MAX URL into the Next.js build", async () => {
+  const workflow = await readFile(deployWorkflowPath, "utf8");
+
+  assert.match(workflow, /MAX_URL="\$\(value_of NEXT_PUBLIC_MAX_URL\)"/);
+  assert.match(workflow, /max_url: \$\{\{ steps\.read\.outputs\.max_url \}\}/);
+  assert.match(workflow, /echo "max_url=\$MAX_URL"/);
+  assert.match(workflow, /NEXT_PUBLIC_MAX_URL: \$\{\{ needs\.config\.outputs\.max_url \}\}/);
+  assert.match(workflow, /https:\/\/max\.ru\/\*/);
 });
