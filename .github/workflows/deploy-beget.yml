@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       site_url: ${{ steps.read.outputs.site_url }}
+      max_url: ${{ steps.read.outputs.max_url }}
       ym_webvisor: ${{ steps.read.outputs.ym_webvisor }}
       yandex_verification: ${{ steps.read.outputs.yandex_verification }}
       google_verification: ${{ steps.read.outputs.google_verification }}
@@ -108,6 +109,7 @@ jobs:
           }
 
           SITE_URL="$(value_of NEXT_PUBLIC_SITE_URL)"
+          MAX_URL="$(value_of NEXT_PUBLIC_MAX_URL)"
           YM_COUNTER_ID="$(value_of NEXT_PUBLIC_YM_COUNTER_ID)"
           YM_WEBVISOR="$(value_of NEXT_PUBLIC_YM_WEBVISOR)"
           YANDEX_VERIFICATION="$(value_of NEXT_PUBLIC_YANDEX_VERIFICATION)"
@@ -120,6 +122,16 @@ jobs:
               exit 1
             fi
           done
+
+          if [ -n "$MAX_URL" ]; then
+            case "$MAX_URL" in
+              https://max.ru/*) ;;
+              *)
+                echo "NEXT_PUBLIC_MAX_URL must use https://max.ru/ when configured."
+                exit 1
+                ;;
+            esac
+          fi
 
           if [ "$YM_COUNTER_ID" != "112542227" ]; then
             echo "Unexpected Yandex Metrica counter: $YM_COUNTER_ID"
@@ -136,6 +148,7 @@ jobs:
           # is validated above; the runner uses the same canonical constant below.
           {
             echo "site_url=$SITE_URL"
+            echo "max_url=$MAX_URL"
             echo "ym_webvisor=$YM_WEBVISOR"
             echo "yandex_verification=$YANDEX_VERIFICATION"
             echo "google_verification=$GOOGLE_VERIFICATION"
@@ -181,6 +194,7 @@ jobs:
         env:
           NODE_ENV: production
           NEXT_PUBLIC_SITE_URL: ${{ needs.config.outputs.site_url }}
+          NEXT_PUBLIC_MAX_URL: ${{ needs.config.outputs.max_url }}
           NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
           NEXT_PUBLIC_YM_WEBVISOR: ${{ needs.config.outputs.ym_webvisor }}
           NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ needs.config.outputs.yandex_verification }}
