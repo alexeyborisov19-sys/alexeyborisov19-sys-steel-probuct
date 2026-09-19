@@ -1,0 +1,110 @@
+name: Check Yandex API access
+
+on:
+  push:
+    branches:
+      - check-yandex-api-20260919
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check token presence
+        env:
+          YANDEX_DIRECT_OAUTH_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$YANDEX_DIRECT_OAUTH_TOKEN" ]; then
+            echo "YANDEX_DIRECT_OAUTH_TOKEN is missing"
+            exit 1
+          fi
+          echo "YANDEX_DIRECT_OAUTH_TOKEN is present"
+
+      - name: Check Yandex Webmaster access
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/webmaster_user.json -w "%{http_code}"             -H "Authorization: OAuth $TOKEN"             -H "Accept: application/json"             "https://api.webmaster.yandex.net/v4/user")
+          echo "Webmaster /v4/user HTTP: $code"
+          python3 - <<'PY'
+          import json
+          p="/tmp/webmaster_user.json"
+          try:
+              d=json.load(open(p))
+          except Exception:
+              print("Webmaster response is not JSON")
+              raise SystemExit(1)
+          if "user_id" in d:
+              print("Webmaster access: OK")
+              print("user_id:", d["user_id"])
+          else:
+              print("Webmaster response:", json.dumps(d, ensure_ascii=False))
+          PY
+
+      - name: Check steelprodukt.ru in Webmaster
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          uid=$(python3 -c 'import json; print(json.load(open("/tmp/webmaster_user.json")).get("user_id",""))')
+          if [ -z "$uid" ]; then
+            echo "Skipping hosts check: no Webmaster user_id"
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/webmaster_hosts.json -w "%{http_code}"             -H "Authorization: OAuth $TOKEN"             -H "Accept: application/json"             "https://api.webmaster.yandex.net/v4/user/$uid/hosts")
+          echo "Webmaster hosts HTTP: $code"
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/webmaster_hosts.json"))
+          hosts=d.get("hosts",[])
+          matched=[]
+          for h in hosts:
+              url=(h.get("unicode_host_url") or h.get("ascii_host_url") or "").lower()
+              if "steelprodukt.ru" in url:
+                  matched.append({
+                      "host_id":h.get("host_id"),
+                      "url":h.get("unicode_host_url") or h.get("ascii_host_url"),
+                      "verified":h.get("verified"),
+                      "verification_state":h.get("verification_state"),
+                  })
+          print("steelprodukt.ru hosts:", json.dumps(matched, ensure_ascii=False))
+          PY
+
+      - name: Check Yandex Direct Businesses access
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          cat >/tmp/businesses-request.json <<'JSON'
+          {
+            "method": "get",
+            "params": {
+              "SelectionCriteria": {},
+              "FieldNames": ["Id","Name","Address","Phone","ProfileUrl","InternalUrl","IsPublished","Rubric","Urls","HasOffice"],
+              "Page": {"Limit": 100, "Offset": 0}
+            }
+          }
+          JSON
+          code=$(curl -sS -o /tmp/businesses.json -w "%{http_code}"             -X POST             -H "Authorization: Bearer $TOKEN"             -H "Accept-Language: ru"             -H "Content-Type: application/json; charset=utf-8"             --data @/tmp/businesses-request.json             "https://api.direct.yandex.com/json/v501/businesses")
+          echo "Direct Businesses HTTP: $code"
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/businesses.json"))
+          if "error" in d:
+              e=d["error"]
+              print("Direct Businesses error:", json.dumps({
+                  "error_code":e.get("error_code"),
+                  "error_string":e.get("error_string"),
+                  "error_detail":e.get("error_detail")
+              }, ensure_ascii=False))
+          else:
+              items=d.get("result",{}).get("Businesses",[])
+              safe=[]
+              for x in items:
+                  safe.append({k:x.get(k) for k in ["Id","Name","Address","Phone","ProfileUrl","InternalUrl","IsPublished","Rubric","Urls","HasOffice"]})
+              print("Direct Businesses access: OK")
+              print("Businesses:", json.dumps(safe, ensure_ascii=False))
+          PY
