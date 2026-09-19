@@ -67,6 +67,7 @@ export function Footer() {
           <p className="text-sm font-bold uppercase tracking-[.08em] text-white">Контакты</p>
           <a className="mt-4 block text-lg font-semibold leading-tight text-white transition hover:text-steel-orange" href={`tel:${siteConfig.telephone}`}>{siteConfig.telephoneDisplay}</a>
           <a className="mt-3 block text-base font-medium text-white/75 transition hover:text-steel-orange" href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
+          {siteConfig.maxUrl ? <a className="mt-2 block text-sm font-medium text-white/75 transition hover:text-steel-orange" href={siteConfig.maxUrl} target="_blank" rel="noopener noreferrer">MAX — написать ↗</a> : null}
           <a className="mt-2 block text-sm text-white/65 transition hover:text-steel-orange" href={siteConfig.url} target="_blank" rel="noreferrer">{siteConfig.hostDisplay} ↗</a>
           {brandOfficialProfiles.map((profile) => (
             <a
