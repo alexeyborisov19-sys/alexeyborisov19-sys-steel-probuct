@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { CommercialProductLanding } from "@/data/commercial-product-landings";
 import { FaqSection } from "@/components/FaqSection";
@@ -89,6 +90,24 @@ export function CommercialProductLandingPage({ landing }: { landing: CommercialP
       <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
         <div className="container"><div className="max-w-3xl"><p className="eyebrow">Что изготавливаем</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Варианты исполнения</h2></div><div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{landing.items.map((item, index) => <article key={item.title} className="border border-white/12 bg-[#111519] p-6"><span className="font-mono text-sm font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span><h3 className="mt-5 text-base font-semibold uppercase leading-tight">{item.title}</h3><p className="mt-3 text-sm leading-relaxed text-white/60">{item.text}</p></article>)}</div></div>
       </section>
+
+      {landing.gallery?.length ? <section className="border-y border-white/10 bg-[#151719] py-14 sm:py-20">
+        <div className="container">
+          <div className="max-w-3xl">
+            <p className="eyebrow">Реальные изделия</p>
+            <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Фотографии готовой продукции</h2>
+            <p className="mt-4 text-sm leading-7 text-white/60">Фотографии изделий из собственного производственного архива. Файлы хранятся локально на steelprodukt.ru и не подгружаются с внешнего сайта.</p>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {landing.gallery.map((photo) => <figure key={photo.src} className="overflow-hidden border border-white/12 bg-[#0c1013]">
+              <div className="relative aspect-[4/3] bg-black/25">
+                <Image src={photo.src} alt={photo.alt} fill sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw" className="object-contain p-2" />
+              </div>
+              <figcaption className="border-t border-white/10 px-4 py-3 text-xs leading-5 text-white/55">{photo.alt}</figcaption>
+            </figure>)}
+          </div>
+        </div>
+      </section> : null}
 
       <section className="bg-[#0c1013] py-14 sm:py-20">
         <div className="container"><div className="max-w-3xl"><p className="eyebrow">Техническая рамка</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Что фиксируем до запуска</h2><p className="mt-4 text-sm leading-relaxed text-white/60">Точные характеристики определяются по документации конкретного заказа. Ниже — параметры, которые нужно согласовать, чтобы расчёт и производство не опирались на предположения.</p></div><div className="mt-8 overflow-hidden border border-white/12"><dl>{landing.specifications.map((spec) => <div key={spec.label} className="grid border-b border-white/10 last:border-0 md:grid-cols-[.25fr_.32fr_.43fr]"><dt className="bg-white/[.035] px-5 py-4 text-sm font-semibold">{spec.label}</dt><dd className="px-5 py-4 text-sm font-semibold text-white/82">{spec.value}</dd><dd className="px-5 py-4 text-sm leading-relaxed text-white/55">{spec.note}</dd></div>)}</dl></div></div>
