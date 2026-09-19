@@ -3,11 +3,13 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import type { ChangeEvent, DragEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
 import { ClientOperationControls } from "@/components/instant-quote/ClientOperationControls";
 import { ClientQuotePrintout } from "@/components/instant-quote/ClientQuotePrintout";
 import { CadMeshViewer } from "@/components/CadMeshViewer";
+import { selectCadFiles } from "@/lib/instant-quote/client-cad-files";
+import { saveCalculatorHandoff } from "@/lib/instant-quote/client-quote-handoff";
 import { siteConfig } from "@/lib/site";
 import { createCalculationFormData } from "@/lib/instant-quote/client-calculation-request";
 import { isClientCadPreview, isClientCalculationView, type CadAnalysisApiResponse, type CalculationApiResponse } from "@/lib/instant-quote/client-api-contracts";
@@ -28,6 +30,9 @@ import {
   togglePartOperation,
   updatePartGeometry,
 } from "@/lib/instant-quote/project";
+
+const CAD_TIMEOUT_MS = 120_000;
+const CALCULATION_TIMEOUT_MS = 180_000;
 
 const accepted = ".dxf,.dwg,.step,.stp";
 
@@ -70,6 +75,18 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
 export function ClientManufacturingWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepthRef = useRef(0);
+  const calculationRequestRef = useRef<AbortController | null>(null);
+  const analysisRequestsRef = useRef(new Map<string, AbortController>());
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  useEffect(() => {
+    const analyses = analysisRequestsRef.current;
+    return () => {
+      calculationRequestRef.current?.abort();
+      calculationRequestRef.current = null;
+      for (const request of analyses.values()) request.abort();
+      analyses.clear();
+    };
+  }, []);
   const [project, setProject] = useState(() => createEmptyProject());
   const [previewsByPartId, setPreviewsByPartId] = useState<Record<string, ClientCadPreview>>({});
   const [filesByPartId, setFilesByPartId] = useState<Record<string, File>>({});
@@ -112,6 +129,7 @@ export function ClientManufacturingWorkspace() {
     query: {
       source: "online-order",
       parts: String(project.parts.length),
+      handoff: project.id,
       ...(calculation == null ? {} : { calc: calculation.projectId }),
       ...(approvedProjectTotalRub == null ? {} : { total: String(Math.round(approvedProjectTotalRub)) }),
     },
@@ -137,10 +155,17 @@ export function ClientManufacturingWorkspace() {
    * price per position beside a project total that had gone back to «—».
    */
   const dropStaleCalculation = (options: { changed?: string; removed?: string; message?: string } = {}) => {
+    calculationRequestRef.current?.abort();
+    calculationRequestRef.current = null;
+    setIsCalculating(false);
+    setCalculationFailed(false);
     const stale = calculation;
     const staleMessage = options.message ?? "Результат устарел: проект изменился. Нажмите «Рассчитать проект».";
     setStatusByPartId((current) => {
       const next = { ...current };
+      for (const partId of Object.keys(next)) {
+        if (next[partId] === RECALCULATING_MESSAGE) next[partId] = staleMessage;
+      }
       for (const part of stale?.parts ?? []) {
         if (part.partId === options.changed || part.partId === options.removed) continue;
         next[part.partId] = staleMessage;
@@ -162,15 +187,9 @@ export function ClientManufacturingWorkspace() {
   const ingestFiles = async (files: File[]) => {
     if (!files.length) return;
     let nextProject = project;
-    const room = MAX_PROJECT_PARTS - nextProject.parts.length;
-    const accepting = files.slice(0, Math.max(0, room));
-    const overflowMessage = accepting.length < files.length
-      ? `В одном проекте можно рассчитать не более ${MAX_PROJECT_PARTS} позиций. Лишние файлы не добавлены — рассчитайте их отдельным проектом.`
-      : null;
-    if (!accepting.length) {
-      setProjectCalculationMessage(overflowMessage);
-      return;
-    }
+    const { accepted: accepting, errors } = selectCadFiles(files, nextProject.parts, MAX_PROJECT_PARTS);
+    setUploadMessage(errors.length ? errors.join(" ") : null);
+    if (!accepting.length) return;
     const jobs: Array<{ file: File; partId: string; format: "dxf" | "dwg" | "step" | "stp" }> = [];
 
     accepting.forEach((file, index) => {
@@ -192,7 +211,6 @@ export function ClientManufacturingWorkspace() {
     // A new position makes the project total stale, so the sentences the
     // priced positions are still showing go with it.
     dropStaleCalculation();
-    setProjectCalculationMessage(overflowMessage);
     setFilesByPartId((current) => {
       const next = { ...current };
       for (const job of jobs) next[job.partId] = job.file;
@@ -206,6 +224,10 @@ export function ClientManufacturingWorkspace() {
         return;
       }
 
+      const controller = new AbortController();
+      analysisRequestsRef.current.set(partId, controller);
+      const signal = controller.signal;
+      const timeout = setTimeout(() => controller.abort(), CAD_TIMEOUT_MS);
       setAnalyzingByPartId((current) => ({ ...current, [partId]: true }));
       // The server says which part of the file it could not use and what to
       // change about it. Kept aside so the failure path shows that instead of a
@@ -219,6 +241,7 @@ export function ClientManufacturingWorkspace() {
           method: "POST",
           body: formData,
           credentials: "same-origin",
+          signal,
         });
         const payload = await response.json().catch(() => null) as CadAnalysisApiResponse | null;
         if (!response.ok || !payload?.ok || !isClientCadPreview(payload.preview)) {
@@ -226,6 +249,7 @@ export function ClientManufacturingWorkspace() {
           throw new Error("CAD preview refused.");
         }
 
+        if (analysisRequestsRef.current.get(partId) !== controller) return;
         const preview = payload.preview;
         setPreviewsByPartId((current) => ({ ...current, [partId]: preview }));
         setProject((current) => {
@@ -256,6 +280,8 @@ export function ClientManufacturingWorkspace() {
             : `Модель распознана${modelReadings(preview.cad)}. Проверьте параметры и нажмите «Рассчитать проект».`,
         }));
       } catch {
+        if (analysisRequestsRef.current.get(partId) !== controller) return;
+        if (signal.aborted) refusal = "Сервер не успел обработать модель. Загрузите файл ещё раз или передайте его инженеру.";
         setProject((current) => setPartState(current, partId, "manual-review"));
         setStatusByPartId((current) => ({
           ...current,
@@ -263,7 +289,11 @@ export function ClientManufacturingWorkspace() {
             ?? "Не удалось связаться с сервером расчёта. Проверьте соединение и загрузите файл ещё раз.",
         }));
       } finally {
-        setAnalyzingByPartId((current) => ({ ...current, [partId]: false }));
+        clearTimeout(timeout);
+        if (analysisRequestsRef.current.get(partId) === controller) {
+          analysisRequestsRef.current.delete(partId);
+          setAnalyzingByPartId((current) => { const next = { ...current }; delete next[partId]; return next; });
+        }
       }
     }));
   };
@@ -327,6 +357,9 @@ export function ClientManufacturingWorkspace() {
   const removeActivePart = () => {
     if (!activePart) return;
     const id = activePart.id;
+    analysisRequestsRef.current.get(id)?.abort();
+    analysisRequestsRef.current.delete(id);
+    setAnalyzingByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setProject((current) => removePartFromProject(current, id));
     setPreviewsByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setFilesByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
@@ -335,11 +368,15 @@ export function ClientManufacturingWorkspace() {
 
   const calculateProject = async () => {
     if (!canCalculate) return;
-    setIsCalculating(true);
     // Pressing the button twice used to leave every position showing the price
     // from the previous run while the total read «—» and, if the second run
     // failed, beside an error saying there was no result.
     dropStaleCalculation({ message: RECALCULATING_MESSAGE });
+    const controller = new AbortController();
+    calculationRequestRef.current = controller;
+    const signal = controller.signal;
+    const timeout = setTimeout(() => controller.abort(), CALCULATION_TIMEOUT_MS);
+    setIsCalculating(true);
     setCalculationFailed(false);
     setProjectCalculationMessage("Проверяем CAD и рассчитываем проект…");
 
@@ -349,6 +386,7 @@ export function ClientManufacturingWorkspace() {
         method: "POST",
         body: formData,
         credentials: "same-origin",
+        signal,
       });
       const payload = await response.json().catch(() => null) as CalculationApiResponse | null;
 
@@ -359,6 +397,7 @@ export function ClientManufacturingWorkspace() {
         throw new Error(payload?.message || "Не удалось выполнить расчёт. Попробуйте ещё раз.");
       }
 
+      if (calculationRequestRef.current !== controller) return;
       const calculationResult = payload.calculation;
       setCalculation(calculationResult);
       setStatusByPartId((current) => {
@@ -375,6 +414,7 @@ export function ClientManufacturingWorkspace() {
           : "Расчёт выполнен, но автоматическая цена для части позиций не сформирована. Проверьте материал, толщину и исходные данные выбранных операций.",
       );
     } catch (error) {
+      if (calculationRequestRef.current !== controller) return;
       setCalculation(null);
       // The attempt is over, so the positions must stop saying it is running.
       // The reason itself goes in the project message below rather than being
@@ -387,9 +427,15 @@ export function ClientManufacturingWorkspace() {
         return next;
       });
       setCalculationFailed(true);
-      setProjectCalculationMessage(error instanceof Error ? error.message : "Не удалось выполнить расчёт. Попробуйте ещё раз.");
+      setProjectCalculationMessage(signal.aborted
+        ? "Сервер не успел выполнить расчёт. Повторите попытку или отправьте проект инженеру."
+        : error instanceof Error ? error.message : "Не удалось выполнить расчёт. Попробуйте ещё раз.");
     } finally {
-      setIsCalculating(false);
+      clearTimeout(timeout);
+      if (calculationRequestRef.current === controller) {
+        calculationRequestRef.current = null;
+        setIsCalculating(false);
+      }
     }
   };
 
@@ -439,6 +485,9 @@ export function ClientManufacturingWorkspace() {
             </div>
             <button type="button" onClick={() => inputRef.current?.click()} className="m-4 w-[calc(100%-2rem)] border border-white/12 px-3 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/55 hover:border-steel-orange hover:text-white">+ Добавить CAD</button>
 
+            {uploadMessage && <p role="alert" className="mx-4 mb-4 break-words text-xs leading-relaxed text-orange-200">{uploadMessage}</p>}
+            <p className="mx-4 mb-4 text-[10px] text-white/60">До 10 файлов; каждый до 7 МБ, всего до 10 МБ.</p>
+
             <div className="border-t border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/35">Предварительно, с НДС</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-steel-orange">
@@ -455,6 +504,7 @@ export function ClientManufacturingWorkspace() {
               </p>
               <Link
                 href={quoteHandoffHref}
+                onClick={() => saveCalculatorHandoff(project, filesByPartId)}
                 className="mt-4 block border border-steel-orange bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white"
               >
                 Отправить заявку
@@ -486,11 +536,11 @@ export function ClientManufacturingWorkspace() {
             </div>
             <div className="relative min-h-[650px] bg-[#080b0d]">
               <AnimatePresence mode="wait">
-                {!activePart ? <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-6 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/16 p-8 text-center" onClick={() => inputRef.current?.click()}>
+                {!activePart ? <motion.button type="button" key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-6 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/16 p-8 text-center" onClick={() => inputRef.current?.click()}>
                   <div className="flex h-16 w-16 items-center justify-center border border-steel-orange/55 text-3xl text-steel-orange">+</div>
                   <h2 className="mt-6 text-2xl font-semibold">Перетащите CAD-файлы</h2>
                   <p className="mt-3 text-sm text-white/40">DXF · STEP · STP · DWG</p>
-                </motion.div> : isAnalyzing ? <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center text-center"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD</p><h2 className="mt-3 text-xl font-semibold">Обрабатываем модель</h2><p className="mt-3 text-xs text-white/35">Подготавливаем предпросмотр и определяем габариты.</p></div></motion.div> : activePreview?.meshes.length ? <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activePreview.meshes} className="h-full" /></motion.div> : activePreview?.drawing ? <motion.div key={`dxf-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-6"><ClientCad2DPreview drawing={activePreview.drawing} animated /></motion.div> : <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><p className="max-w-lg text-sm leading-relaxed text-white/50">{statusByPartId[activePart.id] ?? "Файл добавлен в проект."}</p></motion.div>}
+                </motion.button> : isAnalyzing ? <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center text-center"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD</p><h2 className="mt-3 text-xl font-semibold">Обрабатываем модель</h2><p className="mt-3 text-xs text-white/35">Подготавливаем предпросмотр и определяем габариты.</p></div></motion.div> : activePreview?.meshes.length ? <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activePreview.meshes} className="h-full" /></motion.div> : activePreview?.drawing ? <motion.div key={`dxf-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-6"><ClientCad2DPreview drawing={activePreview.drawing} animated /></motion.div> : <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><p className="max-w-lg text-sm leading-relaxed text-white/50">{statusByPartId[activePart.id] ?? "Файл добавлен в проект."}</p></motion.div>}
               </AnimatePresence>
               {activePreview && <div className="absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-3">{clientMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
             </div>
@@ -553,6 +603,7 @@ export function ClientManufacturingWorkspace() {
           ) : (
             <Link
               href={quoteHandoffHref}
+              onClick={() => saveCalculatorHandoff(project, filesByPartId)}
               className="shrink-0 border border-steel-orange bg-steel-orange px-4 py-3 text-[11px] font-bold uppercase tracking-[.12em] text-black"
             >
               Отправить

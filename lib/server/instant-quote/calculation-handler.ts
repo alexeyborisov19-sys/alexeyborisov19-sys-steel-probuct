@@ -153,6 +153,15 @@ function thicknessMismatchReason(measuredMm: number | null, declaredMm: number |
     + "Материал и лазер по такой детали не рассчитываются автоматически: выберите толщину модели или передайте деталь технологу.";
 }
 
+function bendCountMismatchReason(measuredCount: number | undefined, declaredCount: number | undefined) {
+  // A flat blank may have new bends requested by the customer. For an already
+  // bent solid, changing its verified bend count describes a different part
+  // and needs a technologist; public inputs are not a technologist override.
+  if (!(measuredCount != null && measuredCount > 0) || declaredCount == null || measuredCount === declaredCount) return null;
+  return `Количество гибов STEP-модели ${measuredCount} не совпадает с указанным в расчёте ${declaredCount}. `
+    + "Укажите число гибов модели или передайте изменённую конфигурацию технологу.";
+}
+
 /**
  * Maps an internal exception to a coarse server-log-only category. The raw
  * exception, paths, rate values and private report details are deliberately not
@@ -253,14 +262,13 @@ async function buildAuthoritativeProject(
         // the analyzer type keeps the field optional for injected test doubles.
         const { model, productionReady, authoritativeFactualInputs = {} } = await analyzeStep(inspection, format);
         const thicknessMismatch = thicknessMismatchReason(measuredThicknessMm(model.sheetMetal), item.thicknessMm);
-        if (productionReady && !thicknessMismatch) {
+        const bendCountMismatch = bendCountMismatchReason(authoritativeFactualInputs.bendCount, item.operationInputs.bendCount);
+        const configurationMismatch = thicknessMismatch ?? bendCountMismatch;
+        if (productionReady && !configurationMismatch) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
-          // Private STEP evidence stays fail-closed: it reaches the calculation
-          // only once the flat pattern is confirmed. An unconfirmed part is not
-          // priced at all, so withholding it costs nothing — the detected bend
-          // count still reaches the customer through the preview, and the
-          // engineer through the review note below.
+          // Private STEP evidence reaches pricing only for verified production
+          // geometry whose customer configuration agrees with the model.
           if (Object.keys(authoritativeFactualInputs).length > 0) {
             authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
           }
@@ -270,18 +278,20 @@ async function buildAuthoritativeProject(
           evidenceByPartId[item.clientPartId] = {
             reviewReasons: [
               ...model.warnings,
-              ...(thicknessMismatch ? [thicknessMismatch] : []),
+              ...(configurationMismatch ? [configurationMismatch] : []),
               ...(model.geometry.bendCount != null && model.geometry.bendCount > 0
                 ? [`По модели определено гибов: ${model.geometry.bendCount}. Развёртка гнутой детали требует подтверждения технологом.`]
                 : []),
-              ...(thicknessMismatch
+              ...(configurationMismatch
                 ? []
                 : ["STEP распознан OpenCascade на сервере, но production-authoritative 2D-развёртка для этой модели не подтверждена."]),
             ],
           };
           analysisNotes.push(thicknessMismatch
             ? `STEP ${inspection.safeName}: declared thickness contradicts BRep-measured thickness; no production geometry was priced.`
-            : `STEP ${inspection.safeName}: BRep inspected on server; factual material/laser calculation withheld until authoritative flat pattern.`);
+            : bendCountMismatch
+              ? `STEP ${inspection.safeName}: declared bend count contradicts BRep-measured bends; no production geometry was priced.`
+              : `STEP ${inspection.safeName}: BRep inspected on server; factual material/laser calculation withheld until authoritative flat pattern.`);
         }
       } catch {
         evidenceByPartId[item.clientPartId] = {
@@ -315,13 +325,10 @@ async function buildAuthoritativeProject(
   }
 
   // Quantities the CAD cannot carry. resolveEffectiveFactualInputs layers these
-  // over the server's own CAD evidence, so a declared value wins where both
-  // exist — deliberately: a customer may want bends added to a flat blank, and
-  // the drawing cannot know that. It is safe here because the only evidence
-  // that reaches pricing comes from a confirmed flat pattern, which by
-  // definition has no bends; a bent part is not priced at all. The manifest
-  // parser has already dropped anything whose operation is not selected and
-  // bounds-checked the rest.
+  // over the server's own CAD evidence. A customer may request new bends on a
+  // flat blank; for an already bent STEP, the gate above withholds geometry
+  // when the declared count contradicts verified bends. The manifest parser
+  // has dropped inputs for unselected operations and bounds-checked the rest.
   const declaredFactualByPartId: Record<string, PartFactualInputs> = {};
   const powderSidesByPartId: Record<string, 1 | 2> = {};
   const surfacePreparationSidesByPartId: Record<string, 1 | 2> = {};

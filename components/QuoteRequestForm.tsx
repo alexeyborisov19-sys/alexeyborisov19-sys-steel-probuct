@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { createResettableOnce, trackLeadEvent } from "@/lib/analytics";
+import { clearCalculatorHandoff, readCalculatorHandoff } from "@/lib/instant-quote/client-quote-handoff";
 import { legalLinks } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 
@@ -34,11 +35,21 @@ function focusFormField(form: HTMLFormElement, name: string) {
   if (field instanceof HTMLElement) field.focus();
 }
 
+function attachmentError(files: File[]): string | null {
+  if (files.length > MAX_FILES) return `Можно прикрепить не более ${MAX_FILES} файлов.`;
+  if (files.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_BYTES) return "Общий размер вложений не должен превышать 10 МБ.";
+  if (files.some((file) => file.size > MAX_FILE_BYTES)) return "Размер каждого вложения не должен превышать 7 МБ.";
+  if (files.some((file) => !acceptedExtensions.includes(extensionOf(file.name)))) return "Проверьте допустимые форматы вложений.";
+  return null;
+}
+
 export function QuoteRequestForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState("");
+  const [calculatorPartCount, setCalculatorPartCount] = useState(0);
+  const handoffProjectId = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const formStartTracker = useRef<ReturnType<typeof createResettableOnce> | null>(null);
   if (!formStartTracker.current) {
@@ -58,6 +69,18 @@ export function QuoteRequestForm() {
       // travels here; the calculation basis stays on the server.
       const parts = Number(params.get("parts") ?? "");
       const total = Number(params.get("total") ?? "");
+      const handoffId = params.get("handoff") ?? "";
+      const handoff = handoffId ? readCalculatorHandoff(handoffId) : null;
+      setCalculatorPartCount(Number.isInteger(parts) && parts > 0 ? parts : 0);
+      if (handoff) {
+        handoffProjectId.current = handoffId;
+        const error = attachmentError(handoff.files);
+        if (error) {
+          setFeedback({ type: "error", message: `CAD-файлы не прикреплены. ${error} Выберите вложения повторно.` });
+        } else {
+          setFiles(handoff.files);
+        }
+      }
       // Opaque calculation number. It lets the engineer open the calculation
       // this request came from instead of re-deriving it from the attachments.
       const calc = (params.get("calc") ?? "").trim().slice(0, 64);
@@ -68,7 +91,7 @@ export function QuoteRequestForm() {
         Number.isFinite(total) && total > 0
           ? `Предварительная оценка калькулятора: ≈ ${formatNumber(total)} ₽ с НДС.`
           : "",
-        "CAD-файлы прикладываю к заявке.",
+        handoff?.summary ?? "",
         "Необходима проверка инженером и итоговое коммерческое предложение.",
       ].filter(Boolean).join("\n");
 
@@ -101,26 +124,24 @@ export function QuoteRequestForm() {
 
     const wrongFiles = incoming.filter((file) => !acceptedExtensions.includes(extensionOf(file.name)));
     const validFiles = incoming.filter((file) => acceptedExtensions.includes(extensionOf(file.name)));
-    const combined = [...files, ...validFiles].filter((file, index, items) =>
-      items.findIndex((item) => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified) === index,
+    // Keep existing calculator positions intact, while the manual picker still
+    // ignores files that were already attached or selected twice in this batch.
+    const sameFile = (left: File, right: File) => left.name === right.name
+      && left.size === right.size && left.lastModified === right.lastModified;
+    const addedFiles = validFiles.filter((file, index, items) =>
+      !files.some((existing) => sameFile(existing, file))
+      && items.findIndex((incomingFile) => sameFile(incomingFile, file)) === index,
     );
-
-    if (combined.length > MAX_FILES) {
-      setFeedback({ type: "error", message: `Можно прикрепить не более ${MAX_FILES} файлов.` });
-      return;
-    }
-    if (combined.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_BYTES) {
-      setFeedback({ type: "error", message: "Общий размер вложений не должен превышать 10 МБ." });
-      return;
-    }
-    if (combined.some((file) => file.size > MAX_FILE_BYTES)) {
-      setFeedback({ type: "error", message: "Размер каждого вложения не должен превышать 7 МБ." });
+    const combined = [...files, ...addedFiles];
+    const error = attachmentError(combined);
+    if (error) {
+      setFeedback({ type: "error", message: error });
       return;
     }
 
     setFiles(combined);
     setFeedback(wrongFiles.length ? { type: "error", message: "Часть файлов не добавлена: проверьте допустимые форматы." } : null);
-    if (validFiles.length) trackLeadEvent("quote_file_attached", { files_added: validFiles.length, total_files: combined.length });
+    if (addedFiles.length) trackLeadEvent("quote_file_attached", { files_added: addedFiles.length, total_files: combined.length });
   }
 
   function markFormStarted() {
@@ -140,6 +161,11 @@ export function QuoteRequestForm() {
     const name = String(formData.get("name") ?? "").trim();
     const phone = String(formData.get("phone") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
+    const filesError = attachmentError(files);
+    if (filesError) {
+      setFeedback({ type: "error", message: filesError });
+      return;
+    }
     if (!name) {
       setFeedback({ type: "error", message: "Укажите имя — это обязательное поле." });
       focusFormField(form, "name");
@@ -185,6 +211,9 @@ export function QuoteRequestForm() {
 
       form.reset();
       setFiles([]);
+      if (handoffProjectId.current) clearCalculatorHandoff(handoffProjectId.current);
+      handoffProjectId.current = null;
+      setCalculatorPartCount(0);
       formStartTracker.current?.reset();
       setMessage("");
       trackLeadEvent("quote_request_success", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
@@ -249,6 +278,10 @@ export function QuoteRequestForm() {
         <a href={`mailto:${siteConfig.email}`} className="shrink-0 text-xs font-bold text-steel-orange transition hover:text-orange-400">{siteConfig.email}&nbsp; ↗</a>
       </div>
 
+      {calculatorPartCount > files.length ? <p role="status" className="mt-4 border-l-2 border-steel-orange pl-3 text-sm leading-relaxed text-orange-100">
+        CAD-файлы проекта прикреплены не полностью: {files.length} из {calculatorPartCount}. Прикрепите недостающие файлы повторно перед отправкой заявки.
+      </p> : null}
+
       <label className="mt-5 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/25 bg-[#111519] px-5 py-8 text-center transition hover:border-steel-orange hover:bg-[#15191c]">
         <span className="grid h-10 w-10 place-items-center border border-steel-orange/60 text-xl text-steel-orange">＋</span>
         <span className="mt-3 text-sm font-semibold text-white">Выбрать файлы</span>
@@ -262,7 +295,7 @@ export function QuoteRequestForm() {
           <button type="button" onClick={() => { setFiles([]); setFeedback(null); }} className="text-white/50 transition hover:text-steel-orange">Очистить список</button>
         </div>
         <ul className="mt-3 space-y-2">
-          {files.map((file, index) => <li key={`${file.name}-${file.lastModified}`} className="flex items-center gap-3 border border-white/10 bg-[#15191c] px-3 py-2 text-xs">
+          {files.map((file, index) => <li key={`${index}-${file.name}-${file.lastModified}`} className="flex items-center gap-3 border border-white/10 bg-[#15191c] px-3 py-2 text-xs">
             <span className="truncate text-white/75">{file.name}</span>
             <span className="ml-auto shrink-0 text-white/40">{formatSize(file.size)}</span>
             <button type="button" onClick={() => removeFile(index)} className="shrink-0 text-lg leading-none text-white/45 transition hover:text-steel-orange" aria-label={`Удалить ${file.name}`}>×</button>

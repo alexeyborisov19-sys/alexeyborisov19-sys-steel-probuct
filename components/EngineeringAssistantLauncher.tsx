@@ -1,6 +1,7 @@
 "use client";
 
 import { lazy, Suspense, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const loadAssistant = () => import("./EngineeringAssistant");
 const LazyEngineeringAssistant = lazy(async () => {
@@ -25,8 +26,11 @@ function BrandMark() {
 }
 
 function LauncherButton({ loading = false, onClick }: { loading?: boolean; onClick?: () => void }) {
+  const pathname = usePathname();
   return (
-    <div className="fixed bottom-5 right-4 z-[85] sm:bottom-6 sm:right-6">
+    <div className={`fixed right-4 z-[85] sm:right-6 ${pathname === "/online-order"
+      ? "bottom-[calc(8rem+var(--cookie-consent-space,0px)+env(safe-area-inset-bottom,0px))] xl:bottom-6"
+      : "bottom-5 sm:bottom-6"}`}>
       <button
         type="button"
         onClick={onClick}

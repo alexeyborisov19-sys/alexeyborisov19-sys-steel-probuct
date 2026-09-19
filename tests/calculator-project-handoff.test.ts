@@ -18,7 +18,7 @@ test("the browser stops at the same project size the server enforces", async () 
   // rather than the one file that did not fit.
   assert.match(manifest, /parts\.length > 10/);
   assert.match(workspace, /const MAX_PROJECT_PARTS = 10;/);
-  assert.match(workspace, /files\.slice\(0, Math\.max\(0, room\)\)/);
+  assert.match(workspace, /selectCadFiles\(files, nextProject.parts, MAX_PROJECT_PARTS\)/);
   assert.equal(uploadLimits.maximumFiles, 10);
 });
 
