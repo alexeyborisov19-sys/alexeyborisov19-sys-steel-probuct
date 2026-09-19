@@ -73,6 +73,118 @@ jobs:
           print("steelprodukt.ru hosts:", json.dumps(matched, ensure_ascii=False))
           PY
 
+      - name: Read Webmaster summary and diagnostics
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          uid=$(python3 -c 'import json; print(json.load(open("/tmp/webmaster_user.json")).get("user_id",""))')
+          python3 - <<'PY'
+          import json
+          hosts=json.load(open("/tmp/webmaster_hosts.json")).get("hosts",[])
+          h=next((x for x in hosts if "steelprodukt.ru" in (x.get("unicode_host_url") or x.get("ascii_host_url") or "").lower()), None)
+          if not h:
+              raise SystemExit("steelprodukt.ru not found")
+          json.dump({"host_id":h["host_id"],"url":h.get("unicode_host_url") or h.get("ascii_host_url")},open("/tmp/webmaster_target.json","w"))
+          PY
+          host=$(python3 -c 'import json; print(json.load(open("/tmp/webmaster_target.json"))["host_id"])')
+          base="https://api.webmaster.yandex.net/v4/user/$uid/hosts/$host"
+
+          curl -fsS -H "Authorization: OAuth $TOKEN" -H "Accept: application/json" "$base/summary" > /tmp/webmaster_summary.json
+          curl -fsS -H "Authorization: OAuth $TOKEN" -H "Accept: application/json" "$base/diagnostics" > /tmp/webmaster_diagnostics.json
+
+          python3 - <<'PY'
+          import json
+          summary=json.load(open("/tmp/webmaster_summary.json"))
+          diag=json.load(open("/tmp/webmaster_diagnostics.json"))
+          print("WEBMASTER_SUMMARY="+json.dumps({
+            "sqi":summary.get("sqi"),
+            "searchable_pages_count":summary.get("searchable_pages_count"),
+            "excluded_pages_count":summary.get("excluded_pages_count"),
+            "site_problems":summary.get("site_problems",{}),
+          },ensure_ascii=False))
+          present=[]
+          for code,v in (diag.get("problems") or {}).items():
+              if isinstance(v,dict) and v.get("state")=="PRESENT":
+                  present.append({"code":code,"severity":v.get("severity"),"last_state_update":v.get("last_state_update")})
+          print("WEBMASTER_PRESENT_PROBLEMS="+json.dumps(present,ensure_ascii=False))
+          PY
+
+      - name: Read Webmaster indexed pages
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          uid=$(python3 -c 'import json; print(json.load(open("/tmp/webmaster_user.json")).get("user_id",""))')
+          host=$(python3 -c 'import json; print(json.load(open("/tmp/webmaster_target.json"))["host_id"])')
+          base="https://api.webmaster.yandex.net/v4/user/$uid/hosts/$host"
+
+          curl -fsS -G -H "Authorization: OAuth $TOKEN" -H "Accept: application/json"             --data-urlencode "offset=0" --data-urlencode "limit=100"             "$base/search-urls/in-search/samples" > /tmp/webmaster_search_urls.json
+          curl -fsS -G -H "Authorization: OAuth $TOKEN" -H "Accept: application/json"             --data-urlencode "offset=0" --data-urlencode "limit=100"             "$base/indexing/samples" > /tmp/webmaster_indexing_samples.json
+
+          python3 - <<'PY'
+          import json
+          sr=json.load(open("/tmp/webmaster_search_urls.json"))
+          ix=json.load(open("/tmp/webmaster_indexing_samples.json"))
+          print("SEARCH_URLS_COUNT="+str(sr.get("count")))
+          urls=[]
+          for item in sr.get("samples",[])[:100]:
+              if isinstance(item,str):
+                  urls.append(item)
+              elif isinstance(item,dict):
+                  urls.append(item.get("url"))
+          print("SEARCH_URLS_SAMPLE="+json.dumps([u for u in urls if u],ensure_ascii=False))
+          statuses={}
+          bad=[]
+          for x in ix.get("samples",[]):
+              st=x.get("status","UNKNOWN")
+              statuses[st]=statuses.get(st,0)+1
+              if st!="HTTP_2XX":
+                  bad.append({"url":x.get("url"),"status":st,"http_code":x.get("http_code"),"access_date":x.get("access_date")})
+          print("INDEXING_SAMPLES_COUNT="+str(ix.get("count")))
+          print("INDEXING_STATUS_SAMPLE="+json.dumps(statuses,ensure_ascii=False))
+          print("NON_2XX_SAMPLE="+json.dumps(bad[:30],ensure_ascii=False))
+          PY
+
+      - name: Read Webmaster sitemaps and popular queries
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          uid=$(python3 -c 'import json; print(json.load(open("/tmp/webmaster_user.json")).get("user_id",""))')
+          host=$(python3 -c 'import json; print(json.load(open("/tmp/webmaster_target.json"))["host_id"])')
+          base="https://api.webmaster.yandex.net/v4/user/$uid/hosts/$host"
+
+          curl -fsS -H "Authorization: OAuth $TOKEN" -H "Accept: application/json" "$base/sitemaps?limit=100" > /tmp/webmaster_sitemaps.json
+          curl -fsS -G -H "Authorization: OAuth $TOKEN" -H "Accept: application/json"             --data-urlencode "order_by=TOTAL_SHOWS" --data-urlencode "limit=20"             "$base/search-queries/popular" > /tmp/webmaster_queries.json
+
+          python3 - <<'PY'
+          import json
+          sm=json.load(open("/tmp/webmaster_sitemaps.json"))
+          q=json.load(open("/tmp/webmaster_queries.json"))
+          safe_sitemaps=[]
+          for x in sm.get("sitemaps",[]):
+              safe_sitemaps.append({
+                "sitemap_id":x.get("sitemap_id"),
+                "url":x.get("url"),
+                "status":x.get("status"),
+                "urls_count":x.get("urls_count"),
+                "errors_count":x.get("errors_count"),
+                "last_access_date":x.get("last_access_date"),
+              })
+          print("SITEMAPS="+json.dumps(safe_sitemaps,ensure_ascii=False))
+          rows=q.get("queries") or q.get("query") or []
+          safe=[]
+          for x in rows[:20]:
+              safe.append({
+                "query_text":x.get("query_text"),
+                "shows":x.get("indicators",{}).get("TOTAL_SHOWS") if isinstance(x.get("indicators"),dict) else x.get("shows"),
+                "clicks":x.get("indicators",{}).get("TOTAL_CLICKS") if isinstance(x.get("indicators"),dict) else x.get("clicks"),
+                "avg_show_position":x.get("indicators",{}).get("AVG_SHOW_POSITION") if isinstance(x.get("indicators"),dict) else x.get("avg_show_position"),
+              })
+          print("TOP_QUERIES="+json.dumps(safe,ensure_ascii=False))
+          PY
+
       - name: Check Yandex Direct Businesses access
         env:
           TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
