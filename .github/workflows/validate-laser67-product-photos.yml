@@ -1,0 +1,47 @@
+name: Validate Laser67 product photos
+
+on:
+  push:
+    branches:
+      - feature/laser67-product-photos-20260920
+    paths:
+      - '.github/workflows/validate-laser67-product-photos.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+      NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
+      NEXT_PUBLIC_YM_WEBVISOR: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/laser67-product-photos-20260920
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify local product photos
+        run: |
+          set -euo pipefail
+          test -f public/images/real-products/laser67/metallokassety/open-type.jpg
+          test -f public/images/real-products/laser67/metallokassety/closed-type.png
+          test -f public/images/real-products/laser67/metallokassety/hook-on-panel.jpg
+          test -f public/images/real-products/laser67/korpusa/electrical-cabinet-enclosures.jpg
+          test -f public/images/real-products/laser67/korpusa/electrical-equipment-enclosure.jpg
+          test -f public/images/real-products/laser67/zakladnye/support-shoe.jpg
+          test -f public/images/real-products/laser67/zakladnye/column-heads.jpg
+          test -f public/images/real-products/laser67/zakladnye/structural-support.jpg
+          count=$(find public/images/real-products/laser67 -type f | wc -l)
+          test "$count" -eq 13
+          echo "Verified $count local product photos."
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
