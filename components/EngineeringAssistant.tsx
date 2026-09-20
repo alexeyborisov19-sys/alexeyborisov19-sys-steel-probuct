@@ -333,7 +333,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     setMessages((current) => [...current, {
       id: makeId(),
       role: "user",
-      content: calculator === "metal-cassettes" ? "Фасадные металлокассеты" : "Обычное металлоизделие",
+      content: calculator === "metal-cassettes" ? "Фасадные металлокассеты" : "Металлоизделия",
     }]);
     trackLeadEvent("assistant_question", { assistant: "engineering", page_context: pageContext.id });
     void sendQuoteMessage("", calculator);

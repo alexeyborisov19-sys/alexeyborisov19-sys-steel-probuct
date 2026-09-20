@@ -32,7 +32,7 @@ test("a complete request prices in a single turn", async () => {
   );
   assert.equal(result.kind, "priced");
   if (result.kind !== "priced") return;
-  assert.match(result.clientMessage, /Стоимость изготовления/);
+  assert.match(result.clientMessage, /Предварительная стоимость, с НДС/);
 });
 
 test("an incomplete request asks one question, then prices once the answer is given", async () => {

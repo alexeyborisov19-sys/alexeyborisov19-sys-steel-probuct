@@ -50,8 +50,12 @@ test("a ready metal-parts plan prices end-to-end through the real cost and comme
   assert.ok(result.record.costRubBatch! > 0);
   assert.ok(result.record.finalPriceRubBatch > result.record.costRubBatch!, "commercial price must exceed direct cost");
   assert.equal(result.record.quantity, 100);
-  assert.match(result.clientMessage, /Стоимость изготовления/);
+  assert.match(result.clientMessage, /Предварительная стоимость, с НДС/);
   assert.match(result.clientMessage, /₽\/шт/);
+  // Every other surface that shows this figure carries the site-wide
+  // disclaimer; a price quoted in chat without it promises more than the
+  // configurator and the printed quote do.
+  assert.match(result.clientMessage, /Не является офертой/);
   // No internal figures leak into the client-facing message.
   assert.doesNotMatch(result.clientMessage, /себестоимост/i);
   assert.doesNotMatch(result.clientMessage, /рейт|rate/i);
@@ -133,7 +137,11 @@ test("a ready cassette plan prices through the existing rate-based estimator, no
   assert.equal(result.record.commercialPrice, null);
   assert.equal(result.record.market, null);
   assert.ok(result.record.finalPriceRubBatch > 0);
-  assert.match(result.clientMessage, /Предварительная стоимость/);
+  // The cassette page's own wording, not the metal-parts one: it claims no
+  // VAT treatment for this rate, so neither may the chat.
+  assert.match(result.clientMessage, /Ориентировочная стоимость/);
+  assert.match(result.clientMessage, /Финальная цена подтверждается/);
+  assert.doesNotMatch(result.clientMessage, /НДС/);
 });
 
 test("the cassette path never touches the private calculation basis at all", async () => {

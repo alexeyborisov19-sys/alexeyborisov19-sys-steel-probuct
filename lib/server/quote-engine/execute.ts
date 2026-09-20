@@ -15,6 +15,7 @@ import {
   type CommercialRulesConfig,
 } from "@/lib/quote-engine/commercial-rules";
 import type { MarketSummary } from "@/lib/quote-engine/market/types";
+import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels";
 import { calculateFactualProductionCost, type FactualCalculationResult } from "@/lib/instant-quote/factual-calculation";
 import { selectBestStoredPrice } from "@/lib/instant-quote/material-price-feed";
 import { estimateMetalCassettesByQuantity } from "@/lib/metal-cassette-estimate";
@@ -198,9 +199,14 @@ async function executeMetalParts(
   return {
     status: "priced",
     record,
+    // Wording follows the CAD workspace, which shows this very figure (the
+    // same `approvedSalePriceRubFromLines`) under "Предварительно, с НДС",
+    // plus the site-wide short disclaimer every other priced surface
+    // carries. Imported rather than retyped: the constant exists so the
+    // customer is never shown two different promises about one number.
     clientMessage: input.quantity > 1
-      ? `Стоимость изготовления: ${fmtRub(record.finalPriceRubEach)} ₽/шт. Количество: ${input.quantity} шт. Итого: ${fmtRub(record.finalPriceRubBatch)} ₽.`
-      : `Стоимость изготовления: ${fmtRub(record.finalPriceRubBatch)} ₽.`,
+      ? `Предварительная стоимость, с НДС: ${fmtRub(record.finalPriceRubEach)} ₽/шт. Количество: ${input.quantity} шт. Итого: ${fmtRub(record.finalPriceRubBatch)} ₽. ${CALCULATION_DISCLAIMER_SHORT}`
+      : `Предварительная стоимость, с НДС: ${fmtRub(record.finalPriceRubBatch)} ₽. ${CALCULATION_DISCLAIMER_SHORT}`,
   };
 }
 
@@ -252,8 +258,14 @@ async function executeMetalCassettes(input: MetalCassetteReadyInput): Promise<Qu
   return {
     status: "priced",
     record,
-    clientMessage: `Предварительная стоимость: ${fmtRub(record.finalPriceRubEach)} ₽/шт. `
-      + `Количество: ${input.quantity} шт. Итого: ${fmtRub(record.finalPriceRubBatch)} ₽.`,
+    // Wording follows the cassette calculator page itself — "Ориентировочная
+    // стоимость", the ≈ prefix and its own confirmation sentence — not the
+    // metal-parts wording above. The two products really do promise
+    // different things: that page claims no VAT treatment for this rate, so
+    // neither does this message.
+    clientMessage: `Ориентировочная стоимость: ≈ ${fmtRub(record.finalPriceRubEach)} ₽/шт. `
+      + `Количество: ${input.quantity} шт. Итого: ≈ ${fmtRub(record.finalPriceRubBatch)} ₽. `
+      + "Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа.",
   };
 }
 
