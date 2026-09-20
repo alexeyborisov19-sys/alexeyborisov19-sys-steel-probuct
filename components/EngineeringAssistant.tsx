@@ -115,6 +115,12 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage(pageContext.greeting)]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([...pageContext.suggestions]);
+  // Set the moment one of the two product-type buttons is clicked. From
+  // then on this conversation's messages go to the quote engine
+  // (/api/assistant/quote) instead of the general assistant — the customer
+  // picked the calculator themselves, so nothing here ever has to guess it
+  // from wording.
+  const [quoteCalculator, setQuoteCalculator] = useState<"metal-parts" | "metal-cassettes" | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [leadFormOpen, setLeadFormOpen] = useState(false);
@@ -211,6 +217,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     setLeadFeedback(null);
     setCompletedRequestId(null);
     setSessionId(null);
+    setQuoteCalculator(null);
     window.setTimeout(() => inputRef.current?.focus(), 120);
   }
 
@@ -269,9 +276,76 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     trackLeadEvent("assistant_voice_output", { assistant: "engineering" });
   }
 
+  /**
+   * The quote engine's own turn, once a product-type button has been
+   * clicked — kept entirely separate from `sendQuestion` below, which talks
+   * to the general YandexGPT-backed assistant. `calculatorForThisMessage`
+   * is passed explicitly rather than read from `quoteCalculator` state:
+   * the very first call happens in the same tick as the `setQuoteCalculator`
+   * that starts the flow, before that state update has actually landed, so
+   * reading the state here would see the stale `null` from before the click.
+   */
+  async function sendQuoteMessage(content: string, calculatorForThisMessage: "metal-parts" | "metal-cassettes") {
+    if (loading) return;
+    if (content) setMessages((current) => [...current, { id: makeId(), role: "user", content }]);
+    setInput("");
+    setLoading(true);
+    setSuggestions([]);
+
+    try {
+      const response = await fetch("/api/assistant/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: content, sessionId, calculator: calculatorForThisMessage }),
+      });
+      const payload = await response.json() as { sessionId?: string; kind?: "question" | "priced" | "blocked"; text?: string; message?: string };
+      if (!response.ok) throw new Error(payload.message || "Не удалось получить ответ.");
+      if (payload.sessionId) setSessionId(payload.sessionId);
+      setMessages((current) => [...current, {
+        id: makeId(),
+        role: "assistant",
+        content: payload.text || "Уточните, пожалуйста.",
+      }]);
+      if (payload.kind === "priced" || payload.kind === "blocked") {
+        // The guided flow has reached its answer — hand off to the same
+        // lead capture the general assistant already uses below, rather
+        // than a second one just for this path.
+        setQuoteCalculator(null);
+        setSuggestions(["Оставить заявку", "Начать заново"]);
+      }
+    } catch (error) {
+      setMessages((current) => [...current, {
+        id: makeId(),
+        role: "assistant",
+        content: error instanceof Error
+          ? `${error.message} Можно сразу передать задачу инженеру.`
+          : "Не удалось получить ответ. Передайте задачу инженеру.",
+      }]);
+      setSuggestions(["Передать задачу инженеру", "Попробовать ещё раз"]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /** The two buttons: "выбор без выбора" — the customer's own explicit pick, never guessed from wording. */
+  function startQuoteFlow(calculator: "metal-parts" | "metal-cassettes") {
+    setQuoteCalculator(calculator);
+    setMessages((current) => [...current, {
+      id: makeId(),
+      role: "user",
+      content: calculator === "metal-cassettes" ? "Фасадные металлокассеты" : "Обычное металлоизделие",
+    }]);
+    trackLeadEvent("assistant_question", { assistant: "engineering", page_context: pageContext.id });
+    void sendQuoteMessage("", calculator);
+  }
+
   async function sendQuestion(question: string) {
     const content = question.trim();
     if (!content || loading) return;
+    if (quoteCalculator) {
+      void sendQuoteMessage(content, quoteCalculator);
+      return;
+    }
     const userMessage: ChatMessage = { id: makeId(), role: "user", content };
     setMessages((current) => [...current, userMessage]);
     setInput("");
@@ -316,6 +390,10 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     if (/передать|заявк/i.test(suggestion)) {
       setLeadFormOpen(true);
       trackLeadEvent("assistant_lead_form_opened", { assistant: "engineering" });
+      return;
+    }
+    if (/начать заново/i.test(suggestion)) {
+      returnToAssistantHome();
       return;
     }
     void sendQuestion(suggestion);
@@ -500,6 +578,27 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                       </div>
                     ) : null}
                   </div>
+                  {messages.length === 1 && messages[0].id === "welcome" && !quoteCalculator ? (
+                    <div className="mt-4">
+                      <p className="mb-2 text-[11px] font-bold uppercase tracking-[.13em] text-white/40">Что нужно посчитать?</p>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => startQuoteFlow("metal-parts")}
+                          className="border border-steel-orange/45 bg-steel-orange/[.07] px-4 py-3 text-left text-sm font-semibold leading-snug text-white transition hover:border-steel-orange hover:bg-steel-orange/[.14]"
+                        >
+                          Металлоизделия
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startQuoteFlow("metal-cassettes")}
+                          className="border border-steel-orange/45 bg-steel-orange/[.07] px-4 py-3 text-left text-sm font-semibold leading-snug text-white transition hover:border-steel-orange hover:bg-steel-orange/[.14]"
+                        >
+                          Фасадные металлокассеты
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   {suggestions.length ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       {suggestions.map((suggestion) => (
