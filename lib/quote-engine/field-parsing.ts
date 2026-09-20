@@ -90,6 +90,10 @@ export function nearestCassetteThickness(thicknessMm: number | null): MetalCasse
  */
 export function materialLabelToId(material: string | undefined | null): MaterialId | null {
   switch (material) {
+    // The configurator's own names for the two rolled steels, so what the
+    // site prints back is also what it can read in.
+    case "Сталь г/к": return "hot";
+    case "Сталь х/к": return "cold";
     case "Оцинкованная сталь": return "zinc";
     case "Нержавеющая сталь": return "inox";
     case "Алюминий": return "alu";

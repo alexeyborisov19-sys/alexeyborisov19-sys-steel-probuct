@@ -51,3 +51,23 @@ test("digits already claimed by dimensions or thickness are still excluded from 
   const state = extractLeadState(emptyLeadState(), "Нужен кронштейн 500×400 оцинкованная сталь 2 мм");
   assert.equal(state.quantity, undefined, "no piece count was actually stated in this message");
 });
+
+test("a customer who names the rolled steel is not asked which rolling they meant", () => {
+  assert.equal(extractLeadState(emptyLeadState(), "нужна сталь г/к 2 мм").material, "Сталь г/к");
+  assert.equal(extractLeadState(emptyLeadState(), "лист х/к 1,5 мм").material, "Сталь х/к");
+  assert.equal(extractLeadState(emptyLeadState(), "горячекатаная сталь").material, "Сталь г/к");
+  assert.equal(extractLeadState(emptyLeadState(), "холоднокатаный лист").material, "Сталь х/к");
+});
+
+test("the generic steel answer still asks which rolling, because it genuinely is ambiguous", () => {
+  assert.equal(extractLeadState(emptyLeadState(), "чёрная сталь 3 мм").material, "Сталь");
+});
+
+test("a unit that merely contains the same letters is never read as rolled steel", () => {
+  // "мг/кг" contains "г/к" — a bare substring match would have taken it.
+  assert.equal(extractLeadState(emptyLeadState(), "покрытие 200 мг/кг").material, undefined);
+});
+
+test("«чёрная» through ё reads the same as «черная» — customers write both", () => {
+  assert.equal(extractLeadState(emptyLeadState(), "черная сталь 3 мм").material, "Сталь");
+});

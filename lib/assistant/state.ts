@@ -119,10 +119,15 @@ export function extractLeadState(
   // material, not a second one; §6 of the brief names this exact case
   // ("оцинковка 1,2" / "оцинкованная сталь 1.2 мм" is one parameter).
   const materialPatterns: Array<[RegExp, string]> = [
+    // Before the generic "Сталь" below: these are the site's own labels for
+    // the two rolled steels (MATERIAL_LABELS), so a customer who writes them
+    // must not then be asked which of the two they meant.
+    [/горячекатан[\p{L}-]*|(?<![\p{L}])г\/к(?![\p{L}])/u, "Сталь г/к"],
+    [/холоднокатан[\p{L}-]*|(?<![\p{L}])х\/к(?![\p{L}])/u, "Сталь х/к"],
     [/нержавеющ[\p{L}-]*|нержавейк[\p{L}-]*/u, "Нержавеющая сталь"],
     [/оцинкованн[\p{L}-]*|оцинковк[\p{L}-]*/u, "Оцинкованная сталь"],
     [/алюмини[\p{L}-]*/u, "Алюминий"],
-    [/черн[\p{L}-]* стал[\p{L}-]*|сталь\s*(?:ст|09г2с|08пс|08кп)\S*/iu, "Сталь"],
+    [/ч[её]рн[\p{L}-]* стал[\p{L}-]*|сталь\s*(?:ст|09г2с|08пс|08кп)\S*/iu, "Сталь"],
   ];
   for (const [pattern, value] of materialPatterns) {
     if (pattern.test(normalized)) {

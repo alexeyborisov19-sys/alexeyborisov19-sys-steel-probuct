@@ -84,3 +84,10 @@ test("informal spoken material names are read as the same material, not left unr
   assert.equal(inoxCasual.material, "Нержавеющая сталь");
   assert.equal(materialLabelToId(inoxCasual.material), "inox");
 });
+
+test("the site's own rolled-steel labels are readable back into material ids", () => {
+  // MATERIAL_LABELS prints exactly these; a name the configurator shows must
+  // not be a name the calculator cannot take.
+  assert.equal(materialLabelToId("Сталь г/к"), "hot");
+  assert.equal(materialLabelToId("Сталь х/к"), "cold");
+});
