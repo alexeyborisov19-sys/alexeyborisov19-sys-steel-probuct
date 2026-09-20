@@ -9,6 +9,11 @@ import { verifyCommercialPrice } from "../lib/quote-engine/verification";
 import type { CommercialPricingPolicy } from "../lib/server/instant-quote/commercial-pricing";
 import type { MarketSummary } from "../lib/quote-engine/market/types";
 
+/** Same shape the other env-driven tests in this suite use: a real ProcessEnv, not a bare literal. */
+function env(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
+  return { NODE_ENV: "test", ...overrides };
+}
+
 const pricingPolicy: CommercialPricingPolicy = {
   metalMultiplier: 1.1,
   drawingPercentOfWorks: 5,
@@ -28,7 +33,7 @@ const highConfidenceMarket: MarketSummary = {
 };
 
 test("market anchoring is off by default: final price always equals the base cost-plus price", () => {
-  const defaultConfig = loadCommercialRulesConfig({});
+  const defaultConfig = loadCommercialRulesConfig(env());
   assert.equal(defaultConfig.marketAnchorWeightPct, 0);
 
   const result = applyCommercialRules(lines, quantity, pricingPolicy, defaultConfig, { summary: highConfidenceMarket, unitAreaM2: 0.72 });
@@ -38,12 +43,12 @@ test("market anchoring is off by default: final price always equals the base cos
 });
 
 test("the config loader parses explicit environment values", () => {
-  const config = loadCommercialRulesConfig({
+  const config = loadCommercialRulesConfig(env({
     STEEL_PRODUCT_MIN_MARGIN_PCT: "12",
     STEEL_PRODUCT_MARKET_ANCHOR_WEIGHT_PCT: "40",
     STEEL_PRODUCT_MAX_MARKET_ADJUSTMENT_PCT: "8",
     STEEL_PRODUCT_MARKET_ANCHOR_MIN_CONFIDENCE: "medium",
-  });
+  }));
   assert.equal(config.minMarginPct, 12);
   assert.equal(config.marketAnchorWeightPct, 40);
   assert.equal(config.maxMarketAdjustmentPct, 8);
@@ -51,7 +56,7 @@ test("the config loader parses explicit environment values", () => {
 });
 
 test("a malformed environment value falls back to the safe off-default instead of throwing", () => {
-  const config = loadCommercialRulesConfig({ STEEL_PRODUCT_MARKET_ANCHOR_WEIGHT_PCT: "not-a-number" });
+  const config = loadCommercialRulesConfig(env({ STEEL_PRODUCT_MARKET_ANCHOR_WEIGHT_PCT: "not-a-number" }));
   assert.equal(config.marketAnchorWeightPct, 0);
 });
 

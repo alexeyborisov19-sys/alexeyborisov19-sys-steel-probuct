@@ -87,7 +87,7 @@ test("a question response carries the question as text, and a fresh sessionId", 
 
 test("a priced response carries the client message as text, and never the internal record", async () => {
   rateLimitStore.clear();
-  const record = { version: "quote-engine-v1", createdAt: new Date().toISOString(), calculator: "metal-parts" as const, technicalVerification: { ok: true, findings: [] }, costRubBatch: 12345, costVerification: { ok: true, findings: [] }, market: null, commercialPrice: null, commercialVerification: null, finalPriceRubBatch: 68000, finalPriceRubEach: 680, quantity: 100, warnings: [] };
+  const record = { version: "quote-engine-v1" as const, createdAt: new Date().toISOString(), calculator: "metal-parts" as const, technicalVerification: { ok: true, findings: [] }, costRubBatch: 12345, costVerification: { ok: true, findings: [] }, market: null, commercialPrice: null, commercialVerification: null, finalPriceRubBatch: 68000, finalPriceRubEach: 680, quantity: 100, warnings: [] };
   const { fn } = scriptedQuote([{ kind: "priced", clientMessage: "Стоимость изготовления: 680 ₽/шт.", record, state: emptyLeadState() }]);
   const handler = createAssistantQuoteHandler({ sessionStore: fixtureSessionStore(), handleNaturalLanguageQuote: fn });
   const response = await handler(request({ message: "100 шт", calculator: "metal-parts" }));

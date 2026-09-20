@@ -8,16 +8,21 @@ import {
   type BitrixConfig,
 } from "../lib/server/crm/bitrix-client";
 
+/** Same shape the other env-driven tests in this suite use: a real ProcessEnv, not a bare literal. */
+function env(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
+  return { NODE_ENV: "test", ...overrides };
+}
+
 test("Bitrix integration is off (null config) when no webhook is configured — never a thrown error", () => {
-  assert.equal(loadBitrixConfig({}), null);
+  assert.equal(loadBitrixConfig(env()), null);
 });
 
 test("the config loader parses the webhook and internal field map from real environment values", () => {
-  const config = loadBitrixConfig({
+  const config = loadBitrixConfig(env({
     BITRIX_WEBHOOK_URL: "https://example.bitrix24.ru/rest/1/abc123/",
     BITRIX_INTERNAL_FIELD_MAP_JSON: JSON.stringify({ costRubBatch: "UF_CRM_1700000001", calculatorUsed: "UF_CRM_1700000002" }),
     BITRIX_SOURCE_ID: "WEBFORM",
-  });
+  }));
   assert.ok(config);
   assert.equal(config!.webhookUrl, "https://example.bitrix24.ru/rest/1/abc123"); // trailing slash trimmed
   assert.equal(config!.internalFieldMap.costRubBatch, "UF_CRM_1700000001");
@@ -25,7 +30,7 @@ test("the config loader parses the webhook and internal field map from real envi
 });
 
 test("a malformed field map does not crash configuration — it falls back to an empty map", () => {
-  const config = loadBitrixConfig({ BITRIX_WEBHOOK_URL: "https://example.bitrix24.ru/rest/1/abc123", BITRIX_INTERNAL_FIELD_MAP_JSON: "{not json" });
+  const config = loadBitrixConfig(env({ BITRIX_WEBHOOK_URL: "https://example.bitrix24.ru/rest/1/abc123", BITRIX_INTERNAL_FIELD_MAP_JSON: "{not json" }));
   assert.ok(config);
   assert.deepEqual(config!.internalFieldMap, {});
 });

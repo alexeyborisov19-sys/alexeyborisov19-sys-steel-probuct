@@ -43,6 +43,10 @@ test("a closed-type cassette is read from the word закрытого", () => {
   const plan = planFor("300 кассет закрытого типа 600×1200 оцинковка 1,2 мм");
   assert.equal(plan.status, "ready");
   if (plan.status !== "ready") return;
+  // `input` is a union until `calculator` is checked: only the cassette
+  // branch carries `type` at all.
+  assert.equal(plan.calculator, "metal-cassettes");
+  if (plan.calculator !== "metal-cassettes") return;
   assert.equal(plan.input.type, "closed");
 });
 
