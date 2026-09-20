@@ -579,22 +579,24 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                     ) : null}
                   </div>
                   {messages.length === 1 && messages[0].id === "welcome" && !quoteCalculator ? (
-                    <div className="mt-4">
-                      <p className="mb-2 text-[11px] font-bold uppercase tracking-[.13em] text-white/40">Что нужно посчитать?</p>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="mt-4 space-y-2">
+                      <p id="quote-product-type-label" className="text-[11px] font-bold uppercase tracking-[.13em] text-white/40">
+                        Что нужно посчитать?
+                      </p>
+                      <div role="group" aria-labelledby="quote-product-type-label" className="space-y-2">
                         <button
                           type="button"
                           onClick={() => startQuoteFlow("metal-parts")}
-                          className="border border-steel-orange/45 bg-steel-orange/[.07] px-4 py-3 text-left text-sm font-semibold leading-snug text-white transition hover:border-steel-orange hover:bg-steel-orange/[.14]"
+                          className="clip-corner block w-full bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper"
                         >
-                          Металлоизделия
+                          Металлоизделия&nbsp; →
                         </button>
                         <button
                           type="button"
                           onClick={() => startQuoteFlow("metal-cassettes")}
-                          className="border border-steel-orange/45 bg-steel-orange/[.07] px-4 py-3 text-left text-sm font-semibold leading-snug text-white transition hover:border-steel-orange hover:bg-steel-orange/[.14]"
+                          className="clip-corner block w-full bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper"
                         >
-                          Фасадные металлокассеты
+                          Фасадные металлокассеты&nbsp; →
                         </button>
                       </div>
                     </div>
