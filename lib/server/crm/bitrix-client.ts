@@ -1,4 +1,5 @@
-import "server-only";
+// No `import "server-only"` here: it is not a dependency of this project — only
+// the Next build aliases it — so it breaks every test importing this module.
 
 /**
  * §24: a generic Bitrix24 REST client over an incoming webhook, using only

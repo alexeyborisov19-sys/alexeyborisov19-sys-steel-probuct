@@ -1,4 +1,5 @@
-import "server-only";
+// No `import "server-only"` here: it is not a dependency of this project — only
+// the Next build aliases it — so it breaks every test importing this module.
 
 import { NextResponse } from "next/server";
 import { assistantSessionStore, type AssistantSessionStore } from "@/lib/assistant/session-store";

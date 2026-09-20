@@ -1,4 +1,5 @@
-import "server-only";
+// No `import "server-only"` here: it is not a dependency of this project — only
+// the Next build aliases it — so it breaks every test importing this module.
 
 import { buildManualRectangularGeometry } from "@/lib/quote-engine/manual-geometry";
 import type { MetalPartsReadyInput, MetalCassetteReadyInput } from "@/lib/quote-engine/plan";
@@ -23,7 +24,7 @@ import {
   loadCommercialPricingPolicy,
   type CommercialPricingPolicy,
 } from "@/lib/server/instant-quote/commercial-pricing";
-import { loadPrivateCalculationBasis } from "@/lib/server/instant-quote/private-calculation-basis";
+import type { loadPrivateCalculationBasis } from "@/lib/server/instant-quote/private-calculation-basis";
 
 /**
  * §33's pipeline, made concrete: a ready plan goes through the real
@@ -42,7 +43,15 @@ export type QuoteEngineDependencies = {
 };
 
 const defaultDependencies: QuoteEngineDependencies = {
-  loadPrivateCalculationBasis,
+  // Loaded on demand, not at module level: the basis reader keeps its
+  // `import "server-only"` (it reads the private rate book off disk, so that
+  // guard is worth keeping), and a static import here would drag that
+  // unresolvable package into every test of this file — which always injects
+  // a fixture in its place and never reaches this default at all.
+  loadPrivateCalculationBasis: async () => {
+    const module = await import("@/lib/server/instant-quote/private-calculation-basis");
+    return module.loadPrivateCalculationBasis();
+  },
   loadCommercialPricingPolicy,
   loadCommercialRulesConfig,
 };
