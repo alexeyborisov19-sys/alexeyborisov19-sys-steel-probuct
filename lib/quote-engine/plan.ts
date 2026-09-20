@@ -1,5 +1,5 @@
 import type { EngineeringLeadState } from "@/lib/assistant/types";
-import { classifyProduct } from "@/lib/quote-engine/classification";
+import { classifyProduct, type CalculatorId } from "@/lib/quote-engine/classification";
 import {
   materialLabelToId,
   nearestCassetteThickness,
@@ -58,52 +58,6 @@ function mentionsBending(rawMessage: string): boolean {
   return /гнут[а-я]*|гиб[а-я]*|отбортов[а-я]*|загиб[а-я]*/iu.test(rawMessage);
 }
 
-/** Every digit run inside a raw field extractLeadState already claimed, e.g. "500×400" -> {500, 400}. */
-function digitsAlreadyClaimedBy(raw: string | undefined | null): Set<number> {
-  if (!raw) return new Set();
-  return new Set([...raw.matchAll(/\d+/g)].map((match) => Number(match[0])));
-}
-
-/**
- * `extractLeadState`'s quantity field only recognises a number glued to an
- * explicit unit word (шт/штук/единиц/комплект...) — it does not recognise
- * the far more common Russian construction "100 кронштейнов", a bare count
- * of the product noun itself, exactly how the brief's own example is
- * phrased. This is a narrow, local fallback rather than a change to the
- * shared extractor (which the live chat assistant also depends on): tried
- * only when the structured field found nothing at all, and only for a short
- * number (1-5 digits, the plausible range for a piece count) directly
- * followed by whitespace and a Cyrillic word of at least three letters — long
- * enough to exclude "мм"/"см" so a thickness is never mistaken for a count.
- *
- * A dimension pair is the sharper risk: "500×400 оцинкованная" puts the
- * second dimension figure directly in front of a word too, so every digit
- * run already claimed by `state.dimensions` (or `state.thickness`) is
- * excluded before the first remaining match is accepted — not by comparing
- * converted millimetre values, which would miss a cm/m phrasing, but by the
- * same raw digits the customer actually typed.
- */
-function impliedPieceCount(rawMessage: string, state: EngineeringLeadState): number | null {
-  const claimed = new Set([
-    ...digitsAlreadyClaimedBy(state.dimensions),
-    ...digitsAlreadyClaimedBy(state.thickness),
-  ]);
-  for (const match of rawMessage.matchAll(/(?:^|[^\d])(\d{1,5})\s+[а-яё]{3,}/giu)) {
-    const value = Number(match[1]);
-    if (Number.isFinite(value) && value > 0 && !claimed.has(value)) return value;
-  }
-  return null;
-}
-
-function resolveQuantity(state: EngineeringLeadState, rawMessage: string): number | null {
-  const explicit = parsePieceCount(state.quantity);
-  if (explicit != null) return explicit;
-  // Only fall back when the extractor found nothing whatsoever for quantity —
-  // an explicit non-count unit ("20 м²") is a deliberate signal and must not
-  // be overridden by grabbing an unrelated number elsewhere in the message.
-  return state.quantity == null ? impliedPieceCount(rawMessage, state) : null;
-}
-
 function metalPartsPlan(state: EngineeringLeadState, rawMessage: string): QuoteEnginePlan {
   if (mentionsBending(rawMessage)) {
     return {
@@ -137,7 +91,12 @@ function metalPartsPlan(state: EngineeringLeadState, rawMessage: string): QuoteE
     missing.push({ code: "dimensions", question: "Укажите габариты детали (ширина × высота), в мм." });
   }
 
-  const quantity = resolveQuantity(state, rawMessage);
+  // Reads state.quantity, which extractLeadState now normalises even from
+  // a bare count of the product itself ("100 кронштейнов") — that fallback
+  // used to live here, keyed off rawMessage alone, and lost the answer the
+  // moment a later turn's rawMessage no longer contained it. Reading through
+  // state instead means it survives exactly like every other field.
+  const quantity = parsePieceCount(state.quantity);
   if (quantity == null) {
     missing.push({ code: "quantity", question: "Какое количество деталей нужно, в штуках?" });
   }
@@ -151,14 +110,18 @@ function metalPartsPlan(state: EngineeringLeadState, rawMessage: string): QuoteE
   };
 }
 
-function metalCassettePlan(state: EngineeringLeadState, rawMessage: string): QuoteEnginePlan {
+function metalCassettePlan(state: EngineeringLeadState): QuoteEnginePlan {
   const missing: MissingField[] = [];
 
   // Never in extractLeadState's field set at all — the customer's own words
   // do not distinguish these, and the two are priced on different rates
   // (getDefaultMetalCassetteRate), so this is always an explicit question,
   // not a default.
-  const typeMatch = /закрыт[а-я]*/iu.test(rawMessage) ? "closed" : /открыт[а-я]*/iu.test(rawMessage) ? "open" : null;
+  // Reads state.cassetteType, set by extractLeadState from the same words
+  // ("открытого"/"закрытого типа") checked directly against rawMessage here
+  // before — which meant the answer was forgotten the instant a later turn's
+  // message no longer repeated it. state persists it like every other field.
+  const typeMatch = state.cassetteType ?? null;
   if (typeMatch == null) {
     missing.push({ code: "cassetteType", question: "Кассеты открытого или закрытого типа?" });
   }
@@ -179,7 +142,7 @@ function metalCassettePlan(state: EngineeringLeadState, rawMessage: string): Quo
     missing.push({ code: "dimensions", question: "Укажите размер одной кассеты (ширина × высота), в мм." });
   }
 
-  const quantity = resolveQuantity(state, rawMessage);
+  const quantity = parsePieceCount(state.quantity);
   if (quantity == null) {
     missing.push({ code: "quantity", question: "Сколько кассет нужно, в штуках?" });
   }
@@ -200,18 +163,33 @@ function metalCassettePlan(state: EngineeringLeadState, rawMessage: string): Quo
 }
 
 /**
- * The single entry point §3/§7 describe: the customer never chooses a
- * calculator, this decides it from the same classification the free-text
- * extractor already produced, then tries to complete a ready-to-price input
- * for that one calculator only.
+ * The single entry point §3/§7 describe. `calculatorOverride` is the
+ * customer's own explicit choice — a click on one of exactly two buttons
+ * before anything is typed — rather than a guess drawn from their wording.
+ * When given, `classifyProduct`'s text-pattern classification (and its
+ * "ambiguous, please clarify" branch) is not consulted at all: there is
+ * nothing to classify and nothing to get wrong, because the choice was
+ * never inferred in the first place. Only when no override is given does
+ * this fall back to reading the calculator from the same classification
+ * the free-text extractor already produced.
  */
-export function planQuoteEngineCalculation(state: EngineeringLeadState, rawMessage: string): QuoteEnginePlan {
-  const classification = classifyProduct(state);
-  if (classification.status === "ambiguous") {
-    return { status: "ambiguous-product", question: classification.question };
+export function planQuoteEngineCalculation(
+  state: EngineeringLeadState,
+  rawMessage: string,
+  calculatorOverride?: CalculatorId,
+): QuoteEnginePlan {
+  let calculator: CalculatorId;
+  if (calculatorOverride) {
+    calculator = calculatorOverride;
+  } else {
+    const classification = classifyProduct(state);
+    if (classification.status === "ambiguous") {
+      return { status: "ambiguous-product", question: classification.question };
+    }
+    calculator = classification.calculator;
   }
 
-  return classification.calculator === "metal-cassettes"
-    ? metalCassettePlan(state, rawMessage)
+  return calculator === "metal-cassettes"
+    ? metalCassettePlan(state)
     : metalPartsPlan(state, rawMessage);
 }

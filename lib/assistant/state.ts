@@ -141,12 +141,41 @@ export function extractLeadState(
   if (dimensions) state.dimensions = dimensions.replace(/[xх*]/gi, "×");
 
   const quantity = match(normalized, /(\d[\d\s]*(?:шт(?:ук)?|единиц|комплект[\p{L}-]*|м²|м2|пог\.?\s*м))/iu);
-  if (quantity) state.quantity = quantity.replace(/\s+/g, " ");
+  if (quantity) {
+    state.quantity = quantity.replace(/\s+/g, " ");
+  } else {
+    // A bare count of the product itself — "100 кронштейнов" — is a far more
+    // common way to state a quantity than any of the explicit units above,
+    // and is normalised here into the same "<число> шт" shape an explicit
+    // unit match already produces, so every consumer of `state.quantity`
+    // (this assistant's own lead summary included) treats the two the same
+    // way, and the value survives into later turns like every other field.
+    // Digits the dimensions or thickness match just above already claimed
+    // are excluded — "500×400 оцинкованная" must not read its own trailing
+    // "400" as a headcount — and a short Cyrillic word of 3+ letters is
+    // required so "2 мм" is never mistaken for a count.
+    const claimedDigits = new Set(
+      [dimensions, thickness].flatMap((raw) => (raw ? [...raw.matchAll(/\d+/g)].map((digits) => Number(digits[0])) : [])),
+    );
+    for (const impliedMatch of normalized.matchAll(/(?:^|[^\d])(\d{1,5})\s+[а-яё]{3,}/giu)) {
+      const value = Number(impliedMatch[1]);
+      if (Number.isFinite(value) && value > 0 && !claimedDigits.has(value)) {
+        state.quantity = `${value} шт`;
+        break;
+      }
+    }
+  }
 
   if (/порошков[\p{L}-]* окраск|покрыт|покрас/iu.test(normalized)) state.coating = "Требуется покрытие";
   if (/без (?:покрытия|покраски)|покрытие не нужно/i.test(normalized)) state.coating = "Без покрытия";
   const ral = match(normalized, /\bral\s*[-:]?\s*(\d{4})\b/i);
   if (ral) state.ral = `RAL ${ral}`;
+
+  // Never in the required lead-capture sequence below — only the cassette
+  // calculator needs it — but tracked here, like every other field, so it
+  // survives across turns instead of being re-read from scratch each time.
+  if (/закрыт[а-я]*/iu.test(normalized)) state.cassetteType = "closed";
+  else if (/открыт[а-я]*/iu.test(normalized)) state.cassetteType = "open";
 
   if (/(?:черт[её]ж|эскиз|3d|модел\w*|dxf|dwg|step).{0,25}(?:есть|имеется|приложу|готов)/i.test(normalized)
     || /(?:есть|имеется|приложу|готов).{0,25}(?:черт[её]ж|эскиз|3d|модел\w*|dxf|dwg|step)/i.test(normalized)) {

@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { handleNaturalLanguageQuote } from "../lib/server/quote-engine/handle-request";
+import { handleNaturalLanguageQuote, type QuoteEngineTurnOptions } from "../lib/server/quote-engine/handle-request";
 import { emptyLeadState } from "../lib/assistant/state";
 import type { PrivateCalculationBasis } from "../lib/server/instant-quote/private-calculation-basis";
 import type { CommercialPricingPolicy } from "../lib/server/instant-quote/commercial-pricing";
-import type { QuoteEngineDependencies } from "../lib/server/quote-engine/execute";
 
 const fixtureSource = { id: "fixture", label: "fixture", confirmedAt: "2099-01-01", note: "fixture" };
 function fixtureBasis(): PrivateCalculationBasis {
@@ -18,16 +17,18 @@ function fixtureBasis(): PrivateCalculationBasis {
   };
 }
 const fixturePolicy: CommercialPricingPolicy = { metalMultiplier: 1.1, drawingPercentOfWorks: 5, finalPercent: 15, fixedAddRubEach: 0, fixedAddEnabled: false, roundStepRub: 1 };
-const fixtureDeps: Partial<QuoteEngineDependencies> = {
-  loadPrivateCalculationBasis: async () => fixtureBasis(),
-  loadCommercialPricingPolicy: () => fixturePolicy,
-  loadCommercialRulesConfig: () => ({ minMarginPct: 0, marketAnchorWeightPct: 0, maxMarketAdjustmentPct: 0, minConfidenceForAnchoring: "high" }),
+const fixtureOptions: QuoteEngineTurnOptions = {
+  dependencies: {
+    loadPrivateCalculationBasis: async () => fixtureBasis(),
+    loadCommercialPricingPolicy: () => fixturePolicy,
+    loadCommercialRulesConfig: () => ({ minMarginPct: 0, marketAnchorWeightPct: 0, maxMarketAdjustmentPct: 0, minConfidenceForAnchoring: "high" }),
+  },
 };
 
 test("a complete request prices in a single turn", async () => {
   const result = await handleNaturalLanguageQuote(
     "Нужно изготовить 100 кронштейнов для кондиционеров, 500×400, оцинкованная сталь 2 мм",
-    emptyLeadState(), null, fixtureDeps,
+    emptyLeadState(), fixtureOptions,
   );
   assert.equal(result.kind, "priced");
   if (result.kind !== "priced") return;
@@ -35,14 +36,14 @@ test("a complete request prices in a single turn", async () => {
 });
 
 test("an incomplete request asks one question, then prices once the answer is given", async () => {
-  const first = await handleNaturalLanguageQuote("Нужен кронштейн 500×400 оцинкованная сталь 2 мм", emptyLeadState(), null, fixtureDeps);
+  const first = await handleNaturalLanguageQuote("Нужен кронштейн 500×400 оцинкованная сталь 2 мм", emptyLeadState(), fixtureOptions);
   assert.equal(first.kind, "question");
   if (first.kind !== "question") return;
   assert.match(first.question, /количество|штук/i);
 
   // The customer answers just the missing piece, in the next turn, carrying
   // the running state forward — exactly how a real chat continues.
-  const second = await handleNaturalLanguageQuote("100 штук", first.state, null, fixtureDeps);
+  const second = await handleNaturalLanguageQuote("100 штук", first.state, fixtureOptions);
   assert.equal(second.kind, "priced");
 });
 
@@ -51,7 +52,7 @@ test("colloquial phrasing without technical terms still reaches a price", async 
   // would actually type.
   const result = await handleNaturalLanguageQuote(
     "хочу заказать 50 кронштейнов, оцинковка 2 мм, размер 500 на 400",
-    emptyLeadState(), null, fixtureDeps,
+    emptyLeadState(), fixtureOptions,
   );
   // "500 на 400" is not the "×"-separated form extractLeadState recognises,
   // so dimensions genuinely are not read from this phrasing — this is the
@@ -65,23 +66,23 @@ test("colloquial phrasing without technical terms still reaches a price", async 
 test("a colloquial request using the × form the extractor does recognise reaches a price", async () => {
   const result = await handleNaturalLanguageQuote(
     "хочу заказать 50 кронштейнов, оцинковка 2 мм, размер 500×400",
-    emptyLeadState(), null, fixtureDeps,
+    emptyLeadState(), fixtureOptions,
   );
   assert.equal(result.kind, "priced");
 });
 
 test("correcting a stated material in a follow-up turn overrides the first answer, not just adds to it", async () => {
-  const first = await handleNaturalLanguageQuote("Нужен кронштейн 500×400 нержавеющая сталь 2 мм, 10 шт", emptyLeadState(), null, fixtureDeps);
+  const first = await handleNaturalLanguageQuote("Нужен кронштейн 500×400 нержавеющая сталь 2 мм, 10 шт", emptyLeadState(), fixtureOptions);
   // Priced with "inox" first — but the fixture rate book only has a "zinc"
   // rate, so this actually comes back blocked; the point here is state.material.
   assert.equal(first.state.material, "Нержавеющая сталь");
 
-  const corrected = await handleNaturalLanguageQuote("на самом деле нужна оцинкованная сталь", first.state, null, fixtureDeps);
+  const corrected = await handleNaturalLanguageQuote("на самом деле нужна оцинкованная сталь", first.state, fixtureOptions);
   assert.equal(corrected.state.material, "Оцинкованная сталь");
 });
 
 test("a bent part is never silently flattened into a price", async () => {
-  const result = await handleNaturalLanguageQuote("Нужен гнутый кронштейн 500×400 оцинкованная сталь 2 мм, 50 шт", emptyLeadState(), null, fixtureDeps);
+  const result = await handleNaturalLanguageQuote("Нужен гнутый кронштейн 500×400 оцинкованная сталь 2 мм, 50 шт", emptyLeadState(), fixtureOptions);
   assert.equal(result.kind, "blocked");
   if (result.kind !== "blocked") return;
   assert.equal(result.record, null);
@@ -89,7 +90,7 @@ test("a bent part is never silently flattened into a price", async () => {
 });
 
 test("an ambiguous opening message asks what the product even is, before anything else", async () => {
-  const result = await handleNaturalLanguageQuote("Здравствуйте, сколько стоит?", emptyLeadState(), null, fixtureDeps);
+  const result = await handleNaturalLanguageQuote("Здравствуйте, сколько стоит?", emptyLeadState(), fixtureOptions);
   assert.equal(result.kind, "question");
   if (result.kind !== "question") return;
   assert.match(result.question, /изделие|деталь|кассет/i);
@@ -98,9 +99,49 @@ test("an ambiguous opening message asks what the product even is, before anythin
 test("a request the rate book cannot price yet is blocked with a reason, not a guessed price", async () => {
   const result = await handleNaturalLanguageQuote(
     "Нужен кронштейн 500×400 нержавеющая сталь 2 мм, 10 шт", // fixture rate book only has a "zinc" laser rate
-    emptyLeadState(), null, fixtureDeps,
+    emptyLeadState(), fixtureOptions,
   );
   assert.equal(result.kind, "blocked");
   if (result.kind !== "blocked") return;
   assert.match(result.clientMessage, /недоступен/);
+});
+
+test("a calculatorOverride turns the same ambiguous opening message into a question about specs, not product type", async () => {
+  // Same message as the "asks what the product even is" test above, but now
+  // the customer has already clicked a button — nothing about classification
+  // should be reachable any more.
+  const result = await handleNaturalLanguageQuote(
+    "Здравствуйте, сколько стоит?",
+    emptyLeadState(),
+    { ...fixtureOptions, calculatorOverride: "metal-parts" },
+  );
+  assert.equal(result.kind, "question");
+  if (result.kind !== "question") return;
+  assert.doesNotMatch(result.question, /изделие|деталь|кассет/i);
+});
+
+test("a calculatorOverride is honoured across every turn of the same conversation", async () => {
+  const first = await handleNaturalLanguageQuote(
+    "600×1200 открытого типа",
+    emptyLeadState(),
+    { ...fixtureOptions, calculatorOverride: "metal-cassettes" },
+  );
+  assert.equal(first.kind, "question"); // still needs thickness and quantity
+
+  const second = await handleNaturalLanguageQuote(
+    "оцинковка 1,2 мм, 300 шт",
+    first.state,
+    { ...fixtureOptions, calculatorOverride: "metal-cassettes" },
+  );
+  assert.equal(second.kind, "priced");
+  if (second.kind !== "priced") return;
+  assert.equal(second.record.calculator, "metal-cassettes");
+});
+
+test("without an override, behaviour is unchanged from before this option existed", async () => {
+  const result = await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов для кондиционеров, 500×400, оцинкованная сталь 2 мм",
+    emptyLeadState(), fixtureOptions,
+  );
+  assert.equal(result.kind, "priced");
 });

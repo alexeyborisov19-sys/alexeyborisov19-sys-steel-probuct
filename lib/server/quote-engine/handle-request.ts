@@ -2,6 +2,7 @@ import "server-only";
 
 import { emptyLeadState, extractLeadState } from "@/lib/assistant/state";
 import type { EngineeringLeadState } from "@/lib/assistant/types";
+import type { CalculatorId } from "@/lib/quote-engine/classification";
 import { planQuoteEngineCalculation } from "@/lib/quote-engine/plan";
 import { executeQuoteEngine, type MarketInput, type QuoteEngineDependencies, type QuoteEngineInternalRecord } from "@/lib/server/quote-engine/execute";
 
@@ -20,14 +21,28 @@ export type QuoteEngineTurnResult =
   | { kind: "priced"; clientMessage: string; record: QuoteEngineInternalRecord; state: EngineeringLeadState }
   | { kind: "blocked"; clientMessage: string; record: QuoteEngineInternalRecord | null; state: EngineeringLeadState };
 
+export type QuoteEngineTurnOptions = {
+  /**
+   * The customer's own explicit pick from the two buttons shown before they
+   * type anything — never inferred, so §7's "ambiguous, please clarify"
+   * branch of `planQuoteEngineCalculation` is never reached while this is
+   * set. Once a conversation has started with an override, the caller keeps
+   * passing the same one on every turn — this function does not remember
+   * it between calls any more than it remembers `state`.
+   */
+  calculatorOverride?: CalculatorId;
+  market?: MarketInput | null;
+  dependencies?: Partial<QuoteEngineDependencies>;
+};
+
 export async function handleNaturalLanguageQuote(
   message: string,
   priorState: EngineeringLeadState = emptyLeadState(),
-  market: MarketInput | null = null,
-  dependencies: Partial<QuoteEngineDependencies> = {},
+  options: QuoteEngineTurnOptions = {},
 ): Promise<QuoteEngineTurnResult> {
+  const { calculatorOverride, market = null, dependencies = {} } = options;
   const state = extractLeadState(priorState, message);
-  const plan = planQuoteEngineCalculation(state, message);
+  const plan = planQuoteEngineCalculation(state, message, calculatorOverride);
 
   if (plan.status === "ambiguous-product") {
     return { kind: "question", question: plan.question, state };

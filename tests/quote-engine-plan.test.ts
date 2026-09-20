@@ -119,3 +119,35 @@ test("the implied piece-count fallback does not mistake a thickness or dimension
   // the (only) field still missing here.
   assert.deepEqual(plan.missing.map((field) => field.code), ["quantity"]);
 });
+
+test("an explicit calculator override skips text classification entirely — a button click, not a guess", () => {
+  // The word "кассета" nowhere appears, and neither does any metal-parts
+  // keyword — normally this would be ambiguous-product. With an explicit
+  // override there is nothing left to classify.
+  const message = "оцинкованная сталь 2 мм, 500×400, 10 шт";
+  const state = extractLeadState(emptyLeadState(), message);
+  const plan = planQuoteEngineCalculation(state, message, "metal-parts");
+  assert.equal(plan.status, "ready");
+  if (plan.status !== "ready") return;
+  assert.equal(plan.calculator, "metal-parts");
+});
+
+test("an override to metal-cassettes is honoured even for a message with no cassette wording at all", () => {
+  const message = "открытого типа 600×1200 оцинковка 1,2 мм, 300 шт";
+  const state = extractLeadState(emptyLeadState(), message);
+  const plan = planQuoteEngineCalculation(state, message, "metal-cassettes");
+  assert.equal(plan.status, "ready");
+  if (plan.status !== "ready") return;
+  assert.equal(plan.calculator, "metal-cassettes");
+});
+
+test("an override never produces the ambiguous-product status, whatever the text says", () => {
+  const state = extractLeadState(emptyLeadState(), "");
+  const plan = planQuoteEngineCalculation(state, "", "metal-parts");
+  assert.notEqual(plan.status, "ambiguous-product");
+});
+
+test("with no override, behaviour is unchanged: an ambiguous message still asks", () => {
+  const plan = planFor("Здравствуйте, подскажите по срокам");
+  assert.equal(plan.status, "ambiguous-product");
+});
