@@ -145,3 +145,47 @@ test("without an override, behaviour is unchanged from before this option existe
   );
   assert.equal(result.kind, "priced");
 });
+
+test("the model is only consulted once the deterministic extractor has run out of road", async () => {
+  let calls = 0;
+  await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов для кондиционеров, 500×400, оцинкованная сталь 2 мм",
+    emptyLeadState(),
+    { ...fixtureOptions, aiProposalCaller: async () => { calls += 1; return null; } },
+  );
+  assert.equal(calls, 0, "a request the regex extractor fully understood must not cost a model call");
+});
+
+test("wording the regex extractor cannot read is completed by the model and prices end to end", async () => {
+  const spelledOut = "Нужен кронштейн из оцинковки, лист в два миллиметра, шестьсот на четыреста, полста штук";
+
+  const withoutAi = await handleNaturalLanguageQuote(spelledOut, emptyLeadState(), { ...fixtureOptions, aiProposalCaller: null });
+  assert.equal(withoutAi.kind, "question", "on its own the deterministic path still has to ask");
+
+  const withAi = await handleNaturalLanguageQuote(spelledOut, emptyLeadState(), {
+    ...fixtureOptions,
+    aiProposalCaller: async () => JSON.stringify({
+      material: { value: "Оцинкованная сталь", quote: "из оцинковки" },
+      thickness: { value: "2 мм", quote: "лист в два миллиметра" },
+      dimensions: { value: "600×400", quote: "шестьсот на четыреста" },
+      quantity: { value: "50 шт", quote: "полста штук" },
+    }),
+  });
+  assert.equal(withAi.kind, "priced", "with the assist the same sentence reaches a price");
+  if (withAi.kind !== "priced") return;
+  assert.equal(withAi.record.quantity, 50);
+  assert.match(withAi.clientMessage, /Предварительная стоимость, с НДС/);
+});
+
+test("a model that invents the missing parameters leaves the turn asking, not pricing", async () => {
+  const partial = "Нужен кронштейн из оцинковки, лист в два миллиметра";
+  const result = await handleNaturalLanguageQuote(partial, emptyLeadState(), {
+    ...fixtureOptions,
+    aiProposalCaller: async () => JSON.stringify({
+      thickness: { value: "2 мм", quote: "лист в два миллиметра" },
+      dimensions: { value: "600×400", quote: "шестьсот на четыреста" },
+      quantity: { value: "50 шт", quote: "полста штук" },
+    }),
+  });
+  assert.equal(result.kind, "question", "the sizes and count were never stated — the customer still gets asked");
+});

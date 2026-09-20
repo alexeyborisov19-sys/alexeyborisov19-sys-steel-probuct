@@ -5,6 +5,7 @@ import { emptyLeadState, extractLeadState } from "@/lib/assistant/state";
 import type { EngineeringLeadState } from "@/lib/assistant/types";
 import type { CalculatorId } from "@/lib/quote-engine/classification";
 import { planQuoteEngineCalculation } from "@/lib/quote-engine/plan";
+import { extractWithAi, proposeWithYandex, type AiProposalCaller } from "@/lib/server/quote-engine/ai-extraction";
 import { executeQuoteEngine, type MarketInput, type QuoteEngineDependencies, type QuoteEngineInternalRecord } from "@/lib/server/quote-engine/execute";
 
 /**
@@ -34,6 +35,13 @@ export type QuoteEngineTurnOptions = {
   calculatorOverride?: CalculatorId;
   market?: MarketInput | null;
   dependencies?: Partial<QuoteEngineDependencies>;
+  /**
+   * The model used to read parameters out of unanticipated wording. Defaults
+   * to the YandexGPT caller, which is itself off unless the operator has
+   * configured it, so leaving this unset never introduces a network call by
+   * surprise. Pass `null` to disable the assist outright.
+   */
+  aiProposalCaller?: AiProposalCaller | null;
 };
 
 export async function handleNaturalLanguageQuote(
@@ -41,9 +49,22 @@ export async function handleNaturalLanguageQuote(
   priorState: EngineeringLeadState = emptyLeadState(),
   options: QuoteEngineTurnOptions = {},
 ): Promise<QuoteEngineTurnResult> {
-  const { calculatorOverride, market = null, dependencies = {} } = options;
-  const state = extractLeadState(priorState, message);
-  const plan = planQuoteEngineCalculation(state, message, calculatorOverride);
+  const { calculatorOverride, market = null, dependencies = {}, aiProposalCaller = proposeWithYandex } = options;
+  let state = extractLeadState(priorState, message);
+  let plan = planQuoteEngineCalculation(state, message, calculatorOverride);
+
+  // The model is asked only when the deterministic extractor has actually run
+  // out of road — that is the one case where it can add something (§6: wording
+  // nobody anticipated). Whatever it proposes still has to clear the grounding
+  // and parsing gate in `mergeAiProposal`, and a turn only gets re-planned when
+  // something survived it.
+  if (plan.status === "missing-fields" && aiProposalCaller) {
+    const assisted = await extractWithAi(state, message, aiProposalCaller);
+    if (assisted.accepted.length > 0) {
+      state = assisted.state;
+      plan = planQuoteEngineCalculation(state, message, calculatorOverride);
+    }
+  }
 
   if (plan.status === "ambiguous-product") {
     return { kind: "question", question: plan.question, state };
