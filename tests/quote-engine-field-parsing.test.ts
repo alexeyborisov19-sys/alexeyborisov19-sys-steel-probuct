@@ -74,3 +74,13 @@ test("material label maps only where the customer's words are unambiguous", () =
   assert.equal(materialLabelToId("Сталь"), null);
   assert.equal(materialLabelToId(undefined), null);
 });
+
+test("informal spoken material names are read as the same material, not left unrecognised", () => {
+  const zincCasual = stateFor("нужен кронштейн, оцинковка 2 мм");
+  assert.equal(zincCasual.material, "Оцинкованная сталь");
+  assert.equal(materialLabelToId(zincCasual.material), "zinc");
+
+  const inoxCasual = stateFor("нужен кронштейн, нержавейка 2 мм");
+  assert.equal(inoxCasual.material, "Нержавеющая сталь");
+  assert.equal(materialLabelToId(inoxCasual.material), "inox");
+});

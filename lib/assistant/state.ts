@@ -114,9 +114,13 @@ export function extractLeadState(
   const purpose = match(normalized, /(?:для|назначение[:\s]+)\s*([^,.!?]{4,100})/i);
   if (purpose) state.purpose = purpose;
 
+  // Each pattern also covers the short, spoken form a customer types instead
+  // of the full technical name — "оцинковка" and "нержавейка" — the same
+  // material, not a second one; §6 of the brief names this exact case
+  // ("оцинковка 1,2" / "оцинкованная сталь 1.2 мм" is one parameter).
   const materialPatterns: Array<[RegExp, string]> = [
-    [/нержавеющ[\p{L}-]*/u, "Нержавеющая сталь"],
-    [/оцинкованн[\p{L}-]*/u, "Оцинкованная сталь"],
+    [/нержавеющ[\p{L}-]*|нержавейк[\p{L}-]*/u, "Нержавеющая сталь"],
+    [/оцинкованн[\p{L}-]*|оцинковк[\p{L}-]*/u, "Оцинкованная сталь"],
     [/алюмини[\p{L}-]*/u, "Алюминий"],
     [/черн[\p{L}-]* стал[\p{L}-]*|сталь\s*(?:ст|09г2с|08пс|08кп)\S*/iu, "Сталь"],
   ];
