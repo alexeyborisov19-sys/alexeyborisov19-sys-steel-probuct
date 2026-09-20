@@ -86,7 +86,15 @@ export function extractLeadState(
   }
 
   const productPatterns: Array<[RegExp, string]> = [
-    [/(металлокассет|фасадн[\p{L}-]* кассет)/u, "Металлокассеты"],
+    // The plain word "кассета" (no "металло-"/"фасадн-" prefix) is how a
+    // customer actually asks for one out loud — the calculator page and the
+    // product catalogue both just say "кассеты" — and it used to fall through
+    // this whole list to an unrelated pattern below (coating, for instance),
+    // silently mislabelling the one product this business has a second,
+    // differently-priced calculator for. Bare substring, like every other
+    // pattern in this list: \b is an ASCII notion in JS regex and never fires
+    // next to a Cyrillic letter, and no other Russian word contains "кассет".
+    [/(металлокассет|фасадн[\p{L}-]* кассет|кассет)/u, "Металлокассеты"],
     [/(корзин[\p{L}-]* (?:для )?кондиционер)/u, "Корзины для кондиционеров"],
     [/(экран[\p{L}-]* (?:для )?кондиционер)/u, "Экраны для кондиционеров"],
     [/(корпус|шкаф|кожух)/, "Промышленный корпус или шкаф"],
