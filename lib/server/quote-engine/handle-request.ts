@@ -4,8 +4,9 @@
 import { emptyLeadState, extractLeadState } from "@/lib/assistant/state";
 import type { EngineeringLeadState } from "@/lib/assistant/types";
 import type { CalculatorId } from "@/lib/quote-engine/classification";
-import { planQuoteEngineCalculation } from "@/lib/quote-engine/plan";
+import { planQuoteEngineCalculation, type MetalCassetteReadyInput, type MetalPartsReadyInput } from "@/lib/quote-engine/plan";
 import { extractWithAi, proposeWithYandex, type AiProposalCaller } from "@/lib/server/quote-engine/ai-extraction";
+import { assembleMarketInput, marketTargetFromPlan, type MarketOfferProvider } from "@/lib/quote-engine/market/assemble";
 import { executeQuoteEngine, type MarketInput, type QuoteEngineDependencies, type QuoteEngineInternalRecord } from "@/lib/server/quote-engine/execute";
 
 /**
@@ -42,14 +43,38 @@ export type QuoteEngineTurnOptions = {
    * surprise. Pass `null` to disable the assist outright.
    */
   aiProposalCaller?: AiProposalCaller | null;
+  /**
+   * Where market offers are found, when the owner has configured a source.
+   * Unset means no offers, which is exactly today's behaviour: no market
+   * data, no anchoring, no effect on the price. A `market` passed explicitly
+   * above still wins, so a caller holding its own data does not need one.
+   */
+  marketOfferProvider?: MarketOfferProvider | null;
 };
+
+async function collectMarket(
+  plan:
+    | { calculator: "metal-parts"; input: MetalPartsReadyInput }
+    | { calculator: "metal-cassettes"; input: MetalCassetteReadyInput },
+  provider: MarketOfferProvider | null | undefined,
+): Promise<MarketInput | null> {
+  if (!provider) return null;
+  const target = marketTargetFromPlan(plan);
+  try {
+    return assembleMarketInput(await provider(target), target);
+  } catch {
+    // Market data is informational: a source being down must never cost the
+    // customer a quote the calculation can produce without it.
+    return null;
+  }
+}
 
 export async function handleNaturalLanguageQuote(
   message: string,
   priorState: EngineeringLeadState = emptyLeadState(),
   options: QuoteEngineTurnOptions = {},
 ): Promise<QuoteEngineTurnResult> {
-  const { calculatorOverride, market = null, dependencies = {}, aiProposalCaller = proposeWithYandex } = options;
+  const { calculatorOverride, market = null, dependencies = {}, aiProposalCaller = proposeWithYandex, marketOfferProvider = null } = options;
   let state = extractLeadState(priorState, message);
   let plan = planQuoteEngineCalculation(state, message, calculatorOverride);
 
@@ -81,7 +106,15 @@ export async function handleNaturalLanguageQuote(
     return { kind: "question", question: plan.missing[0].question, state };
   }
 
-  const result = await executeQuoteEngine(plan, market, dependencies);
+  // Only now is there something concrete enough to look for on the market:
+  // the plan is agreed, so the target's material, thickness and unit area are
+  // settled and every found offer can be screened against them (§14) instead
+  // of against a half-known request. A provider that fails or finds nothing
+  // usable leaves `market` null — the same state the pricing rules and the
+  // verification layer already treat as "no market data".
+  const collectedMarket = await collectMarket(plan, marketOfferProvider);
+
+  const result = await executeQuoteEngine(plan, market ?? collectedMarket, dependencies);
   return result.status === "priced"
     ? { kind: "priced", clientMessage: result.clientMessage, record: result.record, state }
     : { kind: "blocked", clientMessage: result.clientMessage, record: result.record, state };

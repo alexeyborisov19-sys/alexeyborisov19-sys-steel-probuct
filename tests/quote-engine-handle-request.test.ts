@@ -189,3 +189,78 @@ test("a model that invents the missing parameters leaves the turn asking, not pr
   });
   assert.equal(result.kind, "question", "the sizes and count were never stated — the customer still gets asked");
 });
+
+test("without a configured source there is no market data — exactly as before this option existed", async () => {
+  const result = await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов, 500×400, оцинкованная сталь 2 мм",
+    emptyLeadState(), fixtureOptions,
+  );
+  assert.equal(result.kind, "priced");
+  if (result.kind !== "priced") return;
+  assert.equal(result.record.market, null);
+});
+
+test("a configured source reaches the calculation and lands in the internal record", async () => {
+  const captured: Array<{ materialId: string | null; thicknessMm: number | null }> = [];
+  const result = await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов, 500×400, оцинкованная сталь 2 мм",
+    emptyLeadState(),
+    {
+      ...fixtureOptions,
+      marketOfferProvider: async (target) => {
+        captured.push({ materialId: target.materialId, thicknessMm: target.thicknessMm });
+        return [2900, 3000, 3100].map((price, index) => ({
+          id: `offer-${index}`, sourceName: "Пример", sourceUrl: null,
+          capturedAt: new Date().toISOString(), offerDate: null,
+          productDescription: "Деталь из листа", dimensions: { widthMm: 500, heightMm: 400 },
+          materialId: "zinc" as const, thicknessMm: 2, coating: null, quantity: null,
+          price, priceUnit: "per-m2" as const, pricingTier: "wholesale" as const,
+          includesDelivery: false, includesInstallation: false, includesFasteners: false,
+        }));
+      },
+    },
+  );
+
+  assert.equal(result.kind, "priced");
+  if (result.kind !== "priced") return;
+  // The provider is asked about the agreed plan, not a half-known request.
+  assert.deepEqual(captured, [{ materialId: "zinc", thicknessMm: 2 }]);
+  assert.ok(result.record.market, "market data must reach the internal record");
+  assert.equal(result.record.market!.summary.medianRubPerM2, 3000);
+});
+
+test("a market source that throws never costs the customer a price", async () => {
+  const result = await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов, 500×400, оцинкованная сталь 2 мм",
+    emptyLeadState(),
+    { ...fixtureOptions, marketOfferProvider: async () => { throw new Error("source is down"); } },
+  );
+  assert.equal(result.kind, "priced");
+  if (result.kind !== "priced") return;
+  assert.equal(result.record.market, null);
+});
+
+test("market data is informational by default: it does not move the price", async () => {
+  const offers = [9000, 9500, 10_000].map((price, index) => ({
+    id: `rich-${index}`, sourceName: "Пример", sourceUrl: null,
+    capturedAt: new Date().toISOString(), offerDate: null,
+    productDescription: "Деталь из листа", dimensions: { widthMm: 500, heightMm: 400 },
+    materialId: "zinc" as const, thicknessMm: 2, coating: null, quantity: null,
+    price, priceUnit: "per-m2" as const, pricingTier: "wholesale" as const,
+    includesDelivery: false, includesInstallation: false, includesFasteners: false,
+  }));
+
+  const withoutMarket = await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов, 500×400, оцинкованная сталь 2 мм", emptyLeadState(), fixtureOptions);
+  const withMarket = await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов, 500×400, оцинкованная сталь 2 мм", emptyLeadState(),
+    { ...fixtureOptions, marketOfferProvider: async () => offers });
+
+  assert.equal(withoutMarket.kind, "priced");
+  assert.equal(withMarket.kind, "priced");
+  if (withoutMarket.kind !== "priced" || withMarket.kind !== "priced") return;
+  // Anchoring is off by default (§20: a price never changes silently), so a
+  // market far above ours is recorded as evidence and nothing more.
+  assert.equal(withMarket.record.finalPriceRubBatch, withoutMarket.record.finalPriceRubBatch);
+  assert.ok(withMarket.record.market);
+});
