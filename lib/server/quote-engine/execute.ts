@@ -49,8 +49,8 @@ const defaultDependencies: QuoteEngineDependencies = {
   // unresolvable package into every test of this file — which always injects
   // a fixture in its place and never reaches this default at all.
   loadPrivateCalculationBasis: async () => {
-    const module = await import("@/lib/server/instant-quote/private-calculation-basis");
-    return module.loadPrivateCalculationBasis();
+    const basis = await import("@/lib/server/instant-quote/private-calculation-basis");
+    return basis.loadPrivateCalculationBasis();
   },
   loadCommercialPricingPolicy,
   loadCommercialRulesConfig,
