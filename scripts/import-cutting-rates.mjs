@@ -111,11 +111,21 @@ export function cellMap(sheetXml, strings) {
   return cells;
 }
 
+/** The sheet's own last-modified date — a real, checkable provenance, not an invented one. */
+function documentModifiedAt(entries) {
+  const core = entries.get("docProps/core.xml")?.toString("utf8") ?? "";
+  const modified = /<dcterms:modified[^>]*>([^<]+)<\/dcterms:modified>/.exec(core)?.[1];
+  if (!modified || !Number.isFinite(Date.parse(modified))) {
+    fail("В файле нет даты изменения (docProps/core.xml) — без неё нечем подтвердить, на когда действуют ставки.");
+  }
+  return modified;
+}
+
 const MATERIAL_BY_SHEET_NAME = new Map([
-  ["Дюраль/Алюминий", "alu"],
-  ["Медь", "copper"],
-  ["Нержавеющая сталь", "inox"],
-  ["Латунь", "brass"],
+  ["Дюраль/Алюминий", ["alu"]],
+  ["Медь", ["copper"]],
+  ["Нержавеющая сталь", ["inox"]],
+  ["Латунь", ["brass"]],
 ]);
 
 function number(raw) {
@@ -130,18 +140,28 @@ function main() {
 
   const steelIndex = rest.indexOf("--steel");
   const steel = steelIndex >= 0 ? rest[steelIndex + 1] : null;
-  if (steel !== "hot" && steel !== "cold") {
-    fail("Укажите --steel hot или --steel cold: в листе одна таблица «Конструкционная сталь», а сайт считает г/к и х/к раздельно.");
+  if (steel !== "hot" && steel !== "cold" && steel !== "both") {
+    fail("Укажите --steel hot, cold или both: в листе одна таблица «Конструкционная сталь», а сайт считает г/к и х/к раздельно.");
   }
+  const noteIndex = rest.indexOf("--note");
   const sheetIndex = rest.indexOf("--sheet");
   const sheetName = sheetIndex >= 0 ? rest[sheetIndex + 1] : "Стоимость резки";
 
   const entries = readZipEntries(readFileSync(file));
   const strings = sharedStrings(entries);
+  const source = {
+    id: "production-cutting-sheet",
+    label: `Производственный лист «${sheetName}»`,
+    confirmedAt: documentModifiedAt(entries),
+    note: noteIndex >= 0 ? rest[noteIndex + 1] : `Импортировано из ${file.split("/").pop()}`,
+  };
   const cells = cellMap(worksheetByName(entries, sheetName), strings);
 
   const materials = new Map(MATERIAL_BY_SHEET_NAME);
-  materials.set("Конструкционная сталь", steel);
+  // "both" emits the same table under both ids: laser cutting is priced by
+  // material family and thickness, and the sheet keeps one table for
+  // structural steel without splitting it by rolling.
+  materials.set("Конструкционная сталь", steel === "both" ? ["hot", "cold"] : [steel]);
 
   // Each material's block is a label in column I, then a header row, then the
   // thickness rows — read until the thickness column stops being a number.
@@ -149,8 +169,8 @@ function main() {
   const skipped = [];
   for (let row = 1; row <= 400; row += 1) {
     const label = String(cells[`I${row}`] ?? "").trim();
-    const materialId = materials.get(label);
-    if (!materialId) continue;
+    const materialIds = materials.get(label);
+    if (!materialIds) continue;
 
     for (let cursor = row + 2; cursor <= 400; cursor += 1) {
       const thicknessMm = number(cells[`I${cursor}`]);
@@ -165,13 +185,14 @@ function main() {
         skipped.push(`${label} ${thicknessMm} мм — нет базовой ставки`);
         continue;
       }
-      rows.push({
+      for (const materialId of materialIds) rows.push({
         materialId,
         thicknessMm,
         rateRub,
         ...(from100mRubPerM == null ? {} : { from100mRubPerM }),
         ...(from500mRubPerM == null ? {} : { from500mRubPerM }),
         ...(pierceRubEach == null ? {} : { pierceRubEach }),
+        source,
       });
     }
   }
@@ -187,9 +208,19 @@ function main() {
 
   for (const note of skipped) process.stderr.write(`пропущено: ${note}\n`);
   process.stderr.write(`Готово: ${rows.length} ставок, материалы: ${[...new Set(rows.map((r) => r.materialId))].join(", ")}\n`);
-  process.stderr.write("Источник каждой ставки (кто и когда утвердил) проставьте сами — скрипт его не выдумывает.\n");
+  process.stderr.write(`Источник ставок: ${source.label}, дата изменения файла ${source.confirmedAt.slice(0, 10)}.\n`);
+  process.stderr.write("Гибка, сварка и покраска не импортируются: в листе они посчитаны по-разному в разных строках.\n");
 
-  process.stdout.write(`${JSON.stringify({ laserRubPerM: rows }, null, 2)}\n`);
+  // Only the cutting table is emitted. Bending, welding and painting are left
+  // null on purpose: the sheet prices bending two different ways in its own
+  // rows (mass × 5 on some, a flat 60 per bend on others), and picking one
+  // would be choosing a number rather than reading it.
+  const basis = {
+    version: `production-cutting-sheet ${source.confirmedAt.slice(0, 10)}`,
+    rateBook: { laserRubPerM: rows, bendRubEach: null, weldRubPerM: null, powderRubPerM2: null },
+    materialPriceSnapshots: [],
+  };
+  process.stdout.write(`${JSON.stringify(rest.includes("--basis") ? basis : { laserRubPerM: rows }, null, 2)}\n`);
 }
 
 // Only when run directly: importing this file (the parsing guard in
