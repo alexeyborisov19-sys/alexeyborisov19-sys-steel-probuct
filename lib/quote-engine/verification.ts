@@ -1,5 +1,6 @@
 import type { PartGeometrySummary } from "@/lib/instant-quote/domain";
 import type { FactualCalculationResult } from "@/lib/instant-quote/factual-calculation";
+import type { MarketSummary } from "@/lib/quote-engine/market/types";
 
 /**
  * The AI-control layer the brief calls for (§8, §9, §11, §17, §20) is
@@ -154,6 +155,57 @@ export function verifyCostResult(
         severity: "blocking",
         message: "В расчёте есть стоимость металла, но масса детали не определена или равна нулю — "
           + "результат внутренне противоречив.",
+      });
+    }
+  }
+
+  return report(findings);
+}
+
+/**
+ * A price so far outside the comparable market range that it needs a named
+ * cause before it reaches the customer (§20). This never picks one cause —
+ * that would be a guess this module has no way to confirm — it names the
+ * plausible candidates and lets whoever reads the finding narrow it down.
+ */
+const MARKET_DEVIATION_WARNING_PCT = 30;
+
+/**
+ * §17/§20: the last check before a price is quoted. A price below the
+ * configured minimum margin is blocking — that is a business-rule violation,
+ * not a judgement call. A price far outside the market band is a warning,
+ * never a silent correction (§20: "не менять цену молча") — this only names
+ * the deviation and the candidate causes the brief itself lists.
+ */
+export function verifyCommercialPrice(
+  finalCommercialPriceRub: number,
+  costRubBatch: number,
+  minMarginPct: number,
+  market: MarketSummary | null,
+): VerificationReport {
+  const findings: VerificationFinding[] = [];
+
+  const requiredMinimumRub = costRubBatch * (1 + minMarginPct / 100);
+  if (finalCommercialPriceRub < requiredMinimumRub - 0.01) {
+    findings.push({
+      code: "below-minimum-margin",
+      severity: "blocking",
+      message: `Коммерческая цена (${finalCommercialPriceRub.toFixed(2)} ₽) ниже себестоимости с минимальной `
+        + `наценкой ${minMarginPct}% (требуется не менее ${requiredMinimumRub.toFixed(2)} ₽).`,
+    });
+  }
+
+  if (market && market.confidence !== "low" && market.minRubPerM2 != null && market.maxRubPerM2 != null) {
+    const belowMarket = finalCommercialPriceRub < market.minRubPerM2 * (1 - MARKET_DEVIATION_WARNING_PCT / 100);
+    const aboveMarket = finalCommercialPriceRub > market.maxRubPerM2 * (1 + MARKET_DEVIATION_WARNING_PCT / 100);
+    if (belowMarket || aboveMarket) {
+      findings.push({
+        code: aboveMarket ? "price-far-above-market" : "price-far-below-market",
+        severity: "warning",
+        message: `Цена заметно ${aboveMarket ? "выше" : "ниже"} диапазона сопоставимых предложений `
+          + `(${market.minRubPerM2.toFixed(0)}–${market.maxRubPerM2.toFixed(0)} ₽/м², уверенность «${market.confidence}»). `
+          + "Возможные причины: высокая себестоимость материала, высокая трудоёмкость, малая партия, "
+          + "нестандартное изделие, недостаточно рыночных данных либо ошибка расчёта — требуется проверка технологом.",
       });
     }
   }
