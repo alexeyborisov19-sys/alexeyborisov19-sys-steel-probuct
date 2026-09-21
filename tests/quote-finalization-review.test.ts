@@ -40,9 +40,17 @@ function review(change?: { stage: string; status: string; codes: string[] }): st
   return JSON.stringify({ stages: QUOTE_REVIEW_STAGES.map((stage) => change?.stage === stage ? change : { stage, status: "pass", codes: [] }) });
 }
 function evidence(): StageEvidence {
+  // These tests exercise model-response semantics AFTER mandatory deterministic
+  // checks. Missing input has separate regression tests; it is never a pass.
   return {
-    classification: {}, inputs: {}, geometry: {}, operations: {}, calculation: {},
-    market: { available: false }, pricing: { finalRubBatch: 1000 }, disclaimer: {},
+    classification: { calculator: plan.calculator },
+    inputs: { parameters: { ...plan.input } },
+    geometry: { deterministicCheckPassed: true, method: "flat-rectangle-only" },
+    operations: { statedBendsRequireCad: false },
+    calculation: { complete: true, deterministicCheckPassed: true },
+    market: { available: false },
+    pricing: { calculatedRubBatch: 1000, finalRubBatch: 1000, floorProtected: true },
+    disclaimer: { clientMessage: "Предварительный расчёт. Не является офертой." },
   };
 }
 
