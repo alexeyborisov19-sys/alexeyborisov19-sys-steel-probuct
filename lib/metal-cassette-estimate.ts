@@ -27,7 +27,7 @@ export type MetalCassetteEstimate = {
   approximateTotalRub: number;
 };
 
-const STANDARD = {
+export const STANDARD_CASSETTE = {
   faceWidthMm: 1170,
   faceHeightMm: 545,
   rustMm: 20,
@@ -75,14 +75,14 @@ export function getDefaultMetalCassetteRate(
 function moduleFor(type: MetalCassetteType) {
   if (type === "open") {
     return {
-      widthMm: STANDARD.faceWidthMm + STANDARD.rustMm,
-      heightMm: STANDARD.faceHeightMm + STANDARD.rustMm,
+      widthMm: STANDARD_CASSETTE.faceWidthMm + STANDARD_CASSETTE.rustMm,
+      heightMm: STANDARD_CASSETTE.faceHeightMm + STANDARD_CASSETTE.rustMm,
     };
   }
 
   return {
-    widthMm: STANDARD.faceWidthMm + STANDARD.rustMm,
-    heightMm: STANDARD.faceHeightMm,
+    widthMm: STANDARD_CASSETTE.faceWidthMm + STANDARD_CASSETTE.rustMm,
+    heightMm: STANDARD_CASSETTE.faceHeightMm,
   };
 }
 
@@ -95,15 +95,15 @@ function quantityByArea(areaM2: number, type: MetalCassetteType) {
 function gridByWall(widthMm: number, heightMm: number, type: MetalCassetteType) {
   const columns = Math.max(
     0,
-    Math.ceil((widthMm + STANDARD.rustMm) / (STANDARD.faceWidthMm + STANDARD.rustMm)),
+    Math.ceil((widthMm + STANDARD_CASSETTE.rustMm) / (STANDARD_CASSETTE.faceWidthMm + STANDARD_CASSETTE.rustMm)),
   );
 
   const rows = type === "open"
     ? Math.max(
         0,
-        Math.ceil((heightMm + STANDARD.rustMm) / (STANDARD.faceHeightMm + STANDARD.rustMm)),
+        Math.ceil((heightMm + STANDARD_CASSETTE.rustMm) / (STANDARD_CASSETTE.faceHeightMm + STANDARD_CASSETTE.rustMm)),
       )
-    : Math.max(0, Math.ceil(heightMm / STANDARD.faceHeightMm));
+    : Math.max(0, Math.ceil(heightMm / STANDARD_CASSETTE.faceHeightMm));
 
   return { columns, rows };
 }
@@ -166,7 +166,7 @@ export type MetalCassetteQuantityEstimateInput = {
 
 /**
  * Prices a stated piece count against the customer's OWN cassette size, not
- * the fixed standard module (`STANDARD.faceWidthMm × faceHeightMm`) the
+ * the fixed standard module (`STANDARD_CASSETTE.faceWidthMm × faceHeightMm`) the
  * area/wall modes above assume. A customer very often gives exactly a
  * headcount plus a size — "300 кассет 600×1200" — and neither number is the
  * standard module. Substituting the standard module's area to make that fit
