@@ -30,6 +30,10 @@ export const CALCULATION_DISCLAIMER =
 export const CALCULATION_DISCLAIMER_SHORT =
   "Предварительный автоматический расчёт. Носит ориентировочный характер. Не является офертой.";
 
+/** Never imply that an optional/unconfigured provider actually checked the result. */
+export const AI_REVIEW_UNAVAILABLE_NOTICE =
+  "Расчёт выполнен по формулам; дополнительная ИИ-проверка не выполнена. Требуется подтверждение инженером.";
+
 /** Sheet thicknesses offered by the existing configurator. */
 export const THICKNESS_OPTIONS = [0.5, 0.7, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 40] as const;
 

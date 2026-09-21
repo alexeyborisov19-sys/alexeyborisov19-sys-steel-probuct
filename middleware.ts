@@ -22,6 +22,7 @@ const legacyRedirects = new Map([
   ["/kronhtein", "/solutions/engineering"],
   ["/rehotka", "/solutions/engineering"],
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
+  ["/lityo-stali-foto", "/projects"],
   // Historical crawl noise and misspellings seen in Webmaster exports. Redirect
   // only when there is one unambiguous modern equivalent; otherwise the path is
   // deliberately retired with 410 below instead of creating a misleading soft 404.

@@ -1,15 +1,17 @@
 /** Server-side pricing evidence contract. No source prices or credentials live here. */
 export type MarketQuoteSpec = {
   calculator: "metal-parts" | "metal-cassettes";
-  product: "flat-rectangle" | "facade-cassette";
+  product: "flat-rectangle" | "facade-cassette" | "cad-part" | "facade-area";
+  /** Exact source-file identity plus manufacturing inputs, derived on the server. */
+  drawingSha256?: string;
+  processSignature?: string;
+  /** Area-budget quotes are never silently converted to a priced piece count. */
+  pricedAreaM2?: number;
   material: string;
   thicknessMm: number;
   widthMm: number;
   heightMm: number;
   quantity: number;
-  /** Explicit billing basis prevents confusing facade area with cassette face area. */
-  areaBasis?: "cassette-face" | "net-facade";
-  netFacadeAreaM2?: number;
   finish: string;
   cassetteType: "open" | "closed" | null;
   scope: string[];
@@ -29,8 +31,8 @@ export type VerifiedMarketOffer = {
   specification: MarketQuoteSpec;
   minQuantity: number;
   maxQuantity: number;
-  minFacadeAreaM2?: number;
-  maxFacadeAreaM2?: number;
+  minAreaM2?: number;
+  maxAreaM2?: number;
   priceRub: number;
   priceUnit: "per-piece" | "per-m2";
   minimumBatchRub: number;
@@ -91,8 +93,11 @@ function sourceUrl(value: unknown): URL | null {
 export function validMarketSpec(value: unknown): value is MarketQuoteSpec {
   const spec = object(value);
   if (!spec || !["metal-parts", "metal-cassettes"].includes(String(spec.calculator))
-    || !["flat-rectangle", "facade-cassette"].includes(String(spec.product))) return false;
-  if ((spec.calculator === "metal-parts") !== (spec.product === "flat-rectangle")) return false;
+    || !["flat-rectangle", "facade-cassette", "cad-part", "facade-area"].includes(String(spec.product))) return false;
+  if ((spec.calculator === "metal-parts") !== ["flat-rectangle", "cad-part"].includes(String(spec.product))) return false;
+  if (spec.product === "cad-part" && (![spec.drawingSha256, spec.processSignature]
+    .every((value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value)))) return false;
+  if (spec.product === "facade-area" && (!positive(spec.pricedAreaM2) || spec.quantity !== 1)) return false;
   if (!text(spec.material) || !text(spec.finish)
     || ![spec.widthMm, spec.heightMm, spec.thicknessMm].every(positive)
     || !Number.isSafeInteger(spec.quantity) || Number(spec.quantity) <= 0
@@ -100,8 +105,6 @@ export function validMarketSpec(value: unknown): value is MarketQuoteSpec {
     || !spec.scope.every((item) => text(item, 80)) || new Set(spec.scope).size !== spec.scope.length
     || !["included", "excluded", "exempt"].includes(String(spec.vat))
     || !money(spec.vatRatePct) || Number(spec.vatRatePct) > 100) return false;
-  if (spec.areaBasis != null && spec.areaBasis !== "cassette-face" && spec.areaBasis !== "net-facade") return false;
-  if (spec.areaBasis === "net-facade" && (spec.calculator !== "metal-cassettes" || !positive(spec.netFacadeAreaM2))) return false;
   if (spec.vat === "exempt" && spec.vatRatePct !== 0) return false;
   return spec.calculator === "metal-cassettes"
     ? spec.cassetteType === "open" || spec.cassetteType === "closed"
@@ -113,8 +116,8 @@ function sameSpec(a: MarketQuoteSpec, b: MarketQuoteSpec): boolean {
   return a.calculator === b.calculator && a.product === b.product && a.material === b.material
     && a.thicknessMm === b.thicknessMm && a.widthMm === b.widthMm && a.heightMm === b.heightMm
     && a.finish === b.finish && a.cassetteType === b.cassetteType && a.vat === b.vat
-    && (a.areaBasis ?? "cassette-face") === (b.areaBasis ?? "cassette-face")
     && a.vatRatePct === b.vatRatePct
+    && (a.product !== "cad-part" || (a.drawingSha256 === b.drawingSha256 && a.processSignature === b.processSignature))
     && [...a.scope].sort().join("\u0000") === [...b.scope].sort().join("\u0000");
 }
 function roundUpCent(value: number): number {
@@ -166,23 +169,22 @@ export function decideMarketFloor(
       || !["per-piece", "per-m2"].includes(String(offer.priceUnit))) {
       reject("price-or-terms-unknown"); continue;
     }
-    let total: number;
-    if (target.areaBasis === "net-facade") {
-      if (offer.priceUnit !== "per-m2" || !positive(offer.minFacadeAreaM2) || !positive(offer.maxFacadeAreaM2)
-        || offer.minFacadeAreaM2 > offer.maxFacadeAreaM2 || target.netFacadeAreaM2! < offer.minFacadeAreaM2
-        || target.netFacadeAreaM2! > offer.maxFacadeAreaM2) {
-        reject("facade-area-tier-or-billing-basis-mismatch"); continue;
-      }
-      total = Math.max(offer.priceRub * target.netFacadeAreaM2!, offer.minimumBatchRub);
-    } else {
-      if (!Number.isSafeInteger(offer.minQuantity) || !Number.isSafeInteger(offer.maxQuantity)
-        || Number(offer.minQuantity) <= 0 || Number(offer.maxQuantity) < Number(offer.minQuantity)
-        || target.quantity < Number(offer.minQuantity) || target.quantity > Number(offer.maxQuantity)) {
-        reject("quantity-tier-mismatch"); continue;
-      }
-      const unitFactor = offer.priceUnit === "per-piece" ? 1 : target.widthMm * target.heightMm / 1_000_000;
-      total = Math.max(offer.priceRub * unitFactor * target.quantity, offer.minimumBatchRub);
+    if (!Number.isSafeInteger(offer.minQuantity) || !Number.isSafeInteger(offer.maxQuantity)
+      || Number(offer.minQuantity) <= 0 || Number(offer.maxQuantity) < Number(offer.minQuantity)
+      || target.quantity < Number(offer.minQuantity) || target.quantity > Number(offer.maxQuantity)) {
+      reject("quantity-tier-mismatch"); continue;
     }
+    if (target.product === "cad-part" && offer.priceUnit !== "per-piece") {
+      reject("cad-price-must-reference-the-same-complete-piece"); continue;
+    }
+    if (target.product === "facade-area" && (offer.priceUnit !== "per-m2"
+      || !money(offer.minAreaM2) || !positive(offer.maxAreaM2)
+      || target.pricedAreaM2! < offer.minAreaM2 || target.pricedAreaM2! > offer.maxAreaM2)) {
+      reject("area-tier-mismatch-or-unknown"); continue;
+    }
+    const unitFactor = target.product === "facade-area" ? target.pricedAreaM2!
+      : offer.priceUnit === "per-piece" ? 1 : target.widthMm * target.heightMm / 1_000_000;
+    const total = Math.max(offer.priceRub * unitFactor * target.quantity, offer.minimumBatchRub);
     if (!money(total) || total <= 0) { reject("price-overflow"); continue; }
     candidates.push({ index, offer: offer as unknown as VerifiedMarketOffer, host: url.hostname.replace(/^www\./, ""), total });
   }

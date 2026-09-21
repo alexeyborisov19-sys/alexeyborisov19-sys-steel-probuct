@@ -37,6 +37,8 @@ export type ProjectFactualCalculationResult = {
 };
 
 export type PartCadEvidence = {
+  /** SHA-256 of actual inspected upload bytes, computed by the server. */
+  sourceSha256?: string;
   unsupportedEntities?: string[];
   reviewReasons?: string[];
   /** Annotation layers the DXF parser excluded from the priced geometry. */

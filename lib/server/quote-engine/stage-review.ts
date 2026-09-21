@@ -1,6 +1,5 @@
-import { redactPersonalData } from "@/lib/assistant/security";
 import { verifyStageEvidence } from "@/lib/server/quote-engine/stage-evidence";
-import { quoteCompletionEndpoint, readYandexCompletion } from "@/lib/server/quote-engine/yandex-response";
+import { completeWithConfiguredModel, modelCompletionConfigured } from "@/lib/server/quote-engine/model-completion";
 
 export const QUOTE_REVIEW_STAGES = [
   "classification", "inputs", "geometry", "operations", "calculation", "market", "pricing", "disclaimer",
@@ -61,34 +60,12 @@ export function parseStageReview(raw: string | null): StageReviewResult {
 }
 
 function configured(environment: NodeJS.ProcessEnv): boolean {
-  return environment.YANDEX_AI_ENABLED === "true" && Boolean(environment.YANDEX_AI_API_KEY)
-    && Boolean(environment.YANDEX_AI_FOLDER_ID) && Boolean(environment.YANDEX_AI_MODEL_URI)
-    && !/\/latest(?:$|[/?])/i.test(environment.YANDEX_AI_MODEL_URI ?? "")
-    && quoteCompletionEndpoint(environment) !== null;
+  return modelCompletionConfigured(environment);
 }
 
-/** One bounded request checks every completed stage; a truncated request is never sent. */
-export const reviewStagesWithYandex: StageReviewCaller = async (evidence) => {
-  if (!configured(process.env)) return null;
-  const endpoint = quoteCompletionEndpoint();
-  if (!endpoint) return null;
-  try {
-    const text = redactPersonalData(JSON.stringify(evidence));
-    if (text.length > 18_000 || new TextEncoder().encode(text).byteLength > 32_000) return null;
-    const response = await fetch(endpoint, {
-      method: "POST", cache: "no-store", redirect: "error",
-      headers: { Authorization: `Api-Key ${process.env.YANDEX_AI_API_KEY}`, "Content-Type": "application/json", "x-folder-id": process.env.YANDEX_AI_FOLDER_ID! },
-      body: JSON.stringify({
-        modelUri: process.env.YANDEX_AI_MODEL_URI,
-        completionOptions: { stream: false, temperature: 0, maxTokens: "900" },
-        jsonObject: true,
-        messages: [{ role: "system", text: PROMPT }, { role: "user", text }],
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    return await readYandexCompletion(response);
-  } catch { return null; }
-};
+/** Compatibility name; local selection never falls back to a paid provider. */
+export const reviewStagesWithYandex: StageReviewCaller = async (evidence) =>
+  completeWithConfiguredModel(PROMPT, evidence, 900);
 
 export async function reviewQuoteStages(
   evidence: StageEvidence,

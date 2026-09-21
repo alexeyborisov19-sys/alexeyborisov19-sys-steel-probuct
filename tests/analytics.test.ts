@@ -132,7 +132,7 @@ test("never passes personal data to the Yandex goal callback", () => {
   });
 });
 
-test("Metrika runtime stays dynamically imported and honors explicit opt-out", () => {
+test("Metrika runtime stays dynamically imported and requires explicit opt-in", () => {
   const layout = readFileSync(resolve("app/(public)/layout.tsx"), "utf8");
   const gate = readFileSync(resolve("components/ConsentGatedAnalytics.tsx"), "utf8");
   const runtime = readFileSync(resolve("components/Analytics.tsx"), "utf8");
@@ -142,12 +142,12 @@ test("Metrika runtime stays dynamically imported and honors explicit opt-out", (
   assert.match(layout, /<ConsentGatedAnalytics \/>/);
   assert.match(gate, /await import\("\.\/Analytics"\)/);
   assert.match(gate, /hasAnalyticsConsent\(\)/);
-  assert.match(consent, /return readChoice\(\)\?\.analytics !== false/);
+  assert.match(consent, /return readChoice\(\)\?\.analytics === true/);
   assert.equal(gate.includes("mc.yandex.ru"), false);
   assert.equal(gate.includes("mc.yandex.com"), false);
-  assert.equal(runtime.includes("mc.yandex.ru"), false);
+  assert.equal(runtime.includes("https://mc.yandex.ru/metrika/tag.js?id=${counterIds[0]}"), true);
   assert.equal(runtime.includes("mc.yandex.com"), false);
-  assert.match(runtime, /\['mc','yandex','ru'\]\.join\('\.'\)/);
+  assert.doesNotMatch(runtime, /\['mc','yandex','ru'\]\.join\('\.'\)/);
 
   const legalLinks = consent.match(/<Link prefetch=\{false\}/g) ?? [];
   assert.equal(legalLinks.length, 2, "cookie-banner legal routes must not be prefetched before consent");

@@ -1,9 +1,9 @@
-import { reviewCassetteBudget } from "@/lib/server/quote-engine/cassette-budget-review";
-import { assertSameOriginRequest } from "@/lib/security/same-origin";
-import { readJsonBody, PayloadTooLargeError } from "@/lib/security/request-body";
+import { NextResponse } from "next/server";
+import { reviewCassetteAreaCalculation } from "@/lib/server/quote-engine/cassette-area-review";
 import { clientKey } from "@/lib/security/client-ip";
 import { consumeRules } from "@/lib/security/rate-limit";
-import { NextResponse } from "next/server";
+import { readJsonBody, PayloadTooLargeError } from "@/lib/security/request-body";
+import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
 import { CALCULATION_DISCLAIMER } from "@/lib/instant-quote/client-labels";
 import {
   estimateMetalCassettes, metalCassetteThicknesses,
@@ -24,16 +24,14 @@ function invalid(message: string) {
   return NextResponse.json({ error: message, disclaimer: CALCULATION_DISCLAIMER }, { status: 400, headers: { "Cache-Control": "no-store" } });
 }
 
-export const runtime = "nodejs";
 export async function POST(request: Request) {
-  try { assertSameOriginRequest(request); }
-  catch { return NextResponse.json({ error: "Запрос отклонён." }, { status: 403, headers: { "Cache-Control": "no-store" } }); }
-  const limited = consumeRules(clientKey(request), [{ id: "cassette-budget-minute", limit: 60, windowMs: 60_000 }]);
-  if (limited) return NextResponse.json({ error: "Слишком много расчётов. Повторите позже." }, { status: 429, headers: { "Retry-After": String(limited.retryAfterSeconds), "Cache-Control": "no-store" } });
   let raw: unknown;
-  try { raw = await readJsonBody(request, 8192); }
-  catch (error) {
-    if (error instanceof PayloadTooLargeError) return NextResponse.json({ error: "Слишком большой запрос." }, { status: 413, headers: { "Cache-Control": "no-store" } });
+  try {
+    assertSameOriginRequest(request);
+    raw = await readJsonBody<unknown>(request, 16_384);
+  } catch (error) {
+    if (error instanceof CrossSiteRequestError) return NextResponse.json({ error: "Запрос отклонён." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+    if (error instanceof PayloadTooLargeError) return NextResponse.json({ error: "Превышен размер запроса." }, { status: 413, headers: { "Cache-Control": "no-store" } });
     return invalid("Некорректные данные расчёта.");
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return invalid("Некорректные данные расчёта.");
@@ -61,11 +59,28 @@ export async function POST(request: Request) {
     || !Number.isSafeInteger(estimate.quantity) || estimate.quantity <= 0) {
     return invalid("Для этих параметров нельзя сформировать ориентировочную стоимость. Проверьте площадь и проёмы.");
   }
-  try {
-    const reviewed = await reviewCassetteBudget(input);
-    return NextResponse.json(reviewed.response, { headers: { "Cache-Control": "no-store" } });
-  } catch {
-    return NextResponse.json({ error: "Не удалось проверить расчёт. Требуется инженер.", disclaimer: CALCULATION_DISCLAIMER },
-      { status: 503, headers: { "Cache-Control": "no-store" } });
+  if (payload.review === true) {
+    const limited = consumeRules(clientKey(request), [
+      { id: "cassette-review-minute", limit: 6, windowMs: 60_000 },
+      { id: "cassette-review-day", limit: 100, windowMs: 86_400_000 },
+    ]);
+    if (limited) return NextResponse.json({ error: "Слишком много проверок. Повторите позже.", disclaimer: CALCULATION_DISCLAIMER },
+      { status: 429, headers: { "Cache-Control": "no-store", "Retry-After": String(limited.retryAfterSeconds) } });
+    try {
+      const checked = await reviewCassetteAreaCalculation(input);
+      return NextResponse.json({ ...checked.publicResult, disclaimer: CALCULATION_DISCLAIMER }, { headers: { "Cache-Control": "no-store" } });
+    } catch {
+      return NextResponse.json({ error: "Проверка временно недоступна. Передайте параметры инженеру.", disclaimer: CALCULATION_DISCLAIMER },
+        { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
   }
+  return NextResponse.json({
+    netAreaM2: estimate.netAreaM2,
+    quantity: estimate.quantity,
+    defaultRateRubM2: estimate.defaultRateRubM2,
+    approximateRateRubM2: estimate.approximateRateRubM2,
+    approximateTotalRub: Math.max(baseline.approximateTotalRub, estimate.approximateTotalRub),
+    disclaimer: CALCULATION_DISCLAIMER,
+    marketVerified: false,
+  }, { headers: { "Cache-Control": "no-store" } });
 }

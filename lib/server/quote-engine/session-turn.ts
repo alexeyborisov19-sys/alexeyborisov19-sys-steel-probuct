@@ -1,9 +1,10 @@
-import { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
-import { captureQuoteSnapshot } from "@/lib/server/quote-engine/session-snapshot";
 import type { AssistantSession } from "@/lib/assistant/types";
 import { classifyProduct, type CalculatorId } from "@/lib/quote-engine/classification";
 import { injectionSafeAnswer, isPromptInjection } from "@/lib/assistant/security";
 import { handleNaturalLanguageQuote } from "@/lib/server/quote-engine/handle-request";
+import { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
+import { captureSessionQuote } from "@/lib/server/quote-engine/quote-snapshot";
+export { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
 
 export function isQuoteKnowledgeQuestion(message: string): boolean {
   return /(?:^|[.!?]\s*)(?:а\s+)?(?:что такое|чем отлича[а-яё]*|в ч[её]м разниц[а-яё]*|как (?:вы )?(?:работаете|связаться)|где (?:вы |ваше |находит[а-яё]*))/iu.test(message.trim());
@@ -16,8 +17,6 @@ export function shouldHandleQuoteTurn(session: AssistantSession, message: string
   const intent = /(?:нуж[а-яё]*|хочу|заказ[а-яё]*|изготов[а-яё]*|цен[ауы]|стоимост)/iu;
   return intent.test(message) && (product.test(message) || Boolean(session.state.productType));
 }
-
-export { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
 
 export type SessionQuoteReply = {
   sessionId: string;
@@ -41,7 +40,7 @@ export async function runSessionQuoteTurn(
     };
   }
   const calculatorOverride = explicitCalculator ?? (active && active !== "auto" ? active : undefined);
-  // A failed or clarifying correction must never leave the old price attached to a lead.
+  // A failed/incomplete new turn must not attach an old quote to a new order.
   delete session.quoteSnapshot;
   const result = await calculate(message, session.state, {
     calculatorOverride,
@@ -50,7 +49,7 @@ export async function runSessionQuoteTurn(
   const classification = classifyProduct(result.state);
   session.quoteCalculator = calculatorOverride ?? (classification.status === "classified" ? classification.calculator : "auto");
   session.state = result.state;
-  if (result.kind !== "question") session.quoteSnapshot = captureQuoteSnapshot(result);
+  session.quoteSnapshot = captureSessionQuote(result);
   session.lastAskedField = undefined;
   const text = result.kind === "question" ? result.question : result.clientMessage;
   const now = new Date().toISOString();

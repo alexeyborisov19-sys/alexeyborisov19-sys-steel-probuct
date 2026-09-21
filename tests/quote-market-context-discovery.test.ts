@@ -53,7 +53,7 @@ test("disabled discovery performs no network request", async () => {
 test("configured discovery calls the official Search API and decodes base64 XML", async () => {
   let calls = 0;
   const response = await discoverQuoteMarket(plan, {
-    NODE_ENV: "test", STEEL_PRODUCT_MARKET_SEARCH_ENABLED: "true", YANDEX_SEARCH_API_KEY: "synthetic-test-key", YANDEX_SEARCH_FOLDER_ID: "synthetic-folder",
+    NODE_ENV: "test", STEEL_PRODUCT_PAID_SERVICES_ALLOWED: "true", STEEL_PRODUCT_MARKET_SEARCH_ENABLED: "true", YANDEX_SEARCH_API_KEY: "synthetic-test-key", YANDEX_SEARCH_FOLDER_ID: "synthetic-folder",
   }, async (url, options) => {
     calls += 1;
     assert.equal(url, "https://searchapi.api.cloud.yandex.net/v2/web/search");
@@ -70,7 +70,7 @@ test("configured discovery calls the official Search API and decodes base64 XML"
 });
 test("upstream failures never turn into empty successful search claims", async () => {
   const response = await discoverQuoteMarket(plan, {
-    NODE_ENV: "test", STEEL_PRODUCT_MARKET_SEARCH_ENABLED: "true", YANDEX_SEARCH_API_KEY: "synthetic", YANDEX_SEARCH_FOLDER_ID: "synthetic",
+    NODE_ENV: "test", STEEL_PRODUCT_PAID_SERVICES_ALLOWED: "true", STEEL_PRODUCT_MARKET_SEARCH_ENABLED: "true", YANDEX_SEARCH_API_KEY: "synthetic", YANDEX_SEARCH_FOLDER_ID: "synthetic",
   }, async () => new Response("failure", { status: 503 }));
   assert.equal(response.status, "unavailable");
 });

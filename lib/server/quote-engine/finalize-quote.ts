@@ -1,10 +1,11 @@
 import type { EngineeringLeadState } from "@/lib/assistant/types";
-import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels";
+import { CALCULATION_DISCLAIMER_SHORT, AI_REVIEW_UNAVAILABLE_NOTICE } from "@/lib/instant-quote/client-labels";
 import { decideMarketFloor, type MarketQuoteSpec } from "@/lib/quote-engine/market-floor";
 import { loadQuoteMarketContext, type QuoteMarketContext, type ReadyQuotePlan } from "@/lib/server/quote-engine/market-context";
 import { discoverQuoteMarket, type MarketDiscovery } from "@/lib/server/quote-engine/market-discovery";
 import { reviewQuoteStages, type StageEvidence, type StageReviewCaller } from "@/lib/server/quote-engine/stage-review";
 import { verifyStageEvidence } from "@/lib/server/quote-engine/stage-evidence";
+import { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
 import type { QuoteEngineResult } from "@/lib/server/quote-engine/execute";
 
 export type QuoteFinalizationOptions = {
@@ -111,7 +112,7 @@ export async function finalizeQuoteResult(
   record.stageReview = deterministicFailure ?? (options.aiReviewCaller === null
     ? { status: "not-configured", stages: [] }
     : await reviewQuoteStages(evidence, options.aiReviewCaller));
-  const required = options.requireAiReview ?? process.env.STEEL_PRODUCT_QUOTE_AI_REVIEW_REQUIRED === "true";
+  const required = options.requireAiReview ?? quoteAiReviewRequired();
   if (record.stageReview.status === "needs-review" || (required && record.stageReview.status !== "passed")) {
     return {
       status: "blocked", record,
@@ -120,5 +121,7 @@ export async function finalizeQuoteResult(
     };
   }
   if (record.stageReview.status !== "passed") record.warnings.push("Дополнительная ИИ-проверка не выполнена; её статус не считается успешным.");
-  return { status: "priced", record, clientMessage };
+  return { status: "priced", record,
+    clientMessage: record.stageReview.status === "passed" ? clientMessage : `${clientMessage} ${AI_REVIEW_UNAVAILABLE_NOTICE}`,
+  };
 }

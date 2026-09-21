@@ -1,10 +1,13 @@
 import type { InstantQuoteProject, ManufacturingOperation } from "@/lib/instant-quote/domain";
-import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels";
+import { CALCULATION_DISCLAIMER_SHORT, AI_REVIEW_UNAVAILABLE_NOTICE } from "@/lib/instant-quote/client-labels";
 
 export type ClientCalculationSignal = {
   partId: string;
   status: "pending" | "ready" | "needs-review" | "blocked";
   approvedSalePriceRub?: number | null;
+  /** Server-owned outcome, never inferred from the existence of a price. */
+  aiReviewed?: boolean;
+  marketVerified?: boolean;
 };
 
 export type ClientPartCalculationView = {
@@ -99,7 +102,7 @@ export function createClientCalculationView(
           depthMm: part.geometry?.depthMm ?? null,
         },
         price,
-        message: `${message} ${CALCULATION_DISCLAIMER_SHORT}`,
+        message: `${message} ${hasApprovedSalePrice && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
       };
     }),
   };

@@ -23,7 +23,7 @@ function evidence(): StageEvidence {
 }
 async function configuredFixture(run: () => Promise<void>): Promise<void> {
   const values: Record<string, string | undefined> = {
-    YANDEX_AI_ENABLED: "true", YANDEX_AI_API_KEY: "synthetic-test-key",
+    STEEL_PRODUCT_PAID_SERVICES_ALLOWED: "true", YANDEX_AI_ENABLED: "true", YANDEX_AI_API_KEY: "synthetic-test-key",
     YANDEX_AI_FOLDER_ID: "fixture", YANDEX_AI_MODEL_URI: "gpt://fixture/yandexgpt/stable",
     YANDEX_AI_ENDPOINT: undefined,
   };

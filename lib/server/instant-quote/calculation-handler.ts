@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
 import { CadReadError, type NormalizedCadModel } from "@/lib/instant-quote/cad-model";
@@ -295,6 +295,10 @@ async function buildAuthoritativeProject(
       };
     }
 
+    evidenceByPartId[item.clientPartId] = {
+      ...evidenceByPartId[item.clientPartId],
+      sourceSha256: createHash("sha256").update(inspection.buffer).digest("hex"),
+    };
     parts.push({
       id: item.clientPartId,
       fileName: inspection.safeName,

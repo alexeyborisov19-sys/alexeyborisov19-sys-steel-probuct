@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { InstantQuoteProject, ProjectPart } from "@/lib/instant-quote/domain";
 import type { ClientCalculationSignal } from "@/lib/instant-quote/client-calculation-view";
 import type { ProjectFactualCalculationResult, ProjectFactualPartResult, ProjectCadEvidence } from "@/lib/instant-quote/project-factual-calculation";
@@ -5,12 +6,17 @@ import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels"
 import { approvedSalePriceRubFromLines, type CommercialPricingPolicy } from "@/lib/server/instant-quote/commercial-pricing";
 import { reviewQuoteStages, type StageEvidence, type StageReviewCaller, type StageReviewResult } from "@/lib/server/quote-engine/stage-review";
 import { verifyStageEvidence } from "@/lib/server/quote-engine/stage-evidence";
+import { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
+
+import { decideMarketFloor, type MarketFloorDecision } from "@/lib/quote-engine/market-floor";
+import { loadSpecializedMarketContext } from "@/lib/server/quote-engine/specialized-market-context";
 
 export type CadQuoteAudit = {
   partId: string;
   calculatedRubBatch: number | null;
   publishedRubBatch: number | null;
-  marketStatus: "not-connected-for-cad";
+  marketStatus: "not-connected-for-cad" | "loaded" | "not-configured" | "unavailable" | "basis-mismatch";
+  priceDecision?: MarketFloorDecision;
   review: StageReviewResult;
   evidence: StageEvidence | null;
 };
@@ -25,10 +31,6 @@ export type CadReviewOptions = {
   requireAiReview?: boolean;
 };
 
-function requiredByEnvironment(): boolean {
-  const value = process.env.STEEL_PRODUCT_QUOTE_AI_REVIEW_REQUIRED;
-  return value === "true" || (value !== "false" && process.env.NODE_ENV === "production");
-}
 function issue(stage: "inputs" | "geometry" | "operations" | "calculation" | "pricing", code: string): StageReviewResult {
   return { status: "needs-review", origin: "deterministic", stages: [{ stage, status: "needs-review", codes: [code] }] };
 }
@@ -79,8 +81,20 @@ async function reviewPart(
     return hold(issue("pricing", "price-below-floor"));
   }
   audit.calculatedRubBatch = baseline;
-  // A CAD part cannot use flat-rectangle offers just because its bounding box matches.
-  // Until same-design source evidence is available, its commercial calculation is the floor and result.
+  if (result.dfmReviewReasons.length || (cad?.reviewReasons?.length ?? 0) > 0) return hold(issue("geometry", "inconsistent-geometry"));
+  const processSignature = createHash("sha256").update(JSON.stringify({
+    material: cost.materialId, thickness: cost.thicknessMm,
+    operations: [...part.configuration.operations].sort(), parameters: cost.parameters,
+  })).digest("hex");
+  const context = cad?.sourceSha256 ? await loadSpecializedMarketContext({
+    kind: "cad-part", material: cost.materialId, thicknessMm: cost.thicknessMm,
+    widthMm: part.geometry.widthMm!, heightMm: part.geometry.heightMm!, quantity: cost.quantity,
+    scope: ["material", ...part.configuration.operations], drawingSha256: cad.sourceSha256, processSignature,
+  }) : { status: "not-configured" as const, target: null, offers: [] };
+  if (cad?.sourceSha256) audit.marketStatus = context.status;
+  const decision = decideMarketFloor(baseline, context.target, context.offers);
+  audit.priceDecision = decision;
+  const final = decision.finalRubBatch;
   const evidence: StageEvidence = {
     classification: { calculator: "metal-parts", productType: "cad-part", format: part.format },
     inputs: { parameters: {
@@ -93,9 +107,11 @@ async function reviewPart(
     },
     operations: { requestedScope: part.configuration.operations, pricedScope: [...codes], physicalParameters: cost.parameters },
     calculation: { complete: true, deterministicCheckPassed: true, basis: "configured-cost-and-commercial-formula" },
-    market: { available: false, status: "cad-same-design-reference-not-connected", supplierCount: 0 },
-    pricing: { calculatedRubBatch: baseline, finalRubBatch: baseline, rule: "calculated-floor-without-verified-market", floorProtected: true },
-    disclaimer: { clientMessage: `Предварительная стоимость позиции: ${baseline.toFixed(2)} ₽. ${CALCULATION_DISCLAIMER_SHORT}` },
+    market: { available: decision.marketMeanRubBatch !== null, status: decision.status,
+      supplierCount: decision.supplierCount, meanRubBatch: decision.marketMeanRubBatch,
+      sourcePricesRubBatch: decision.sources.map((source) => source.batchRub), comparison: context.target },
+    pricing: { calculatedRubBatch: baseline, finalRubBatch: final, rule: "max(calculated,verified-arithmetic-mean)", floorProtected: final >= baseline },
+    disclaimer: { clientMessage: `Предварительная стоимость позиции: ${final.toFixed(2)} ₽. ${CALCULATION_DISCLAIMER_SHORT}` },
   };
   audit.evidence = evidence;
   // Unresolved CAD warnings are engineering evidence, not permission for an LLM to waive them.
@@ -103,10 +119,11 @@ async function reviewPart(
   audit.review = verifyStageEvidence(evidence) ?? (options.caller === null
     ? { status: "not-configured", stages: [] }
     : await reviewQuoteStages(evidence, options.caller));
-  const required = options.requireAiReview ?? requiredByEnvironment();
+  const required = options.requireAiReview ?? quoteAiReviewRequired();
   if (audit.review.status === "needs-review" || (required && audit.review.status !== "passed")) return hold(audit.review);
-  audit.publishedRubBatch = baseline;
-  return { signal: { partId: part.id, status: "ready", approvedSalePriceRub: baseline }, audit };
+  audit.publishedRubBatch = final;
+  return { signal: { partId: part.id, status: "ready", approvedSalePriceRub: final,
+    aiReviewed: audit.review.status === "passed", marketVerified: decision.marketMeanRubBatch !== null }, audit };
 }
 
 /** At most two model calls at once. No customer filenames, contacts or private tariffs are sent. */

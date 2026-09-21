@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CALCULATION_DISCLAIMER } from "@/lib/instant-quote/client-labels";
 
 type Mode = "area" | "wall";
@@ -11,10 +11,13 @@ type Estimate = {
   netAreaM2: number;
   quantity: number;
   defaultRateRubM2: number;
-  approximateRateRubM2: number | null;
+  approximateRateRubM2: number;
+  approximateTotalRub: number;
+};
+type ReviewedEstimate = Omit<Estimate, "approximateTotalRub" | "approximateRateRubM2"> & {
   approximateTotalRub: number | null;
-  priceStatus: "priced" | "needs-review";
-  aiReviewStatus: "passed" | "needs-review" | "not-configured" | "unavailable";
+  approximateRateRubM2: number | null;
+  reviewStatus: "passed" | "unavailable" | "needs-review";
   message: string;
 };
 const thicknesses: Array<{ value: Thickness; label: string }> = [
@@ -39,8 +42,10 @@ export function MetalCassetteCalculator() {
   const [wallHeight, setWallHeight] = useState("6000");
   const [openings, setOpenings] = useState("0");
   const [pricePerM2, setPricePerM2] = useState(String(defaultRate("open", "0.7")));
-  const [result, setResult] = useState<Estimate | null>(null);
+  const [responseState, setResponseState] = useState<{ key: string; value: Estimate } | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [reviewState, setReviewState] = useState<{ key: string; result?: ReviewedEstimate; pending: boolean; failed?: boolean } | null>(null);
+  const reviewController = useRef<AbortController | null>(null);
   function selectType(nextType: CassetteType) {
     setType(nextType); setPricePerM2(String(defaultRate(nextType, thickness)));
   }
@@ -52,10 +57,29 @@ export function MetalCassetteCalculator() {
     mode, type, thickness, areaM2: numeric(area), wallWidthMm: numeric(wallWidth),
     wallHeightMm: numeric(wallHeight), openingsM2: numeric(openings), pricePerM2: numeric(pricePerM2),
   }), [mode, type, thickness, area, wallWidth, wallHeight, openings, pricePerM2]);
+  const requestKey = JSON.stringify(payload);
+  const result = responseState?.key === requestKey ? responseState.value : null;
+  const activeReview = reviewState?.key === requestKey ? reviewState : null;
+  const amount = activeReview ? (activeReview.pending || activeReview.failed ? null : activeReview.result?.approximateTotalRub) : result?.approximateTotalRub;
+  const rate = activeReview ? (activeReview.pending || activeReview.failed ? null : activeReview.result?.approximateRateRubM2) : result?.approximateRateRubM2;
+  async function reviewEstimate() {
+    reviewController.current?.abort();
+    const controller = new AbortController();
+    reviewController.current = controller;
+    setReviewState({ key: requestKey, pending: true });
+    try {
+      const response = await fetch("/api/calc-metallokassety", { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, review: true }), signal: controller.signal });
+      if (!response.ok) throw new Error("Review unavailable");
+      const data = await response.json() as ReviewedEstimate;
+      if (!["passed", "unavailable", "needs-review"].includes(data.reviewStatus) || typeof data.message !== "string"
+        || (data.reviewStatus !== "needs-review" && !(typeof data.approximateTotalRub === "number" && Number.isFinite(data.approximateTotalRub) && data.approximateTotalRub > 0))) throw new Error("Invalid review");
+      if (!controller.signal.aborted) setReviewState({ key: requestKey, result: data, pending: false });
+    } catch { if (!controller.signal.aborted) setReviewState({ key: requestKey, failed: true, pending: false }); }
+  }
+  useEffect(() => () => reviewController.current?.abort(), [requestKey]);
   useEffect(() => {
     const controller = new AbortController();
-    setStatus("loading");
-    setResult(null);
     const timer = window.setTimeout(async () => {
       setStatus("loading");
       try {
@@ -66,14 +90,16 @@ export function MetalCassetteCalculator() {
         if (!response.ok) throw new Error("estimate failed");
         const data = (await response.json()) as Estimate;
         if (controller.signal.aborted) return;
-        setResult(data); setStatus("ready");
+        if (![data.netAreaM2, data.quantity, data.defaultRateRubM2, data.approximateRateRubM2, data.approximateTotalRub]
+          .every((value) => typeof value === "number" && Number.isFinite(value) && value > 0)) throw new Error("invalid estimate");
+        setResponseState({ key: requestKey, value: data }); setStatus("ready");
       } catch {
         if (controller.signal.aborted) return;
-        setResult(null); setStatus("error");
+        setResponseState(null); setStatus("error");
       }
-    }, 650);
+    }, 140);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [payload]);
+  }, [payload, requestKey]);
   const specialistHref = result && result.netAreaM2 > 0
     ? {
         pathname: "/contacts",
@@ -179,19 +205,25 @@ export function MetalCassetteCalculator() {
           <div className="mt-7">
             <p className="text-xs font-bold uppercase tracking-[.12em] text-white/45">Ориентировочная стоимость</p>
             <p aria-live="polite" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              {status === "loading" ? "…" : result?.priceStatus === "priced" && result.approximateTotalRub != null && result.approximateTotalRub > 0 ? `≈ ${money.format(result.approximateTotalRub)} ₽` : "—"}
+              {status === "loading" || activeReview?.pending ? "…" : typeof amount === "number" && amount > 0 ? `≈ ${money.format(amount)} ₽` : "—"}
             </p>
             <p className="mt-3 text-xs leading-5 text-white/45">Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа.</p>
             <p className="mt-3 text-xs leading-5 text-white/60">{CALCULATION_DISCLAIMER}</p>
+            <button type="button" disabled={!result || activeReview?.pending} onClick={reviewEstimate}
+              className="mt-5 min-h-12 w-full border border-steel-orange px-4 py-3 text-sm font-semibold disabled:opacity-50">
+              {activeReview?.pending ? "Проверяем расчёт и рынок…" : "Проверить расчёт и рынок"}
+            </button>
+            <p role="status" className="mt-3 text-xs leading-5 text-white/60">
+              {activeReview?.failed ? "Проверка недоступна. Передайте параметры инженеру." : activeReview?.result?.message
+                ?? "Оценка по формулам. Для дополнительной проверки нажмите кнопку; ИИ и рынок не считаются проверенными заранее."}
+            </p>
           </div>
           <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Площадь облицовки</dt><dd className="mt-2 text-xl font-semibold text-steel-orange">{result ? `${decimal.format(result.netAreaM2)} м²` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Количество кассет</dt><dd className="mt-2 text-xl font-semibold">{result && result.quantity > 0 ? `≈ ${money.format(result.quantity)} шт.` : "—"}</dd></div>
-            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Принятая цена</dt><dd className="mt-2 text-lg font-semibold">{result?.priceStatus === "priced" && result.approximateRateRubM2 != null ? `≈ ${money.format(result.approximateRateRubM2)} ₽/м²` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Принятая цена</dt><dd className="mt-2 text-lg font-semibold">{typeof rate === "number" && rate > 0 ? `≈ ${money.format(rate)} ₽/м²` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Толщина</dt><dd className="mt-2 text-lg font-semibold">{thickness.replace(".", ",")} мм</dd></div>
           </dl>
-          {result?.message ? <p role="status" className="mt-4 text-sm leading-6 text-white/70">{result.message}</p> : null}
-          {result?.aiReviewStatus === "passed" ? <p className="mt-2 text-xs text-white/60">ИИ-проверка расчёта выполнена.</p> : null}
           {status === "error" ? <p className="mt-4 text-sm text-red-300">Не удалось обновить расчёт. Проверьте введённые значения.</p> : null}
           <div className="mt-auto pt-7">
             <Link href={specialistHref} className="clip-corner flex min-h-12 items-center justify-center bg-steel-orange-deep px-6 py-4 text-center text-sm font-bold uppercase transition hover:bg-orange-600">Получить точный расчёт&nbsp; →</Link>

@@ -1,3 +1,4 @@
+import { paidServicesAllowed } from "@/lib/server/quote-engine/service-policy";
 import type { ReadyQuotePlan } from "@/lib/server/quote-engine/market-context";
 
 export type MarketDiscovery = {
@@ -55,7 +56,7 @@ export async function discoverQuoteMarket(
   environment: NodeJS.ProcessEnv = process.env,
   request: typeof fetch = fetch,
 ): Promise<MarketDiscovery> {
-  if (environment.STEEL_PRODUCT_MARKET_SEARCH_ENABLED !== "true"
+  if (!paidServicesAllowed(environment) || environment.STEEL_PRODUCT_MARKET_SEARCH_ENABLED !== "true"
     || !environment.YANDEX_SEARCH_API_KEY || !environment.YANDEX_SEARCH_FOLDER_ID) {
     return { status: "not-configured", candidates: [] };
   }

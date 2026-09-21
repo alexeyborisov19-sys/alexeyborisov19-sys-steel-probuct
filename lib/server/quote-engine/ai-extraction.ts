@@ -1,8 +1,7 @@
 // No static server-only import: the Node test runner does not provide Next's alias.
-import { redactPersonalData } from "@/lib/assistant/security";
 import type { EngineeringLeadState } from "@/lib/assistant/types";
 import { mergeAiProposal, parseAiProposal, type AiMergeOutcome } from "@/lib/quote-engine/ai-proposal";
-import { quoteCompletionEndpoint, readYandexCompletion } from "@/lib/server/quote-engine/yandex-response";
+import { completeWithConfiguredModel } from "@/lib/server/quote-engine/model-completion";
 
 const EXTRACTION_SYSTEM_PROMPT = [
   "Ты — разборщик заявок на изготовление металлических изделий.",
@@ -23,39 +22,16 @@ const EXTRACTION_SYSTEM_PROMPT = [
 
 export type AiProposalCaller = (message: string, state: EngineeringLeadState) => Promise<string | null>;
 
-/** Pinned model only. An unavailable extractor never becomes invented source data. */
-export const proposeWithYandex: AiProposalCaller = async (message, state) => {
-  if (process.env.YANDEX_AI_ENABLED !== "true") return null;
-  const apiKey = process.env.YANDEX_AI_API_KEY;
-  const folderId = process.env.YANDEX_AI_FOLDER_ID;
-  const modelUri = process.env.YANDEX_AI_MODEL_URI;
-  if (!apiKey || !folderId || !modelUri || /\/latest(?:$|[/?])/i.test(modelUri)) return null;
-  const endpoint = quoteCompletionEndpoint();
-  if (!endpoint) return null;
-  try {
-    const text = redactPersonalData(JSON.stringify({
-      customerMessage: message,
-      alreadyKnown: {
-        material: state.material ?? null, thickness: state.thickness ?? null,
-        dimensions: state.dimensions ?? null, quantity: state.quantity ?? null,
-        cassetteType: state.cassetteType ?? null,
-      },
-    }));
-    if (text.length > 18_000 || new TextEncoder().encode(text).byteLength > 32_000) return null;
-    const response = await fetch(endpoint, {
-      method: "POST", redirect: "error", cache: "no-store",
-      headers: { Authorization: `Api-Key ${apiKey}`, "Content-Type": "application/json", "x-folder-id": folderId },
-      body: JSON.stringify({
-        modelUri,
-        completionOptions: { stream: false, temperature: 0, maxTokens: "400" },
-        jsonObject: true,
-        messages: [{ role: "system", text: EXTRACTION_SYSTEM_PROMPT }, { role: "user", text }],
-      }),
-      signal: AbortSignal.timeout(12_000),
-    });
-    return await readYandexCompletion(response);
-  } catch { return null; }
-};
+/** Legacy export name retained; provider selection is local-first with an explicit paid gate. */
+export const proposeWithYandex: AiProposalCaller = async (message, state) => completeWithConfiguredModel(
+  EXTRACTION_SYSTEM_PROMPT,
+  { customerMessage: message, alreadyKnown: {
+    material: state.material ?? null, thickness: state.thickness ?? null,
+    dimensions: state.dimensions ?? null, quantity: state.quantity ?? null,
+    cassetteType: state.cassetteType ?? null,
+  } },
+  400,
+);
 
 function stripCodeFence(raw: string | null): string | null {
   if (!raw) return null;

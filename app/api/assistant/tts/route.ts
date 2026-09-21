@@ -1,3 +1,4 @@
+import { paidServicesAllowed } from "@/lib/server/quote-engine/service-policy";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
@@ -42,6 +43,7 @@ function rateLimitResponse(retryAfterSeconds: number) {
 }
 
 async function synthesizeWithSpeechKit(text: string) {
+  if (!paidServicesAllowed()) return null;
   const apiKey = process.env.YANDEX_SPEECHKIT_API_KEY || process.env.YANDEX_AI_API_KEY;
   if (!apiKey) return null;
 

@@ -1,3 +1,41 @@
+# Выпуск 21.09.2026: проверка всех способов расчёта
+
+Актуальный checkpoint и подтверждения находятся в `docs/STEEL_PRODUCT_ONLINE_DEV_JOURNAL.md`; историческое описание ниже сохранено для контекста. Новое явное указание пользователя разрешает публикацию, но не автоматическое подключение расходов.
+
+## Конфигурация и границы
+
+ИИ **не считается работающим**, пока отсутствуют `YANDEX_AI_ENABLED=true`, отдельный ключ языковой модели, каталог и закреплённая версия модели. Для поисковых запросов нужны отдельные `YANDEX_SEARCH_API_KEY`, `YANDEX_SEARCH_FOLDER_ID` и флаг `STEEL_PRODUCT_MARKET_SEARCH_ENABLED=true`. Публикация не заимствует ключ SpeechKit и не подставляет OAuth-токен Директа.
+
+Если генеративный провайдер ещё не включён, доступен предварительный расчёт по формулам с явной оговоркой, что ИИ-проверка не выполнена. При включённой модели production требует успешную проверку по умолчанию. `STEEL_PRODUCT_QUOTE_AI_REVIEW_REQUIRED=true` требует её даже при отсутствующем провайдере. Программные проверки обязательны в любом режиме.
+
+## Три способа входа
+
+1. Диалог: уточнение параметров и выбранный расчётный движок; новая реплика может пересчитать заказ.
+2. CAD: фактическая геометрия и операции, затем ИИ-аудит и сравнение того же файла и производственных параметров. Различия файлов или операций исключают рыночное предложение.
+3. Кассеты по площади/стене: дешёвый предварительный просмотр, затем явная кнопка проверки ИИ и рынка. Не приравнивает приблизительное количество к точной раскладке.
+
+Во всех проверенных путях действует расчётный минимум и оговорка об ориентировочном характере/отсутствии оферты. Итог выше среднего рынка не называется среднерыночным.
+
+## Разрешённые структурированные источники
+
+Защищённый реестр `verified-market-offers-v1` допускает `trustedFeeds: [{supplierId, url}]` (до 8). Только оператор утверждает поставщика и точный HTTPS URL. Флаг `STEEL_PRODUCT_MARKET_SOURCE_FETCH_ENABLED=true` разрешает чтение этих источников. Ответ первоисточника: `{version: "market-source-offers-v1", offers: [...]}`. Поля предложения соответствуют `VerifiedMarketOffer`; первоисточник должен явно содержать спецификацию, действительную дату, точную цену, единицы, налоговые условия, партии/площади и минимальный заказ. Неизвестное не становится нулём.
+
+Имя поставщика и URL берутся из реестра, а не удалённых полей. `evidence` сохраняет исходную строку; хеш подтверждает её содержание, но не доказывает правдивость поставщика. Время чтения не подменяет дату публикации. DNS проверяется и фиксируется для соединения; частные/специальные IP, перенаправления, авторизация в URL, слишком большие и не-JSON ответы запрещены. Кэш не продлевает дату проверки без нового получения.
+
+`priceBasis["cad-part"]` описывает реальную налоговую базу CAD-цены. `priceBasis["facade-area"]` описывает базу ставки за площадь фасада. Все числовые тарифы остаются вне Git. Автоматический парсер произвольных HTML/PDF прайсов отсутствует: нужен профиль/адаптер соответствующего первоисточника. Поисковый результат никогда не утверждает сам себя.
+
+## Передача результата
+
+`quoteSnapshot` сохраняется в закрытой записи принятой заявки после согласия. В нём остаются точные данные расчёта, внутренние статьи и результаты проверок; браузер его не получает. Сессии без отправки заявки остаются в памяти процесса.
+
+`BITRIX_INTEGRATION_ENABLED=true`, `BITRIX_DATA_TRANSFER_APPROVED=true` и `BITRIX_WEBHOOK_URL` разрешают передачу безопасных клиентских данных в подтверждённый российский портал `*.bitrix24.ru`. Сначала проверяется идентификатор заявки; существующая заявка не дублируется, чужой заказ не изменяется. Себестоимость, тарифы и файлы автоматически не передаются. Сбой не отменяет локально принятую заявку и сохраняется как необходимость повторной доставки. Фоновая очередь не запускается этим кодом.
+
+Официальные контракты: https://yandex.cloud/ru/docs/ai-studio/text-generation/api-ref/TextGeneration/completion ; https://yandex.cloud/ru/docs/search-api/api-ref/WebSearch/search ; https://apidocs.bitrix24.ru/api-reference/crm/leads/crm-lead-add.html ; https://apidocs.bitrix24.ru/api-reference/crm/leads/crm-lead-list.html .
+
+---
+
+## Историческое описание до расширения выпуска
+
 # ИИ-инженер: расчётный минимум, проверенный рынок и контроль результата
 
 Продолжение работы владельца от 21.09.2026 в PR #152 поверх #151. Наличие кода не означает его публикацию, настроенные внешние сервисы или подтверждённые рыночные цены.
@@ -73,3 +111,16 @@ Workflow проверки также запускается на push рабоч
 До общего запуска остаются: разрешение конфликта с родительской веткой; проверка реальных серверных настроек и запросов к модели/Search API; утверждение состава и налоговой базы тарифов; наполнение и актуализация проверенного рынка; автоматизированная верификация первоисточников; сквозной браузерный тест; подключение быстрого калькулятора кассет к общему контролю; сопоставимый рынок для CAD; постоянное сохранение отчётов диалога и их связь с заявкой/живым Битрикс24. Сессии диалога остаются в памяти процесса.
 
 Рабочий PR остаётся черновиком. Нельзя утверждать, что код уже опубликован или что найденные ссылки автоматически стали подтверждёнными рыночными ценами.
+
+
+## No-spend release / owner clarification 21.09.2026
+
+The owner states that calculation formulas, rates and amounts are not confidential. This does not make customer contact data, session ownership or API credentials public. Existing server-authoritative pricing and lead-consent boundaries are retained for integrity, not to characterize the formulas as secrets.
+
+Paid text generation, paid market search and SpeechKit require `STEEL_PRODUCT_PAID_SERVICES_ALLOWED=true` in addition to their own settings. Merely adding a key does not enable spending. This release does not set that switch or create any paid resource.
+
+An optional Ollama adapter uses only `127.0.0.1:11434`, a preinstalled GGUF model and its configured exact digest. `STEEL_PRODUCT_LOCAL_AI_OFFLINE_VERIFIED=true` records the operator's check that the Ollama daemon has cloud features disabled (`OLLAMA_NO_CLOUD=1`). A missing model, changed digest, cloud model, timeout or invalid answer is unavailable, never an automatic paid fallback. No model is downloaded by application requests. Two concurrent requests and a bounded result cache limit local load; this is not a claim that hardware or electricity is cost-free.
+
+The model adapter is connected to parameter extraction, structured conversation and eight-stage quote audit. Existing deterministic checks remain mandatory. Without a configured model, results explicitly say that AI review has not run. Raw rates are not represented as a verified market mean.
+
+Official contracts checked: https://docs.ollama.com/api/generate ; https://docs.ollama.com/api/tags ; https://docs.ollama.com/faq . A local model has not been installed or quality-validated by this source-code change.

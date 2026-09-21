@@ -52,6 +52,10 @@ export type QuoteEngineInternalRecord = {
   priceDecision?: MarketFloorDecision;
   marketSourceStatus?: QuoteMarketContext["status"];
   stageReview?: StageReviewResult;
+  /** Detailed articles and exact inputs stay in the private consented lead only. */
+  costDetails?: FactualCalculationResult;
+  basisVersion?: string;
+  inputSnapshot?: MetalPartsReadyInput | MetalCassetteReadyInput;
 };
 export type QuoteEngineResult =
   | { status: "priced"; record: QuoteEngineInternalRecord; clientMessage: string }
@@ -128,6 +132,7 @@ async function executeMetalParts(input: MetalPartsReadyInput, market: MarketInpu
     version: "quote-engine-v1", createdAt: new Date().toISOString(), calculator: "metal-parts",
     technicalVerification, costRubBatch: costResult.confirmedDirectCostRubBatch,
     costVerification, market, commercialPrice, commercialVerification, pricingScenarios,
+    costDetails: costResult, basisVersion: basis.version, inputSnapshot: { ...input },
     finalPriceRubBatch: commercialPrice.baseCommercialPriceRub,
     finalPriceRubEach: Math.round(commercialPrice.baseCommercialPriceRub / input.quantity * 100) / 100,
     quantity: input.quantity,
@@ -160,7 +165,7 @@ async function executeMetalCassettes(input: MetalCassetteReadyInput, market: Mar
   const record: QuoteEngineInternalRecord = {
     version: "quote-engine-v1", createdAt: new Date().toISOString(), calculator: "metal-cassettes",
     technicalVerification, costRubBatch: null, costVerification: null,
-    market, commercialPrice: null, commercialVerification: null,
+    market, commercialPrice: null, commercialVerification: null, inputSnapshot: { ...input },
     finalPriceRubBatch: estimate.approximateTotalRub,
     finalPriceRubEach: Math.round(estimate.approximateTotalRub / input.quantity * 100) / 100,
     quantity: input.quantity, warnings: [],
