@@ -118,6 +118,7 @@ jobs:
           by_category = Counter()
           by_assignee = Counter()
           amount_by_currency = defaultdict(float)
+          by_year = {}
           created_30 = created_90 = created_365 = 0
           stale_30 = stale_90 = 0
           open_count = 0
@@ -150,6 +151,23 @@ jobs:
 
               created = parse_dt(d.get("createdTime"))
               if created:
+                  year = str(created.year)
+                  y = by_year.setdefault(year, {
+                      "deals": 0, "open_deals": 0, "closed_deals": 0,
+                      "won_deals": 0, "lost_deals": 0,
+                      "opportunity_by_currency": {}
+                  })
+                  y["deals"] += 1
+                  if closed:
+                      y["closed_deals"] += 1
+                  else:
+                      y["open_deals"] += 1
+                  if sem == "S":
+                      y["won_deals"] += 1
+                  elif sem == "F":
+                      y["lost_deals"] += 1
+                  cur_map = y["opportunity_by_currency"]
+                  cur_map[cur] = cur_map.get(cur, 0.0) + float(d.get("opportunity") or 0)
                   age = now - created
                   if age <= timedelta(days=30): created_30 += 1
                   if age <= timedelta(days=90): created_90 += 1
@@ -179,6 +197,10 @@ jobs:
                   "stale_90d": stale_90,
               },
               "opportunity_by_currency": dict(sorted(amount_by_currency.items())),
+              "years": [
+                  {"year": year, **by_year[year]}
+                  for year in sorted(by_year.keys())
+              ],
               "categories": [
                   {"id": k, "name": category_meta.get(k, k), "deals": v}
                   for k, v in by_category.most_common()
