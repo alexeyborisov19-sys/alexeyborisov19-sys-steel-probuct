@@ -13,6 +13,8 @@ const roleLabels = {
 } as const;
 
 const mainNavigation = [
+  ["Производственный калькулятор", "/internal/production-calculator", "VIEW_DASHBOARD"],
+  ["Производственные расчёты", "/internal/production-calculations", "VIEW_DASHBOARD"],
   ["Обзор", "/internal/personal-data", "VIEW_DASHBOARD"],
   ["Заявки", "/internal/personal-data/leads", "VIEW_MASKED_LEADS"],
   ["Согласия", "/internal/personal-data/consents", "VIEW_CONSENT"],
