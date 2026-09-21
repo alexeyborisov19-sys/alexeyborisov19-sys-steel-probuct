@@ -4,6 +4,7 @@
 import { emptyLeadState, extractLeadState } from "@/lib/assistant/state";
 import type { EngineeringLeadState } from "@/lib/assistant/types";
 import type { CalculatorId } from "@/lib/quote-engine/classification";
+import { hasBendingRequirement, normalizeQuoteAnswer, quoteNumericEvidence } from "@/lib/quote-engine/conversation-input";
 import { planQuoteEngineCalculation, type MetalCassetteReadyInput, type MetalPartsReadyInput } from "@/lib/quote-engine/plan";
 import { extractWithAi, proposeWithYandex, type AiProposalCaller } from "@/lib/server/quote-engine/ai-extraction";
 import { assembleMarketInput, marketTargetFromPlan, type MarketOfferProvider } from "@/lib/quote-engine/market/assemble";
@@ -75,8 +76,33 @@ export async function handleNaturalLanguageQuote(
   options: QuoteEngineTurnOptions = {},
 ): Promise<QuoteEngineTurnResult> {
   const { calculatorOverride, market = null, dependencies = {}, aiProposalCaller = proposeWithYandex, marketOfferProvider = null } = options;
-  let state = extractLeadState(priorState, message);
-  let plan = planQuoteEngineCalculation(state, message, calculatorOverride);
+  const previousPlan = planQuoteEngineCalculation(priorState, "", calculatorOverride);
+  const askedField = previousPlan.status === "missing-fields" ? previousPlan.missing[0]?.code : undefined;
+  // A bare number has a unit only when answering a question that explicitly supplied it.
+  const contextualMessage = normalizeQuoteAnswer(message, askedField);
+  let state = extractLeadState(priorState, contextualMessage);
+  const evidence = quoteNumericEvidence(contextualMessage);
+  for (const field of ["thickness", "quantity"] as const) {
+    const value = evidence[field] === undefined ? priorState[field] : evidence[field];
+    if (value == null) delete state[field];
+    else state[field] = value;
+  }
+  if (priorState.quoteRequiresCad || hasBendingRequirement(message)) state.quoteRequiresCad = true;
+  // Recompute lead completeness after removing values the general extractor misread.
+  state = extractLeadState(state, "");
+  let plan = planQuoteEngineCalculation(state, contextualMessage, calculatorOverride);
+
+  // Contradictory or invalid numeric corrections are a question for the
+  // customer, not permission for the model to pick a value or reuse the old one.
+  if (plan.status !== "needs-cad" && (evidence.thickness === null || evidence.quantity === null)) {
+    return {
+      kind: "question",
+      question: evidence.thickness === null
+        ? "Уточните одну положительную толщину металла в мм. Сейчас значение неоднозначно или некорректно."
+        : "Уточните точное количество изделий целым положительным числом, в штуках.",
+      state,
+    };
+  }
 
   // The model is asked only when the deterministic extractor has actually run
   // out of road — that is the one case where it can add something (§6: wording
@@ -87,7 +113,7 @@ export async function handleNaturalLanguageQuote(
     const assisted = await extractWithAi(state, message, aiProposalCaller);
     if (assisted.accepted.length > 0) {
       state = assisted.state;
-      plan = planQuoteEngineCalculation(state, message, calculatorOverride);
+      plan = planQuoteEngineCalculation(state, contextualMessage, calculatorOverride);
     }
   }
 
@@ -112,9 +138,10 @@ export async function handleNaturalLanguageQuote(
   // of against a half-known request. A provider that fails or finds nothing
   // usable leaves `market` null — the same state the pricing rules and the
   // verification layer already treat as "no market data".
-  const collectedMarket = await collectMarket(plan, marketOfferProvider);
+  // Do not call a provider when the caller already supplied the market input.
+  const effectiveMarket = market ?? await collectMarket(plan, marketOfferProvider);
 
-  const result = await executeQuoteEngine(plan, market ?? collectedMarket, dependencies);
+  const result = await executeQuoteEngine(plan, effectiveMarket, dependencies);
   return result.status === "priced"
     ? { kind: "priced", clientMessage: result.clientMessage, record: result.record, state }
     : { kind: "blocked", clientMessage: result.clientMessage, record: result.record, state };
