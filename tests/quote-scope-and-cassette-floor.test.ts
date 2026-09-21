@@ -44,12 +44,17 @@ test("explicitly excluded operations are not counted as requested", () => {
   assert.deepEqual(collectRequiredScope("сварка не нужна", ["welding"]), []);
 });
 test("a quotation that needs holes cannot become a plain rectangular cutting quote", async () => {
-  const first = await handleNaturalLanguageQuote("Нужна деталь 500×400 мм, оцинковка 2 мм, с отверстиями", emptyLeadState(), { aiProposalCaller: null });
+  // The customer has selected metal parts. Without that choice the generic word
+  // "деталь" may correctly trigger a product question before scope validation.
+  const options = { aiProposalCaller: null, calculatorOverride: "metal-parts" as const };
+  const first = await handleNaturalLanguageQuote("Нужна деталь 500×400 мм, оцинковка 2 мм, с отверстиями", emptyLeadState(), options);
   assert.equal(first.kind, "blocked");
-  const next = await handleNaturalLanguageQuote("100 шт", first.state, { aiProposalCaller: null });
+  assert.ok(first.state.quoteRequiredScope?.includes("holes-or-cutouts"));
+  const next = await handleNaturalLanguageQuote("100 шт", first.state, options);
   assert.equal(next.kind, "blocked");
   if (next.kind !== "blocked") return;
   assert.equal(next.record, null);
+  assert.ok(next.state.quoteRequiredScope?.includes("holes-or-cutouts"));
   assert.match(next.clientMessage, /не будут исключены/);
   assert.doesNotMatch(next.clientMessage, /₽/);
 });
