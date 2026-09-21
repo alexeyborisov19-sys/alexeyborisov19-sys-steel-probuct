@@ -4,6 +4,7 @@ import type { ProjectFactualCalculationResult, ProjectFactualPartResult, Project
 import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels";
 import { approvedSalePriceRubFromLines, type CommercialPricingPolicy } from "@/lib/server/instant-quote/commercial-pricing";
 import { reviewQuoteStages, type StageEvidence, type StageReviewCaller, type StageReviewResult } from "@/lib/server/quote-engine/stage-review";
+import { verifyStageEvidence } from "@/lib/server/quote-engine/stage-evidence";
 
 export type CadQuoteAudit = {
   partId: string;
@@ -46,7 +47,8 @@ async function reviewPart(
   };
   const hold = (review: StageReviewResult) => {
     audit.review = review;
-    return { signal: { partId: part.id, status: "needs-review" as const, approvedSalePriceRub: null }, audit };
+    const status: ClientCalculationSignal["status"] = result?.status === "blocked" ? "blocked" : "needs-review";
+    return { signal: { partId: part.id, status, approvedSalePriceRub: null }, audit };
   };
   const cost = result?.calculation;
   if (result?.status !== "complete" || cost?.status !== "complete" || cost.missing.length) {
@@ -63,11 +65,13 @@ async function reviewPart(
   if (!codes.has("material") || part.configuration.operations.some((operation) => !codes.has(operation))) {
     return hold(issue("operations", "unsupported-operation"));
   }
-  // Model success cannot turn incomplete, negative or non-finite cost articles into a quote.
   if (!cost.lines.length || cost.lines.some((line) => !Number.isFinite(line.amountRubEach) || line.amountRubEach < 0)
     || !Number.isFinite(cost.confirmedDirectCostRubBatch) || cost.confirmedDirectCostRubBatch <= 0) {
     return hold(issue("calculation", "incomplete-calculation"));
   }
+  if (![policy.metalMultiplier, policy.roundStepRub].every((value) => Number.isFinite(value) && value > 0)
+    || ![policy.drawingPercentOfWorks, policy.finalPercent, policy.fixedAddRubEach].every((value) => Number.isFinite(value) && value >= 0)
+    || typeof policy.fixedAddEnabled !== "boolean") return hold(issue("pricing", "price-below-floor"));
   let baseline: number;
   try { baseline = approvedSalePriceRubFromLines(cost.lines, cost.quantity, policy); }
   catch { return hold(issue("pricing", "price-below-floor")); }
@@ -95,10 +99,10 @@ async function reviewPart(
   };
   audit.evidence = evidence;
   // Unresolved CAD warnings are engineering evidence, not permission for an LLM to waive them.
-  if (result.dfmReviewReasons.length) return hold(issue("geometry", "inconsistent-geometry"));
-  audit.review = options.caller === null
+  if (result.dfmReviewReasons.length || (cad?.reviewReasons?.length ?? 0) > 0) return hold(issue("geometry", "inconsistent-geometry"));
+  audit.review = verifyStageEvidence(evidence) ?? (options.caller === null
     ? { status: "not-configured", stages: [] }
-    : await reviewQuoteStages(evidence, options.caller);
+    : await reviewQuoteStages(evidence, options.caller));
   const required = options.requireAiReview ?? requiredByEnvironment();
   if (audit.review.status === "needs-review" || (required && audit.review.status !== "passed")) return hold(audit.review);
   audit.publishedRubBatch = baseline;
