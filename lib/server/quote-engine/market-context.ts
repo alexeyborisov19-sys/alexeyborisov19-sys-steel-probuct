@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { open, realpath } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { EngineeringLeadState } from "@/lib/assistant/types";
 import type { MetalCassetteReadyInput, MetalPartsReadyInput } from "@/lib/quote-engine/plan";
 import { materialLabelToId } from "@/lib/quote-engine/field-parsing";
@@ -14,17 +14,12 @@ export type QuoteMarketContext = {
   target: MarketQuoteSpec | null;
   offers: readonly unknown[];
 };
-
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
-/** The registry describes the SELLING price's actual scope, not an inferred tax or coating. */
-export function marketContextFromRegistry(
-  plan: ReadyQuotePlan,
-  state: EngineeringLeadState | undefined,
-  raw: unknown,
-): QuoteMarketContext {
+/** The registry describes the existing selling price's actual scope and tax basis. */
+export function marketContextFromRegistry(plan: ReadyQuotePlan, state: EngineeringLeadState | undefined, raw: unknown): QuoteMarketContext {
   const unavailable: QuoteMarketContext = { status: "unavailable", target: null, offers: [] };
   const registry = record(raw);
   if (!registry || registry.version !== "verified-market-offers-v1"
@@ -41,23 +36,17 @@ export function marketContextFromRegistry(
     heightMm: plan.calculator === "metal-parts" ? plan.input.heightMm : plan.input.moduleHeightMm,
     quantity: plan.input.quantity,
     cassetteType: plan.calculator === "metal-parts" ? null : plan.input.type,
-    finish: basis.finish,
-    scope: basis.scope,
-    vat: basis.vat,
-    vatRatePct: basis.vatRatePct,
+    finish: basis.finish, scope: basis.scope, vat: basis.vat, vatRatePct: basis.vatRatePct,
   };
   if (!validMarketSpec(target)) return { ...unavailable, status: "basis-mismatch" };
-  // The text-driven parts path currently prices only material + a flat laser cut.
-  if (plan.calculator === "metal-parts"
-    && (target.finish !== "none" || [...target.scope].sort().join(",") !== "laser-cutting,material")) {
-    return { ...unavailable, status: "basis-mismatch" };
-  }
+  // The text parts path prices a flat cut with material and already declares
+  // included VAT. A registry must not silently relabel it as tax-exclusive.
+  if (plan.calculator === "metal-parts" && (target.finish !== "none" || target.vat !== "included"
+    || [...target.scope].sort().join(",") !== "laser-cutting,material")) return { ...unavailable, status: "basis-mismatch" };
   const requestedMaterial = materialLabelToId(state?.material);
   if (requestedMaterial && requestedMaterial !== target.material) return { ...unavailable, status: "basis-mismatch" };
   if (state?.coating) {
-    if (/без\s+(?:покрытия|окраски|покраски)/iu.test(state.coating) && target.finish !== "none") {
-      return { ...unavailable, status: "basis-mismatch" };
-    }
+    if (/без\s+(?:покрытия|окраски|покраски)/iu.test(state.coating) && target.finish !== "none") return { ...unavailable, status: "basis-mismatch" };
     if (/порошк/iu.test(state.coating)) {
       const ral = state.ral?.match(/\d{4}/)?.[0];
       if (!ral || target.finish !== `powder:${ral}`) return { ...unavailable, status: "basis-mismatch" };
@@ -66,15 +55,9 @@ export function marketContextFromRegistry(
   return { status: "loaded", target, offers: registry.offers };
 }
 
-/**
- * No unverified web snippet can become a quote. Read only source-checked offers
- * from an operator-configured private registry. Search discovery is separate.
- * File locations and contents are never accepted from a browser request.
- */
+/** No browser pathname or search snippet can become a pricing reference. */
 export async function loadQuoteMarketContext(
-  plan: ReadyQuotePlan,
-  state?: EngineeringLeadState,
-  environment: NodeJS.ProcessEnv = process.env,
+  plan: ReadyQuotePlan, state?: EngineeringLeadState, environment: NodeJS.ProcessEnv = process.env,
 ): Promise<QuoteMarketContext> {
   const empty = (status: QuoteMarketContext["status"]): QuoteMarketContext => ({ status, target: null, offers: [] });
   const path = environment.STEEL_PRODUCT_MARKET_REFERENCE_FILE?.trim();
@@ -83,17 +66,22 @@ export async function loadQuoteMarketContext(
   try {
     const resolved = await realpath(path);
     const fromProject = relative(process.cwd(), resolved);
-    if (resolved !== resolve(path) || !fromProject.startsWith("..") || isAbsolute(fromProject)) return empty("unavailable");
+    const outsideProject = fromProject === ".." || fromProject.startsWith(`..${sep}`);
+    if (resolved !== resolve(path) || !outsideProject || isAbsolute(fromProject)) return empty("unavailable");
     const handle = await open(resolved, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
+      const limit = 1_048_576;
       const stat = await handle.stat();
-      if (!stat.isFile() || stat.size > 1_048_576 || (stat.mode & 0o007) !== 0) return empty("unavailable");
-      const content = await handle.readFile({ encoding: "utf8" });
-      if (Buffer.byteLength(content, "utf8") > 1_048_576) return empty("unavailable");
-      return marketContextFromRegistry(plan, state, JSON.parse(content));
+      if (!stat.isFile() || stat.size > limit || (stat.mode & 0o007) !== 0) return empty("unavailable");
+      const buffer = Buffer.alloc(limit + 1);
+      let length = 0;
+      while (length < buffer.length) {
+        const { bytesRead } = await handle.read(buffer, length, buffer.length - length, length);
+        if (!bytesRead) break;
+        length += bytesRead;
+      }
+      if (length > limit) return empty("unavailable");
+      return marketContextFromRegistry(plan, state, JSON.parse(buffer.subarray(0, length).toString("utf8")));
     } finally { await handle.close(); }
-  } catch {
-    // Do not leak a protected pathname, raw document, or a system error to the customer.
-    return empty("unavailable");
-  }
+  } catch { return empty("unavailable"); }
 }
