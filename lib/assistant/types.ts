@@ -1,3 +1,5 @@
+import type { SessionQuoteSnapshot } from "@/lib/server/quote-engine/session-snapshot";
+
 export type EngineeringField =
   | "productType"
   | "purpose"
@@ -47,6 +49,8 @@ export type AssistantSession = {
   history: ServerConversationMessage[];
   lastAskedField?: EngineeringField;
   quoteCalculator?: "auto" | "metal-parts" | "metal-cassettes";
+  /** Internal only. Written to the protected lead record after explicit consent. */
+  quoteSnapshot?: SessionQuoteSnapshot;
   createdAt: number;
   updatedAt: number;
 };
