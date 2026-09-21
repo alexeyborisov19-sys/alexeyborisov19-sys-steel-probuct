@@ -42,3 +42,5 @@ jobs:
             q={**common,'dimensions':'ym:s:date','metrics':'ym:s:goal'+str(goal['id'])+'reaches'}
             d=get(q); print('QUOTE_SUCCESS='+json.dumps({'goal_id':goal['id'],'totals':d.get('totals'),'data':d.get('data',[])},ensure_ascii=False))
           PY
+
+# trigger
