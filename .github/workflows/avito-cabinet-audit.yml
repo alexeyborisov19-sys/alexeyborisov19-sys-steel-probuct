@@ -1,0 +1,77 @@
+name: Avito Cabinet Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: avito-cabinet-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Read-only Avito audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify Avito secrets exist
+        env:
+          AVITO_CLIENT_ID: ${{ secrets.AVITO_CLIENT_ID }}
+          AVITO_CLIENT_SECRET: ${{ secrets.AVITO_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$AVITO_CLIENT_ID" || { echo "AVITO_CLIENT_ID is not configured"; exit 1; }
+          test -n "$AVITO_CLIENT_SECRET" || { echo "AVITO_CLIENT_SECRET is not configured"; exit 1; }
+          echo "Avito credentials are configured."
+
+      - name: Run read-only cabinet audit
+        env:
+          AVITO_CLIENT_ID: ${{ secrets.AVITO_CLIENT_ID }}
+          AVITO_CLIENT_SECRET: ${{ secrets.AVITO_CLIENT_SECRET }}
+          AVITO_API_BASE_URL: https://api.avito.ru
+          AVITO_AUDIT_OUTPUT: ${{ runner.temp }}/avito-audit.json
+        run: npm run avito:audit
+
+      - name: Print encrypted audit payload
+        env:
+          AVITO_CLIENT_SECRET: ${{ secrets.AVITO_CLIENT_SECRET }}
+          AVITO_AUDIT_OUTPUT: ${{ runner.temp }}/avito-audit.json
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const zlib = require('node:zlib');
+
+          const report = fs.readFileSync(process.env.AVITO_AUDIT_OUTPUT);
+          const compressed = zlib.gzipSync(report, { level: 9 });
+          const key = crypto.createHash('sha256').update(process.env.AVITO_CLIENT_SECRET, 'utf8').digest();
+          const iv = crypto.randomBytes(12);
+          const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+          const ciphertext = Buffer.concat([cipher.update(compressed), cipher.final()]);
+          const tag = cipher.getAuthTag();
+
+          const envelope = {
+            v: 1,
+            alg: 'aes-256-gcm+gzip',
+            iv: iv.toString('base64'),
+            tag: tag.toString('base64'),
+            data: ciphertext.toString('base64'),
+          };
+
+          console.log('AVITO_AUDIT_ENCRYPTED_V1=' + Buffer.from(JSON.stringify(envelope)).toString('base64'));
+          NODE
