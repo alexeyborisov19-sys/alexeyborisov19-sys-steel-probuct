@@ -21,6 +21,11 @@ import type { MaterialId } from "@/lib/instant-quote/pricing";
 import { loadPrivateCalculationBasis } from "@/lib/server/instant-quote/private-calculation-basis";
 import { metalMarketUpliftPct } from "@/lib/server/instant-quote/metal-market-uplift";
 import {
+  approvedSalePriceRubFromLines,
+  loadCommercialPricingPolicy,
+  type CommercialPricingPolicy,
+} from "@/lib/server/instant-quote/commercial-pricing";
+import {
   createInternalProductionReport,
   writeInternalProductionReport,
   type InternalCalculationInputSnapshot,
@@ -33,15 +38,6 @@ export type ConfidentialCalculationInputs = {
   powderSidesByPartId?: Record<string, 1 | 2>;
   surfacePreparationSidesByPartId?: Record<string, 1 | 2>;
   internalNotes?: string[];
-};
-
-type CommercialPricingPolicy = {
-  metalMultiplier: number;
-  drawingPercentOfWorks: number;
-  finalPercent: number;
-  fixedAddRubEach: number;
-  fixedAddEnabled: boolean;
-  roundStepRub: number;
 };
 
 function calculationStage(stage: string) {
@@ -60,62 +56,16 @@ function signalStatus(status: string): ClientCalculationSignal["status"] {
   return "pending";
 }
 
-function privatePositiveEnv(name: string) {
-  const raw = process.env[name]?.trim();
-  const value = raw == null || raw === "" ? Number.NaN : Number(raw);
-  if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} is not configured`);
-  return value;
-}
-
-function privateNonNegativeEnv(name: string) {
-  const raw = process.env[name]?.trim();
-  const value = raw == null || raw === "" ? Number.NaN : Number(raw);
-  if (!Number.isFinite(value) || value < 0) throw new Error(`${name} is not configured`);
-  return value;
-}
-
-function loadCommercialPricingPolicy(): CommercialPricingPolicy {
-  const fixedRaw = process.env.STEEL_PRODUCT_FIXED_ADD_ENABLED?.trim();
-  if (fixedRaw !== "true" && fixedRaw !== "false") {
-    throw new Error("STEEL_PRODUCT_FIXED_ADD_ENABLED is not configured");
-  }
-  return {
-    metalMultiplier: privatePositiveEnv("STEEL_PRODUCT_METAL_MULTIPLIER"),
-    drawingPercentOfWorks: privateNonNegativeEnv("STEEL_PRODUCT_DRAW_PCT"),
-    finalPercent: privateNonNegativeEnv("STEEL_PRODUCT_FINAL_PCT"),
-    fixedAddRubEach: privateNonNegativeEnv("STEEL_PRODUCT_FIXED_ADD_RUB"),
-    fixedAddEnabled: fixedRaw === "true",
-    roundStepRub: privatePositiveEnv("STEEL_PRODUCT_ROUND_STEP_RUB"),
-  };
-}
-
-function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-function roundUpTo(value: number, step: number) {
-  return roundMoney(Math.ceil((value - 1e-9) / step) * step);
-}
-
 /**
  * Applies the approved commercial policy server-side. Only the resulting sale
  * total may cross the public boundary; material/operation rates and direct cost
- * remain in the private production report.
+ * remain in the private production report. The formula itself lives in
+ * `commercial-pricing.ts`; this keeps only the per-part completeness gate
+ * that is specific to this multi-part project pipeline.
  */
 function approvedSalePriceRub(part: ProjectFactualPartResult, policy: CommercialPricingPolicy) {
   if (part.status !== "complete" || !part.calculation) return null;
-  const calculation = part.calculation;
-  const materialEach = calculation.lines
-    .filter((line) => line.code === "material")
-    .reduce((sum, line) => sum + line.amountRubEach, 0);
-  const worksBaseEach = calculation.lines
-    .filter((line) => line.code !== "material")
-    .reduce((sum, line) => sum + line.amountRubEach, 0);
-  const worksEach = worksBaseEach + (policy.fixedAddEnabled ? policy.fixedAddRubEach : 0);
-  const drawingEach = worksEach * policy.drawingPercentOfWorks / 100;
-  const subtotalEach = materialEach * policy.metalMultiplier + worksEach + drawingEach;
-  const saleEach = roundUpTo(subtotalEach * (1 + policy.finalPercent / 100), policy.roundStepRub);
-  return roundMoney(saleEach * calculation.quantity);
+  return approvedSalePriceRubFromLines(part.calculation.lines, part.calculation.quantity, policy);
 }
 
 /**

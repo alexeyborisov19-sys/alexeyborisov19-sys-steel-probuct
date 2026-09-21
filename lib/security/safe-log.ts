@@ -1,10 +1,11 @@
-type SafeRoute = "assistant" | "assistant-lead" | "quote" | "online-calculation" | "online-order-cad-preview";
+type SafeRoute = "assistant" | "assistant-lead" | "assistant-quote" | "quote" | "online-calculation" | "online-order-cad-preview";
 type SafeResult =
   | "accepted"
   | "antivirus_blocked"
   | "bad_request"
   | "calculated"
   | "calculation_failed"
+  | "clarification_requested"
   | "configuration_error"
   | "consent_audit_deferred"
   | "cross_site_rejected"
