@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/project-galleries-exhibitions-obninsk-sep12
+      - fix/quote-engine-dialog-safety-20260921
   pull_request: {}
   workflow_dispatch:
 
