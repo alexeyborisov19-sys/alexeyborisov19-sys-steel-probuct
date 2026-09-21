@@ -534,7 +534,7 @@ export function ClientManufacturingWorkspace() {
             <div className="border-b border-white/10 p-5">
               <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Производство</p>
               <h2 className="mt-2 text-xl font-semibold">Конфигурация позиции</h2>
-              <p className="mt-2 text-xs leading-5 text-white/38">Параметры относятся к выбранному файлу. Изменение любого из них сбрасывает предыдущую цену до нового расчёта.</p>
+              <p className="mt-2 text-xs leading-5 text-white/38">Для быстрого расчёта достаточно материала, толщины и количества. Дополнительные операции можно раскрыть ниже.</p>
             </div>
             {activePart ? <>
               <div className="space-y-5 p-5">
@@ -562,13 +562,28 @@ export function ClientManufacturingWorkspace() {
                 <div><p id="part-material-label" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
                 <div><label htmlFor="part-thickness" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label htmlFor="part-quantity" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>
-                <ClientOperationControls
-                  operations={activePart.configuration.operations}
-                  operationInputs={activePart.configuration.operationInputs ?? {}}
-                  detectedBendCount={activePreview?.cad.bendCountFromModel ?? null}
-                  onToggle={toggleOperation}
-                  onQuantityChange={updateOperationInputs}
-                />
+                <details className="group border border-white/10 bg-[#0b0f12]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-left">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[.13em] text-white/55">Дополнительная обработка</p>
+                      <p className="mt-1 text-xs text-white/35">
+                        {activePart.configuration.operations.length > 1
+                          ? `Выбрано операций: ${activePart.configuration.operations.length}`
+                          : "Гибка, сварка, окраска и другие операции — при необходимости"}
+                      </p>
+                    </div>
+                    <span className="text-lg text-steel-orange transition group-open:rotate-45" aria-hidden="true">+</span>
+                  </summary>
+                  <div className="border-t border-white/10 p-4">
+                    <ClientOperationControls
+                      operations={activePart.configuration.operations}
+                      operationInputs={activePart.configuration.operationInputs ?? {}}
+                      detectedBendCount={activePreview?.cad.bendCountFromModel ?? null}
+                      onToggle={toggleOperation}
+                      onQuantityChange={updateOperationInputs}
+                    />
+                  </div>
+                </details>
               </div>
               <div className="border-t border-white/10 p-5">
                 <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">
