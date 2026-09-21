@@ -2,6 +2,15 @@ name: Avito Cabinet Audit
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/avito-api-audit
+    paths:
+      - '.github/workflows/avito-cabinet-audit.yml'
+      - 'lib/avito/**'
+      - 'scripts/avito-audit.ts'
+      - 'package.json'
+      - 'package-lock.json'
 
 permissions:
   contents: read
