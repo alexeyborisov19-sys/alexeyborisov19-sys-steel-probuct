@@ -1,0 +1,39 @@
+name: Audit Direct ads for expansion
+on:
+  push:
+    branches: [audit/direct-ads-20260921]
+    paths: ['.github/workflows/audit-direct-ads.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read SteelProdukt campaign structure
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re
+          from urllib.request import Request,urlopen
+          from urllib.parse import unquote
+          t=os.environ.get('TOKEN','').strip().strip('"\'')
+          t=re.sub(r'^(OAuth|Bearer)\\s+','',t,flags=re.I)
+          m=re.search(r'(?:^|[?#&])access_token=([^&#\\s]+)',t)
+          if m:t=unquote(m.group(1))
+          def call(s,p):
+            q=Request('https://api.direct.yandex.com/json/v5/'+s,data=json.dumps({'method':'get','params':p}).encode(),headers={'Authorization':'Bearer '+t,'Content-Type':'application/json; charset=utf-8','Accept-Language':'ru'})
+            with urlopen(q,timeout=30) as r:return json.load(r).get('result',{})
+          camps=call('campaigns',{'SelectionCriteria':{},'FieldNames':['Id','Name','State','Status','Type'],'TextCampaignFieldNames':['CounterIds','PriorityGoals','Settings'],'Page':{'Limit':1000}})
+          for c in camps.get('Campaigns',[]):
+            if c.get('State')=='ARCHIVED':continue
+            cid=c['Id']
+            gs=call('adgroups',{'SelectionCriteria':{'CampaignIds':[cid]},'FieldNames':['Id','Name','CampaignId','RegionIds','Status'],'Page':{'Limit':10000}}).get('AdGroups',[])
+            ads=call('ads',{'SelectionCriteria':{'CampaignIds':[cid]},'FieldNames':['Id','CampaignId','AdGroupId','Type','State','Status'],'TextAdFieldNames':['Title','Title2','Text','Href','DisplayUrlPath','SitelinkSetId'],'Page':{'Limit':10000}}).get('Ads',[])
+            kws=call('keywords',{'SelectionCriteria':{'CampaignIds':[cid]},'FieldNames':['Id','AdGroupId','Keyword','State','Status','ServingStatus'],'Page':{'Limit':10000}}).get('Keywords',[])
+            print('CAMPAIGN='+json.dumps({'Id':cid,'Name':c['Name'],'State':c['State'],'Status':c['Status'],'CounterIds':c.get('TextCampaign',{}).get('CounterIds'),'PriorityGoals':c.get('TextCampaign',{}).get('PriorityGoals')},ensure_ascii=False))
+            for g in gs:
+              ga=[a for a in ads if a['AdGroupId']==g['Id']]
+              gk=[k for k in kws if k['AdGroupId']==g['Id']]
+              print('GROUP='+json.dumps({'Id':g['Id'],'Name':g['Name'],'RegionIds':g['RegionIds'],'Status':g['Status'],'Keywords':[x['Keyword'] for x in gk],'Ads':[{'Id':a['Id'],'State':a['State'],'Status':a['Status'],**a.get('TextAd',{})} for a in ga]},ensure_ascii=False))
+          PY
