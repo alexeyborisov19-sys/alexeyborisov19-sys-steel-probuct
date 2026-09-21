@@ -1,0 +1,32 @@
+name: Quote release workspace
+on:
+  push:
+    branches: [fix/quote-engine-dialog-safety-20260921]
+    paths: [.github/workflows/quote-release-workspace.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Archive code and locked dependencies only
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$GITHUB_SHA" > RELEASE_WORKSPACE_COMMIT
+          tar --exclude='./.git' --exclude='./.next' --exclude='./.data' --exclude='./.env*' --exclude='./.agents' --exclude='./.codex' --exclude='./.claude' --exclude='./.claude-flow' -czf "$RUNNER_TEMP/quote-release-workspace.tar.gz" .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: quote-release-workspace
+          path: ${{ runner.temp }}/quote-release-workspace.tar.gz
+          retention-days: 1
+          if-no-files-found: error
