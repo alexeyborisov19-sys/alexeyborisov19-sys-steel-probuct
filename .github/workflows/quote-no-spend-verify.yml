@@ -1,0 +1,66 @@
+name: Verify no-spend AI release
+on:
+  push:
+    branches: [release/ai-engineer-integrated-20260921]
+    paths: [.github/workflows/quote-no-spend-verify.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quote-no-spend-verification
+  cancel-in-progress: true
+jobs:
+  verify:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+      NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
+      NEXT_PUBLIC_YM_WEBVISOR: 'true'
+      STEEL_PRODUCT_PAID_SERVICES_ALLOWED: 'false'
+      STEEL_PRODUCT_LOCAL_AI_ENABLED: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: All tests with fixture-only model transports
+        run: |
+          set +e
+          npm test > /tmp/quote-no-spend-tests.log 2>&1
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ]; then
+            awk '/^not ok / { p=1 } p { print } p && /^  \.\.\./ { p=0 }' /tmp/quote-no-spend-tests.log
+          fi
+          tail -n 12 /tmp/quote-no-spend-tests.log
+          exit "$result"
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+      - name: Check built pages and redirects locally
+        env:
+          NODE_ENV: production
+          SEO_AUDIT_BASE_URL: http://127.0.0.1:3011
+        run: |
+          set -euo pipefail
+          npm run start -- -H 127.0.0.1 -p 3011 > /tmp/quote-no-spend-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3011/robots.txt > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          npm run seo:audit
+      - name: Record checked source
+        run: printf 'Checked source %s; no deployment, model download or paid provider calls.\n' "$GITHUB_SHA"
