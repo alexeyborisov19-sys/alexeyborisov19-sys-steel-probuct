@@ -1,0 +1,75 @@
+name: Enable Direct Metrika click attribution
+on:
+  push:
+    branches: [ops/yandex-audit-20260921]
+    paths: ['.github/workflows/enable-direct-metrika-tag.yml']
+permissions:
+  contents: read
+concurrency:
+  group: steelprodukt-direct-attribution
+  cancel-in-progress: false
+jobs:
+  attribution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Enable only ADD_METRICA_TAG and verify preserved settings
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, json, re, copy, datetime
+          from urllib.request import Request, urlopen
+          from urllib.parse import unquote
+          from urllib.error import HTTPError
+          token=os.environ.get('TOKEN','').strip().strip('\"\'')
+          token=re.sub(r'^(OAuth|Bearer)\s+','',token,flags=re.I)
+          match=re.search(r'(?:^|[?#&])access_token=([^&#\s]+)',token)
+          if match: token=unquote(match.group(1))
+          if not token: raise SystemExit('Required credential is not configured')
+          campaign_id=714391927
+          def call(method,params):
+              payload={'method':method,'params':params}
+              req=Request('https://api.direct.yandex.com/json/v5/campaigns',data=json.dumps(payload).encode(),headers={'Authorization':'Bearer '+token,'Content-Type':'application/json; charset=utf-8','Accept-Language':'ru'})
+              try:
+                  with urlopen(req,timeout=30) as response:
+                      data=json.load(response)
+                      request_id=response.headers.get('RequestId')
+              except HTTPError as error:
+                  raise SystemExit('Direct HTTP error '+str(error.code))
+              if 'error' in data:
+                  raise SystemExit('Direct API error '+str(data['error'].get('error_code')))
+              return data.get('result',{}),request_id
+          def read():
+              result,rid=call('get',{'SelectionCriteria':{'Ids':[campaign_id]},'FieldNames':['Id','Name','Type','State','Status','StatusPayment','DailyBudget','NegativeKeywords'],'TextCampaignFieldNames':['CounterIds','Settings','BiddingStrategy','PriorityGoals','AttributionModel']})
+              campaigns=result.get('Campaigns',[])
+              if len(campaigns)!=1: raise SystemExit('Target campaign was not uniquely resolved')
+              return campaigns[0],rid
+          before,_=read()
+          if before.get('Id')!=campaign_id or before.get('Type')!='TEXT_CAMPAIGN': raise SystemExit('Unexpected target campaign type')
+          if before.get('State')!='ON': raise SystemExit('Campaign state has changed; no write performed')
+          text=before['TextCampaign']
+          if text.get('CounterIds',{}).get('Items')!=[112542227]: raise SystemExit('Counter binding has changed; no write performed')
+          options={x['Option']:x['Value'] for x in text.get('Settings',[])}
+          previous=options.get('ADD_METRICA_TAG')
+          if previous not in ('NO','YES'): raise SystemExit('Unexpected attribution setting; no write performed')
+          write_id=None
+          if previous=='NO':
+              result,write_id=call('update',{'Campaigns':[{'Id':campaign_id,'TextCampaign':{'Settings':[{'Option':'ADD_METRICA_TAG','Value':'YES'}]}}]})
+              items=result.get('UpdateResults',[])
+              if len(items)!=1 or items[0].get('Id')!=campaign_id or items[0].get('Errors'):
+                  codes=[e.get('Code') for x in items for e in x.get('Errors',[])]
+                  raise SystemExit('Update rejected; error codes '+json.dumps(codes))
+          after,read_id=read()
+          after_options={x['Option']:x['Value'] for x in after['TextCampaign'].get('Settings',[])}
+          if after_options.get('ADD_METRICA_TAG')!='YES': raise SystemExit('Post-update attribution verification failed')
+          def protected(campaign):
+              state=copy.deepcopy(campaign)
+              state['TextCampaign']['Settings']=sorted([x for x in state['TextCampaign'].get('Settings',[]) if x['Option']!='ADD_METRICA_TAG'],key=lambda x:x['Option'])
+              return state
+          preserved=protected(before)==protected(after)
+          proof={'as_of_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'campaign_id':campaign_id,'option':'ADD_METRICA_TAG','before':previous,'after':after_options['ADD_METRICA_TAG'],'write_performed':previous=='NO','all_other_read_settings_unchanged':preserved,'update_request_id':write_id,'verification_request_id':read_id}
+          print('ATTRIBUTION_VERIFICATION='+json.dumps(proof))
+          if not preserved: raise SystemExit('Another campaign field changed during verification; review required')
+          print('No budget, bids, strategy, goals, targeting, ads or campaign activation changes were requested.')
+          PY
