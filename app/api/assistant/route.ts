@@ -21,9 +21,7 @@ import {
 } from "@/lib/assistant/security";
 import { assistantSessionStore } from "@/lib/assistant/session-store";
 import {
-  extractLeadState,
   modelJsonSchema,
-  nextQuestionFor,
   validateStructuredResult,
 } from "@/lib/assistant/state";
 import type { AssistantSession, StructuredAssistantResult } from "@/lib/assistant/types";
@@ -75,15 +73,14 @@ function localStructuredAnswer(
   question: string,
   pathname: string,
 ): StructuredAssistantResult {
-  const next = nextQuestionFor(session.state);
   const pageAnswer = pageSpecificKnowledgeAnswer(question, pathname);
   const knowledge = (pageAnswer ?? buildKnowledgeFallback(question)).split("?")[0].trim();
   return {
     answer: knowledge,
     extractedFields: {},
     missingFields: session.state.missingFields,
-    nextQuestion: next?.question ?? "",
-    readyForLead: session.state.readiness === "ready_for_lead",
+    nextQuestion: "",
+    readyForLead: false,
     safetyFlags: [],
   };
 }
@@ -147,13 +144,8 @@ export async function POST(request: Request) {
       typeof body.pathname === "string" ? body.pathname : null,
     );
     const session = resolveSession(body.sessionId, ownerKey);
-    // The floating assistant is intentionally informational/navigation-only.
-    // Manufacturing quotations live in the dedicated CAD workspace.
-    // A knowledge detour or prompt-injection attempt cannot rewrite agreed
-    // quote parameters (e.g. change cassette type while explaining it).
-    if (!isPromptInjection(message)) {
-      session.state = extractLeadState(session.state, message, session.lastAskedField);
-    }
+    // The floating assistant is informational/navigation-only. It never collects
+    // manufacturing parameters; quotations live in the dedicated CAD workspace.
     session.history.push({ role: "user", content: message, createdAt: new Date().toISOString() });
 
     let result: StructuredAssistantResult;
@@ -171,15 +163,14 @@ export async function POST(request: Request) {
     }
 
     const safeAnswer = enforceSafeAnswer(result.answer);
-    const next = nextQuestionFor(session.state);
     result.answer = safeAnswer.answer;
     result.safetyFlags = [...new Set([...result.safetyFlags, ...safeAnswer.flags])];
-    result.missingFields = session.state.missingFields;
-    result.nextQuestion = next?.question ?? "";
-    result.readyForLead = session.state.readiness === "ready_for_lead";
+    result.missingFields = [];
+    result.nextQuestion = "";
+    result.readyForLead = false;
 
-    const clientAnswer = [result.answer, result.nextQuestion].filter(Boolean).join("\n\n");
-    session.lastAskedField = next?.field;
+    const clientAnswer = result.answer;
+    session.lastAskedField = undefined;
     session.history.push({
       role: "assistant",
       content: clientAnswer,
@@ -195,9 +186,7 @@ export async function POST(request: Request) {
       sessionId: session.id,
       readiness: session.state.readiness,
       missingFields: session.state.missingFields,
-      suggestions: result.readyForLead
-        ? ["Передать задачу инженеру", "Приложить чертежи"]
-        : assistantSuggestionsForPage(message, pathname, genericSuggestions),
+      suggestions: assistantSuggestionsForPage(message, pathname, genericSuggestions),
     });
   } catch (error) {
     if (error instanceof PayloadTooLargeError) {
