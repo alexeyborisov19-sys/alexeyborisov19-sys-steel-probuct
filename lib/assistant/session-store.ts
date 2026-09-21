@@ -33,8 +33,10 @@ export class InMemoryAssistantSessionStore implements AssistantSessionStore {
     this.operations += 1;
     if (this.operations % 100 === 0) this.cleanup();
     const session = this.sessions.get(id);
-    if (!session || session.ownerKey !== ownerKey || Date.now() - session.updatedAt > SESSION_TTL_MS) {
-      if (session) this.sessions.delete(id);
+    // Looking up somebody else's ID must neither expose nor delete their session.
+    if (!session || session.ownerKey !== ownerKey) return undefined;
+    if (Date.now() - session.updatedAt > SESSION_TTL_MS) {
+      this.sessions.delete(id);
       return undefined;
     }
     return session;
@@ -65,6 +67,7 @@ const globalSessions = globalThis as typeof globalThis & {
 export const assistantSessionStore = globalSessions.__steelproduktAssistantSessions
   ?? new InMemoryAssistantSessionStore();
 
-if (process.env.NODE_ENV !== "production") {
-  globalSessions.__steelproduktAssistantSessions = assistantSessionStore;
-}
+// Next route bundles may instantiate this module independently. Share the
+// existing in-memory store in production too. This is process-local, NOT a
+// distributed store and does not survive a restart or span multiple workers.
+globalSessions.__steelproduktAssistantSessions = assistantSessionStore;
