@@ -146,6 +146,8 @@ export async function POST(request: Request) {
       email: email || null,
       company: company || null,
       engineeringState: session?.state ?? null,
+      // Server-owned snapshot only; no client price, cost, audit or source is trusted.
+      quoteSnapshot: session?.quoteSnapshot ?? null,
       summary: session ? sessionLeadSummary(session) : "Диалоговая сессия не найдена; требуется уточнение менеджером.",
       pageUrl: safePageUrl(pageUrl),
       files: quarantinedFiles,
