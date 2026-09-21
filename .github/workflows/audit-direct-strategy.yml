@@ -24,3 +24,5 @@ jobs:
           with urlopen(q,timeout=30) as r:d=json.load(r)['result']['Campaigns'][0]
           print('STRATEGY='+json.dumps(d,ensure_ascii=False))
           PY
+
+# trigger
