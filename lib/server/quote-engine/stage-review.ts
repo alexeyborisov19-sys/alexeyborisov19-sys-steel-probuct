@@ -1,4 +1,5 @@
 import { redactPersonalData } from "@/lib/assistant/security";
+import { verifyStageEvidence } from "@/lib/server/quote-engine/stage-evidence";
 
 export const QUOTE_REVIEW_STAGES = [
   "classification", "inputs", "geometry", "operations", "calculation", "market", "pricing", "disclaimer",
@@ -7,10 +8,10 @@ export type QuoteReviewStage = typeof QUOTE_REVIEW_STAGES[number];
 export type StageEvidence = Record<QuoteReviewStage, Record<string, unknown>>;
 export type StageReviewResult = {
   status: "passed" | "needs-review" | "unavailable" | "not-configured";
+  origin?: "deterministic" | "ai";
   stages: Array<{ stage: QuoteReviewStage; status: "pass" | "needs-review" | "not-applicable"; codes: string[] }>;
 };
 export type StageReviewCaller = (evidence: StageEvidence) => Promise<string | null>;
-
 const ISSUE_CODES = new Set([
   "missing-input", "unsupported-operation", "inconsistent-geometry", "incomplete-calculation",
   "market-not-comparable", "price-below-floor", "unsupported-client-claim", "source-required",
@@ -55,7 +56,7 @@ export function parseStageReview(raw: string | null): StageReviewResult {
     seen.add(row.stage);
     checked.push({ stage: row.stage, status: row.status, codes: [...new Set<string>(row.codes)] });
   }
-  return { status: checked.some((row) => row.status === "needs-review") ? "needs-review" : "passed", stages: checked };
+  return { status: checked.some((row) => row.status === "needs-review") ? "needs-review" : "passed", origin: "ai", stages: checked };
 }
 
 function configured(environment: NodeJS.ProcessEnv): boolean {
@@ -93,8 +94,9 @@ export async function reviewQuoteStages(
   evidence: StageEvidence,
   caller: StageReviewCaller = reviewStagesWithYandex,
 ): Promise<StageReviewResult> {
+  const deterministicFailure = verifyStageEvidence(evidence);
+  if (deterministicFailure) return deterministicFailure;
   if (caller === reviewStagesWithYandex && !configured(process.env)) return { status: "not-configured", stages: [] };
-  // Clone before the call: an injected reviewer cannot mutate pricing evidence.
   const snapshot = JSON.parse(JSON.stringify(evidence)) as StageEvidence;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -104,7 +106,6 @@ export async function reviewQuoteStages(
     ]);
     const result = parseStageReview(raw);
     if (result.status !== "passed") return result;
-    // A model cannot call mandatory phases inapplicable to avoid checking them.
     if (result.stages.some((row) => row.status === "not-applicable" && row.stage !== "market")) {
       return { status: "unavailable", stages: [] };
     }
