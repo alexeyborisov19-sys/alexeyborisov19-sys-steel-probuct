@@ -156,7 +156,9 @@ async function enforcePrivacyCounterFlags(token: string) {
 
   // SteelProdukt does not send form PII to analytics. Keep Yandex Metrica's
   // Advanced Matching / automatic first-party contact collection disabled too.
-  if (before.collect_first_party_data !== false) {
+  // Measurement itself must stay enabled or the correctly installed counter
+  // will still report zero visits and cannot supply Direct with conversions.
+  if (before.collect_first_party_data !== false || before.measurement_enabled !== true) {
     await apiRequest(
       `/management/v1/counter/${CANONICAL_YANDEX_COUNTER_ID}?field=counter_flags`,
       token,
@@ -166,6 +168,7 @@ async function enforcePrivacyCounterFlags(token: string) {
           counter: {
             counter_flags: {
               collect_first_party_data: false,
+              measurement_enabled: true,
             },
           },
         }),
@@ -177,6 +180,9 @@ async function enforcePrivacyCounterFlags(token: string) {
   const after = await readCounterFlags(token);
   if (after.collect_first_party_data !== false) {
     throw new Error("Metrika privacy verification failed: collect_first_party_data is still enabled.");
+  }
+  if (after.measurement_enabled !== true) {
+    throw new Error("Metrika measurement verification failed: measurement_enabled is still disabled.");
   }
 
   return {
@@ -273,7 +279,8 @@ export async function syncYandexMetrikaGoals(rawToken: string) {
     `Required JS goals: **${desiredTargets.length}**`,
     `Created now: **${created.length}**`,
     `Already present: **${skipped.length}**`,
-    `Advanced first-party contact collection: **disabled**${privacy.changed ? " (changed now)" : ""}`,
+    `Advanced first-party contact collection: **disabled**${privacy.changed ? " (verified/updated now)" : ""}`,
+    `Traffic measurement: **enabled**`,
     "",
     "Primary Direct optimization goal: `quote_request_success`.",
     "Secondary successful assistant lead: `assistant_lead_success`.",
