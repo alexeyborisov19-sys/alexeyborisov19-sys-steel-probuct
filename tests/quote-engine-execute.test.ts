@@ -7,30 +7,23 @@ import type { MetalPartsReadyInput, MetalCassetteReadyInput } from "../lib/quote
 import type { MarketSummary } from "../lib/quote-engine/market/types";
 
 const fixtureSource = { id: "test-fixture", label: "Synthetic fixture", confirmedAt: "2099-01-01", note: "test fixture" };
-
 function fixtureBasis(): PrivateCalculationBasis {
   return {
     version: "test-fixture",
     rateBook: {
       laserRubPerM: [{ materialId: "zinc", thicknessMm: 2, rateRub: 120, pierceRubEach: 3, source: fixtureSource }],
-      bendRubEach: null,
-      weldRubPerM: null,
-      powderRubPerM2: null,
+      bendRubEach: null, weldRubPerM: null, powderRubPerM2: null,
     },
     materialPriceSnapshots: [{
-      sourceId: "test-supplier",
-      fetchedAt: new Date().toISOString(),
-      sourceDate: "2099-01-01",
-      status: "ok",
+      sourceId: "test-supplier", fetchedAt: new Date().toISOString(), sourceDate: "2099-01-01", status: "ok",
       rows: [{ materialId: "zinc", thicknessMm: 2, rubPerTon: 90_000, source: "test-supplier", sourceDate: "2099-01-01", fetchedAt: new Date().toISOString() }],
     }],
   };
 }
-
 const fixturePolicy: CommercialPricingPolicy = {
-  metalMultiplier: 1.1, drawingPercentOfWorks: 5, finalPercent: 15, fixedAddRubEach: 0, fixedAddEnabled: false, roundStepRub: 1,
+  metalMultiplier: 1.1, drawingPercentOfWorks: 5, finalPercent: 15,
+  fixedAddRubEach: 0, fixedAddEnabled: false, roundStepRub: 1,
 };
-
 function fixtureDeps(overrides: Partial<QuoteEngineDependencies> = {}): Partial<QuoteEngineDependencies> {
   return {
     loadPrivateCalculationBasis: async () => fixtureBasis(),
@@ -39,7 +32,6 @@ function fixtureDeps(overrides: Partial<QuoteEngineDependencies> = {}): Partial<
     ...overrides,
   };
 }
-
 const bracketInput: MetalPartsReadyInput = { materialId: "zinc", thicknessMm: 2, widthMm: 500, heightMm: 400, quantity: 100 };
 
 test("a ready metal-parts plan prices end-to-end through the real cost and commercial formulas", async () => {
@@ -48,86 +40,57 @@ test("a ready metal-parts plan prices end-to-end through the real cost and comme
   if (result.status !== "priced") return;
   assert.equal(result.record.calculator, "metal-parts");
   assert.ok(result.record.costRubBatch! > 0);
-  assert.ok(result.record.finalPriceRubBatch > result.record.costRubBatch!, "commercial price must exceed direct cost");
+  assert.ok(result.record.finalPriceRubBatch > result.record.costRubBatch!);
   assert.equal(result.record.quantity, 100);
   assert.match(result.clientMessage, /Предварительная стоимость, с НДС/);
   assert.match(result.clientMessage, /₽\/шт/);
-  // Every other surface that shows this figure carries the site-wide
-  // disclaimer; a price quoted in chat without it promises more than the
-  // configurator and the printed quote do.
   assert.match(result.clientMessage, /Не является офертой/);
-  // No internal figures leak into the client-facing message.
   assert.doesNotMatch(result.clientMessage, /себестоимост/i);
   assert.doesNotMatch(result.clientMessage, /рейт|rate/i);
 });
-
 test("a single-piece order omits the redundant per-piece breakdown in the client message", async () => {
   const result = await executeQuoteEngine({ calculator: "metal-parts", input: { ...bracketInput, quantity: 1 } }, null, fixtureDeps());
   assert.equal(result.status, "priced");
   if (result.status !== "priced") return;
   assert.doesNotMatch(result.clientMessage, /шт\./);
 });
-
 test("an unresolvable material price still produces a result, with the shortfall named in missing/blocking", async () => {
-  const basisWithoutPrice: PrivateCalculationBasis = { ...fixtureBasis(), materialPriceSnapshots: [] };
-  const result = await executeQuoteEngine(
-    { calculator: "metal-parts", input: bracketInput },
-    null,
-    fixtureDeps({ loadPrivateCalculationBasis: async () => basisWithoutPrice }),
-  );
+  const result = await executeQuoteEngine({ calculator: "metal-parts", input: bracketInput }, null,
+    fixtureDeps({ loadPrivateCalculationBasis: async () => ({ ...fixtureBasis(), materialPriceSnapshots: [] }) }));
   assert.equal(result.status, "blocked");
   assert.match(result.clientMessage, /недоступен/);
 });
-
 test("a missing material price never reaches a customer as a price silently missing the cost of the metal", async () => {
-  // calculateFactualProductionCost marks a missing material price as
-  // missing[].blocking === false and still returns status "partial" with a
-  // real confirmedDirectCostRubBatch — one that has simply dropped the
-  // material line rather than refusing to compute. The existing CAD flow's
-  // own gate (`approvedSalePriceRub`, `run-confidential-calculation.ts`)
-  // only ever prices `status === "complete"` for exactly this reason; this
-  // is the same guarantee for the text-driven path.
-  const basisWithoutPrice: PrivateCalculationBasis = { ...fixtureBasis(), materialPriceSnapshots: [] };
-  const result = await executeQuoteEngine(
-    { calculator: "metal-parts", input: bracketInput },
-    null,
-    fixtureDeps({ loadPrivateCalculationBasis: async () => basisWithoutPrice }),
-  );
+  const result = await executeQuoteEngine({ calculator: "metal-parts", input: bracketInput }, null,
+    fixtureDeps({ loadPrivateCalculationBasis: async () => ({ ...fixtureBasis(), materialPriceSnapshots: [] }) }));
   assert.equal(result.status, "blocked");
-  // No commercial figure is ever produced from an incomplete cost result.
   assert.equal(result.record?.commercialPrice, null);
   assert.equal(result.record?.finalPriceRubBatch, 0);
 });
-
 test("an unconfigured commercial policy blocks rather than inventing a markup", async () => {
-  const result = await executeQuoteEngine(
-    { calculator: "metal-parts", input: bracketInput },
-    null,
-    fixtureDeps({ loadCommercialPricingPolicy: () => { throw new Error("STEEL_PRODUCT_METAL_MULTIPLIER is not configured"); } }),
-  );
+  const result = await executeQuoteEngine({ calculator: "metal-parts", input: bracketInput }, null,
+    fixtureDeps({ loadCommercialPricingPolicy: () => { throw new Error("STEEL_PRODUCT_METAL_MULTIPLIER is not configured"); } }));
   assert.equal(result.status, "blocked");
   assert.match(result.clientMessage, /не настроена/);
 });
-
-test("market anchoring, when explicitly enabled, is reflected in the final price and the record", async () => {
-  const highConfidenceMarket: MarketSummary = {
+test("a legacy aggregate and anchor setting cannot change prices without verified comparable sources", async () => {
+  const summary: MarketSummary = {
     comparableCount: 8, excludedCount: 0, outlierCount: 0,
     minRubPerM2: 2000, maxRubPerM2: 2600, meanRubPerM2: 2300, medianRubPerM2: 2300,
-    confidence: "high", confidenceReason: "8 сопоставимых предложений",
+    confidence: "high", confidenceReason: "Synthetic aggregate without source verification",
   };
-  const result = await executeQuoteEngine(
-    { calculator: "metal-parts", input: bracketInput },
-    { summary: highConfidenceMarket, unitAreaM2: 0.2 }, // 0.5m * 0.4m
+  const result = await executeQuoteEngine({ calculator: "metal-parts", input: bracketInput },
+    { summary, unitAreaM2: 0.2 },
     fixtureDeps({ loadCommercialRulesConfig: () => ({ minMarginPct: 0, marketAnchorWeightPct: 50, maxMarketAdjustmentPct: 100, minConfidenceForAnchoring: "high" }) }),
-  );
+    { marketContext: { status: "not-configured", target: null, offers: [] }, aiReviewCaller: null });
   assert.equal(result.status, "priced");
   if (result.status !== "priced") return;
-  assert.equal(result.record.commercialPrice?.marketAdjustmentApplied, true);
-  assert.equal(result.record.finalPriceRubBatch, result.record.commercialPrice?.finalCommercialPriceRub);
+  assert.equal(result.record.commercialPrice?.marketAdjustmentApplied, false);
+  assert.equal(result.record.finalPriceRubBatch, result.record.commercialPrice?.baseCommercialPriceRub);
+  assert.equal(result.record.priceDecision?.marketMeanRubBatch, null);
+  assert.match(result.clientMessage, /Среднерыночный ориентир не подтверждён/);
 });
-
 const cassetteInput: MetalCassetteReadyInput = { type: "open", thickness: "1.2", quantity: 300, moduleWidthMm: 600, moduleHeightMm: 1200 };
-
 test("a ready cassette plan prices through the existing rate-based estimator, no cost model involved", async () => {
   const result = await executeQuoteEngine({ calculator: "metal-cassettes", input: cassetteInput });
   assert.equal(result.status, "priced");
@@ -137,23 +100,17 @@ test("a ready cassette plan prices through the existing rate-based estimator, no
   assert.equal(result.record.commercialPrice, null);
   assert.equal(result.record.market, null);
   assert.ok(result.record.finalPriceRubBatch > 0);
-  // The cassette page's own wording, not the metal-parts one: it claims no
-  // VAT treatment for this rate, so neither may the chat.
   assert.match(result.clientMessage, /Ориентировочная стоимость/);
   assert.match(result.clientMessage, /Финальная цена подтверждается/);
+  assert.match(result.clientMessage, /Не является офертой/);
   assert.doesNotMatch(result.clientMessage, /НДС/);
 });
-
 test("the cassette path never touches the private calculation basis at all", async () => {
   let called = false;
-  await executeQuoteEngine(
-    { calculator: "metal-cassettes", input: cassetteInput },
-    null,
-    { loadPrivateCalculationBasis: async () => { called = true; throw new Error("should not be called"); } },
-  );
+  await executeQuoteEngine({ calculator: "metal-cassettes", input: cassetteInput }, null,
+    { loadPrivateCalculationBasis: async () => { called = true; throw new Error("should not be called"); } });
   assert.equal(called, false);
 });
-
 test("every finished record carries the version and a timestamp for the internal audit trail", async () => {
   const result = await executeQuoteEngine({ calculator: "metal-cassettes", input: cassetteInput });
   assert.equal(result.record?.version, "quote-engine-v1");
