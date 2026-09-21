@@ -538,6 +538,27 @@ export function ClientManufacturingWorkspace() {
             </div>
             {activePart ? <>
               <div className="space-y-5 p-5">
+                {activePreview ? (
+                  <div className="border border-white/10 bg-[#0b0f12] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/42">Определено по файлу</p>
+                      <span className={`text-[9px] font-bold uppercase tracking-[.12em] ${activePreview.status === "recognized" ? "text-emerald-300" : "text-amber-300"}`}>
+                        {activePreview.status === "recognized" ? "геометрия распознана" : "нужна проверка"}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-px bg-white/10">
+                      <div className="bg-[#101416] p-3">
+                        <p className="text-[9px] uppercase tracking-[.1em] text-white/30">Толщина модели</p>
+                        <p className="mt-1 text-sm font-semibold">{activePreview.cad.thicknessFromModelMm == null ? "—" : `${fmt(activePreview.cad.thicknessFromModelMm)} мм`}</p>
+                      </div>
+                      <div className="bg-[#101416] p-3">
+                        <p className="text-[9px] uppercase tracking-[.1em] text-white/30">Гибы модели</p>
+                        <p className="mt-1 text-sm font-semibold">{activePreview.cad.bendCountFromModel == null ? "—" : activePreview.cad.bendCountFromModel}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-[10px] leading-5 text-white/38">{activePreview.message}</p>
+                  </div>
+                ) : null}
                 <div><p id="part-material-label" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
                 <div><label htmlFor="part-thickness" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label htmlFor="part-quantity" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>
