@@ -51,10 +51,23 @@ export default async function ProductionCalculationDetailPage({ params }: { para
   return <InternalShell {...shell}>
     <div className="mb-5"><Link href="/internal/production-calculations" className="text-sm text-steel-orange hover:underline">← Все производственные расчёты</Link></div>
     <InternalPageHeader
-      eyebrow="Конфиденциально · только внутренний доступ"
+      eyebrow="Производственный калькулятор · внутренний контур"
       title={`Расчёт ${report.projectId}`}
       description={`Сформирован ${new Date(report.generatedAt).toLocaleString("ru-RU")} · расчётная база ${report.basisVersion}`}
     />
+
+    <div className="mb-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-4">
+      {[
+        ["01", "Геометрия", readiness.parts.every((item) => item.items.some((check) => check.key === "geometry" && check.state === "confirmed")) ? "проверена" : "требует проверки"],
+        ["02", "Технология", `${readiness.confirmedChecks}/${readiness.totalChecks} проверок`],
+        ["03", "Себестоимость", money(report.calculation.confirmedDirectCostRub)],
+        ["04", "Готовность", `${readiness.scorePct}% · ${readinessLabel}`],
+      ].map(([number, title, value]) => <div key={number} className="bg-[#101416] p-4">
+        <div className="font-mono text-[10px] font-bold text-steel-orange">{number}</div>
+        <div className="mt-2 text-[10px] font-bold uppercase tracking-[.12em] text-white/38">{title}</div>
+        <div className="mt-2 text-sm font-semibold">{value}</div>
+      </div>)}
+    </div>
 
     {report.revision && <Panel title="История ревизии" className="mb-6">
       <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
