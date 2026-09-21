@@ -4,6 +4,7 @@ import test from "node:test";
 
 const publicWorkspace = new URL("../components/ClientManufacturingWorkspace.tsx", import.meta.url);
 const navigationAssistant = new URL("../components/NavigationAssistant.tsx", import.meta.url);
+const internalEntry = new URL("../app/(internal)/internal/production-calculator/page.tsx", import.meta.url);
 const internalList = new URL("../app/(internal)/internal/production-calculations/page.tsx", import.meta.url);
 const internalDetail = new URL("../app/(internal)/internal/production-calculations/[fileName]/page.tsx", import.meta.url);
 const cassetteCalculator = new URL("../components/MetalCassetteCalculator.tsx", import.meta.url);
@@ -13,6 +14,8 @@ test("public CAD calculator stays simple while advanced operations are optional"
   assert.match(source, /Для быстрого расчёта достаточно материала, толщины и количества/);
   assert.match(source, /<details className="group border border-white\/10/);
   assert.match(source, /Дополнительная обработка/);
+  assert.match(source, /mode = "public"/);
+  assert.match(source, /productionMode/);
   assert.doesNotMatch(source, /confirmedDirectCostRub|rateRub|Себестоимость/);
 });
 
@@ -25,10 +28,13 @@ test("floating AI engineer stays navigation-only and sends calculations to CAD w
 });
 
 test("full production calculator keeps internal process, cost and DFM workflow", async () => {
-  const [list, detail] = await Promise.all([
+  const [entry, list, detail] = await Promise.all([
+    readFile(internalEntry, "utf8"),
     readFile(internalList, "utf8"),
     readFile(internalDetail, "utf8"),
   ]);
+  assert.match(entry, /ClientManufacturingWorkspace mode="production"/);
+  assert.match(entry, /Новый производственный расчёт/);
   assert.match(list, /Производственный калькулятор/);
   assert.match(list, /CAD и геометрия/);
   assert.match(list, /Техпроцесс/);
