@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { emptyLeadState } from "../lib/assistant/state";
@@ -100,7 +100,8 @@ test("source fetching stays opt-in and never fetches arbitrary search candidates
   assert.equal(calls, 1); assert.equal(result.offers.length, 1);
 });
 test("private registry rejects a file under the release tree and reads a protected external file", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "quote-registry-test-"));
+  // macOS temp roots may be aliases; the registry deliberately rejects alias paths.
+  const dir = await realpath(await mkdtemp(join(tmpdir(), "quote-registry-test-")));
   try {
     const path = join(dir, "market.json");
     await writeFile(path, '{"version":"verified-market-offers-v1","offers":[]}', { mode: 0o600 });

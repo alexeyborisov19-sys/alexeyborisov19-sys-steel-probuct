@@ -22,6 +22,8 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) { return Array.from(e
 
 /** Shared CAD state and server transport; no production arithmetic runs in the browser. */
 export function useCadProject() {
+  const analysisControllers = useRef(new Map<string, AbortController>());
+  useEffect(() => () => { for (const controller of analysisControllers.current.values()) controller.abort(); }, []);
   const calculationEpoch = useRef(0);
   const calculationAbort = useRef<AbortController | null>(null);
   const [calculatedAt, setCalculatedAt] = useState<Date | null>(null);
@@ -184,11 +186,14 @@ export function useCadProject() {
       // change about it. Kept aside so the failure path shows that instead of a
       // single sentence that fits every cause and helps with none of them; a
       // transport failure has no such message and falls back below.
+      const analysisController = new AbortController();
+      analysisControllers.current.set(partId, analysisController);
       let refusal: string | null = null;
       try {
         const formData = new FormData();
         formData.set("file", file);
         const response = await fetch("/api/online-order/cad/analyze", {
+          signal: analysisController.signal,
           method: "POST",
           body: formData,
           credentials: "same-origin",
@@ -199,6 +204,7 @@ export function useCadProject() {
           throw new Error("CAD preview refused.");
         }
 
+        if (analysisController.signal.aborted) return;
         const preview = payload.preview;
         setPreviewsByPartId((current) => ({ ...current, [partId]: preview }));
         setProject((current) => {
@@ -229,6 +235,7 @@ export function useCadProject() {
             : `Модель распознана${modelReadings(preview.cad)}. Проверьте параметры и нажмите «Рассчитать проект».`,
         }));
       } catch {
+        if (analysisController.signal.aborted) return;
         setProject((current) => setPartState(current, partId, "manual-review"));
         setStatusByPartId((current) => ({
           ...current,
@@ -236,7 +243,10 @@ export function useCadProject() {
             ?? "Не удалось связаться с сервером расчёта. Проверьте соединение и загрузите файл ещё раз.",
         }));
       } finally {
-        setAnalyzingByPartId((current) => ({ ...current, [partId]: false }));
+        if (!analysisController.signal.aborted) {
+          analysisControllers.current.delete(partId);
+          setAnalyzingByPartId((current) => ({ ...current, [partId]: false }));
+        }
       }
     }));
   };
@@ -301,6 +311,8 @@ export function useCadProject() {
   const removeActivePart = () => {
     if (!activePart) return;
     const id = activePart.id;
+    analysisControllers.current.get(id)?.abort(); analysisControllers.current.delete(id);
+    setAnalyzingByPartId(current => { const next = { ...current }; delete next[id]; return next; });
     setProject((current) => removePartFromProject(current, id));
     setPreviewsByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setFilesByPartId((current) => { const next = { ...current }; delete next[id]; return next; });

@@ -94,7 +94,7 @@ export default function OnlineOrderPage() {
       <PageLayout
         compactHero
         path={path}
-        eyebrow="Проект → геометрия → производство → стоимость"
+        eyebrow="Изготовление по вашему чертежу"
         title="CAD-калькулятор металлоизделий"
         description="Загрузите CAD, проверьте параметры и получите предварительный расчёт изготовления."
         image="/images/web/hero-main.webp"
@@ -102,69 +102,26 @@ export default function OnlineOrderPage() {
       >
         <ClientManufacturingWorkspace />
 
-        <section aria-labelledby="how-it-works" className="border-t border-white/10 bg-[#0c1013] py-12 sm:py-14">
-          <div className="container">
-            <h2 id="how-it-works" className="text-2xl font-semibold uppercase">Как работает онлайн-расчёт</h2>
-            <div className="mt-7 grid gap-3 lg:grid-cols-3">
-              {[
-                {
-                  title: "DXF: геометрия детали",
-                  text: "Система определяет габариты, площадь, длину реза и количество врезок непосредственно по контурам детали.",
-                },
-                {
-                  title: "STEP: толщина и гибы",
-                  text: "По 3D-модели дополнительно определяются толщина листа и количество гибов.",
-                },
-                {
-                  title: "Стоимость по актуальному прайсу",
-                  text: "Цена металла берётся из действующего прайса. Если данных недостаточно, позиция передаётся инженеру.",
-                },
-              ].map((item, index) => (
-                <article key={item.title} className="border border-white/10 bg-[#111519] p-5">
-                  <span className="font-mono text-xs font-bold text-steel-orange">{String(index + 1).padStart(2, "0")}</span>
-                  <h3 className="mt-4 text-sm font-semibold uppercase leading-snug">{item.title}</h3>
-                  <p className="mt-3 text-[13px] leading-relaxed text-white/55">{item.text}</p>
-                </article>
-              ))}
+        <section aria-labelledby="how-it-works" className="border-t border-white/10 bg-[#0c1115] py-10 sm:py-14">
+          <div className="mx-auto grid max-w-[1680px] gap-10 px-4 sm:px-6 lg:grid-cols-[.7fr_1fr] lg:px-10">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[.16em] text-steel-orange">От КД до готовой партии</p>
+              <h2 id="how-it-works" className="mt-3 text-2xl font-semibold">Как работает онлайн-расчёт</h2>
+              <p className="mt-4 max-w-lg text-sm leading-7 text-white/70">Геометрия из CAD, выбранный металл, количество и указанные операции. Цена металла поступает из актуального прайса поставщика. Неоднозначную геометрию и незаданные параметры проверяет инженер.</p>
+              <p className="mt-3 max-w-lg text-sm leading-7 text-white/70">Расход листа до финальной раскладки оценивается по заготовке. Итоговые стоимость и сроки подтверждаются после проверки проекта.</p>
+              <Link href="/production" className="mt-5 inline-flex min-h-11 items-center text-sm text-steel-orange underline underline-offset-4">Возможности производства →</Link>
+              <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/70"><Link href="/production/lazernaya-rezka-metalla" className="min-h-11 py-3 underline underline-offset-4">Лазерная резка</Link><Link href="/production/gibka-listovogo-metalla" className="min-h-11 py-3 underline underline-offset-4">Гибка листа</Link><Link href="/contacts#contact-form" className="min-h-11 py-3 underline underline-offset-4">Связаться с инженером</Link></div>
             </div>
-
-            <div className="mt-10 grid gap-5 border-y border-white/12 py-8 lg:grid-cols-[.8fr_1.2fr]">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[.16em] text-steel-orange">Автоматический расчёт и проверка</p>
-                <h2 className="mt-3 text-2xl font-semibold uppercase leading-tight">Что определяется автоматически</h2>
-              </div>
-              <div className="space-y-4 text-sm leading-7 text-white/62">
-                <p>
-                  Система считывает из модели геометрию, площадь, длину реза, количество врезок,
-                  толщину и гибы — когда эти данные однозначно определяются форматом файла.
-                </p>
-                <p>
-                  Развёртка гнутой детали и нестандартные операции подтверждаются технологом.
-                  Если подтверждённой цены металла нет, позиция передаётся инженеру.
-                </p>
-                <p>
-                  Расчёт является предварительным. Окончательные стоимость и сроки подтверждает{" "}
-                  <Link href="/contacts#contact-form" className="text-steel-orange underline underline-offset-2">инженерный отдел</Link>.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-10">
-              <h2 className="text-2xl font-semibold uppercase">Частые вопросы</h2>
-              <div className="mt-6 grid gap-3 lg:grid-cols-2">
+            <div>
+              <h2 className="text-lg font-semibold">Частые вопросы</h2>
+              <div className="mt-4 divide-y divide-white/15 border-y border-white/15">
                 {faqItems.map((item) => (
-                  <article key={item.question} className="border border-white/10 bg-[#111519] p-5">
-                    <h3 className="text-sm font-semibold leading-snug">{item.question}</h3>
-                    <p className="mt-3 text-[13px] leading-relaxed text-white/55">{item.answer}</p>
-                  </article>
+                  <details key={item.question} className="group py-1">
+                    <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 py-3 text-sm font-medium">{item.question}<span aria-hidden="true" className="text-xl text-steel-orange group-open:rotate-45">+</span></summary>
+                    <p className="pb-5 pr-6 text-sm leading-7 text-white/70">{item.answer}</p>
+                  </details>
                 ))}
               </div>
-            </div>
-
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link href="/production/lazernaya-rezka-metalla" className="border border-white/20 px-6 py-4 text-center text-sm font-bold uppercase transition hover:border-steel-orange hover:text-steel-orange">Лазерная резка металла&nbsp; →</Link>
-              <Link href="/production/gibka-listovogo-metalla" className="border border-white/20 px-6 py-4 text-center text-sm font-bold uppercase transition hover:border-steel-orange hover:text-steel-orange">Гибка листового металла&nbsp; →</Link>
-              <Link href="/production" className="border border-white/20 px-6 py-4 text-center text-sm font-bold uppercase transition hover:border-steel-orange hover:text-steel-orange">Возможности производства&nbsp; →</Link>
             </div>
           </div>
         </section>
