@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const lazyLauncherPath = new URL("../components/EngineeringAssistantLauncher.tsx", import.meta.url);
-const loadedAssistantPath = new URL("../components/EngineeringAssistant.tsx", import.meta.url);
+const loadedAssistantPath = new URL("../components/NavigationAssistant.tsx", import.meta.url);
 
 test("assistant launcher stays compact on mobile before and after first activation", async () => {
   const [lazyLauncher, loadedAssistant] = await Promise.all([
