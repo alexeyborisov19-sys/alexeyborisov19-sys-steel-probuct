@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { InternalPageHeader, InternalShell } from "@/components/pd-admin/InternalShell";
 import { Panel, StatusPill } from "@/components/pd-admin/Ui";
-import { requirePdPageContext } from "@/lib/pd-admin/auth/page-context";
+import { requireProductionPageContext } from "@/lib/server/production-access/page-context";
 import { listInternalProductionReports } from "@/lib/server/instant-quote/private-production-report";
 
 export const dynamic = "force-dynamic";
@@ -11,18 +11,31 @@ function money(value: number) {
 }
 
 export default async function ProductionCalculationsPage() {
-  const context = await requirePdPageContext("VIEW_DASHBOARD");
+  const context = await requireProductionPageContext("VIEW_DASHBOARD");
   const shell = { user: context.user, session: context.session, csrfToken: context.csrfToken };
   context.close();
   const reports = await listInternalProductionReports(250);
 
-  return <InternalShell {...shell}>
+  return <InternalShell {...shell} productionOnly>
     <InternalPageHeader
-      eyebrow="Только для сотрудников"
-      title="Производственные расчёты"
-      description="Закрытые технологические отчёты. Эти данные не передаются в клиентский интерфейс Steel Product Online."
+      eyebrow="Производственный калькулятор"
+      title="Производственный калькулятор"
+      description="Полный внутренний контур расчёта: геометрия CAD, технологические операции, подтверждённые статьи затрат, готовность, DFM и ревизии технолога."
     />
-    <Panel title={`Отчёты · ${reports.length}`}>
+    <div className="mb-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-4">
+      {[
+        ["01", "CAD и геометрия", "Габариты, заготовка, масса, рез, прожиги и гибы"],
+        ["02", "Техпроцесс", "Гибка, сварка, окраска, сборка, подготовка, упаковка"],
+        ["03", "Экономика", "Подтверждённые ставки, статьи и расчёт партии"],
+        ["04", "Контроль", "DFM, полнота данных, блокировки и технологические ревизии"],
+      ].map(([number, title, text]) => <div key={number} className="bg-[#101416] p-4">
+        <div className="font-mono text-[10px] font-bold text-steel-orange">{number}</div>
+        <div className="mt-2 text-sm font-semibold">{title}</div>
+        <p className="mt-2 text-xs leading-5 text-white/40">{text}</p>
+      </div>)}
+    </div>
+
+    <Panel title={`Проекты · ${reports.length}`}>
       {reports.length === 0 ? <p className="text-sm text-white/45">Производственных отчётов пока нет.</p> : <div className="overflow-x-auto">
         <table className="w-full min-w-[1080px] text-left text-sm">
           <thead className="border-b border-white/10 text-[10px] uppercase tracking-[.12em] text-white/35">

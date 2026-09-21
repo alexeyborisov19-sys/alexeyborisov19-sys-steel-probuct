@@ -13,6 +13,8 @@ const roleLabels = {
 } as const;
 
 const mainNavigation = [
+  ["Производственный калькулятор", "/internal/production-calculator", "VIEW_DASHBOARD"],
+  ["Производственные расчёты", "/internal/production-calculations", "VIEW_DASHBOARD"],
   ["Обзор", "/internal/personal-data", "VIEW_DASHBOARD"],
   ["Заявки", "/internal/personal-data/leads", "VIEW_MASKED_LEADS"],
   ["Согласия", "/internal/personal-data/consents", "VIEW_CONSENT"],
@@ -35,11 +37,13 @@ export function InternalShell({
   user,
   session,
   csrfToken,
+  productionOnly = false,
   children,
 }: {
   user: PdAuthenticatedUser;
   session: StoredSession;
   csrfToken: string;
+  productionOnly?: boolean;
   children: React.ReactNode;
 }) {
   const passwordRestricted = user.mustChangePassword;
@@ -49,7 +53,7 @@ export function InternalShell({
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-4 px-5 py-4 lg:px-8">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[.22em] text-[#ea5b0c]">Сталь Продукт</p>
-            <p className="mt-1 text-sm font-semibold">Закрытая система управления ПДн</p>
+            <p className="mt-1 text-sm font-semibold">{productionOnly ? "Производственный калькулятор" : "Закрытая система управления ПДн"}</p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-white/65">
             <div><b className="text-white">{user.displayName}</b><br />{roleLabels[user.role]}</div>
@@ -57,19 +61,19 @@ export function InternalShell({
             <span className={`rounded-full border px-3 py-1 ${isStepUpActive(session.stepUpUntil) ? "border-emerald-500/50 text-emerald-300" : "border-white/15 text-white/50"}`}>
               Step-up: {isStepUpActive(session.stepUpUntil) ? "активен" : "не активен"}
             </span>
-            <LogoutButton csrfToken={csrfToken} />
+            <LogoutButton csrfToken={csrfToken} productionOnly={productionOnly} />
           </div>
         </div>
       </header>
       <div className={`mx-auto grid max-w-[1500px] gap-6 px-5 py-6 lg:px-8 ${passwordRestricted ? "" : "lg:grid-cols-[260px_minmax(0,1fr)]"}`}>
         {!passwordRestricted ? <aside className="self-start border border-white/10 bg-[#111519] lg:sticky lg:top-6">
           <nav aria-label="Служебная навигация" className="p-3">
-            {mainNavigation.map(([label, href, permission]) => hasPdPermission(user.role, permission) ? (
+            {mainNavigation.filter(([,href]) => !productionOnly || href.startsWith("/internal/production-")).map(([label, href, permission]) => hasPdPermission(user.role, permission) ? (
               <Link key={href} href={href} prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition hover:bg-white/5 hover:text-[#ea5b0c]">
                 {label}
               </Link>
             ) : null)}
-            <Link href="/internal/personal-data/profile" prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition hover:bg-white/5 hover:text-[#ea5b0c]">Профиль</Link>
+            <Link href={productionOnly ? "/internal/production-access/change-password" : "/internal/personal-data/profile"} prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition hover:bg-white/5 hover:text-[#ea5b0c]">Профиль</Link>
           </nav>
         </aside> : null}
         <main className="min-w-0">{children}</main>

@@ -30,7 +30,7 @@ test("internal production report pages require authenticated page context", asyn
   const list = await source("app/(internal)/internal/production-calculations/page.tsx");
   const detail = await source("app/(internal)/internal/production-calculations/[fileName]/page.tsx");
   for (const page of [list, detail]) {
-    assert.match(page, /requirePdPageContext\(["']VIEW_DASHBOARD["']\)/);
+    assert.match(page, /requireProductionPageContext\(["']VIEW_DASHBOARD["']\)/);
     assert.match(page, /force-dynamic/);
   }
 });

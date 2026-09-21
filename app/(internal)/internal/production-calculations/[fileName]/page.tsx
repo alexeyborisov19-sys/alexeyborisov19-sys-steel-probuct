@@ -4,7 +4,7 @@ import { InternalCalculationRevisionForm } from "@/components/instant-quote/Inte
 import { InternalPageHeader, InternalShell } from "@/components/pd-admin/InternalShell";
 import { Panel, StatusPill } from "@/components/pd-admin/Ui";
 import { summarizeProjectCalculationCompleteness } from "@/lib/instant-quote/calculation-completeness";
-import { requirePdPageContext } from "@/lib/pd-admin/auth/page-context";
+import { requireProductionPageContext } from "@/lib/server/production-access/page-context";
 import { readInternalProductionReport } from "@/lib/server/instant-quote/private-production-report";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ function number(value: number | null, suffix = "") {
 }
 
 export default async function ProductionCalculationDetailPage({ params }: { params: Promise<{ fileName: string }> }) {
-  const context = await requirePdPageContext("VIEW_DASHBOARD");
+  const context = await requireProductionPageContext("VIEW_DASHBOARD");
   const shell = { user: context.user, session: context.session, csrfToken: context.csrfToken };
   context.close();
 
@@ -48,13 +48,26 @@ export default async function ProductionCalculationDetailPage({ params }: { para
     surfacePreparationAreaM2: snapshot.factualByPartId[part.id]?.surfacePreparationAreaM2,
   })) ?? [];
 
-  return <InternalShell {...shell}>
+  return <InternalShell {...shell} productionOnly>
     <div className="mb-5"><Link href="/internal/production-calculations" className="text-sm text-steel-orange hover:underline">← Все производственные расчёты</Link></div>
     <InternalPageHeader
-      eyebrow="Конфиденциально · только внутренний доступ"
+      eyebrow="Производственный калькулятор · внутренний контур"
       title={`Расчёт ${report.projectId}`}
       description={`Сформирован ${new Date(report.generatedAt).toLocaleString("ru-RU")} · расчётная база ${report.basisVersion}`}
     />
+
+    <div className="mb-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-4">
+      {[
+        ["01", "Геометрия", readiness.parts.every((item) => item.items.some((check) => check.key === "geometry" && check.state === "confirmed")) ? "проверена" : "требует проверки"],
+        ["02", "Технология", `${readiness.confirmedChecks}/${readiness.totalChecks} проверок`],
+        ["03", "Себестоимость", money(report.calculation.confirmedDirectCostRub)],
+        ["04", "Готовность", `${readiness.scorePct}% · ${readinessLabel}`],
+      ].map(([number, title, value]) => <div key={number} className="bg-[#101416] p-4">
+        <div className="font-mono text-[10px] font-bold text-steel-orange">{number}</div>
+        <div className="mt-2 text-[10px] font-bold uppercase tracking-[.12em] text-white/38">{title}</div>
+        <div className="mt-2 text-sm font-semibold">{value}</div>
+      </div>)}
+    </div>
 
     {report.revision && <Panel title="История ревизии" className="mb-6">
       <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">

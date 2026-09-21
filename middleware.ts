@@ -36,13 +36,14 @@ const legacyRedirects = new Map([
 ]);
 
 export function middleware(request: NextRequest) {
+  const productionAccess = request.nextUrl.pathname.startsWith("/internal/production-access/") || request.nextUrl.pathname.startsWith("/api/internal/production-access/");
   if (
-    request.nextUrl.pathname === "/internal/personal-data"
+    productionAccess || request.nextUrl.pathname === "/internal/personal-data"
     || request.nextUrl.pathname.startsWith("/internal/personal-data/")
     || request.nextUrl.pathname === "/api/internal/personal-data"
     || request.nextUrl.pathname.startsWith("/api/internal/personal-data/")
   ) {
-    if (process.env.PD_ADMIN_ENABLED !== "true") {
+    if (process.env.PD_ADMIN_ENABLED !== "true" && !(productionAccess && process.env.STEEL_PRODUCT_PRODUCTION_APP_ENABLED === "true")) {
       return new NextResponse("Not Found", {
         status: 404,
         headers: {
@@ -77,7 +78,7 @@ export function middleware(request: NextRequest) {
       "object-src 'none'",
       "frame-ancestors 'none'",
       "form-action 'self'",
-      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${productionAccess && process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
       "style-src 'self'",
       "img-src 'self' data:",
       "font-src 'self' data:",
@@ -161,6 +162,8 @@ export const config = {
     "/postavka-krestovin",
     "/news/news_post/:path*",
     "/my/s3/feedback/report.php",
+    "/internal/production-access/:path*",
+    "/api/internal/production-access/:path*",
     "/internal/personal-data/:path*",
     "/api/internal/personal-data/:path*",
   ],

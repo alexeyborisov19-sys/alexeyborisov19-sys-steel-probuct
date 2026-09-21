@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function PasswordChangeForm({ csrfToken }: { csrfToken: string }) {
+export function PasswordChangeForm({ csrfToken, endpoint = "/api/internal/personal-data/auth/change-password", nextPath = "/internal/personal-data" }: { csrfToken: string; endpoint?: string; nextPath?: string }) {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   return (
@@ -10,7 +10,7 @@ export function PasswordChangeForm({ csrfToken }: { csrfToken: string }) {
       event.preventDefault();
       setPending(true); setMessage("");
       const data = new FormData(event.currentTarget);
-      const response = await fetch("/api/internal/personal-data/auth/change-password", {
+      const response = await fetch(endpoint, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-Steelprodukt-CSRF": csrfToken },
@@ -20,7 +20,7 @@ export function PasswordChangeForm({ csrfToken }: { csrfToken: string }) {
           confirmPassword: String(data.get("confirmPassword") || ""),
         }),
       });
-      if (response.ok) window.location.assign("/internal/personal-data");
+      if (response.ok) window.location.assign(nextPath);
       else { setMessage("Пароль не изменён. Проверьте текущий пароль и требования к новому."); setPending(false); }
     }}>
       {[
