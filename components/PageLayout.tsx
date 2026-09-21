@@ -24,6 +24,7 @@ type PageLayoutProps = {
   /** The page already emits a page-level node (AboutPage, Article…) under this URL's
    *  #webpage id, so no generic WebPage may be added beside it. */
   ownPageSchema?: boolean;
+  compactHero?: boolean;
   children: React.ReactNode;
 };
 
@@ -105,7 +106,7 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
   return undefined;
 }
 
-export function PageLayout({ children, path, breadcrumbs, ownPageSchema = false, ...hero }: PageLayoutProps) {
+export function PageLayout({ children, path, breadcrumbs, ownPageSchema = false, compactHero = false, ...hero }: PageLayoutProps) {
   const name = [hero.title, hero.titleAccent].filter(Boolean).join(" ");
   const contextualAction = secondaryAction(path);
   const trail = breadcrumbs ?? (path ? pageBreadcrumbs(path, name) : null);
@@ -123,7 +124,9 @@ export function PageLayout({ children, path, breadcrumbs, ownPageSchema = false,
     ) : null}
     <Header />
     <main id="main-content" tabIndex={-1}>
-      <InnerHero {...hero} {...contextualAction} />
+      {compactHero ? <header className="border-b border-white/10 bg-[#0d1114] px-5 pb-6 pt-28 sm:px-8">
+        <div className="mx-auto max-w-[1800px]"><p className="text-sm text-steel-orange">{hero.eyebrow}</p><h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{name}</h1><p className="mt-3 max-w-3xl text-base text-white/70">{hero.description}</p></div>
+      </header> : <InnerHero {...hero} {...contextualAction} />}
       {trail && path !== "/" ? (
         <nav aria-label="Хлебные крошки" className="border-b border-white/10 bg-[#0d1012]">
           <ol className="container flex flex-wrap items-center gap-2 py-3 text-xs text-white/62">
@@ -148,6 +151,6 @@ export function PageLayout({ children, path, breadcrumbs, ownPageSchema = false,
       {children}
       {path === "/products/metallokassety" ? <MetalCassetteProjectsProof /> : null}
     </main>
-    <Footer />
+    <Footer workspace={compactHero} />
   </>;
 }

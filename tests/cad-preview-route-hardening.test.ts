@@ -60,7 +60,7 @@ test("a refusal tells the customer what is wrong with their file", async () => {
 
 test("the calculator shows the refusal instead of one sentence for every cause", async () => {
   const source = await readFile(
-    new URL("../components/ClientManufacturingWorkspace.tsx", import.meta.url),
+    new URL("../components/cad/shared/useCadProject.ts", import.meta.url),
     "utf8",
   );
 

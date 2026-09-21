@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { uploadLimits } from "@/lib/security/uploads";
 
-const workspacePath = new URL("../components/ClientManufacturingWorkspace.tsx", import.meta.url);
+const workspacePath = new URL("../components/cad/shared/useCadProject.ts", import.meta.url);
 const formPath = new URL("../components/QuoteRequestForm.tsx", import.meta.url);
 const manifestPath = new URL("../lib/instant-quote/calculation-manifest.ts", import.meta.url);
 

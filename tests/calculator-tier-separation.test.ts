@@ -33,8 +33,10 @@ test("full production calculator keeps internal process, cost and DFM workflow",
     readFile(internalList, "utf8"),
     readFile(internalDetail, "utf8"),
   ]);
-  assert.match(entry, /ClientManufacturingWorkspace mode="production"/);
-  assert.match(entry, /Новый производственный расчёт/);
+  assert.match(entry, /<ProductionApplication/);
+  assert.doesNotMatch(entry, /ClientManufacturingWorkspace/);
+  assert.match(entry, /requirePdPageContext/);
+  assert.match(entry, /ProductionAudit/);
   assert.match(list, /Производственный калькулятор/);
   assert.match(list, /CAD и геометрия/);
   assert.match(list, /Техпроцесс/);

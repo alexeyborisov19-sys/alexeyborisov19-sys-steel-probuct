@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { lazy, Suspense, useState } from "react";
 
 const loadAssistant = () => import("./NavigationAssistant");
@@ -50,6 +51,9 @@ function LauncherButton({ loading = false, onClick }: { loading?: boolean; onCli
 
 export function EngineeringAssistantLauncher() {
   const [activated, setActivated] = useState(false);
+  const pathname = usePathname();
+  // The CAD workspace has its own engineer handoff; a floating launcher obscures its controls.
+  if (pathname === "/online-order" || pathname?.startsWith("/internal/")) return null;
   if (!activated) return <LauncherButton onClick={() => setActivated(true)} />;
   return (
     <Suspense fallback={<LauncherButton loading />}>

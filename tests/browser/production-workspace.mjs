@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+import {resolve} from 'node:path';
+const q=JSON.parse(await readFile(process.env.CAD_TEST_STATE || '/private/tmp/steel-production-qa.json','utf8'));
+const browser=await chromium.launch({headless:true,channel:'chrome'});
+try {
+const context=await browser.newContext({userAgent:q.userAgent,viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+await context.addCookies([{name:'__Host-steelprodukt-pd-session',value:q.session.token,url:'https://localhost:3100',secure:true,httpOnly:true,sameSite:'Strict'},{name:'__Host-steelprodukt-pd-csrf',value:q.session.csrfToken,url:'https://localhost:3100',secure:true,sameSite:'Strict'}]);
+const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://localhost:3100/internal/production-calculator',{waitUntil:'networkidle'});
+assert.ok(!page.url().includes('login'),page.url());
+await page.getByRole('heading',{name:'Производственный калькулятор',exact:true}).waitFor();
+await page.screenshot({path:'/tmp/steel-production-empty.png'});
+await page.getByRole('button',{name:'Материалы и цены',exact:true}).click();
+await page.screenshot({path:'/tmp/steel-production-materials.png'});
+await page.getByRole('button',{name:'Контроль и ИИ',exact:true}).click();
+await page.getByText('Сначала выполните расчёт текущего проекта.').waitFor();
+await page.getByRole('button',{name:'Проект и техпроцесс',exact:true}).click();
+const response=page.waitForResponse(r=>r.url().endsWith('/api/online-order/cad/analyze'));
+await page.locator('input[type=file]').setInputFiles(resolve('tests/fixtures/cad/reference-plate.dxf'));
+assert.equal((await response).status(),200);
+await page.getByRole('button',{name:'Вписать модель'}).waitFor();
+await page.getByRole('checkbox',{name:'Выбрать reference-plate.dxf'}).check();
+await page.getByLabel('Материал выбранных').selectOption('hot');
+await page.getByLabel('Количество',{exact:true}).first().fill('12');
+await page.getByRole('button',{name:'Применить к 1 поз.'}).click();
+assert.equal(await page.getByLabel('Количество',{exact:true}).last().inputValue(),'12');
+const calculated=page.waitForResponse(r=>r.url().endsWith('/api/online-order/calculate'));
+await page.getByRole('button',{name:'Рассчитать проект',exact:true}).click();
+const result=await calculated;assert.equal(result.status(),200,await result.text());
+await page.getByRole('button',{name:'Открыть контроль и ИИ'}).click();
+await page.getByText('ИИ-проверка не выполнена',{exact:true}).waitFor();
+await page.getByText('Подтверждённые прямые затраты:',{exact:false}).waitFor();
+await page.screenshot({path:'/tmp/steel-production-audit.png'});
+const detail=page.getByRole('link',{name:'Полная калькуляция, DFM и технологическая ревизия →'});
+assert.ok((await detail.getAttribute('href')).includes('/internal/production-calculations/'));
+await page.getByRole('button',{name:'Проект и техпроцесс',exact:true}).click();
+await page.getByLabel('Количество',{exact:true}).last().fill('13');
+await page.getByRole('button',{name:'Контроль и ИИ',exact:true}).click();
+await page.getByText('Сначала выполните расчёт текущего проекта.').waitFor();
+assert.equal(await page.getByText('Подтверждённые прямые затраты:',{exact:false}).count(),0);
+await page.getByRole('button',{name:'Проект и техпроцесс',exact:true}).click();
+for(const width of [390,768,1024,1440,1920]){await page.setViewportSize({width,height:1000});await page.screenshot({path:`/tmp/steel-production-${width}.png`});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width);}
+assert.deepEqual(errors,[]);console.log('PASS authenticated production app: navigation, CAD, batch changes, five viewports, no runtime errors');
+} finally {await browser.close();}
