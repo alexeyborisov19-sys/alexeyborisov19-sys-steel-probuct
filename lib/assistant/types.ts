@@ -25,14 +25,9 @@ export type EngineeringLeadState = {
   fileTypes?: string[];
   deadline?: string;
   deliveryRegion?: string;
-  /**
-   * Open- or closed-type facade cassette, when the customer's own words say
-   * which. Not part of `EngineeringField`/`requiredSequence` on purpose: the
-   * general lead-capture sequence below never asks for it — only the
-   * cassette calculator needs it, and it asks in its own words when missing.
-   */
+  /** Open/closed type is only required by the cassette calculator. */
   cassetteType?: "open" | "closed";
-  /** A previously stated bend must not disappear when a later reply gives only a quantity. */
+  /** A previously stated bend must not disappear after a quantity-only reply. */
   quoteRequiresCad?: boolean;
   unknownFields: EngineeringField[];
   missingFields: EngineeringField[];
@@ -51,6 +46,8 @@ export type AssistantSession = {
   state: EngineeringLeadState;
   history: ServerConversationMessage[];
   lastAskedField?: EngineeringField;
+  /** Auto starts from free text. A resolved/explicit calculator is pinned across turns. */
+  quoteCalculator?: "auto" | "metal-parts" | "metal-cassettes";
   createdAt: number;
   updatedAt: number;
 };
