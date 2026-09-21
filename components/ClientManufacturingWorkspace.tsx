@@ -1,6 +1,7 @@
 "use client";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
+import { CalculatorLogo } from "@/components/CalculatorLogo";
 import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
 import { ClientOperationControls } from "@/components/instant-quote/ClientOperationControls";
 import { ClientQuotePrintout } from "@/components/instant-quote/ClientQuotePrintout";
@@ -71,6 +72,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
       </section>
 
       <section className="mx-auto max-w-[1800px] px-4 py-6 sm:px-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><CalculatorLogo /><span className="text-xs font-semibold uppercase tracking-wider text-white/60">CAD-калькулятор</span></div>
         <div className={project.parts.length ? "grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]" : "grid gap-4"}>
           {project.parts.length > 0 && <div className="flex min-w-0 flex-wrap items-start gap-3 lg:col-span-2">
             <details className="min-w-0 flex-1 border border-white/20 bg-[#101416]">

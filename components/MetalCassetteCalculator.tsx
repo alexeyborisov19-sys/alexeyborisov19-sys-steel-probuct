@@ -1,4 +1,5 @@
 "use client";
+import { CalculatorLogo } from "@/components/CalculatorLogo";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -115,7 +116,7 @@ export function MetalCassetteCalculator() {
   return (
     <section id="calculator-metallokasset" className="mt-12 scroll-mt-24 overflow-hidden border border-steel-orange/35 bg-[#101417] sm:mt-16">
       <div className="border-b border-white/10 px-5 py-5 sm:px-8">
-        <p className="eyebrow">Предварительный расчёт</p>
+        <div className="flex flex-wrap items-center justify-between gap-4"><CalculatorLogo /><p className="eyebrow">Предварительный расчёт</p></div>
         <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
           <div>
             <h2 className="text-2xl font-semibold uppercase leading-tight sm:text-3xl">Калькулятор металлокассет</h2>
