@@ -39,3 +39,5 @@ jobs:
           print('VERIFIED='+json.dumps([{'Id':g['Id'],'Name':g['Name'],'RegionIds':g['RegionIds']} for g in after],ensure_ascii=False))
           print('Only RegionIds changed; budget, strategy, ads and keywords were not requested.')
           PY
+
+# execute
