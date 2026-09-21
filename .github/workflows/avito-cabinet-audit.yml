@@ -48,6 +48,12 @@ jobs:
           test -n "$AVITO_CLIENT_SECRET" || { echo "AVITO_CLIENT_SECRET is not configured"; exit 1; }
           echo "Avito credentials are configured."
 
+      - name: Secret fingerprint
+        env:
+          AVITO_CLIENT_SECRET: ${{ secrets.AVITO_CLIENT_SECRET }}
+        run: |
+          node -e "const c=require('node:crypto'); console.log('AVITO_SECRET_SHA256_PREFIX='+c.createHash('sha256').update(process.env.AVITO_CLIENT_SECRET,'utf8').digest('hex').slice(0,16))"
+
       - name: Run read-only cabinet audit
         env:
           AVITO_CLIENT_ID: ${{ secrets.AVITO_CLIENT_ID }}
