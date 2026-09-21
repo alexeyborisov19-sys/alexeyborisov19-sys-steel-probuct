@@ -82,5 +82,15 @@ jobs:
             data: ciphertext.toString('base64'),
           };
 
-          console.log('AVITO_AUDIT_ENCRYPTED_V1=' + Buffer.from(JSON.stringify(envelope)).toString('base64'));
+          const encoded = Buffer.from(JSON.stringify(envelope)).toString('base64');
+          console.log('AVITO_AUDIT_ENCRYPTED_V1=' + encoded);
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/avito-audit.encrypted.json', JSON.stringify(envelope), { mode: 0o600 });
           NODE
+
+      - name: Upload encrypted audit artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: avito-audit-encrypted
+          path: ${{ runner.temp }}/avito-audit.encrypted.json
+          retention-days: 1
+          if-no-files-found: error
