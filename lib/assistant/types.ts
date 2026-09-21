@@ -32,6 +32,8 @@ export type EngineeringLeadState = {
    * cassette calculator needs it, and it asks in its own words when missing.
    */
   cassetteType?: "open" | "closed";
+  /** A previously stated bend must not disappear when a later reply gives only a quantity. */
+  quoteRequiresCad?: boolean;
   unknownFields: EngineeringField[];
   missingFields: EngineeringField[];
   readiness: "new" | "clarifying" | "ready_for_lead";
