@@ -1,5 +1,6 @@
 import { redactPersonalData } from "@/lib/assistant/security";
 import { verifyStageEvidence } from "@/lib/server/quote-engine/stage-evidence";
+import { quoteCompletionEndpoint, readYandexCompletion } from "@/lib/server/quote-engine/yandex-response";
 
 export const QUOTE_REVIEW_STAGES = [
   "classification", "inputs", "geometry", "operations", "calculation", "market", "pricing", "disclaimer",
@@ -62,31 +63,30 @@ export function parseStageReview(raw: string | null): StageReviewResult {
 function configured(environment: NodeJS.ProcessEnv): boolean {
   return environment.YANDEX_AI_ENABLED === "true" && Boolean(environment.YANDEX_AI_API_KEY)
     && Boolean(environment.YANDEX_AI_FOLDER_ID) && Boolean(environment.YANDEX_AI_MODEL_URI)
-    && !/\/latest(?:$|[/?])/i.test(environment.YANDEX_AI_MODEL_URI ?? "");
+    && !/\/latest(?:$|[/?])/i.test(environment.YANDEX_AI_MODEL_URI ?? "")
+    && quoteCompletionEndpoint(environment) !== null;
 }
 
-/** One call audits all completed stages, avoiding eight serial model round trips. */
+/** One bounded request checks every completed stage; a truncated request is never sent. */
 export const reviewStagesWithYandex: StageReviewCaller = async (evidence) => {
   if (!configured(process.env)) return null;
+  const endpoint = quoteCompletionEndpoint();
+  if (!endpoint) return null;
   try {
-    const response = await fetch("https://ai.api.cloud.yandex.net/foundationModels/v1/completion", {
+    const text = redactPersonalData(JSON.stringify(evidence));
+    if (text.length > 18_000 || new TextEncoder().encode(text).byteLength > 32_000) return null;
+    const response = await fetch(endpoint, {
       method: "POST", cache: "no-store", redirect: "error",
       headers: { Authorization: `Api-Key ${process.env.YANDEX_AI_API_KEY}`, "Content-Type": "application/json", "x-folder-id": process.env.YANDEX_AI_FOLDER_ID! },
       body: JSON.stringify({
         modelUri: process.env.YANDEX_AI_MODEL_URI,
         completionOptions: { stream: false, temperature: 0, maxTokens: "900" },
-        messages: [
-          { role: "system", text: PROMPT },
-          { role: "user", text: redactPersonalData(JSON.stringify(evidence)).slice(0, 18_000) },
-        ],
+        jsonObject: true,
+        messages: [{ role: "system", text: PROMPT }, { role: "user", text }],
       }),
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) return null;
-    const body = await response.text();
-    if (body.length > 32_000) return null;
-    const payload = JSON.parse(body) as { result?: { alternatives?: Array<{ message?: { text?: string } }> } };
-    return payload.result?.alternatives?.[0]?.message?.text ?? null;
+    return await readYandexCompletion(response);
   } catch { return null; }
 };
 
