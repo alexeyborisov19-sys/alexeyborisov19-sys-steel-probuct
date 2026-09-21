@@ -11,8 +11,11 @@ type Estimate = {
   netAreaM2: number;
   quantity: number;
   defaultRateRubM2: number;
-  approximateRateRubM2: number;
-  approximateTotalRub: number;
+  approximateRateRubM2: number | null;
+  approximateTotalRub: number | null;
+  priceStatus: "priced" | "needs-review";
+  aiReviewStatus: "passed" | "needs-review" | "not-configured" | "unavailable";
+  message: string;
 };
 const thicknesses: Array<{ value: Thickness; label: string }> = [
   { value: "0.65", label: "0,65" }, { value: "0.7", label: "0,7" },
@@ -51,6 +54,8 @@ export function MetalCassetteCalculator() {
   }), [mode, type, thickness, area, wallWidth, wallHeight, openings, pricePerM2]);
   useEffect(() => {
     const controller = new AbortController();
+    setStatus("loading");
+    setResult(null);
     const timer = window.setTimeout(async () => {
       setStatus("loading");
       try {
@@ -60,12 +65,13 @@ export function MetalCassetteCalculator() {
         });
         if (!response.ok) throw new Error("estimate failed");
         const data = (await response.json()) as Estimate;
+        if (controller.signal.aborted) return;
         setResult(data); setStatus("ready");
       } catch {
         if (controller.signal.aborted) return;
         setResult(null); setStatus("error");
       }
-    }, 140);
+    }, 650);
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [payload]);
   const specialistHref = result && result.netAreaM2 > 0
@@ -173,7 +179,7 @@ export function MetalCassetteCalculator() {
           <div className="mt-7">
             <p className="text-xs font-bold uppercase tracking-[.12em] text-white/45">Ориентировочная стоимость</p>
             <p aria-live="polite" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              {status === "loading" ? "…" : result && result.approximateTotalRub > 0 ? `≈ ${money.format(result.approximateTotalRub)} ₽` : "—"}
+              {status === "loading" ? "…" : result?.priceStatus === "priced" && result.approximateTotalRub != null && result.approximateTotalRub > 0 ? `≈ ${money.format(result.approximateTotalRub)} ₽` : "—"}
             </p>
             <p className="mt-3 text-xs leading-5 text-white/45">Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа.</p>
             <p className="mt-3 text-xs leading-5 text-white/60">{CALCULATION_DISCLAIMER}</p>
@@ -181,9 +187,11 @@ export function MetalCassetteCalculator() {
           <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Площадь облицовки</dt><dd className="mt-2 text-xl font-semibold text-steel-orange">{result ? `${decimal.format(result.netAreaM2)} м²` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Количество кассет</dt><dd className="mt-2 text-xl font-semibold">{result && result.quantity > 0 ? `≈ ${money.format(result.quantity)} шт.` : "—"}</dd></div>
-            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Принятая цена</dt><dd className="mt-2 text-lg font-semibold">{result ? `≈ ${money.format(result.approximateRateRubM2)} ₽/м²` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Принятая цена</dt><dd className="mt-2 text-lg font-semibold">{result?.priceStatus === "priced" && result.approximateRateRubM2 != null ? `≈ ${money.format(result.approximateRateRubM2)} ₽/м²` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/40">Толщина</dt><dd className="mt-2 text-lg font-semibold">{thickness.replace(".", ",")} мм</dd></div>
           </dl>
+          {result?.message ? <p role="status" className="mt-4 text-sm leading-6 text-white/70">{result.message}</p> : null}
+          {result?.aiReviewStatus === "passed" ? <p className="mt-2 text-xs text-white/60">ИИ-проверка расчёта выполнена.</p> : null}
           {status === "error" ? <p className="mt-4 text-sm text-red-300">Не удалось обновить расчёт. Проверьте введённые значения.</p> : null}
           <div className="mt-auto pt-7">
             <Link href={specialistHref} className="clip-corner flex min-h-12 items-center justify-center bg-steel-orange-deep px-6 py-4 text-center text-sm font-bold uppercase transition hover:bg-orange-600">Получить точный расчёт&nbsp; →</Link>
