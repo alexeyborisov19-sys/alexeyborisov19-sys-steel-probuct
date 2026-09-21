@@ -1,24 +1,14 @@
-// No `import "server-only"` here: it is not a dependency of this project — only
-// the Next build aliases it — so it breaks every test importing this module.
-
 import { emptyLeadState, extractLeadState } from "@/lib/assistant/state";
 import type { EngineeringLeadState } from "@/lib/assistant/types";
+import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels";
 import type { CalculatorId } from "@/lib/quote-engine/classification";
 import { hasBendingRequirement, normalizeQuoteAnswer, quoteNumericEvidence } from "@/lib/quote-engine/conversation-input";
+import { collectRequiredScope, manualScopeReasons } from "@/lib/quote-engine/required-scope";
 import { planQuoteEngineCalculation, type MetalCassetteReadyInput, type MetalPartsReadyInput } from "@/lib/quote-engine/plan";
 import { extractWithAi, proposeWithYandex, type AiProposalCaller } from "@/lib/server/quote-engine/ai-extraction";
 import { assembleMarketInput, marketTargetFromPlan, type MarketOfferProvider } from "@/lib/quote-engine/market/assemble";
 import { executeQuoteEngine, type MarketInput, type QuoteEngineDependencies, type QuoteEngineInternalRecord } from "@/lib/server/quote-engine/execute";
-
-/**
- * §3/§4/§34 end to end, as one callable function: the customer's own words
- * in, one answer out — either the single clarifying question still needed,
- * or the one final price, never both, and never a guess in between. This is
- * the whole pipeline (§33) minus the transport: how a caller gets `message`
- * to this function (a new endpoint, or a step added to the existing
- * `/api/assistant` route) and what it does with `state` between turns is a
- * UI/routing decision left to whoever wires it in, not decided here.
- */
+import type { QuoteFinalizationOptions } from "@/lib/server/quote-engine/finalize-quote";
 
 export type QuoteEngineTurnResult =
   | { kind: "question"; question: string; state: EngineeringLeadState }
@@ -26,48 +16,24 @@ export type QuoteEngineTurnResult =
   | { kind: "blocked"; clientMessage: string; record: QuoteEngineInternalRecord | null; state: EngineeringLeadState };
 
 export type QuoteEngineTurnOptions = {
-  /**
-   * The customer's own explicit pick from the two buttons shown before they
-   * type anything — never inferred, so §7's "ambiguous, please clarify"
-   * branch of `planQuoteEngineCalculation` is never reached while this is
-   * set. Once a conversation has started with an override, the caller keeps
-   * passing the same one on every turn — this function does not remember
-   * it between calls any more than it remembers `state`.
-   */
   calculatorOverride?: CalculatorId;
   market?: MarketInput | null;
   dependencies?: Partial<QuoteEngineDependencies>;
-  /**
-   * The model used to read parameters out of unanticipated wording. Defaults
-   * to the YandexGPT caller, which is itself off unless the operator has
-   * configured it, so leaving this unset never introduces a network call by
-   * surprise. Pass `null` to disable the assist outright.
-   */
   aiProposalCaller?: AiProposalCaller | null;
-  /**
-   * Where market offers are found, when the owner has configured a source.
-   * Unset means no offers, which is exactly today's behaviour: no market
-   * data, no anchoring, no effect on the price. A `market` passed explicitly
-   * above still wins, so a caller holding its own data does not need one.
-   */
+  /** Legacy comparison data remains informational unless independently source-checked. */
   marketOfferProvider?: MarketOfferProvider | null;
+  /** Internal dependency injection, never populated from public request JSON. */
+  finalization?: Omit<QuoteFinalizationOptions, "state">;
 };
 
 async function collectMarket(
-  plan:
-    | { calculator: "metal-parts"; input: MetalPartsReadyInput }
-    | { calculator: "metal-cassettes"; input: MetalCassetteReadyInput },
+  plan: { calculator: "metal-parts"; input: MetalPartsReadyInput } | { calculator: "metal-cassettes"; input: MetalCassetteReadyInput },
   provider: MarketOfferProvider | null | undefined,
 ): Promise<MarketInput | null> {
   if (!provider) return null;
   const target = marketTargetFromPlan(plan);
-  try {
-    return assembleMarketInput(await provider(target), target);
-  } catch {
-    // Market data is informational: a source being down must never cost the
-    // customer a quote the calculation can produce without it.
-    return null;
-  }
+  try { return assembleMarketInput(await provider(target), target); }
+  catch { return null; }
 }
 
 export async function handleNaturalLanguageQuote(
@@ -78,7 +44,6 @@ export async function handleNaturalLanguageQuote(
   const { calculatorOverride, market = null, dependencies = {}, aiProposalCaller = proposeWithYandex, marketOfferProvider = null } = options;
   const previousPlan = planQuoteEngineCalculation(priorState, "", calculatorOverride);
   const askedField = previousPlan.status === "missing-fields" ? previousPlan.missing[0]?.code : undefined;
-  // A bare number has a unit only when answering a question that explicitly supplied it.
   const contextualMessage = normalizeQuoteAnswer(message, askedField);
   let state = extractLeadState(priorState, contextualMessage);
   const evidence = quoteNumericEvidence(contextualMessage);
@@ -88,12 +53,10 @@ export async function handleNaturalLanguageQuote(
     else state[field] = value;
   }
   if (priorState.quoteRequiresCad || hasBendingRequirement(message)) state.quoteRequiresCad = true;
-  // Recompute lead completeness after removing values the general extractor misread.
+  state.quoteRequiredScope = collectRequiredScope(message, priorState.quoteRequiredScope);
   state = extractLeadState(state, "");
   let plan = planQuoteEngineCalculation(state, contextualMessage, calculatorOverride);
 
-  // Contradictory or invalid numeric corrections are a question for the
-  // customer, not permission for the model to pick a value or reuse the old one.
   if (plan.status !== "needs-cad" && (evidence.thickness === null || evidence.quantity === null)) {
     return {
       kind: "question",
@@ -103,12 +66,6 @@ export async function handleNaturalLanguageQuote(
       state,
     };
   }
-
-  // The model is asked only when the deterministic extractor has actually run
-  // out of road — that is the one case where it can add something (§6: wording
-  // nobody anticipated). Whatever it proposes still has to clear the grounding
-  // and parsing gate in `mergeAiProposal`, and a turn only gets re-planned when
-  // something survived it.
   if (plan.status === "missing-fields" && aiProposalCaller) {
     const assisted = await extractWithAi(state, message, aiProposalCaller);
     if (assisted.accepted.length > 0) {
@@ -116,32 +73,22 @@ export async function handleNaturalLanguageQuote(
       plan = planQuoteEngineCalculation(state, contextualMessage, calculatorOverride);
     }
   }
-
-  if (plan.status === "ambiguous-product") {
-    return { kind: "question", question: plan.question, state };
-  }
-
+  if (plan.status === "ambiguous-product") return { kind: "question", question: plan.question, state };
   if (plan.status === "needs-cad") {
-    return { kind: "blocked", clientMessage: plan.reason, record: null, state };
+    return { kind: "blocked", clientMessage: `${plan.reason} ${CALCULATION_DISCLAIMER_SHORT}`, record: null, state };
   }
-
-  if (plan.status === "missing-fields") {
-    // One question per turn, matching how the existing assistant already
-    // paces its own clarifying questions (`nextQuestionFor` in
-    // lib/assistant/state.ts) rather than presenting a checklist at once.
-    return { kind: "question", question: plan.missing[0].question, state };
+  if (plan.calculator === "metal-parts" && manualScopeReasons(state).length > 0) {
+    return {
+      kind: "blocked", record: null, state,
+      clientMessage: "В заказе есть геометрия или операции, которые нельзя корректно оценить как простой плоский прямоугольник. "
+        + "Передайте чертёж в калькулятор металлоизделий или инженеру: нужные операции не будут исключены из стоимости молча. "
+        + CALCULATION_DISCLAIMER_SHORT,
+    };
   }
+  if (plan.status === "missing-fields") return { kind: "question", question: plan.missing[0].question, state };
 
-  // Only now is there something concrete enough to look for on the market:
-  // the plan is agreed, so the target's material, thickness and unit area are
-  // settled and every found offer can be screened against them (§14) instead
-  // of against a half-known request. A provider that fails or finds nothing
-  // usable leaves `market` null — the same state the pricing rules and the
-  // verification layer already treat as "no market data".
-  // Do not call a provider when the caller already supplied the market input.
   const effectiveMarket = market ?? await collectMarket(plan, marketOfferProvider);
-
-  const result = await executeQuoteEngine(plan, effectiveMarket, dependencies);
+  const result = await executeQuoteEngine(plan, effectiveMarket, dependencies, { ...options.finalization, state });
   return result.status === "priced"
     ? { kind: "priced", clientMessage: result.clientMessage, record: result.record, state }
     : { kind: "blocked", clientMessage: result.clientMessage, record: result.record, state };
