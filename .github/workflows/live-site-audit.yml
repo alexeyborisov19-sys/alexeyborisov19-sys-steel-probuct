@@ -7,6 +7,7 @@ name: Live site audit
 on:
   workflow_dispatch:
   push:
+    branches: [audit/live-seo-20260921]
     paths:
       - '.github/workflows/live-site-audit.yml'
 
