@@ -7,6 +7,9 @@ export type MarketQuoteSpec = {
   widthMm: number;
   heightMm: number;
   quantity: number;
+  /** Explicit billing basis prevents confusing facade area with cassette face area. */
+  areaBasis?: "cassette-face" | "net-facade";
+  netFacadeAreaM2?: number;
   finish: string;
   cassetteType: "open" | "closed" | null;
   scope: string[];
@@ -26,6 +29,8 @@ export type VerifiedMarketOffer = {
   specification: MarketQuoteSpec;
   minQuantity: number;
   maxQuantity: number;
+  minFacadeAreaM2?: number;
+  maxFacadeAreaM2?: number;
   priceRub: number;
   priceUnit: "per-piece" | "per-m2";
   minimumBatchRub: number;
@@ -95,6 +100,8 @@ export function validMarketSpec(value: unknown): value is MarketQuoteSpec {
     || !spec.scope.every((item) => text(item, 80)) || new Set(spec.scope).size !== spec.scope.length
     || !["included", "excluded", "exempt"].includes(String(spec.vat))
     || !money(spec.vatRatePct) || Number(spec.vatRatePct) > 100) return false;
+  if (spec.areaBasis != null && spec.areaBasis !== "cassette-face" && spec.areaBasis !== "net-facade") return false;
+  if (spec.areaBasis === "net-facade" && (spec.calculator !== "metal-cassettes" || !positive(spec.netFacadeAreaM2))) return false;
   if (spec.vat === "exempt" && spec.vatRatePct !== 0) return false;
   return spec.calculator === "metal-cassettes"
     ? spec.cassetteType === "open" || spec.cassetteType === "closed"
@@ -106,6 +113,7 @@ function sameSpec(a: MarketQuoteSpec, b: MarketQuoteSpec): boolean {
   return a.calculator === b.calculator && a.product === b.product && a.material === b.material
     && a.thicknessMm === b.thicknessMm && a.widthMm === b.widthMm && a.heightMm === b.heightMm
     && a.finish === b.finish && a.cassetteType === b.cassetteType && a.vat === b.vat
+    && (a.areaBasis ?? "cassette-face") === (b.areaBasis ?? "cassette-face")
     && a.vatRatePct === b.vatRatePct
     && [...a.scope].sort().join("\u0000") === [...b.scope].sort().join("\u0000");
 }
@@ -158,13 +166,23 @@ export function decideMarketFloor(
       || !["per-piece", "per-m2"].includes(String(offer.priceUnit))) {
       reject("price-or-terms-unknown"); continue;
     }
-    if (!Number.isSafeInteger(offer.minQuantity) || !Number.isSafeInteger(offer.maxQuantity)
-      || Number(offer.minQuantity) <= 0 || Number(offer.maxQuantity) < Number(offer.minQuantity)
-      || target.quantity < Number(offer.minQuantity) || target.quantity > Number(offer.maxQuantity)) {
-      reject("quantity-tier-mismatch"); continue;
+    let total: number;
+    if (target.areaBasis === "net-facade") {
+      if (offer.priceUnit !== "per-m2" || !positive(offer.minFacadeAreaM2) || !positive(offer.maxFacadeAreaM2)
+        || offer.minFacadeAreaM2 > offer.maxFacadeAreaM2 || target.netFacadeAreaM2! < offer.minFacadeAreaM2
+        || target.netFacadeAreaM2! > offer.maxFacadeAreaM2) {
+        reject("facade-area-tier-or-billing-basis-mismatch"); continue;
+      }
+      total = Math.max(offer.priceRub * target.netFacadeAreaM2!, offer.minimumBatchRub);
+    } else {
+      if (!Number.isSafeInteger(offer.minQuantity) || !Number.isSafeInteger(offer.maxQuantity)
+        || Number(offer.minQuantity) <= 0 || Number(offer.maxQuantity) < Number(offer.minQuantity)
+        || target.quantity < Number(offer.minQuantity) || target.quantity > Number(offer.maxQuantity)) {
+        reject("quantity-tier-mismatch"); continue;
+      }
+      const unitFactor = offer.priceUnit === "per-piece" ? 1 : target.widthMm * target.heightMm / 1_000_000;
+      total = Math.max(offer.priceRub * unitFactor * target.quantity, offer.minimumBatchRub);
     }
-    const unitFactor = offer.priceUnit === "per-piece" ? 1 : target.widthMm * target.heightMm / 1_000_000;
-    const total = Math.max(offer.priceRub * unitFactor * target.quantity, offer.minimumBatchRub);
     if (!money(total) || total <= 0) { reject("price-overflow"); continue; }
     candidates.push({ index, offer: offer as unknown as VerifiedMarketOffer, host: url.hostname.replace(/^www\./, ""), total });
   }
