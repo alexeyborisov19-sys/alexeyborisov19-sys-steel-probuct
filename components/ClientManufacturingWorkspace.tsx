@@ -67,7 +67,8 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
   return Array.from(event.dataTransfer.types).includes("Files");
 }
 
-export function ClientManufacturingWorkspace() {
+export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "public" | "production" } = {}) {
+  const productionMode = mode === "production";
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepthRef = useRef(0);
   const [project, setProject] = useState(() => createEmptyProject());
@@ -412,10 +413,12 @@ export function ClientManufacturingWorkspace() {
         <div className="container py-5">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">Manufacturing workspace</p>
-              <h2 className="mt-2 text-2xl font-semibold uppercase tracking-tight sm:text-3xl">Инженерный расчёт по CAD</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">{productionMode ? "Production calculator" : "CAD calculator"}</p>
+              <h2 className="mt-2 text-2xl font-semibold uppercase tracking-tight sm:text-3xl">{productionMode ? "Производственный расчёт" : "Инженерный расчёт по CAD"}</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-white/48">
-                Файл остаётся центром расчёта: сначала читаем геометрию, затем задаём материал и операции, после этого считаем проект.
+                {productionMode
+                  ? "Полный внутренний расчёт: CAD-геометрия, технологические операции и последующий производственный отчёт."
+                  : "Файл остаётся центром расчёта: сначала читаем геометрию, затем задаём материал и операции, после этого считаем проект."}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -482,19 +485,29 @@ export function ClientManufacturingWorkspace() {
                     ? `${project.parts.length} поз. · ${calculation ? "требуется уточнение" : "расчёт не выполнен"}`
                     : `${project.parts.length} поз.`}
               </p>
-              <Link
-                href={quoteHandoffHref}
-                className="mt-4 block border border-steel-orange bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white"
-              >
-                Отправить заявку
-              </Link>
+              {productionMode ? (
+                <Link
+                  href="/internal/production-calculations"
+                  className="mt-4 block border border-steel-orange bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white"
+                >
+                  Открыть производственные отчёты
+                </Link>
+              ) : (
+                <Link
+                  href={quoteHandoffHref}
+                  className="mt-4 block border border-steel-orange bg-steel-orange px-4 py-3 text-center text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white"
+                >
+                  Отправить заявку
+                </Link>
+              )}
               {calculation && (
                 <button type="button" onClick={() => window.print()} className="mt-2 w-full border border-white/15 px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-white/70 transition hover:border-steel-orange hover:text-white">
                   Печать / КП
                 </button>
               )}
               <p className="mt-3 border-t border-white/10 pt-3 text-[10px] leading-relaxed text-white/45">
-                {CALCULATION_DISCLAIMER}{" "}<Link href="/legal/terms" className="underline decoration-white/30 underline-offset-2 hover:text-white">Условия</Link>
+                {productionMode ? "Внутренний производственный расчёт. Полные статьи и технологические проверки сохраняются в производственном отчёте." : CALCULATION_DISCLAIMER}{" "}
+                {!productionMode ? <Link href="/legal/terms" className="underline decoration-white/30 underline-offset-2 hover:text-white">Условия</Link> : null}
               </p>
             </div>
           </aside>
@@ -562,6 +575,21 @@ export function ClientManufacturingWorkspace() {
                 <div><p id="part-material-label" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
                 <div><label htmlFor="part-thickness" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label htmlFor="part-quantity" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>
+                {productionMode ? (
+                  <div className="border border-white/10 bg-[#0b0f12] p-4">
+                    <div className="mb-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[.13em] text-steel-orange">Полный техпроцесс</p>
+                      <p className="mt-1 text-xs leading-5 text-white/38">Все производственные операции доступны сразу. После расчёта полный отчёт появится во внутреннем контуре.</p>
+                    </div>
+                    <ClientOperationControls
+                      operations={activePart.configuration.operations}
+                      operationInputs={activePart.configuration.operationInputs ?? {}}
+                      detectedBendCount={activePreview?.cad.bendCountFromModel ?? null}
+                      onToggle={toggleOperation}
+                      onQuantityChange={updateOperationInputs}
+                    />
+                  </div>
+                ) : (
                 <details className="group border border-white/10 bg-[#0b0f12]">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-left">
                     <div>
@@ -584,6 +612,7 @@ export function ClientManufacturingWorkspace() {
                     />
                   </div>
                 </details>
+                )}
               </div>
               <div className="border-t border-white/10 p-5">
                 <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className="w-full border border-steel-orange bg-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-[.14em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[.04] disabled:text-white/25">
@@ -600,7 +629,7 @@ export function ClientManufacturingWorkspace() {
                   </div>}
                 </div>}
                 {activeCalculation?.price.status === "approved" && typeof activeCalculation.price.totalRub === "number" && <div className="mt-4 border border-steel-orange/40 bg-steel-orange/[.08] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Стоимость позиции</p><p className="mt-2 text-2xl font-semibold">{fmt(activeCalculation.price.totalRub)} ₽</p>{approvedProjectTotalRub != null && calculation && calculation.parts.length > 1 && <p className="mt-2 text-xs text-white/50">Итого по проекту: {fmt(approvedProjectTotalRub)} ₽</p>}</div>}
-                <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Статус проекта</p><p className="mt-3 text-sm leading-relaxed text-white/60">{statusByPartId[activePart.id] ?? "Проверьте параметры изделия и запустите расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/45">{CALCULATION_DISCLAIMER} Оплата на сайте не подключена.</p></div>
+                <div className="mt-4 border border-steel-orange/25 bg-steel-orange/[.04] p-4"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Статус проекта</p><p className="mt-3 text-sm leading-relaxed text-white/60">{statusByPartId[activePart.id] ?? "Проверьте параметры изделия и запустите расчёт."}</p><p className="mt-3 text-[10px] leading-relaxed text-white/45">{productionMode ? "После расчёта откройте производственный отчёт для себестоимости, DFM и технологической ревизии." : `${CALCULATION_DISCLAIMER} Оплата на сайте не подключена.`}</p></div>
               </div>
             </> : <div className="p-5 text-sm text-white/35">Добавьте CAD-файл.</div>}
           </aside>
@@ -623,6 +652,13 @@ export function ClientManufacturingWorkspace() {
             >
               {calculateLabelShort}
             </button>
+          ) : productionMode ? (
+            <Link
+              href="/internal/production-calculations"
+              className="shrink-0 border border-steel-orange bg-steel-orange px-4 py-3 text-[11px] font-bold uppercase tracking-[.12em] text-black"
+            >
+              Отчёты
+            </Link>
           ) : (
             <Link
               href={quoteHandoffHref}
