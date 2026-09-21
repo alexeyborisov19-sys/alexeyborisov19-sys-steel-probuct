@@ -1,7 +1,7 @@
 /** Owner-authorized first production administrator. Never prints plaintext credentials. */
 import { randomBytes, randomUUID, publicEncrypt } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, chmodSync, renameSync } from 'node:fs';
-import { DatabaseSync, backup } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 import { resolve } from 'node:path';
 import {pathToFileURL} from 'node:url';
 import { hashAdministrativeFingerprint } from '@/lib/pd-admin/auth/session-store';
@@ -36,7 +36,7 @@ export async function setupProductionAccess(input: {publicKeyFile:string; encryp
   const config = readPdAdminConfig(scoped);
   if (existsSync(config.databasePath)) {
     const source = new DatabaseSync(config.databasePath,{readOnly:true});
-    try { const target=`${config.databasePath}.before-production-${Date.now()}.bak`; await backup(source,target); chmodSync(target,0o600); }
+    try { const target=`${config.databasePath}.before-production-${Date.now()}.bak`; source.prepare("VACUUM INTO ?").run(target); chmodSync(target,0o600); }
     finally { source.close(); }
   }
   const db = openPdDatabase({environment:scoped});

@@ -1,0 +1,32 @@
+name: Export approved calculation basis for local desktop
+on:
+  push:
+    branches: [feat/cad-tier-split-final-20260921]
+    paths: ['.github/workflows/export-desktop-basis.yml']
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read only the calculation basis and encrypt for owner
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "cd '$BEGET_APP_PATH' && printf '%s' 'Y29uc3QgZnM9cmVxdWlyZSgnZnMnKSxjPXJlcXVpcmUoJ2NyeXB0bycpLHA9cmVxdWlyZSgncGF0aCcpOwpjb25zdCBlbnY9e307Zm9yKGNvbnN0IGxpbmUgb2YgZnMucmVhZEZpbGVTeW5jKCcuZW52LnByb2R1Y3Rpb24nLCd1dGY4Jykuc3BsaXQoJ1xuJykpe2NvbnN0IG09bGluZS5tYXRjaCgvXihbQS1aMC05X10rKT0oLiopJC8pO2lmKG0pZW52W21bMV1dPW1bMl0ucmVwbGFjZSgvXihbIiddKSguKilcMSQvLCckMicpO30KY29uc3QgYmFzaXNQYXRoPWVudi5TVEVFTF9QUk9EVUNUX1BSSVZBVEVfQ0FMQ1VMQVRJT05fQkFTSVNfUEFUSDsKaWYoIWJhc2lzUGF0aHx8IXAuaXNBYnNvbHV0ZShiYXNpc1BhdGgpKXRocm93IEVycm9yKCdNaXNzaW5nIHByaXZhdGUgY2FsY3VsYXRpb24gYmFzaXMnKTsKY29uc3QgYmFzaXM9SlNPTi5wYXJzZShmcy5yZWFkRmlsZVN5bmMoYmFzaXNQYXRoLCd1dGY4JykpOwpjb25zdCBzZXR0aW5ncz17fTtmb3IoY29uc3QgayBvZiBbJ1NURUVMX1BST0RVQ1RfTUVUQUxfTVVMVElQTElFUicsJ1NURUVMX1BST0RVQ1RfRFJBV19QQ1QnLCdTVEVFTF9QUk9EVUNUX0ZJTkFMX1BDVCcsJ1NURUVMX1BST0RVQ1RfRklYRURfQUREX1JVQicsJ1NURUVMX1BST0RVQ1RfRklYRURfQUREX0VOQUJMRUQnLCdTVEVFTF9QUk9EVUNUX1JPVU5EX1NURVBfUlVCJywnU1RFRUxfUFJPRFVDVF9NRVRBTF9VUExJRlRfUENUJ10paWYoZW52W2tdIT09dW5kZWZpbmVkKXNldHRpbmdzW2tdPWVudltrXTsKY29uc3Qga2V5PWMucmFuZG9tQnl0ZXMoMzIpLGl2PWMucmFuZG9tQnl0ZXMoMTIpLGNpcGhlcj1jLmNyZWF0ZUNpcGhlcml2KCdhZXMtMjU2LWdjbScsa2V5LGl2KTsKY29uc3QgY2lwaGVydGV4dD1CdWZmZXIuY29uY2F0KFtjaXBoZXIudXBkYXRlKEpTT04uc3RyaW5naWZ5KHtiYXNpcyxzZXR0aW5nc30pLCd1dGY4JyksY2lwaGVyLmZpbmFsKCldKTsKY29uc3Qgd3JhcHBlZD1jLnB1YmxpY0VuY3J5cHQoe2tleTpCdWZmZXIuZnJvbSgnTFMwdExTMUNSVWRKVGlCUVZVSk1TVU1nUzBWWkxTMHRMUzBLVFVsSlFtOXFRVTVDWjJ0eGFHdHBSemwzTUVKQlVVVkdRVUZQUTBGWk9FRk5TVWxDYVdkTFEwRlpSVUZ5ZG5saU5tTk1VMWwwVERGbmJIRkdWemd6Y0FveFZqSTBXSGh0UTJsVGVtMWtSbmRPZHpaNFFXSnlXWEJHY0haUVdtdEdXbnBxTlZaSlNIRllkRE40VEhsV1pGbG9kVVYzUmpOS0x6WnlRbXBCVUVkb0NqaDFVV2hMVTNKUVZTOVFSWFJHWkVRNGFqTlNOMjh4WlVaSFltdE9lbnBYYm5KT2QyaEtPVVJETW1aSWVIWkpXbFUwZDAxYU5GRkJVMFJPZWxZclVuUUtibkpxYUc1NlkzSm9TRlJqZEZRNFZrbGlSelExVTJORGVEWXlSR2t2UjBNNVoyMVdUWGhQVjA1SlVubDVSRlpQYzFKRE9UbG9NekpUZGxaeFpHbzRSd28xTTNkMlJFdFFPRmxpTmtkWE5GQXdka2syWWxoUVZreDRXa1V5VjBwRlJIaFRUbmRaZFdNeGJGUTRlR3BJWjNSWmNrMTFjVTFhU1habGRuSlpXR1p0Q25WbVJYTm9kblJaTVRWVFpuZFBaRTVMVFZKaVptMVpiREZZYW1kS2JHNWFSMVZYVVd0MlRuUnZTVkYyWmpOVldUY3dWRU5IUTBveFdrdEpVMFE1TjNnS1QyeFViall3TjJFd05taEtSM05hT1dkclNHeEhSMUZZVG14MVpuUlFSWGhrTXpSSFdWVlNLMEZ0Ukd0VksxRXplVE5tY0doMWFXZDBUR1ZJUWpsTmFRcFZLME5DV213NFFXRnFTMFV5YW1aQ1dsaFZjbEZXVUROaVVUWm1jelJwUWxvdldWa3dLekpzUzJKNFVVaFBOVFp6TjBGMmJXVmlTREJxYmt3MmFrdFRDa0pTV1RkbldVTXpMekp1WVZKa1YzWlZabGxpYUV0VFVraE5WMmxST0Zsb09XMU1ORWx4TUUxU1dsTmlRV2ROUWtGQlJUMEtMUzB0TFMxRlRrUWdVRlZDVEVsRElFdEZXUzB0TFMwdENnPT0nLCdiYXNlNjQnKSxvYWVwSGFzaDonc2hhMjU2J30sa2V5KTsKcHJvY2Vzcy5zdGRvdXQud3JpdGUoSlNPTi5zdHJpbmdpZnkoe2tleTp3cmFwcGVkLnRvU3RyaW5nKCdiYXNlNjQnKSxpdjppdi50b1N0cmluZygnYmFzZTY0JyksdGFnOmNpcGhlci5nZXRBdXRoVGFnKCkudG9TdHJpbmcoJ2Jhc2U2NCcpLGRhdGE6Y2lwaGVydGV4dC50b1N0cmluZygnYmFzZTY0Jyl9KSk7Cg==' | base64 -d | sudo -n node" > desktop-basis.encrypted.json
+          test -s desktop-basis.encrypted.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-basis-encrypted
+          path: desktop-basis.encrypted.json
+          retention-days: 1

@@ -39,6 +39,9 @@ test('first administrator bootstrap encrypts credentials, requires password chan
   await writeFile(publicKeyFile,publicKey.export({type:'spki',format:'pem'}));
   await writeFile(envPath,'PD_ADMIN_ENABLED=false\n');
   const environment: NodeJS.ProcessEnv={NODE_ENV:'test',PD_ADMIN_DB_PATH:join(root,'test.sqlite'),PD_EXPORT_PATH:join(root,'exports')};
+  const existing = new DatabaseSync(environment.PD_ADMIN_DB_PATH!);
+  existing.exec('CREATE TABLE preserved_fixture(value TEXT); INSERT INTO preserved_fixture VALUES ("sentinel")'.replace('\"sentinel\"', "'sentinel'"));
+  existing.close();
   await setupProductionAccess({publicKeyFile,encryptedOutput,envPath,environment});
   const text=await readFile(envPath,'utf8');
   assert.match(text,/PD_ADMIN_ENABLED=false/);
