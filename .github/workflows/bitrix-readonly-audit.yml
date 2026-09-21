@@ -2,6 +2,11 @@ name: Bitrix24 Read-only Audit
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/bitrix-readonly-audit.yml'
 
 permissions:
   contents: read
