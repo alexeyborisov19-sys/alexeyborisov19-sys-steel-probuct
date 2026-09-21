@@ -1,9 +1,12 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import type { ClientCadDrawingPreview } from "@/lib/instant-quote/client-cad-preview-types";
 
 export function ClientCad2DPreview({ drawing, animated = false }: { drawing: ClientCadDrawingPreview; animated?: boolean }) {
+  const [zoom, setZoom] = useState(1);
+  const reducedMotion = useReducedMotion();
   const pad = Math.max(drawing.widthMm, drawing.heightMm, 10) * 0.09;
   const bounds = {
     x: drawing.minX - pad,
@@ -33,9 +36,14 @@ export function ClientCad2DPreview({ drawing, animated = false }: { drawing: Cli
 
   return (
     <div className="flex h-full w-full flex-col">
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2" aria-label="Масштаб чертежа">
+        <button type="button" aria-label="Уменьшить" onClick={() => setZoom((value) => Math.max(0.5, value / 1.25))} className="h-11 w-11 border border-white/30">−</button>
+        <button type="button" aria-label="Увеличить" onClick={() => setZoom((value) => Math.min(8, value * 1.25))} className="h-11 w-11 border border-white/30">+</button>
+        <button type="button" onClick={() => setZoom(1)} className="min-h-11 border border-white/30 px-3 text-sm">Вписать модель</button>
+      </div>
       <svg
         className="min-h-0 w-full flex-1"
-        viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`}
+        viewBox={`${bounds.x + bounds.w * (1 - 1 / zoom) / 2} ${bounds.y + bounds.h * (1 - 1 / zoom) / 2} ${bounds.w / zoom} ${bounds.h / zoom}`}
         preserveAspectRatio="xMidYMid meet"
         aria-label="2D CAD preview"
       >
@@ -47,7 +55,7 @@ export function ClientCad2DPreview({ drawing, animated = false }: { drawing: Cli
             ? `${points} ${polyline.points[0][0]},${flipY(polyline.points[0][1])}`
             : points;
 
-          if (animated) {
+          if (animated && !reducedMotion) {
             // Fade, not pathLength. Framer draws a pathLength animation with
             // stroke-dasharray, and a dash pattern under non-scaling-stroke is
             // measured on the untransformed path and painted on the transformed

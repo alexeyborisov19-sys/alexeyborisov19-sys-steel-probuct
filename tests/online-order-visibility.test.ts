@@ -33,7 +33,7 @@ test("/online-order is published in the sitemap next to the other calculator", a
 });
 
 test("the calculator hands the order over to the consent-recording contacts form", async () => {
-  const workspace = await source("components/ClientManufacturingWorkspace.tsx");
+  const workspace = await source("components/ClientManufacturingWorkspace.tsx") + await source("components/cad/shared/useCadProject.ts");
   const form = await source("components/QuoteRequestForm.tsx");
 
   // No private order endpoint of its own, and no fabricated submit target.
@@ -46,7 +46,7 @@ test("the calculator hands the order over to the consent-recording contacts form
 });
 
 test("the calculator never carries a client-side price basis", async () => {
-  const workspace = await source("components/ClientManufacturingWorkspace.tsx");
+  const workspace = await source("components/ClientManufacturingWorkspace.tsx") + await source("components/cad/shared/useCadProject.ts");
 
   for (const forbidden of ["pricePerT", "markupPct", "metalCoef", "rubPerTon", "cutK", "pierceK"]) {
     assert.equal(workspace.includes(forbidden), false, `calculator leaked ${forbidden}`);

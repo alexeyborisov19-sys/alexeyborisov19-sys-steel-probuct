@@ -164,7 +164,7 @@ test("public CAD analyze route never returns the raw normalized model", async ()
 
 test("public workspace never imports production CAD analyzers", async () => {
   const { readFile } = await import("node:fs/promises");
-  const workspace = await readFile(new URL("../components/ClientManufacturingWorkspace.tsx", import.meta.url), "utf8");
+  const workspace = await readFile(new URL("../components/ClientManufacturingWorkspace.tsx", import.meta.url), "utf8") + await readFile(new URL("../components/cad/shared/useCadProject.ts", import.meta.url), "utf8");
   const previewRenderer = await readFile(new URL("../components/ClientCad2DPreview.tsx", import.meta.url), "utf8");
 
   for (const forbidden of [
