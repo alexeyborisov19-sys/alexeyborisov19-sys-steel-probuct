@@ -1,0 +1,140 @@
+name: Yandex stack read-only audit
+on:
+  push:
+    branches: [ops/yandex-audit-20260921]
+    paths: ['.github/workflows/yandex-stack-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Read accounts and encrypt findings
+        env:
+          DIRECT_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+          METRIKA_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p /tmp/yandex-audit
+          trap 'rm -f /tmp/yandex-audit/report.json' EXIT
+          cat > /tmp/yandex-audit/recipient.pem <<'CERT'
+          -----BEGIN CERTIFICATE-----
+          MIIEOzCCAqOgAwIBAgIUGw6hL4MdYM8u4rVBtw6pLmjNDnowDQYJKoZIhvcNAQEL
+          BQAwLTErMCkGA1UEAwwiU3RlZWxQcm9kdWt0IFlhbmRleCBBdWRpdCAyMDI2MDky
+          MTAeFw0yNjA5MjEwNzI1MDNaFw0yNjA5MjQwNzI1MDNaMC0xKzApBgNVBAMMIlN0
+          ZWVsUHJvZHVrdCBZYW5kZXggQXVkaXQgMjAyNjA5MjEwggGiMA0GCSqGSIb3DQEB
+          AQUAA4IBjwAwggGKAoIBgQCwPnaex+H3AG1dfFCGWAaaLY9MncXC2ocjxjqRRCk8
+          vZdQ+MCO022GlwMn57cbEVpENJPH/xw7Yo6OejEhrY/7BF0ntdWyfOfAulZ5loI3
+          6EpedjRl5g+TrQI3uEer/zCSFBb32tpAwBn8ReA67GdJfA7wzzTnLeFWQObgFtpM
+          XlgWlrC7emCf32JDjozbDS3ht4V7+HeYdtIKs1sCHq6QnPp1P/rHfLlkh2AuzC+Y
+          bSFop7nSPIOhruHxg0A7rlt0fB0iuqMp1xkrFIzIVSbsuqPQj2/ajD9uaNaQHkoG
+          71mZcwl6UZLtLu9QTvasTpY+uZFINJCdLAQrVVuaEx+PzoKD+39MC74VpiQwrf7i
+          se17X2Hh0rVOzmdWGtZfb2KaoVi16UuEZvokOIro2wnpIHiDWAv7+OdpsoMxpJf2
+          +AlTo3C6nVm3kYbWTSyWdisSX1Am7pVOUiDo/liH4728XzXZd1t6dp82ehsOLgw7
+          F3Dl30B4XJ42O27igu90kNkCAwEAAaNTMFEwHQYDVR0OBBYEFBME8loLgptUG4IR
+          WTiWx6f298mbMB8GA1UdIwQYMBaAFBME8loLgptUG4IRWTiWx6f298mbMA8GA1Ud
+          EwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggGBAAwCuU6WDZXHtp6Bf2g6eh0l
+          yVdGggxIWqgmz6U2DxOXykCT1pnDge6BqbswoCEssJWwt4jXThrGpcY49hpuyJkG
+          eX7iSBt6EMf2rVNAdZdq5JXoWzaQRuC09AvRUaPuk+i6gdQO+ap5Zz6I72PbNste
+          KFubM1slosVCYorUGu8/7Imq1Y9F9uiShZ2bopo+7GKT8sKPhgwRIh/9syHNnl6n
+          SCcuj6AlKiW4PZDyCJsz1IuwMLHDCZ+aif4qSAdHf5CWUeOWPibyIl9DqGXXAG+s
+          6VChi4DM36lX8a518VCGccYSfVdp1DyvEV4RhYwWacZVAeA4osOvwzu6wrDYF4V7
+          6fpKuKIdwRIJuHPUy7qIj40Sqp68r9N1aP8+YYsFZNNFIF/8aCK3nq7iXHlT4jzG
+          iHl2ecP4fWhXJAiD4a0DeFVzpQL5Wnh36eAiXiktk1Abiv1MzTS0RTWro0zxdvo9
+          OdRAZ1mB0KXEZFAzXLSrd4nF9sajOxN2E5JrFQGk5A==
+          -----END CERTIFICATE-----
+          CERT
+          python3 - <<'PY'
+          import os, json, re, time, datetime
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+          from urllib.parse import urlencode, unquote, urlparse, quote
+          def token(name):
+              value=os.environ.get(name,'').strip().strip('\"\'')
+              value=re.sub(r'^(OAuth|Bearer)\s+', '', value, flags=re.I)
+              m=re.search(r'(?:^|[?#&])access_token=([^&#\s]+)',value)
+              return unquote(m.group(1)) if m else value
+          dt,mt=token('DIRECT_TOKEN'),token('METRIKA_TOKEN')
+          report={'as_of_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'mode':'read-only','period':{'from':'2026-08-22','to':'2026-09-20'},'responses':{}}
+          def request(label,url,t,body=None,scheme='OAuth',extra=None):
+              if not t:
+                  result={'http':None,'error':'secret_not_configured'}
+              else:
+                  headers={'Authorization':scheme+' '+t,'Accept':'application/json','Accept-Language':'ru'}
+                  headers.update(extra or {})
+                  if body is not None: headers['Content-Type']='application/json; charset=utf-8'
+                  req=Request(url,data=json.dumps(body).encode() if body is not None else None,headers=headers)
+                  try:
+                      with urlopen(req,timeout=35) as r:
+                          raw=r.read().decode('utf-8'); status=r.status
+                          result={'http':status,'request_id':r.headers.get('RequestId')}
+                          try: result['data']=json.loads(raw)
+                          except ValueError: result['text']=raw
+                  except HTTPError as e:
+                      raw=e.read().decode('utf-8',errors='replace')
+                      result={'http':e.code}
+                      try: result['data']=json.loads(raw)
+                      except ValueError: result['text']=raw[:3000]
+                  except Exception as e: result={'http':None,'error':type(e).__name__}
+              report['responses'][label]=result
+              print(label+': HTTP '+str(result.get('http'))+' (details encrypted)',flush=True)
+              return result.get('data',{})
+          def direct(label,service,params):
+              return request(label,'https://api.direct.yandex.com/json/v5/'+service,dt,{'method':'get','params':params},'Bearer')
+          try:
+              counter=request('metrika_counter','https://api-metrika.yandex.net/management/v1/counter/112542227?field=goals,filters,counter_flags',mt)
+              goals=counter.get('counter',{}).get('goals',[])
+              gids={c.get('url'):g.get('id') for g in goals if g.get('type')=='action' for c in g.get('conditions',[]) if c.get('type')=='exact'}
+              report['goal_ids']=gids
+              metrics=['ym:s:visits','ym:s:users','ym:s:bounceRate','ym:s:avgVisitDurationSeconds']
+              metrics += ['ym:s:goal'+str(gids[g])+'reaches' for g in ['quote_request_success','assistant_lead_success'] if gids.get(g)]
+              for label,dimensions in [('metrika_daily','ym:s:date'),('metrika_sources','ym:s:lastTrafficSource'),('metrika_direct_campaigns','ym:s:lastDirectClickOrder')]:
+                  q={'ids':112542227,'date1':'2026-08-22','date2':'2026-09-20','metrics':','.join(metrics),'dimensions':dimensions,'accuracy':'full','limit':10000}
+                  request(label,'https://api-metrika.yandex.net/stat/v1/data?'+urlencode(q),mt)
+              cp={'SelectionCriteria':{},'FieldNames':['Id','Name','Type','State','Status','StatusPayment','StartDate','DailyBudget','NegativeKeywords'],'TextCampaignFieldNames':['CounterIds','BiddingStrategy','PriorityGoals','Settings','AttributionModel'],'UnifiedCampaignFieldNames':['CounterIds','BiddingStrategy','PriorityGoals','Settings','AttributionModel','TrackingParams'],'Page':{'Limit':1000,'Offset':0}}
+              campaigns=direct('direct_campaigns','campaigns',cp)
+              campaigns=campaigns.get('result',{}).get('Campaigns',[])
+              ids=[c['Id'] for c in campaigns if c.get('State')!='ARCHIVED']
+              if ids:
+                  adparams={'SelectionCriteria':{'CampaignIds':ids[:100]},'FieldNames':['Id','CampaignId','AdGroupId','Type','State','Status'],'TextAdFieldNames':['Title','Title2','Text','Href','SitelinkSetId','DisplayUrlPath'],'Page':{'Limit':10000,'Offset':0}}
+                  ads=direct('direct_ads','ads',adparams)
+                  ads=ads.get('result',{}).get('Ads',[])
+                  targetids=sorted(set(a['CampaignId'] for a in ads if urlparse(a.get('TextAd',{}).get('Href','')).hostname in ['steelprodukt.ru','www.steelprodukt.ru']))
+                  report['target_campaign_ids']=targetids
+                  if targetids:
+                      direct('direct_adgroups','adgroups',{'SelectionCriteria':{'CampaignIds':targetids},'FieldNames':['Id','Name','CampaignId','RegionIds','NegativeKeywords','Status'],'Page':{'Limit':10000,'Offset':0}})
+                      direct('direct_keywords','keywords',{'SelectionCriteria':{'CampaignIds':targetids},'FieldNames':['Id','AdGroupId','CampaignId','Keyword','State','Status','Bid','ContextBid','ServingStatus'],'Page':{'Limit':10000,'Offset':0}})
+                      params={'SelectionCriteria':{'DateFrom':'2026-08-22','DateTo':'2026-09-20','Filter':[{'Field':'CampaignId','Operator':'IN','Values':[str(x) for x in targetids]}]},'FieldNames':['CampaignId','CampaignName','AdNetworkType','Impressions','Clicks','Cost','AvgCpc'],'ReportName':'SteelProdukt audit '+str(int(time.time())),'ReportType':'CUSTOM_REPORT','DateRangeType':'CUSTOM_DATE','Format':'TSV','IncludeVAT':'YES','IncludeDiscount':'NO'}
+                      for attempt in range(4):
+                          request('direct_performance','https://api.direct.yandex.com/json/v5/reports',dt,{'params':params},'Bearer',{'processingMode':'auto','returnMoneyInMicros':'false','skipReportHeader':'true','skipReportSummary':'true'})
+                          if report['responses']['direct_performance'].get('http') not in (201,202): break
+                          time.sleep(5)
+              user=request('webmaster_user','https://api.webmaster.yandex.net/v4/user',dt)
+              uid=user.get('user_id')
+              if uid:
+                  base='https://api.webmaster.yandex.net/v4/user/'+str(uid)+'/hosts'
+                  hosts=request('webmaster_hosts',base,dt).get('hosts',[])
+                  targets=[h for h in hosts if urlparse(h.get('unicode_host_url') or h.get('ascii_host_url','')).hostname in ['steelprodukt.ru','www.steelprodukt.ru']]
+                  for i,h in enumerate(targets):
+                      root=base+'/'+quote(h['host_id'],safe='')
+                      for suffix in ['', '/summary','/diagnostics','/sitemaps?limit=100','/indexing/samples?offset=0&limit=100','/search-urls/in-search/samples?offset=0&limit=100','/search-urls/events/samples?offset=0&limit=100','/search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&limit=20']:
+                          request('webmaster_'+str(i)+suffix,root+suffix,dt)
+          except Exception as e:
+              report['fatal_error']=type(e).__name__
+          raw=json.dumps(report,ensure_ascii=False,indent=2)
+          for secret in [dt,mt]:
+              if secret: raw=raw.replace(secret,'[REDACTED]')
+          with open('/tmp/yandex-audit/report.json','w') as f: f.write(raw)
+          PY
+          openssl cms -encrypt -binary -aes-256-cbc -in /tmp/yandex-audit/report.json -outform DER -out /tmp/yandex-audit/report.cms /tmp/yandex-audit/recipient.pem
+          echo 'Encrypted read-only audit complete. No campaigns, goals, budgets or website files changed.'
+      - name: Upload encrypted audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: yandex-audit-encrypted
+          path: /tmp/yandex-audit/report.cms
+          retention-days: 1
+          if-no-files-found: error
