@@ -3,7 +3,7 @@ export const YANDEX_QUOTE_COMPLETION_ENDPOINT = "https://llm.api.cloud.yandex.ne
 const LEGACY_ENDPOINT = "https://ai.api.cloud.yandex.net/foundationModels/v1/completion";
 
 /** A server setting must not redirect an API key to an arbitrary URL. */
-export function quoteCompletionEndpoint(environment: NodeJS.ProcessEnv = process.env): string | null {
+export function quoteCompletionEndpoint(environment: Readonly<Record<string, string | undefined>> = process.env): string | null {
   const endpoint = environment.YANDEX_AI_ENDPOINT?.trim() || YANDEX_QUOTE_COMPLETION_ENDPOINT;
   return endpoint === YANDEX_QUOTE_COMPLETION_ENDPOINT || endpoint === LEGACY_ENDPOINT ? endpoint : null;
 }
