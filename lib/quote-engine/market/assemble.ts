@@ -1,6 +1,6 @@
 import { classifyOfferComparability } from "@/lib/quote-engine/market/comparability";
 import { summarizeMarket } from "@/lib/quote-engine/market/statistics";
-import type { MarketComparisonTarget, MarketOffer } from "@/lib/quote-engine/market/types";
+import type { ComparabilityVerdict, MarketComparisonTarget, MarketOffer } from "@/lib/quote-engine/market/types";
 import type { MetalCassetteReadyInput, MetalPartsReadyInput } from "@/lib/quote-engine/plan";
 
 /**
@@ -15,6 +15,11 @@ import type { MetalCassetteReadyInput, MetalPartsReadyInput } from "@/lib/quote-
 export type AssembledMarket = {
   summary: ReturnType<typeof summarizeMarket>;
   unitAreaM2: number;
+  /** Source snapshots are internal only; a median alone is not auditable evidence. */
+  evidence?: {
+    assessedAt: string;
+    offers: Array<{ offer: MarketOffer; verdict: ComparabilityVerdict }>;
+  };
 };
 
 /**
@@ -71,8 +76,16 @@ export function assembleMarketInput(
   if (unitAreaM2 == null || !Number.isFinite(unitAreaM2) || unitAreaM2 <= 0) return null;
   if (offers.length === 0) return null;
 
-  const summary = summarizeMarket(offers.map((offer) => classifyOfferComparability(offer, target, now)));
+  const evidence = {
+    assessedAt: now.toISOString(),
+    offers: offers.map((offer) => ({
+      // Keep the snapshot independent of a provider's mutable response object.
+      offer: { ...offer, dimensions: offer.dimensions ? { ...offer.dimensions } : null },
+      verdict: classifyOfferComparability(offer, target, now),
+    })),
+  };
+  const summary = summarizeMarket(evidence.offers.map((item) => item.verdict));
   if (summary.medianRubPerM2 == null) return null;
 
-  return { summary, unitAreaM2 };
+  return { summary, unitAreaM2, evidence };
 }
