@@ -1,0 +1,26 @@
+name: Audit Direct strategy
+on:
+  push:
+    branches: [audit/direct-strategy-20260921]
+    paths: ['.github/workflows/audit-direct-strategy.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re
+          from urllib.request import Request,urlopen
+          from urllib.parse import unquote
+          t=os.environ['TOKEN'].strip().strip('"\''); t=re.sub(r'^(OAuth|Bearer)\\s+','',t,flags=re.I)
+          m=re.search(r'(?:^|[?#&])access_token=([^&#\\s]+)',t)
+          if m:t=unquote(m.group(1))
+          p={'method':'get','params':{'SelectionCriteria':{'Ids':[714391927]},'FieldNames':['Id','Name','State','Status','DailyBudget'],'TextCampaignFieldNames':['CounterIds','BiddingStrategy','PriorityGoals','Settings','AttributionModel']}}
+          q=Request('https://api.direct.yandex.com/json/v5/campaigns',data=json.dumps(p).encode(),headers={'Authorization':'Bearer '+t,'Content-Type':'application/json; charset=utf-8','Accept-Language':'ru'})
+          with urlopen(q,timeout=30) as r:d=json.load(r)['result']['Campaigns'][0]
+          print('STRATEGY='+json.dumps(d,ensure_ascii=False))
+          PY
