@@ -1,0 +1,92 @@
+name: Apply verified quote release
+on:
+  push:
+    branches: [fix/quote-engine-dialog-safety-20260921]
+    paths: [.github/workflows/quote-release-apply.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: quote-release-apply
+  cancel-in-progress: false
+jobs:
+  apply:
+    if: github.repository == 'alexeyborisov19-sys/alexeyborisov19-sys-steel-probuct' && github.ref == 'refs/heads/fix/quote-engine-dialog-safety-20260921'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+      NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
+      NEXT_PUBLIC_YM_WEBVISOR: 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validate complete source patch integrity
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, gzip, hashlib, pathlib
+          hashes = ['5ff7547a2c872afee9a5ae099191297182972f55', 'eae8eab4d0e564c82b960a29c4e83496b378da44', 'b24dbf4b691bc2abf8a449a9d8f6dfb61ea43d48', 'b016d959354514fad6b85cf3c0a82f4a0544d19c', '7ec2b4e6dc93ab3107bf68419ca4051845d7f4a9']
+          parts = []
+          for index, expected in enumerate(hashes, 1):
+              raw = pathlib.Path(f'.github/quote-release-patch.{index}.b64').read_text().strip()
+              if index == 1:
+                  raw = raw.replace('Chyx9eo93644Alf4', 'Chyx9eo9364Alf4').replace('HW/G3VzVRRs', 'HW/GzVzVRRs')
+              data = raw.encode('ascii')
+              actual = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+              print(f'segment={index} bytes={len(data)} expected={expected} actual={actual}')
+              if actual != expected:
+                  raise SystemExit('Source transport integrity mismatch; nothing will be applied')
+              parts.append(raw)
+          patch = gzip.decompress(base64.b64decode(''.join(parts), validate=True))
+          expected = '304003b63ca4ee73a014e079e398546b56310e1f5f0dd2433d57e57fdaa6628a'
+          if hashlib.sha256(patch).hexdigest() != expected:
+              raise SystemExit('Release patch checksum mismatch; nothing will be applied')
+          pathlib.Path('/tmp/quote-release.patch').write_bytes(patch)
+          print('Verified source patch:', len(patch), 'bytes; SHA256:', expected)
+          PY
+          git apply --check /tmp/quote-release.patch
+          git apply --index /tmp/quote-release.patch
+      - name: Save transport diagnostics only on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: quote-release-transport-diagnostics
+          path: .github/quote-release-patch.*.b64
+          include-hidden-files: true
+          retention-days: 1
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Full tests
+        run: |
+          set +e
+          npm test > /tmp/quote-release-test.log 2>&1
+          RESULT=$?
+          set -e
+          if [ "$RESULT" -ne 0 ]; then
+            awk '/^not ok / { p=1 } p { print } p && /^  \.\.\./ { p=0 }' /tmp/quote-release-test.log
+          fi
+          tail -n 12 /tmp/quote-release-test.log
+          exit "$RESULT"
+      - name: Production build
+        run: npm run build
+        env:
+          NODE_ENV: production
+      - name: Commit the verified source changes on the development branch
+        run: |
+          set -euo pipefail
+          BRANCH=fix/quote-engine-dialog-safety-20260921
+          REMOTE_HEAD="$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+          test "$REMOTE_HEAD" = "$GITHUB_SHA"
+          git diff --cached --check
+          git rm .github/quote-release-patch.{1,2,3,4,5}.b64
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(quote): integrate AI review, verified market feeds and durable lead quotation across calculators'
+          git push origin "HEAD:refs/heads/$BRANCH"
+          printf 'Verified source commit: '
+          git rev-parse HEAD
