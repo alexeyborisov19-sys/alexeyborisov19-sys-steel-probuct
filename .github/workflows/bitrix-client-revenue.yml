@@ -1,0 +1,211 @@
+name: Bitrix Client Revenue Export
+
+on:
+  push:
+    branches:
+      - analysis/bitrix-client-revenue
+    paths:
+      - '.github/workflows/bitrix-client-revenue.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Build client revenue analytics
+        env:
+          BITRIX_WEBHOOK_URL: ${{ secrets.BITRIX_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$BITRIX_WEBHOOK_URL" || { echo "BITRIX_WEBHOOK_URL is not configured"; exit 1; }
+
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from collections import defaultdict
+          from datetime import datetime
+
+          base = os.environ["BITRIX_WEBHOOK_URL"].rstrip("/") + "/"
+
+          def call(method, params=None):
+              payload = json.dumps(params or {}).encode("utf-8")
+              req = urllib.request.Request(
+                  base + method + ".json",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=60) as r:
+                  data = json.load(r)
+              if "error" in data:
+                  raise RuntimeError(f"{method}: {data.get('error')} {data.get('error_description','')}")
+              return data
+
+          def list_items(entity_type_id, select):
+              out = []
+              start = 0
+              while True:
+                  data = call("crm.item.list", {
+                      "entityTypeId": entity_type_id,
+                      "select": select,
+                      "order": {"id": "ASC"},
+                      "start": start,
+                  })
+                  items = data.get("result", {}).get("items", [])
+                  out.extend(items)
+                  nxt = data.get("next")
+                  if nxt is None or not items:
+                      break
+                  start = nxt
+              return out
+
+          stage_rows = call("crm.status.list", {"filter": {"ENTITY_ID": "DEAL_STAGE"}}).get("result", [])
+          categories = call("crm.category.list", {"entityTypeId": 2}).get("result", {}).get("categories", [])
+          for cat in categories:
+              cid = int(cat.get("id") or cat.get("ID") or 0)
+              if cid:
+                  stage_rows.extend(call("crm.status.list", {"filter": {"ENTITY_ID": f"DEAL_STAGE_{cid}"}}).get("result", []))
+
+          stage_sem = {}
+          for row in stage_rows:
+              sid = str(row.get("STATUS_ID") or row.get("statusId") or row.get("ID") or row.get("id") or "")
+              if sid:
+                  stage_sem[sid] = str(row.get("SEMANTICS") or row.get("semantics") or "")
+
+          deals = list_items(2, [
+              "id","stageId","opportunity","currencyId","closed","closedTime",
+              "companyId","contactIds","createdTime"
+          ])
+          companies = list_items(4, ["id","title"])
+          contacts = list_items(3, ["id","name","lastName","secondName"])
+
+          company_names = {str(x.get("id")): str(x.get("title") or f"Компания #{x.get('id')}") for x in companies}
+          contact_names = {}
+          for x in contacts:
+              parts = [str(x.get(k) or "").strip() for k in ("lastName","name","secondName")]
+              name = " ".join(p for p in parts if p).strip()
+              contact_names[str(x.get("id"))] = name or f"Контакт #{x.get('id')}"
+
+          by_client = {}
+          grand_by_year_currency = defaultdict(float)
+
+          def parse_year(v):
+              if not v:
+                  return None
+              try:
+                  return datetime.fromisoformat(str(v).replace("Z","+00:00")).year
+              except Exception:
+                  return None
+
+          for d in deals:
+              stage = str(d.get("stageId") or "")
+              if stage_sem.get(stage) != "S":
+                  continue
+
+              year = parse_year(d.get("closedTime"))
+              if year is None:
+                  year = parse_year(d.get("createdTime"))
+              if year is None:
+                  continue
+
+              currency = str(d.get("currencyId") or "RUB")
+              try:
+                  amount = float(d.get("opportunity") or 0)
+              except Exception:
+                  amount = 0.0
+
+              company_id = str(d.get("companyId") or "").strip()
+              contact_ids = d.get("contactIds") or []
+              if not isinstance(contact_ids, list):
+                  contact_ids = []
+
+              if company_id and company_id != "0":
+                  client_key = f"company:{company_id}"
+                  client_name = company_names.get(company_id, f"Компания #{company_id}")
+                  client_type = "company"
+              elif contact_ids:
+                  cid = str(contact_ids[0])
+                  client_key = f"contact:{cid}"
+                  client_name = contact_names.get(cid, f"Контакт #{cid}")
+                  client_type = "contact"
+              else:
+                  client_key = "unlinked"
+                  client_name = "Без привязанного клиента"
+                  client_type = "unlinked"
+
+              rec = by_client.setdefault(client_key, {
+                  "client_name": client_name,
+                  "client_type": client_type,
+                  "years": {},
+                  "lifetime": {},
+                  "won_deals": 0,
+                  "last_year": None,
+              })
+
+              yr = rec["years"].setdefault(str(year), {})
+              yr_cur = yr.setdefault(currency, {"revenue": 0.0, "deals": 0})
+              yr_cur["revenue"] += amount
+              yr_cur["deals"] += 1
+
+              life = rec["lifetime"].setdefault(currency, {"revenue": 0.0, "deals": 0})
+              life["revenue"] += amount
+              life["deals"] += 1
+
+              rec["won_deals"] += 1
+              rec["last_year"] = max(rec["last_year"] or year, year)
+              grand_by_year_currency[(str(year), currency)] += amount
+
+          clients = []
+          for rec in by_client.values():
+              for ydata in rec["years"].values():
+                  for cdata in ydata.values():
+                      cdata["avg_check"] = cdata["revenue"] / cdata["deals"] if cdata["deals"] else 0.0
+              for cdata in rec["lifetime"].values():
+                  cdata["avg_check"] = cdata["revenue"] / cdata["deals"] if cdata["deals"] else 0.0
+              clients.append(rec)
+
+          clients.sort(
+              key=lambda r: sum(v["revenue"] for v in r["lifetime"].values()),
+              reverse=True
+          )
+
+          grand = {}
+          for (year, currency), amount in grand_by_year_currency.items():
+              grand.setdefault(year, {})[currency] = amount
+
+          report = {
+              "generated_at": datetime.now().isoformat(),
+              "won_deals_total": sum(r["won_deals"] for r in clients),
+              "client_count": len(clients),
+              "grand_by_year_currency": grand,
+              "clients": clients,
+              "methodology": {
+                  "basis": "Only won deals where Bitrix deal stage semantics = S",
+                  "year_field": "closedTime; createdTime only if closedTime is missing",
+                  "client_link": "companyId first; otherwise first contactId; otherwise unlinked",
+                  "amount_field": "opportunity",
+              }
+          }
+
+          path="/tmp/bitrix-client-revenue.json"
+          with open(path,"w",encoding="utf-8") as f:
+              json.dump(report,f,ensure_ascii=False,indent=2)
+
+          print(json.dumps({
+              "client_count": report["client_count"],
+              "won_deals_total": report["won_deals_total"],
+              "years": sorted(report["grand_by_year_currency"].keys())
+          }, ensure_ascii=False))
+          PY
+
+      - name: Upload private analytics artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: bitrix-client-revenue
+          path: /tmp/bitrix-client-revenue.json
+          retention-days: 1
+          if-no-files-found: error
