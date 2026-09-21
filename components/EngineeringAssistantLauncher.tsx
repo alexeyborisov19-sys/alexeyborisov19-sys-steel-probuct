@@ -2,10 +2,10 @@
 
 import { lazy, Suspense, useState } from "react";
 
-const loadAssistant = () => import("./EngineeringAssistant");
+const loadAssistant = () => import("./NavigationAssistant");
 const LazyEngineeringAssistant = lazy(async () => {
   const assistantModule = await loadAssistant();
-  return { default: assistantModule.EngineeringAssistant };
+  return { default: assistantModule.NavigationAssistant };
 });
 
 function BrandMark() {
