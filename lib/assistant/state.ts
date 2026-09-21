@@ -86,7 +86,15 @@ export function extractLeadState(
   }
 
   const productPatterns: Array<[RegExp, string]> = [
-    [/(металлокассет|фасадн[\p{L}-]* кассет)/u, "Металлокассеты"],
+    // The plain word "кассета" (no "металло-"/"фасадн-" prefix) is how a
+    // customer actually asks for one out loud — the calculator page and the
+    // product catalogue both just say "кассеты" — and it used to fall through
+    // this whole list to an unrelated pattern below (coating, for instance),
+    // silently mislabelling the one product this business has a second,
+    // differently-priced calculator for. Bare substring, like every other
+    // pattern in this list: \b is an ASCII notion in JS regex and never fires
+    // next to a Cyrillic letter, and no other Russian word contains "кассет".
+    [/(металлокассет|фасадн[\p{L}-]* кассет|кассет)/u, "Металлокассеты"],
     [/(корзин[\p{L}-]* (?:для )?кондиционер)/u, "Корзины для кондиционеров"],
     [/(экран[\p{L}-]* (?:для )?кондиционер)/u, "Экраны для кондиционеров"],
     [/(корпус|шкаф|кожух)/, "Промышленный корпус или шкаф"],
@@ -106,11 +114,20 @@ export function extractLeadState(
   const purpose = match(normalized, /(?:для|назначение[:\s]+)\s*([^,.!?]{4,100})/i);
   if (purpose) state.purpose = purpose;
 
+  // Each pattern also covers the short, spoken form a customer types instead
+  // of the full technical name — "оцинковка" and "нержавейка" — the same
+  // material, not a second one; §6 of the brief names this exact case
+  // ("оцинковка 1,2" / "оцинкованная сталь 1.2 мм" is one parameter).
   const materialPatterns: Array<[RegExp, string]> = [
-    [/нержавеющ[\p{L}-]*/u, "Нержавеющая сталь"],
-    [/оцинкованн[\p{L}-]*/u, "Оцинкованная сталь"],
+    // Before the generic "Сталь" below: these are the site's own labels for
+    // the two rolled steels (MATERIAL_LABELS), so a customer who writes them
+    // must not then be asked which of the two they meant.
+    [/горячекатан[\p{L}-]*|(?<![\p{L}])г\/к(?![\p{L}])/u, "Сталь г/к"],
+    [/холоднокатан[\p{L}-]*|(?<![\p{L}])х\/к(?![\p{L}])/u, "Сталь х/к"],
+    [/нержавеющ[\p{L}-]*|нержавейк[\p{L}-]*/u, "Нержавеющая сталь"],
+    [/оцинкованн[\p{L}-]*|оцинковк[\p{L}-]*/u, "Оцинкованная сталь"],
     [/алюмини[\p{L}-]*/u, "Алюминий"],
-    [/черн[\p{L}-]* стал[\p{L}-]*|сталь\s*(?:ст|09г2с|08пс|08кп)\S*/iu, "Сталь"],
+    [/ч[её]рн[\p{L}-]* стал[\p{L}-]*|сталь\s*(?:ст|09г2с|08пс|08кп)\S*/iu, "Сталь"],
   ];
   for (const [pattern, value] of materialPatterns) {
     if (pattern.test(normalized)) {
@@ -129,12 +146,41 @@ export function extractLeadState(
   if (dimensions) state.dimensions = dimensions.replace(/[xх*]/gi, "×");
 
   const quantity = match(normalized, /(\d[\d\s]*(?:шт(?:ук)?|единиц|комплект[\p{L}-]*|м²|м2|пог\.?\s*м))/iu);
-  if (quantity) state.quantity = quantity.replace(/\s+/g, " ");
+  if (quantity) {
+    state.quantity = quantity.replace(/\s+/g, " ");
+  } else {
+    // A bare count of the product itself — "100 кронштейнов" — is a far more
+    // common way to state a quantity than any of the explicit units above,
+    // and is normalised here into the same "<число> шт" shape an explicit
+    // unit match already produces, so every consumer of `state.quantity`
+    // (this assistant's own lead summary included) treats the two the same
+    // way, and the value survives into later turns like every other field.
+    // Digits the dimensions or thickness match just above already claimed
+    // are excluded — "500×400 оцинкованная" must not read its own trailing
+    // "400" as a headcount — and a short Cyrillic word of 3+ letters is
+    // required so "2 мм" is never mistaken for a count.
+    const claimedDigits = new Set(
+      [dimensions, thickness].flatMap((raw) => (raw ? [...raw.matchAll(/\d+/g)].map((digits) => Number(digits[0])) : [])),
+    );
+    for (const impliedMatch of normalized.matchAll(/(?:^|[^\d])(\d{1,5})\s+[а-яё]{3,}/giu)) {
+      const value = Number(impliedMatch[1]);
+      if (Number.isFinite(value) && value > 0 && !claimedDigits.has(value)) {
+        state.quantity = `${value} шт`;
+        break;
+      }
+    }
+  }
 
   if (/порошков[\p{L}-]* окраск|покрыт|покрас/iu.test(normalized)) state.coating = "Требуется покрытие";
   if (/без (?:покрытия|покраски)|покрытие не нужно/i.test(normalized)) state.coating = "Без покрытия";
   const ral = match(normalized, /\bral\s*[-:]?\s*(\d{4})\b/i);
   if (ral) state.ral = `RAL ${ral}`;
+
+  // Never in the required lead-capture sequence below — only the cassette
+  // calculator needs it — but tracked here, like every other field, so it
+  // survives across turns instead of being re-read from scratch each time.
+  if (/закрыт[а-я]*/iu.test(normalized)) state.cassetteType = "closed";
+  else if (/открыт[а-я]*/iu.test(normalized)) state.cassetteType = "open";
 
   if (/(?:черт[её]ж|эскиз|3d|модел\w*|dxf|dwg|step).{0,25}(?:есть|имеется|приложу|готов)/i.test(normalized)
     || /(?:есть|имеется|приложу|готов).{0,25}(?:черт[её]ж|эскиз|3d|модел\w*|dxf|dwg|step)/i.test(normalized)) {

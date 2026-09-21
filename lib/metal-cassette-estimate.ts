@@ -27,7 +27,7 @@ export type MetalCassetteEstimate = {
   approximateTotalRub: number;
 };
 
-const STANDARD = {
+export const STANDARD_CASSETTE = {
   faceWidthMm: 1170,
   faceHeightMm: 545,
   rustMm: 20,
@@ -52,7 +52,7 @@ const OPEN_RATE_RUB_M2: Record<MetalCassetteThickness, number> = {
 
 const CLOSED_TYPE_RATE_FACTOR = 1815 / 1583;
 
-function roundMoney(value: number) {
+export function roundMoney(value: number) {
   return Math.round(value);
 }
 
@@ -75,14 +75,14 @@ export function getDefaultMetalCassetteRate(
 function moduleFor(type: MetalCassetteType) {
   if (type === "open") {
     return {
-      widthMm: STANDARD.faceWidthMm + STANDARD.rustMm,
-      heightMm: STANDARD.faceHeightMm + STANDARD.rustMm,
+      widthMm: STANDARD_CASSETTE.faceWidthMm + STANDARD_CASSETTE.rustMm,
+      heightMm: STANDARD_CASSETTE.faceHeightMm + STANDARD_CASSETTE.rustMm,
     };
   }
 
   return {
-    widthMm: STANDARD.faceWidthMm + STANDARD.rustMm,
-    heightMm: STANDARD.faceHeightMm,
+    widthMm: STANDARD_CASSETTE.faceWidthMm + STANDARD_CASSETTE.rustMm,
+    heightMm: STANDARD_CASSETTE.faceHeightMm,
   };
 }
 
@@ -95,15 +95,15 @@ function quantityByArea(areaM2: number, type: MetalCassetteType) {
 function gridByWall(widthMm: number, heightMm: number, type: MetalCassetteType) {
   const columns = Math.max(
     0,
-    Math.ceil((widthMm + STANDARD.rustMm) / (STANDARD.faceWidthMm + STANDARD.rustMm)),
+    Math.ceil((widthMm + STANDARD_CASSETTE.rustMm) / (STANDARD_CASSETTE.faceWidthMm + STANDARD_CASSETTE.rustMm)),
   );
 
   const rows = type === "open"
     ? Math.max(
         0,
-        Math.ceil((heightMm + STANDARD.rustMm) / (STANDARD.faceHeightMm + STANDARD.rustMm)),
+        Math.ceil((heightMm + STANDARD_CASSETTE.rustMm) / (STANDARD_CASSETTE.faceHeightMm + STANDARD_CASSETTE.rustMm)),
       )
-    : Math.max(0, Math.ceil(heightMm / STANDARD.faceHeightMm));
+    : Math.max(0, Math.ceil(heightMm / STANDARD_CASSETTE.faceHeightMm));
 
   return { columns, rows };
 }
@@ -147,6 +147,55 @@ export function estimateMetalCassettes(input: MetalCassetteEstimateInput): Metal
     rows: null,
     moduleWidthMm: pitch.widthMm,
     moduleHeightMm: pitch.heightMm,
+    defaultRateRubM2: defaultRate,
+    approximateRateRubM2: rate,
+    approximateTotalRub: roundMoney(netAreaM2 * rate),
+  };
+}
+
+export type MetalCassetteQuantityEstimateInput = {
+  type: MetalCassetteType;
+  thickness: MetalCassetteThickness;
+  /** How many cassettes the customer stated directly, e.g. "300 кассет". */
+  quantity: number;
+  /** The customer's own cassette face size — not the standard module pitch. */
+  moduleWidthMm: number;
+  moduleHeightMm: number;
+  pricePerM2?: number;
+};
+
+/**
+ * Prices a stated piece count against the customer's OWN cassette size, not
+ * the fixed standard module (`STANDARD_CASSETTE.faceWidthMm × faceHeightMm`) the
+ * area/wall modes above assume. A customer very often gives exactly a
+ * headcount plus a size — "300 кассет 600×1200" — and neither number is the
+ * standard module. Substituting the standard module's area to make that fit
+ * `estimateMetalCassettes`'s existing modes would price a size nobody
+ * ordered; this instead applies the same published rate to the area the
+ * customer's own numbers describe.
+ *
+ * Reuses the published rate table via `getDefaultMetalCassetteRate` and the
+ * same whole-rouble rounding — nothing about the commercial rate changes,
+ * only how the priced area is derived. `estimateMetalCassettes` and its two
+ * existing modes are untouched by this function.
+ */
+export function estimateMetalCassettesByQuantity(
+  input: MetalCassetteQuantityEstimateInput,
+): MetalCassetteEstimate {
+  const quantity = Math.max(0, Math.round(positive(input.quantity)));
+  const moduleWidthMm = positive(input.moduleWidthMm);
+  const moduleHeightMm = positive(input.moduleHeightMm);
+  const netAreaM2 = (quantity * moduleWidthMm * moduleHeightMm) / 1_000_000;
+  const defaultRate = getDefaultMetalCassetteRate(input.type, input.thickness);
+  const rate = positive(input.pricePerM2, defaultRate);
+
+  return {
+    netAreaM2,
+    quantity,
+    columns: null,
+    rows: null,
+    moduleWidthMm,
+    moduleHeightMm,
     defaultRateRubM2: defaultRate,
     approximateRateRubM2: rate,
     approximateTotalRub: roundMoney(netAreaM2 * rate),

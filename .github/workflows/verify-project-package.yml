@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/project-galleries-exhibitions-obninsk-sep12
+      - fix/quote-engine-dialog-safety-20260921
   pull_request: {}
   workflow_dispatch:
 
@@ -44,7 +45,20 @@ jobs:
         run: npm run typecheck
 
       - name: Tests
-        run: npm test
+        run: |
+          # Run the unchanged complete suite; keep its actual exit status.
+          set +e
+          npm test > /tmp/steelprodukt-test-output.log 2>&1
+          TEST_STATUS=$?
+          set -e
+          if [ "$TEST_STATUS" -ne 0 ]; then
+            # Each failed TAP test includes its own YAML assertion and stack.
+            awk '/^not ok / { printing=1 } printing { print } printing && /^  \.\.\./ { printing=0 }' /tmp/steelprodukt-test-output.log
+            tail -n 35 /tmp/steelprodukt-test-output.log
+          else
+            tail -n 12 /tmp/steelprodukt-test-output.log
+          fi
+          exit "$TEST_STATUS"
 
       - name: Build
         env:

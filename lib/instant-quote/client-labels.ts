@@ -1,9 +1,6 @@
 import type { ManufacturingOperation } from "@/lib/instant-quote/domain";
 
-/**
- * Customer-facing names shared by the configurator and the printed quote, so
- * the two can never disagree about what was ordered.
- */
+/** Customer-facing names shared by the configurator and the printed quote. */
 export const MATERIAL_LABELS: Record<string, string> = {
   hot: "Сталь г/к",
   cold: "Сталь х/к",
@@ -22,35 +19,21 @@ export const OPERATION_LABELS: Record<ManufacturingOperation, string> = {
   packaging: "Упаковка",
 };
 
-/**
- * Single wording for the machine calculation, shared by the screen and the
- * printed quote so the customer cannot be shown two different promises. It
- * follows the site's own terms at /legal/terms rather than inventing a new
- * legal formula.
- */
+/** Shared notice: applies to customer-entered parameters as well as uploaded models. */
 export const CALCULATION_DISCLAIMER =
-  "Расчёт выполнен автоматически по загруженной модели и является предварительным. "
-  + "Он не является публичной офертой: окончательные цена, сроки, характеристики и "
-  + "условия поставки определяются коммерческим предложением и договором после "
-  + "проверки инженером.";
+  "Расчёт выполнен автоматически по предоставленным данным и является предварительным. "
+  + "Расчёт носит ориентировочный характер. Он не является публичной офертой: "
+  + "окончательные цена, сроки, характеристики и условия поставки определяются "
+  + "коммерческим предложением и договором после проверки инженером.";
 
-/** Short form for places where the full sentence does not fit. */
+/** Keep the non-offer statement next to every displayed or spoken preliminary price. */
 export const CALCULATION_DISCLAIMER_SHORT =
-  "Предварительный автоматический расчёт. Не является офертой.";
+  "Предварительный автоматический расчёт. Носит ориентировочный характер. Не является офертой.";
 
-/**
- * Sheet thicknesses the configurator offers. A measured STEP thickness is
- * snapped onto this list, because a thickness nobody stocks cannot be bought,
- * cut or priced — only quoted by an engineer.
- */
+/** Sheet thicknesses offered by the existing configurator. */
 export const THICKNESS_OPTIONS = [0.5, 0.7, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 40] as const;
 
-/**
- * Nearest stocked thickness to a measured one, or null when nothing is close
- * enough to stand in for it. The tolerance matches the server's: it absorbs
- * mill tolerance and modelling rounding, and refuses anything wider, so the
- * configurator never pre-selects a thickness the server will then reject.
- */
+/** Preserves the existing measured-thickness matching policy. */
 export function nearestThicknessOption(measuredMm: number | null | undefined) {
   if (typeof measuredMm !== "number" || !Number.isFinite(measuredMm) || measuredMm <= 0) return null;
 
@@ -68,11 +51,7 @@ export function nearestThicknessOption(measuredMm: number | null | undefined) {
   return bestDistance <= Math.max(0.2, best * 0.1) ? best : null;
 }
 
-/**
- * Names what the analyser read off the customer's own model, so an auto-filled
- * thickness or bend count is visible rather than silently applied. Returns an
- * empty string when the model told us nothing worth repeating.
- */
+/** Names actual model readings; never silently converts a candidate into a fact. */
 export function modelReadings(cad: { thicknessFromModelMm: number | null; bendCountFromModel: number | null }) {
   const readings: string[] = [];
   const thickness = nearestThicknessOption(cad.thicknessFromModelMm);

@@ -1,0 +1,29 @@
+name: Quote release workspace
+on:
+  push:
+    branches: [fix/quote-engine-dialog-safety-20260921]
+    paths: [.github/workflows/quote-release-workspace.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Export tracked source for local verification
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --output="$RUNNER_TEMP/quote-source.tar.gz" HEAD -- . ':!public' ':!.agents' ':!.claude' ':!.codex' ':!.claude-flow' ':!.env*'
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/quote-source-commit.txt"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: quote-source
+          path: |
+            ${{ runner.temp }}/quote-source.tar.gz
+            ${{ runner.temp }}/quote-source-commit.txt
+          retention-days: 1
+          if-no-files-found: error
