@@ -45,7 +45,7 @@ export function quoteNumericEvidence(message: string): QuoteNumericEvidence {
     " ",
   );
   const measures = namedThickness.length ? namedThickness : [...withoutLinearSizes.matchAll(
-    /(?<![\d.,\-−])(?<value>\d+(?:[.,]\d+)?)\s*мм(?![\p{L}])/giu,
+    /(?<![\d.,\-−])(\d+(?:[.,]\d+)?)\s*мм(?![\p{L}])/giu,
   )];
   const thicknessValues = measures.map((entry) => {
     const value = positiveNumber(entry[1]);
@@ -60,15 +60,15 @@ export function quoteNumericEvidence(message: string): QuoteNumericEvidence {
 
   const counts: string[] = [];
   let invalidCount = false;
-  const countPattern = /(?<![\d.,\-−])(?<count>\d+(?: \d{3})*)\s*(?<unit>шт(?:ук)?|штук[аи]?|единиц[аы]?|комплект[\p{L}-]*|м²|м2|пог\.?\s*м)(?![\p{L}\d])/giu;
+  const countPattern = /(?<![\d.,\-−])(\d+(?: \d{3})*)\s*(шт(?:ук)?|штук[аи]?|единиц[аы]?|комплект[\p{L}-]*|м²|м2|пог\.?\s*м)(?![\p{L}\d])/giu;
   for (const entry of withoutDimensions.matchAll(countPattern)) {
-    const value = positiveNumber(entry.groups!.count);
+    const value = positiveNumber(entry[1]);
     const prefix = withoutDimensions.slice(0, entry.index);
     if (value == null || !Number.isSafeInteger(value) || /(?:^|\s)(?:до|от|около|примерно)\s*$/iu.test(prefix)) {
       invalidCount = true;
       continue;
     }
-    const unit = entry.groups!.unit;
+    const unit = entry[2];
     counts.push(/^(?:м²|м2|пог)/u.test(unit) ? `${value} ${unit}` : `${value} шт`);
   }
   // Reject a decimal/negative explicit count rather than keeping an earlier count.
@@ -76,9 +76,9 @@ export function quoteNumericEvidence(message: string): QuoteNumericEvidence {
     invalidCount = true;
   }
   if (!counts.length && !invalidCount) {
-    const productCount = /(?<![\d.,\-−])(?<count>\d+(?: \d{3})*)\s+(?:(?:фасадн[\p{L}-]*|металлическ[\p{L}-]*)\s+)?(?:металлокассет[\p{L}-]*|кассет[\p{L}-]*|кронштейн[\p{L}-]*|детал[\p{L}-]*|издели[\p{L}-]*|панел[\p{L}-]*|реш[её]тк[\p{L}-]*|корпус[\p{L}-]*|шкаф[\p{L}-]*|кожух[\p{L}-]*|корзин[\p{L}-]*|экран[\p{L}-]*|отлив[\p{L}-]*|откос[\p{L}-]*|парапет[\p{L}-]*)(?![\p{L}])/giu;
+    const productCount = /(?<![\d.,\-−])(\d+(?: \d{3})*)\s+(?:(?:фасадн[\p{L}-]*|металлическ[\p{L}-]*)\s+)?(?:металлокассет[\p{L}-]*|кассет[\p{L}-]*|кронштейн[\p{L}-]*|детал[\p{L}-]*|издели[\p{L}-]*|панел[\p{L}-]*|реш[её]тк[\p{L}-]*|корпус[\p{L}-]*|шкаф[\p{L}-]*|кожух[\p{L}-]*|корзин[\p{L}-]*|экран[\p{L}-]*|отлив[\p{L}-]*|откос[\p{L}-]*|парапет[\p{L}-]*)(?![\p{L}])/giu;
     for (const entry of withoutDimensions.matchAll(productCount)) {
-      const value = positiveNumber(entry.groups!.count);
+      const value = positiveNumber(entry[1]);
       const prefix = withoutDimensions.slice(0, entry.index);
       if (value == null || !Number.isSafeInteger(value) || /(?:^|\s)(?:до|от|около|примерно)\s*$/iu.test(prefix)) {
         invalidCount = true;
