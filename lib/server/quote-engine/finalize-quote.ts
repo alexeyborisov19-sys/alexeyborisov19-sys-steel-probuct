@@ -2,13 +2,15 @@ import type { EngineeringLeadState } from "@/lib/assistant/types";
 import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels";
 import { decideMarketFloor, type MarketQuoteSpec } from "@/lib/quote-engine/market-floor";
 import { loadQuoteMarketContext, type QuoteMarketContext, type ReadyQuotePlan } from "@/lib/server/quote-engine/market-context";
+import { discoverQuoteMarket, type MarketDiscovery } from "@/lib/server/quote-engine/market-discovery";
 import { reviewQuoteStages, type StageEvidence, type StageReviewCaller } from "@/lib/server/quote-engine/stage-review";
 import type { QuoteEngineResult } from "@/lib/server/quote-engine/execute";
 
 export type QuoteFinalizationOptions = {
   state?: EngineeringLeadState;
-  /** Server-owned evidence only; neither HTTP endpoint accepts this field from a browser. */
+  /** Server-owned evidence only; public HTTP request JSON never populates these options. */
   marketContext?: QuoteMarketContext;
+  marketDiscovery?: MarketDiscovery;
   aiReviewCaller?: StageReviewCaller | null;
   requireAiReview?: boolean;
 };
@@ -33,10 +35,15 @@ export async function finalizeQuoteResult(
   if (result.status !== "priced") {
     return { ...result, clientMessage: `${result.clientMessage} ${CALCULATION_DISCLAIMER_SHORT}` };
   }
-  const record = { ...result.record, warnings: [...result.record.warnings] };
+  // Search and reference reading are independent. Only previously source-checked
+  // offers enter prices; discovery URLs remain candidates for source verification.
+  const [context, discovery] = await Promise.all([
+    options.marketContext ?? loadQuoteMarketContext(plan, options.state),
+    options.marketDiscovery ?? discoverQuoteMarket(plan),
+  ]);
+  const record = { ...result.record, warnings: [...result.record.warnings], marketDiscovery: discovery };
   const baseline = record.commercialPrice?.baseCommercialPriceRub ?? record.finalPriceRubBatch;
-  const context = options.marketContext ?? await loadQuoteMarketContext(plan, options.state);
-  const target = context.target && samePlan(context.target, plan) ? context.target : null;
+  const target = context.status === "loaded" && context.target && samePlan(context.target, plan) ? context.target : null;
   const decision = decideMarketFloor(baseline, target, context.offers);
   record.priceDecision = decision;
   record.marketSourceStatus = context.status;
@@ -57,8 +64,6 @@ export async function finalizeQuoteResult(
       ],
     };
   }
-  // The legacy parts result already declares included VAT. A configured, known
-  // comparison basis takes precedence; no VAT statement is invented for cassettes.
   const vatText = target?.vat === "excluded" ? ", без НДС"
     : target?.vat === "exempt" ? ", НДС не облагается"
       : target?.vat === "included" || plan.calculator === "metal-parts" ? ", с НДС" : "";
@@ -83,6 +88,7 @@ export async function finalizeQuoteResult(
       pricedScope: target?.scope ?? (plan.calculator === "metal-parts" ? ["material", "laser-cutting"] : ["published-cassette-rate"]),
       requestedCoating: options.state?.coating ?? null,
       statedBendsRequireCad: options.state?.quoteRequiresCad === true,
+      requestedAdditionalScope: options.state?.quoteRequiredScope ?? [],
     },
     calculation: {
       complete: true,
@@ -94,6 +100,7 @@ export async function finalizeQuoteResult(
       supplierCount: decision.supplierCount, comparison: target,
       meanRubBatch: decision.marketMeanRubBatch,
       sourcePricesRubBatch: decision.sources.map((source) => source.batchRub),
+      discoveryStatus: discovery.status, unverifiedCandidateCount: discovery.candidates.length,
     },
     pricing: { calculatedRubBatch: baseline, finalRubBatch: decision.finalRubBatch, rule: "max(calculated,verified-arithmetic-mean)", floorProtected: decision.finalRubBatch >= baseline },
     disclaimer: { clientMessage },
