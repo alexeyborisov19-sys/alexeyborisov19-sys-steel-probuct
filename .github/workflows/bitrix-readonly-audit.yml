@@ -1,0 +1,102 @@
+name: Bitrix24 Read-only Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check Bitrix24 access
+        env:
+          BITRIX_WEBHOOK_URL: ${{ secrets.BITRIX_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          test -n "$BITRIX_WEBHOOK_URL" || {
+            echo "BITRIX_WEBHOOK_URL is not configured"
+            exit 1
+          }
+
+          call_bitrix () {
+            method="$1"
+            payload="$2"
+
+            curl -fsS \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -d "$payload" \
+              "${BITRIX_WEBHOOK_URL%/}/${method}.json"
+          }
+
+          echo "Checking profile..."
+          call_bitrix "profile" '{}' > /tmp/profile.json
+
+          echo "Reading CRM deal categories..."
+          call_bitrix "crm.category.list" '{"entityTypeId":2}' > /tmp/categories.json
+
+          echo "Reading deal stages..."
+          call_bitrix "crm.status.list" '{"filter":{"ENTITY_ID":"DEAL_STAGE"}}' > /tmp/stages.json
+
+          echo "Reading first page of deals..."
+          call_bitrix "crm.item.list" '{
+            "entityTypeId":2,
+            "select":[
+              "id",
+              "categoryId",
+              "stageId",
+              "opportunity",
+              "currencyId",
+              "sourceId",
+              "assignedById",
+              "createdTime",
+              "updatedTime",
+              "closed"
+            ],
+            "order":{"id":"ASC"}
+          }' > /tmp/deals.json
+
+          python3 - <<'PY'
+          import json
+
+          with open("/tmp/profile.json", encoding="utf-8") as f:
+              profile = json.load(f)
+
+          with open("/tmp/categories.json", encoding="utf-8") as f:
+              categories = json.load(f)
+
+          with open("/tmp/stages.json", encoding="utf-8") as f:
+              stages = json.load(f)
+
+          with open("/tmp/deals.json", encoding="utf-8") as f:
+              deals = json.load(f)
+
+          if "error" in profile:
+              raise SystemExit(f"Profile error: {profile.get('error')}")
+
+          if "error" in categories:
+              raise SystemExit(f"Categories error: {categories.get('error')}")
+
+          if "error" in stages:
+              raise SystemExit(f"Stages error: {stages.get('error')}")
+
+          if "error" in deals:
+              raise SystemExit(f"Deals error: {deals.get('error')}")
+
+          cats = categories.get("result", {}).get("categories", [])
+          stage_rows = stages.get("result", [])
+          deal_rows = deals.get("result", {}).get("items", [])
+
+          print("BITRIX_ACCESS_OK=true")
+          print(f"BITRIX_CATEGORIES_COUNT={len(cats)}")
+          print(f"BITRIX_DEFAULT_STAGES_COUNT={len(stage_rows)}")
+          print(f"BITRIX_FIRST_PAGE_DEALS_COUNT={len(deal_rows)}")
+
+          user = profile.get("result", {})
+          print(f"BITRIX_PROFILE_ID={user.get('ID') or user.get('id') or ''}")
+          PY
