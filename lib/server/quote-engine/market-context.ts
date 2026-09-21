@@ -19,13 +19,15 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 /** The registry describes the existing selling price's actual scope and tax basis. */
-export function marketContextFromRegistry(plan: ReadyQuotePlan, state: EngineeringLeadState | undefined, raw: unknown): QuoteMarketContext {
+export function marketContextFromRegistry(plan: ReadyQuotePlan, state: EngineeringLeadState | undefined, raw: unknown, budgetAreaM2?: number): QuoteMarketContext {
   const unavailable: QuoteMarketContext = { status: "unavailable", target: null, offers: [] };
   const registry = record(raw);
   if (!registry || registry.version !== "verified-market-offers-v1"
     || !Array.isArray(registry.offers) || registry.offers.length > 100) return unavailable;
   const bases = record(registry.priceBasis);
-  const basis = bases ? record(bases[plan.calculator]) : null;
+  const budget = budgetAreaM2 !== undefined;
+  if (budget && (plan.calculator !== "metal-cassettes" || !Number.isFinite(budgetAreaM2) || budgetAreaM2 <= 0)) return unavailable;
+  const basis = bases ? record(bases[budget ? "metal-cassettes-budget" : plan.calculator]) : null;
   if (!basis) return { ...unavailable, status: "basis-mismatch" };
   const target = {
     calculator: plan.calculator,
@@ -36,8 +38,10 @@ export function marketContextFromRegistry(plan: ReadyQuotePlan, state: Engineeri
     heightMm: plan.calculator === "metal-parts" ? plan.input.heightMm : plan.input.moduleHeightMm,
     quantity: plan.input.quantity,
     cassetteType: plan.calculator === "metal-parts" ? null : plan.input.type,
+    ...(budget ? { areaBasis: "net-facade", netFacadeAreaM2: budgetAreaM2 } : {}),
     finish: basis.finish, scope: basis.scope, vat: basis.vat, vatRatePct: basis.vatRatePct,
   };
+  if (budget && basis.areaBasis !== "net-facade") return { ...unavailable, status: "basis-mismatch" };
   if (!validMarketSpec(target)) return { ...unavailable, status: "basis-mismatch" };
   // The text parts path prices a flat cut with material and already declares
   // included VAT. A registry must not silently relabel it as tax-exclusive.
@@ -57,7 +61,7 @@ export function marketContextFromRegistry(plan: ReadyQuotePlan, state: Engineeri
 
 /** No browser pathname or search snippet can become a pricing reference. */
 export async function loadQuoteMarketContext(
-  plan: ReadyQuotePlan, state?: EngineeringLeadState, environment: NodeJS.ProcessEnv = process.env,
+  plan: ReadyQuotePlan, state?: EngineeringLeadState, environment: NodeJS.ProcessEnv = process.env, budgetAreaM2?: number,
 ): Promise<QuoteMarketContext> {
   const empty = (status: QuoteMarketContext["status"]): QuoteMarketContext => ({ status, target: null, offers: [] });
   const path = environment.STEEL_PRODUCT_MARKET_REFERENCE_FILE?.trim();
@@ -81,7 +85,7 @@ export async function loadQuoteMarketContext(
         length += bytesRead;
       }
       if (length > limit) return empty("unavailable");
-      return marketContextFromRegistry(plan, state, JSON.parse(buffer.subarray(0, length).toString("utf8")));
+      return marketContextFromRegistry(plan, state, JSON.parse(buffer.subarray(0, length).toString("utf8")), budgetAreaM2);
     } finally { await handle.close(); }
   } catch { return empty("unavailable"); }
 }
