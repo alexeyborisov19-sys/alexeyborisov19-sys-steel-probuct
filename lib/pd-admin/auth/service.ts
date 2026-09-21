@@ -75,8 +75,9 @@ export function loginAdministrativeUser(input: {
   ipAddress: string;
   userAgent: string;
   now?: Date;
+  environment?: NodeJS.ProcessEnv;
 }): { session: NewSession; mustChangePassword: boolean } {
-  const config = readPdAdminConfig();
+  const config = readPdAdminConfig(input.environment);
   if (!config.enabled || !config.sessionHashKey || !config.auditChainKey) throw new PdLoginFailedError();
   const username = normalizedUsername(input.username);
   const now = input.now ?? new Date();
@@ -84,7 +85,7 @@ export function loginAdministrativeUser(input: {
   const userAgentHash = hashAdministrativeFingerprint(input.userAgent.slice(0, 512), config.sessionHashKey, "user-agent");
   // Authentication must fail closed when the reviewed schema is unavailable;
   // it must never migrate production as a side effect of a login attempt.
-  const database = openPdDatabase({ applyMigrations: false });
+  const database = openPdDatabase({ environment: input.environment, applyMigrations: false });
   try {
     const decision = evaluateLoginAttempt(database, {
       username,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { InternalPageHeader, InternalShell } from "@/components/pd-admin/InternalShell";
 import { Panel, StatusPill } from "@/components/pd-admin/Ui";
-import { requirePdPageContext } from "@/lib/pd-admin/auth/page-context";
+import { requireProductionPageContext } from "@/lib/server/production-access/page-context";
 import { listInternalProductionReports } from "@/lib/server/instant-quote/private-production-report";
 
 export const dynamic = "force-dynamic";
@@ -11,12 +11,12 @@ function money(value: number) {
 }
 
 export default async function ProductionCalculationsPage() {
-  const context = await requirePdPageContext("VIEW_DASHBOARD");
+  const context = await requireProductionPageContext("VIEW_DASHBOARD");
   const shell = { user: context.user, session: context.session, csrfToken: context.csrfToken };
   context.close();
   const reports = await listInternalProductionReports(250);
 
-  return <InternalShell {...shell}>
+  return <InternalShell {...shell} productionOnly>
     <InternalPageHeader
       eyebrow="Производственный калькулятор"
       title="Производственный калькулятор"

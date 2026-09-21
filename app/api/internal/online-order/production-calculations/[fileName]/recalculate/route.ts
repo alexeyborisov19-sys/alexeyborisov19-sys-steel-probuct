@@ -1,3 +1,4 @@
+import { productionAccessEnvironment } from "@/lib/server/production-access/environment";
 import { NextRequest } from "next/server";
 import { summarizeProjectCalculationCompleteness } from "@/lib/instant-quote/calculation-completeness";
 import { parseInternalCalculationRevisionRequest } from "@/lib/instant-quote/internal-revision-request";
@@ -58,5 +59,5 @@ export async function POST(request: NextRequest, { params }: Params) {
         blockedParts: readiness.blockedParts,
       },
     };
-  });
+  }, 200, productionAccessEnvironment());
 }

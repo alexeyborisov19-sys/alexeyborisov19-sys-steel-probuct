@@ -4,7 +4,7 @@ import { InternalCalculationRevisionForm } from "@/components/instant-quote/Inte
 import { InternalPageHeader, InternalShell } from "@/components/pd-admin/InternalShell";
 import { Panel, StatusPill } from "@/components/pd-admin/Ui";
 import { summarizeProjectCalculationCompleteness } from "@/lib/instant-quote/calculation-completeness";
-import { requirePdPageContext } from "@/lib/pd-admin/auth/page-context";
+import { requireProductionPageContext } from "@/lib/server/production-access/page-context";
 import { readInternalProductionReport } from "@/lib/server/instant-quote/private-production-report";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ function number(value: number | null, suffix = "") {
 }
 
 export default async function ProductionCalculationDetailPage({ params }: { params: Promise<{ fileName: string }> }) {
-  const context = await requirePdPageContext("VIEW_DASHBOARD");
+  const context = await requireProductionPageContext("VIEW_DASHBOARD");
   const shell = { user: context.user, session: context.session, csrfToken: context.csrfToken };
   context.close();
 
@@ -48,7 +48,7 @@ export default async function ProductionCalculationDetailPage({ params }: { para
     surfacePreparationAreaM2: snapshot.factualByPartId[part.id]?.surfacePreparationAreaM2,
   })) ?? [];
 
-  return <InternalShell {...shell}>
+  return <InternalShell {...shell} productionOnly>
     <div className="mb-5"><Link href="/internal/production-calculations" className="text-sm text-steel-orange hover:underline">← Все производственные расчёты</Link></div>
     <InternalPageHeader
       eyebrow="Производственный калькулятор · внутренний контур"

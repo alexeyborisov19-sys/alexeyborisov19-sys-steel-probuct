@@ -27,9 +27,9 @@ import { PdBodyError } from "@/lib/pd-admin/http/body";
 export function requirePdApiContext(
   request: NextRequest,
   permission?: PdPermission,
-  options: { allowPasswordChange?: boolean } = {},
+  options: { allowPasswordChange?: boolean; environment?: NodeJS.ProcessEnv } = {},
 ) {
-  const config = readPdAdminConfig();
+  const config = readPdAdminConfig(options.environment);
   if (!config.enabled || !config.sessionHashKey) throw new PdAuthenticationError();
   const hashes = administrativeRequestHashes(request.headers, config.sessionHashKey);
   return authenticatePdSession({
@@ -39,27 +39,29 @@ export function requirePdApiContext(
     userAgentHash: hashes.userAgentHash,
     permission,
     allowPasswordChange: options.allowPasswordChange,
+    environment: options.environment,
   });
 }
 
 export function setPdSessionCookies(
   response: NextResponse,
   session: NewSession,
+  secure = process.env.NODE_ENV === "production",
 ) {
   const maximumAge = Math.max(1, Math.floor((Date.parse(session.absoluteExpiresAt) - Date.now()) / 1_000));
-  const sessionCookie = sessionCookieOptions(maximumAge);
+  const sessionCookie = sessionCookieOptions(maximumAge, secure);
   response.cookies.set(sessionCookie.name, session.token, sessionCookie);
-  const csrfCookie = csrfCookieOptions(maximumAge);
+  const csrfCookie = csrfCookieOptions(maximumAge, secure);
   response.cookies.set(csrfCookie.name, session.csrfToken, csrfCookie);
 }
 
-export function clearPdSessionCookies(response: NextResponse) {
-  const sessionCookie = sessionCookieOptions(0);
+export function clearPdSessionCookies(response: NextResponse, secure = process.env.NODE_ENV === "production") {
+  const sessionCookie = sessionCookieOptions(0, secure);
   response.cookies.set(PD_SESSION_COOKIE, "", {
     ...sessionCookie,
     expires: new Date(0),
   });
-  const csrfCookie = csrfCookieOptions(0);
+  const csrfCookie = csrfCookieOptions(0, secure);
   response.cookies.set(PD_CSRF_COOKIE, "", {
     ...csrfCookie,
     expires: new Date(0),

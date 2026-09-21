@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LogoutButton } from "@/components/pd-admin/LogoutButton";
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useCadProject } from "@/components/cad/shared/useCadProject";
@@ -17,7 +18,7 @@ const primary = "min-h-11 rounded bg-orange-500 px-5 py-2 text-sm font-semibold 
 const money = (value: number | null) => value == null ? "Не определена" : `${value.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
 
 /** Standalone employee application. Public website composition is deliberately not imported. */
-export function ProductionApplication({ materials, audit, auditCalculationId, operator }: { materials: ReactNode; audit: ReactNode; auditCalculationId?: string; operator: string }) {
+export function ProductionApplication({ materials, audit, auditCalculationId, operator, csrfToken }: { csrfToken: string; materials: ReactNode; audit: ReactNode; auditCalculationId?: string; operator: string }) {
   const cad = useCadProject();
   const router = useRouter();
   const [tab, setTab] = useState<"project" | "materials" | "control">("project");
@@ -35,7 +36,7 @@ export function ProductionApplication({ materials, audit, auditCalculationId, op
   return <main id="main-content" className="min-h-screen bg-[#090e13] text-white">
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/15 bg-[#111921] px-5 py-4 lg:px-8">
       <div><p className="text-sm font-semibold tracking-wide text-orange-400">СТАЛЬ ПРОДУКТ / ПРОИЗВОДСТВО</p><h1 className="mt-1 text-xl font-semibold">Производственный калькулятор</h1></div>
-      <div className="flex flex-wrap items-center gap-4 text-sm text-white/70"><span>{operator}</span><Link href="/internal/production-calculations" className="underline underline-offset-4">Сохранённые расчёты</Link><Link href="/internal/personal-data" className="underline underline-offset-4">Кабинет сотрудника</Link></div>
+      <div className="flex flex-wrap items-center gap-4 text-sm text-white/70"><span>{operator}</span><Link href="/internal/production-calculations" className="underline underline-offset-4">Сохранённые расчёты</Link><Link href="/internal/production-access/change-password" className="underline underline-offset-4">Кабинет сотрудника</Link><LogoutButton csrfToken={csrfToken} productionOnly /></div>
     </header>
     <div className="grid min-h-[calc(100vh-90px)] lg:grid-cols-[220px_minmax(0,1fr)]">
       <nav aria-label="Производственное приложение" className="flex gap-2 overflow-x-auto border-b border-white/15 bg-[#0e151c] p-3 lg:block lg:space-y-2 lg:border-b-0 lg:border-r lg:p-4">

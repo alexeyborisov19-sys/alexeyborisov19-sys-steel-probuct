@@ -206,7 +206,7 @@ test("administrative HTTP authentication never applies database migrations", asy
   const contextSource = await readFile("lib/pd-admin/auth/context.ts", "utf8");
   const serviceSource = await readFile("lib/pd-admin/auth/service.ts", "utf8");
   assert.match(contextSource, /openPdDatabase\(\{[^}]*applyMigrations: false/);
-  assert.match(serviceSource, /openPdDatabase\(\{ applyMigrations: false \}\)/);
+  assert.match(serviceSource, /openPdDatabase\(\{[^}]*applyMigrations: false \}\)/);
 });
 
 test("Stage 3 source contains no hard-coded administrative secrets", async () => {

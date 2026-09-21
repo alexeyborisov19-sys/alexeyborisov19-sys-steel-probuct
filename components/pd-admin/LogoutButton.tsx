@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function LogoutButton({ csrfToken }: { csrfToken: string }) {
+export function LogoutButton({ csrfToken, productionOnly = false }: { csrfToken: string; productionOnly?: boolean }) {
   const [pending, setPending] = useState(false);
   return (
     <button
@@ -10,13 +10,13 @@ export function LogoutButton({ csrfToken }: { csrfToken: string }) {
       disabled={pending}
       onClick={async () => {
         setPending(true);
-        await fetch("/api/internal/personal-data/auth/logout", {
+        await fetch(productionOnly ? "/api/internal/production-access/logout" : "/api/internal/personal-data/auth/logout", {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json", "X-Steelprodukt-CSRF": csrfToken },
           body: "{}",
         }).catch(() => undefined);
-        window.location.assign("/internal/personal-data/login");
+        window.location.assign(productionOnly ? "/internal/production-access/login" : "/internal/personal-data/login");
       }}
       className="border border-white/15 px-3 py-2 text-[10px] font-bold uppercase hover:border-[#ea5b0c] disabled:opacity-50"
     >

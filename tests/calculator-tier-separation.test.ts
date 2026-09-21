@@ -35,7 +35,7 @@ test("full production calculator keeps internal process, cost and DFM workflow",
   ]);
   assert.match(entry, /<ProductionApplication/);
   assert.doesNotMatch(entry, /ClientManufacturingWorkspace/);
-  assert.match(entry, /requirePdPageContext/);
+  assert.match(entry, /requireProductionPageContext/);
   assert.match(entry, /ProductionAudit/);
   assert.match(list, /Производственный калькулятор/);
   assert.match(list, /CAD и геометрия/);

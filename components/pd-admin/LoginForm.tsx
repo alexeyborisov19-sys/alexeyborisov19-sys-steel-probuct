@@ -4,19 +4,19 @@ import { useEffect, useState } from "react";
 
 const genericError = "Не удалось выполнить вход. Проверьте данные или повторите позже";
 
-export function LoginForm() {
+export function LoginForm({ endpoint = "/api/internal/personal-data/auth/login" }: { endpoint?: string } = {}) {
   const [preAuthToken, setPreAuthToken] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
     let active = true;
-    fetch("/api/internal/personal-data/auth/login", { credentials: "same-origin", cache: "no-store" })
+    fetch(endpoint, { credentials: "same-origin", cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((body: { preAuthToken?: string }) => { if (active && body.preAuthToken) setPreAuthToken(body.preAuthToken); })
       .catch(() => { if (active) setError(genericError); });
     return () => { active = false; };
-  }, []);
+  }, [endpoint]);
 
   return (
     <form
@@ -28,7 +28,7 @@ export function LoginForm() {
         setError("");
         const form = new FormData(event.currentTarget);
         try {
-          const response = await fetch("/api/internal/personal-data/auth/login", {
+          const response = await fetch(endpoint, {
             method: "POST",
             credentials: "same-origin",
             headers: { "Content-Type": "application/json" },

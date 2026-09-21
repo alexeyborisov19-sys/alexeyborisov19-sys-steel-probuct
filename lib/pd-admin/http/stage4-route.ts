@@ -30,11 +30,12 @@ export async function pdStage4Mutation(
   permission: PdPermission,
   action: (context: PdAuthContext, body: Record<string, unknown>) => MaybePromise<unknown>,
   status = 200,
+  environment?: NodeJS.ProcessEnv,
 ) {
   let context: PdAuthContext | undefined;
   try {
     assertJsonMutation(request);
-    context = requirePdApiContext(request, permission);
+    context = requirePdApiContext(request, permission, { environment });
     if (!context.config.sessionHashKey) throw new Error("Configuration unavailable");
     assertPdMutationRequest(request, context.session.csrfSecretHash, context.config.sessionHashKey);
     const body = await readPdJsonBody<Record<string, unknown>>(request, 128 * 1024);
