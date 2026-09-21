@@ -1,3 +1,5 @@
+import { buildCompactConversation } from "@/lib/server/quote-engine/compact-conversation";
+import { localAiSelected } from "@/lib/server/quote-engine/service-policy";
 import { completeWithConfiguredModel } from "@/lib/server/quote-engine/model-completion";
 import { NextResponse } from "next/server";
 import {
@@ -91,13 +93,24 @@ async function answerWithYandex(
   session: AssistantSession, question: string, pathname: string,
 ): Promise<StructuredAssistantResult | null> {
   const pageContext = getAssistantPageContext(pathname);
-  const system = [steelProductAssistantSystemPrompt, steelProduktBrandKnowledge,
-    "В публичных ответах используй название «Сталь Продукт» без пояснений о юридическом статусе. Не придумывай реквизиты.",
-    `Контекст страницы: ${pageContext.label}.`, pageContext.knowledge, JSON_ONLY_PROMPT].join("\n\n");
-  const text = await completeWithConfiguredModel(system, {
-    userMessage: question, verifiedState: session.state,
-    conversation: session.history.slice(-10).map(({ role, content }) => ({ role, content })),
-  }, 650);
+  let text: string | null;
+  if (localAiSelected()) {
+    const compact = buildCompactConversation(question, session.state, [
+      pageSpecificKnowledgeAnswer(question, pathname) ?? buildKnowledgeFallback(question),
+      pageContext.knowledge,
+      steelProduktBrandKnowledge,
+    ], session.history);
+    if (!compact) return null;
+    text = await completeWithConfiguredModel(compact.system, compact.data, 650);
+  } else {
+    const system = [steelProductAssistantSystemPrompt, steelProduktBrandKnowledge,
+      "В публичных ответах используй название «Сталь Продукт» без пояснений о юридическом статусе. Не придумывай реквизиты.",
+      `Контекст страницы: ${pageContext.label}.`, pageContext.knowledge, JSON_ONLY_PROMPT].join("\n\n");
+    text = await completeWithConfiguredModel(system, {
+      userMessage: question, verifiedState: session.state,
+      conversation: session.history.slice(-10).map(({ role, content }) => ({ role, content })),
+    }, 650);
+  }
   if (!text) return null;
   try { return validateStructuredResult(JSON.parse(text)); }
   catch { return null; }
