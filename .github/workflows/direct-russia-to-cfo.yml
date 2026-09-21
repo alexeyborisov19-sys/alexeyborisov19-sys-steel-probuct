@@ -1,0 +1,41 @@
+name: Narrow Direct Russia groups to CFO
+on:
+  push:
+    branches: [ops/direct-russia-to-cfo-20260921]
+    paths: ['.github/workflows/direct-russia-to-cfo.yml']
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re
+          from urllib.request import Request,urlopen
+          from urllib.parse import unquote
+          t=os.environ['TOKEN'].strip().strip('"\''); t=re.sub(r'^(OAuth|Bearer)\\s+','',t,flags=re.I)
+          m=re.search(r'(?:^|[?#&])access_token=([^&#\\s]+)',t)
+          if m:t=unquote(m.group(1))
+          gids=list(range(5798460260,5798460265))
+          def call(service,method,params):
+            q=Request('https://api.direct.yandex.com/json/v5/'+service,data=json.dumps({'method':method,'params':params}).encode(),headers={'Authorization':'Bearer '+t,'Content-Type':'application/json; charset=utf-8','Accept-Language':'ru'})
+            with urlopen(q,timeout=30) as r:d=json.load(r)
+            if d.get('error'): raise SystemExit(json.dumps(d['error'],ensure_ascii=False))
+            return d.get('result',{})
+          before=call('adgroups','get',{'SelectionCriteria':{'Ids':gids},'FieldNames':['Id','Name','CampaignId','RegionIds','Status']}).get('AdGroups',[])
+          if len(before)!=5 or any(g['CampaignId']!=714391927 or not g['Name'].startswith('МК Россия |') for g in before): raise SystemExit('Target groups changed; no write')
+          # Current expected state is Russia (225), or already CFO (3) on an idempotent retry.
+          if any(g['RegionIds'] not in ([225],[3]) for g in before): raise SystemExit('Unexpected geography; no write')
+          upd=[{'Id':g['Id'],'RegionIds':[3]} for g in before if g['RegionIds']!=[3]]
+          if upd:
+            res=call('adgroups','update',{'AdGroups':upd})
+            if any(x.get('Errors') for x in res.get('UpdateResults',[])): raise SystemExit('Update rejected')
+          after=call('adgroups','get',{'SelectionCriteria':{'Ids':gids},'FieldNames':['Id','Name','CampaignId','RegionIds','Status']}).get('AdGroups',[])
+          if len(after)!=5 or any(g['RegionIds']!=[3] for g in after): raise SystemExit('CFO verification failed')
+          print('UPDATED='+str(len(upd)))
+          print('VERIFIED='+json.dumps([{'Id':g['Id'],'Name':g['Name'],'RegionIds':g['RegionIds']} for g in after],ensure_ascii=False))
+          print('Only RegionIds changed; budget, strategy, ads and keywords were not requested.')
+          PY
