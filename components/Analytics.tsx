@@ -9,13 +9,11 @@ const counterIds = yandexCounterIds();
 const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
 
 /**
- * Analytics remains completely inactive until the corresponding public IDs are
- * supplied in the deployment environment. This prevents accidental requests to
- * a third party during local development and before consent is configured.
- *
- * The Metrika host is assembled at runtime instead of being embedded as one
- * literal third-party URL. Analytics is enabled by default unless the visitor
- * has explicitly opted out in the cookie settings.
+ * Analytics remains inactive unless the canonical public counter ID is supplied
+ * in the deployment environment AND the visitor explicitly permits analytics.
+ * No vendor script, preconnect or tracking pixel is loaded before consent.
+ * The counter-specific tag URL matches the code returned by Metrika Management
+ * API for the ssr-enabled counter. Configuration must not expose contact data.
  */
 export function Analytics() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
@@ -41,8 +39,7 @@ export function Analytics() {
   return <>
     {counterIds.length ? <Script id="yandex-metrica" strategy="afterInteractive">{`
       window.dataLayer = window.dataLayer || [];
-      var metrikaHost = ['mc','yandex','ru'].join('.');
-      var metrikaTagUrl = 'https://' + metrikaHost + '/metrika/tag.js';
+      var metrikaTagUrl = 'https://mc.yandex.ru/metrika/tag.js?id=${counterIds[0]}';
       (function(m,e,t,r,i,k,a){
         m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
         m[i].l=1*new Date();
