@@ -17,6 +17,10 @@ jobs:
           import json,re,time,urllib.request,urllib.error
           root='https://www.steelprodukt.ru'
           report=[]
+          def record(result):
+              report.append(result)
+              print(json.dumps(result,ensure_ascii=False),flush=True)
+          def nonoffer(text): return re.search(r'не является (?:публичной )?офертой',text.lower()) is not None
           def call(path, payload=None, origin=None):
               headers={'User-Agent':'SteelProdukt-release-smoke/1.0','Cache-Control':'no-cache'}
               if payload is not None:
@@ -31,7 +35,7 @@ jobs:
               code,body=call(path+'?release_smoke='+str(int(time.time())))
               assert code==200,(path,code)
               if path=='/api/health': assert json.loads(body).get('ok') is True
-              report.append({'check':'GET '+path,'http':code})
+              record({'check':'GET '+path,'http':code})
           payload={'mode':'area','type':'open','thickness':'1.2','areaM2':10,'pricePerM2':1}
           code,body=call('/api/calc-metallokassety',payload)
           data=json.loads(body)
@@ -39,21 +43,21 @@ jobs:
           assert data['approximateTotalRub'] >= data['netAreaM2']*data['defaultRateRubM2']
           assert data['approximateRateRubM2'] >= data['defaultRateRubM2']
           assert data['marketVerified'] is False
-          assert 'не является офертой' in data['disclaimer'].lower()
-          report.append({'check':'cassette price floor','http':code,'areaM2':data['netAreaM2'],'totalRub':data['approximateTotalRub'],'marketVerified':False,'disclaimer':True})
+          assert nonoffer(data['disclaimer']),data['disclaimer']
+          record({'check':'cassette price floor','http':code,'areaM2':data['netAreaM2'],'totalRub':data['approximateTotalRub'],'marketVerified':False,'disclaimer':True})
           code,body=call('/api/calc-metallokassety',{**payload,'review':True})
           data=json.loads(body)
           assert code==200,(code,body[:200])
           assert data['reviewStatus']=='unavailable',(data.get('reviewStatus'),data.get('message'))
           assert data['marketVerified'] is False
           assert data['approximateTotalRub'] >= data['netAreaM2']*data['defaultRateRubM2']
-          report.append({'check':'honest unavailable AI review','http':code,'reviewStatus':data['reviewStatus'],'marketVerified':data['marketVerified'],'message':data['message']})
+          record({'check':'honest unavailable AI review','http':code,'reviewStatus':data['reviewStatus'],'marketVerified':data['marketVerified'],'message':data['message']})
           code,_=call('/api/calc-metallokassety',{**payload,'areaM2':-1})
           assert code==400,code
-          report.append({'check':'negative area rejected','http':code})
+          record({'check':'negative area rejected','http':code})
           code,_=call('/api/calc-metallokassety',payload,'https://example.invalid')
           assert code==403,code
-          report.append({'check':'cross-origin rejected','http':code})
+          record({'check':'cross-origin rejected','http':code})
           code,body=call('/api/assistant/quote',{'calculator':'metal-cassettes','message':'кассеты открытого типа 600×1200 мм'})
           data=json.loads(body)
           assert code==200 and data['kind']=='question',(code,body[:200])
@@ -65,9 +69,9 @@ jobs:
           code,body=call('/api/assistant/quote',{'calculator':'metal-cassettes','sessionId':session,'message':'10'})
           data=json.loads(body)
           assert code==200 and data['kind']=='priced',(code,body[:400])
-          assert 'не является офертой' in data['text'].lower()
+          assert nonoffer(data['text']),data['text']
           assert 'не подтвержд' in data['text'].lower()
           assert 'record' not in data and 'state' not in data
-          report.append({'check':'multi-turn cassette quotation','http':code,'kind':data['kind'],'text':data['text']})
-          print(json.dumps({'passed':True,'checks':report,'leadSubmitted':False,'paidProviderInvoked':False},ensure_ascii=False,indent=2))
+          record({'check':'multi-turn cassette quotation','http':code,'kind':data['kind'],'text':data['text']})
+          print(json.dumps({'passed':True,'checkCount':len(report),'leadSubmitted':False},ensure_ascii=False))
           PY
