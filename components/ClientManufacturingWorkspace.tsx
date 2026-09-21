@@ -129,6 +129,13 @@ export function ClientManufacturingWorkspace() {
   // dead and grey, with nothing on screen saying why.
   const calculateLabel = isCalculating ? "Выполняется расчёт…" : anyAnalyzing ? "Обрабатываем CAD…" : "Рассчитать проект";
   const calculateLabelShort = isCalculating ? "Считаем…" : anyAnalyzing ? "Читаем CAD…" : "Рассчитать";
+  const analyzedPartCount = project.parts.filter((part) => previewsByPartId[part.id]?.status === "recognized").length;
+  const workflowSteps = [
+    { number: "01", label: "Файлы", detail: project.parts.length ? `${project.parts.length} поз.` : "Добавьте CAD", active: project.parts.length > 0 },
+    { number: "02", label: "Геометрия", detail: project.parts.length ? `${analyzedPartCount}/${project.parts.length} распознано` : "Ожидает файл", active: analyzedPartCount > 0 },
+    { number: "03", label: "Производство", detail: activePart ? "Материал и операции" : "После анализа", active: Boolean(activePart) },
+    { number: "04", label: "Стоимость", detail: approvedProjectTotalRub == null ? "Не рассчитана" : `${fmt(approvedProjectTotalRub)} ₽`, active: approvedProjectTotalRub != null },
+  ] as const;
 
   /**
    * One button prices the whole project, so a change to any position makes the
@@ -401,27 +408,49 @@ export function ClientManufacturingWorkspace() {
 
   return (
     <div className="bg-[#090c0e] pb-24 text-white xl:pb-10">
-      <section className="border-b border-white/10 bg-[#101416]">
-        <div className="container flex flex-wrap items-center gap-x-6 gap-y-3 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/35">Принимаем</p>
-          <div className="flex flex-wrap gap-2">
-            {FORMAT_BADGES.map((badge) => (
-              <span
-                key={badge.label}
-                title={badge.hint}
-                className={badge.supported
-                  ? "border border-steel-orange/45 bg-steel-orange/[.07] px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-steel-orange"
-                  : "border border-white/12 px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-white/35"}
-              >
-                {badge.label}
-              </span>
+      <section className="border-b border-white/10 bg-[#0d1114]">
+        <div className="container py-5">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">Manufacturing workspace</p>
+              <h2 className="mt-2 text-2xl font-semibold uppercase tracking-tight sm:text-3xl">Инженерный расчёт по CAD</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-white/48">
+                Файл остаётся центром расчёта: сначала читаем геометрию, затем задаём материал и операции, после этого считаем проект.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {FORMAT_BADGES.map((badge) => (
+                <span
+                  key={badge.label}
+                  title={badge.hint}
+                  className={badge.supported
+                    ? "border border-steel-orange/35 bg-steel-orange/[.06] px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-steel-orange"
+                    : "border border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[.12em] text-white/30"}
+                >
+                  {badge.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-4">
+            {workflowSteps.map((step) => (
+              <div key={step.number} className={`bg-[#101416] px-4 py-3 ${step.active ? "shadow-[inset_0_-2px_0_rgba(234,91,12,.75)]" : ""}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`font-mono text-[10px] font-bold ${step.active ? "text-steel-orange" : "text-white/25"}`}>{step.number}</span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[.12em] text-white/72">{step.label}</p>
+                    <p className="mt-1 truncate text-[10px] text-white/34">{step.detail}</p>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       <section className="container py-6">
-        <div className="grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)_380px]">
+        <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
           <aside className="border border-white/10 bg-[#101416]">
             <div className="border-b border-white/10 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[.15em] text-white/35">Проект</p>
@@ -478,18 +507,22 @@ export function ClientManufacturingWorkspace() {
             onDrop={onDrop}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <span className="text-[10px] font-bold uppercase tracking-[.14em] text-white/40">Модель</span>
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-[.14em] text-steel-orange">Геометрия</span>
+                <p className="mt-1 truncate text-sm font-semibold text-white/82">{activePart?.fileName ?? "Рабочая область модели"}</p>
+              </div>
               <div className="flex items-center gap-4">
                 <span className="hidden text-[9px] font-bold uppercase tracking-[.12em] text-white/25 sm:inline">Перетащите CAD сюда</span>
                 {activePart && <button type="button" onClick={removeActivePart} className="text-[10px] font-bold uppercase tracking-[.12em] text-white/40 hover:text-red-300">Удалить</button>}
               </div>
             </div>
-            <div className="relative min-h-[650px] bg-[#080b0d]">
+            <div className="relative min-h-[680px] bg-[#080b0d]">
               <AnimatePresence mode="wait">
                 {!activePart ? <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-6 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/16 p-8 text-center" onClick={() => inputRef.current?.click()}>
                   <div className="flex h-16 w-16 items-center justify-center border border-steel-orange/55 text-3xl text-steel-orange">+</div>
-                  <h2 className="mt-6 text-2xl font-semibold">Перетащите CAD-файлы</h2>
-                  <p className="mt-3 text-sm text-white/40">DXF · STEP · STP · DWG</p>
+                  <h2 className="mt-6 text-2xl font-semibold">Загрузите деталь или проект</h2>
+                  <p className="mt-3 max-w-md text-sm leading-6 text-white/42">Перетащите DXF, STEP, STP или DWG. Каждый файл станет отдельной позицией проекта.</p>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); inputRef.current?.click(); }} className="mt-6 border border-steel-orange bg-steel-orange px-6 py-3 text-xs font-bold uppercase tracking-[.12em] text-black transition hover:bg-white">Выбрать файлы</button>
                 </motion.div> : isAnalyzing ? <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center text-center"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-steel-orange">CAD</p><h2 className="mt-3 text-xl font-semibold">Обрабатываем модель</h2><p className="mt-3 text-xs text-white/35">Подготавливаем предпросмотр и определяем габариты.</p></div></motion.div> : activePreview?.meshes.length ? <motion.div key={`mesh-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0"><CadMeshViewer meshes={activePreview.meshes} className="h-full" /></motion.div> : activePreview?.drawing ? <motion.div key={`dxf-${activePart.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 p-6"><ClientCad2DPreview drawing={activePreview.drawing} animated /></motion.div> : <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center p-8 text-center"><p className="max-w-lg text-sm leading-relaxed text-white/50">{statusByPartId[activePart.id] ?? "Файл добавлен в проект."}</p></motion.div>}
               </AnimatePresence>
               {activePreview && <div className="absolute bottom-5 left-5 right-5 grid gap-px bg-white/10 sm:grid-cols-3">{clientMetrics.map(([label, value]) => <div key={label} className="bg-[#101416]/95 p-3"><p className="text-[9px] font-bold uppercase tracking-[.14em] text-white/28">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}</div>}
@@ -498,9 +531,34 @@ export function ClientManufacturingWorkspace() {
           </div>
 
           <aside className="border border-white/10 bg-[#101416]">
-            <div className="border-b border-white/10 p-5"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Параметры</p><h2 className="mt-2 text-xl font-semibold">Конфигурация изделия</h2></div>
+            <div className="border-b border-white/10 p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[.16em] text-steel-orange">Производство</p>
+              <h2 className="mt-2 text-xl font-semibold">Конфигурация позиции</h2>
+              <p className="mt-2 text-xs leading-5 text-white/38">Параметры относятся к выбранному файлу. Изменение любого из них сбрасывает предыдущую цену до нового расчёта.</p>
+            </div>
             {activePart ? <>
               <div className="space-y-5 p-5">
+                {activePreview ? (
+                  <div className="border border-white/10 bg-[#0b0f12] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/42">Определено по файлу</p>
+                      <span className={`text-[9px] font-bold uppercase tracking-[.12em] ${activePreview.status === "recognized" ? "text-emerald-300" : "text-amber-300"}`}>
+                        {activePreview.status === "recognized" ? "геометрия распознана" : "нужна проверка"}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-px bg-white/10">
+                      <div className="bg-[#101416] p-3">
+                        <p className="text-[9px] uppercase tracking-[.1em] text-white/30">Толщина модели</p>
+                        <p className="mt-1 text-sm font-semibold">{activePreview.cad.thicknessFromModelMm == null ? "—" : `${fmt(activePreview.cad.thicknessFromModelMm)} мм`}</p>
+                      </div>
+                      <div className="bg-[#101416] p-3">
+                        <p className="text-[9px] uppercase tracking-[.1em] text-white/30">Гибы модели</p>
+                        <p className="mt-1 text-sm font-semibold">{activePreview.cad.bendCountFromModel == null ? "—" : activePreview.cad.bendCountFromModel}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-[10px] leading-5 text-white/38">{activePreview.message}</p>
+                  </div>
+                ) : null}
                 <div><p id="part-material-label" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Материал</p><div role="group" aria-labelledby="part-material-label" className="mt-2 grid grid-cols-3 gap-1">{MATERIAL_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={materialId === option.id} onClick={() => updateMaterial(option.id)} className={`border px-2 py-3 text-[10px] font-semibold transition ${materialId === option.id ? "border-steel-orange/50 bg-steel-orange/[.07] text-white" : "border-white/10 text-white/70 hover:border-white/25 hover:text-white"}`}>{option.label}</button>)}</div></div>
                 <div><label htmlFor="part-thickness" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Толщина, мм</label><select id="part-thickness" value={thickness} onChange={(event) => updateThickness(Number(event.target.value))} className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm">{THICKNESS_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div>
                 <div><label htmlFor="part-quantity" className="text-[11px] font-bold uppercase tracking-[.1em] text-white/70">Количество</label><input id="part-quantity" value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} type="number" min={1} inputMode="numeric" className="mt-2 w-full border border-white/12 bg-[#090c0e] px-4 py-3 text-sm" /></div>

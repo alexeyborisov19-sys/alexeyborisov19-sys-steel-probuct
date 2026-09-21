@@ -31,41 +31,34 @@ for (const message of ["Здравствуйте", "Что такое метал
   test(`knowledge is not mistaken for a quote: ${message}`, () => assert.equal(shouldHandleQuoteTurn(session(), message), false));
 }
 
-test("ordinary assistant HTTP endpoint prices a free-text request and reprices a follow-up", async () => {
+test("ordinary assistant HTTP endpoint stays informational even for calculation wording", async () => {
   reset();
   const firstRequest = request({ message: "Рассчитай 100 кассет открытого типа 600×1200 мм, толщина 1,2 мм" });
   const first = await generalPost(firstRequest);
   assert.equal(first.status, 200);
-  const priced = await first.json();
-  assert.equal(priced.mode, "quote");
-  assert.equal(priced.kind, "priced");
-  assert.match(priced.answer, /165.?600/);
-  const stored = assistantSessionStore.get(priced.sessionId, clientKey(firstRequest));
+  const payload = await first.json();
+  assert.equal(payload.mode, "knowledge");
+  assert.equal(payload.kind, undefined);
+  const stored = assistantSessionStore.get(payload.sessionId, clientKey(firstRequest));
   assert.ok(stored);
-  assert.equal(stored.quoteCalculator, "metal-cassettes");
-  assert.equal(stored.history.length, 2);
-
-  const next = await generalPost(request({ sessionId: priced.sessionId, message: "200 шт" }));
-  const repriced = await next.json();
-  assert.equal(repriced.sessionId, priced.sessionId);
-  assert.equal(repriced.mode, "quote");
-  assert.equal(repriced.kind, "priced");
-  assert.match(repriced.answer, /331.?200/);
-  assert.equal(stored.state.quantity, "200 шт");
-  assert.doesNotMatch(JSON.stringify(repriced), /costRub|pricingScenarios|drawingPercent|commercialPrice/);
+  assert.equal(stored.quoteCalculator, undefined);
+  assert.equal(stored.state.quantity, undefined);
 });
 
-test("the button path and ordinary chat reuse one calculation session after a price", async () => {
+test("dedicated quote endpoint remains isolated from the navigation assistant", async () => {
   reset();
   const quote = createAssistantQuoteHandler();
   const first = await quote(request({ calculator: "metal-cassettes", message: "100 кассет открытого типа 600×1200 мм, толщина 1,2 мм" }, "/api/assistant/quote"));
   const priced = await first.json();
   assert.equal(priced.kind, "priced");
-  const second = await generalPost(request({ sessionId: priced.sessionId, message: "200 шт" }));
-  const repriced = await second.json();
-  assert.equal(repriced.sessionId, priced.sessionId);
-  assert.equal(repriced.kind, "priced");
-  assert.match(repriced.answer, /331.?200/);
+  const stored = assistantSessionStore.get(priced.sessionId, clientKey(request({})));
+  assert.ok(stored);
+  const original = JSON.stringify(stored.state);
+
+  const knowledge = await generalPost(request({ sessionId: priced.sessionId, message: "Расскажите о производстве" }));
+  const answer = await knowledge.json();
+  assert.equal(answer.mode, "knowledge");
+  assert.equal(JSON.stringify(stored.state), original);
 });
 
 test("an unresolved free-text quote keeps asking and pins the engine only when the product is known", async () => {
