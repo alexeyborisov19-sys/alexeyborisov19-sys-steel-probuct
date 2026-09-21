@@ -62,6 +62,14 @@ jobs:
           AVITO_AUDIT_OUTPUT: ${{ runner.temp }}/avito-audit.json
         run: npm run avito:audit
 
+      - name: Upload private audit JSON
+        uses: actions/upload-artifact@v7
+        with:
+          name: avito-audit-json
+          path: ${{ runner.temp }}/avito-audit.json
+          retention-days: 1
+          if-no-files-found: error
+
       - name: Print encrypted audit payload
         env:
           AVITO_CLIENT_SECRET: ${{ secrets.AVITO_CLIENT_SECRET }}
