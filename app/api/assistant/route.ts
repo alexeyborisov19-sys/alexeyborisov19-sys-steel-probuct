@@ -25,6 +25,7 @@ import {
   validateStructuredResult,
 } from "@/lib/assistant/state";
 import type { AssistantSession, StructuredAssistantResult } from "@/lib/assistant/types";
+import { runSessionQuoteTurn, shouldHandleQuoteTurn } from "@/lib/server/quote-engine/session-turn";
 import { clientKey } from "@/lib/security/client-ip";
 import { assistantRateRules, consumeRules } from "@/lib/security/rate-limit";
 import { PayloadTooLargeError, readJsonBody } from "@/lib/security/request-body";
@@ -199,7 +200,29 @@ export async function POST(request: Request) {
       typeof body.pathname === "string" ? body.pathname : null,
     );
     const session = resolveSession(body.sessionId, ownerKey);
-    session.state = extractLeadState(session.state, message, session.lastAskedField);
+    // Share the quote session with the two-button endpoint. This path also
+    // handles follow-up corrections after the browser clears its local flag.
+    if (shouldHandleQuoteTurn(session, message)) {
+      const reply = await runSessionQuoteTurn(session, message);
+      assistantSessionStore.save(session);
+      safeSecurityLog("assistant", "accepted", ownerKey);
+      return NextResponse.json({
+        answer: reply.text,
+        mode: "quote",
+        kind: reply.kind,
+        sessionId: session.id,
+        readiness: session.state.readiness,
+        missingFields: session.state.missingFields,
+        suggestions: reply.kind === "question"
+          ? ["Передать задачу инженеру", "Начать заново"]
+          : ["Оставить заявку", "Начать заново"],
+      });
+    }
+    // A knowledge detour or prompt-injection attempt cannot rewrite agreed
+    // quote parameters (e.g. change cassette type while explaining it).
+    if (!session.quoteCalculator && !isPromptInjection(message)) {
+      session.state = extractLeadState(session.state, message, session.lastAskedField);
+    }
     session.history.push({ role: "user", content: message, createdAt: new Date().toISOString() });
 
     let result: StructuredAssistantResult;
@@ -217,7 +240,7 @@ export async function POST(request: Request) {
     }
 
     const safeAnswer = enforceSafeAnswer(result.answer);
-    const next = nextQuestionFor(session.state);
+    const next = session.quoteCalculator ? undefined : nextQuestionFor(session.state);
     result.answer = safeAnswer.answer;
     result.safetyFlags = [...new Set([...result.safetyFlags, ...safeAnswer.flags])];
     result.missingFields = session.state.missingFields;
