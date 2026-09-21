@@ -113,7 +113,8 @@ export async function runConfidentialCalculationForClient(
   calculationStage("REPORT_WRITE_OK");
 
   calculationStage("CLIENT_RESULT_START");
-  const result = createClientCalculationView(project, quoteControl.signals);
+  const signals = quoteControl.signals;
+  const result = createClientCalculationView(project, signals);
   calculationStage("CLIENT_RESULT_OK");
   return result;
 }
