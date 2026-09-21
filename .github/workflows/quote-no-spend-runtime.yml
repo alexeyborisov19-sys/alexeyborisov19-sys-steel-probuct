@@ -1,0 +1,86 @@
+name: Read-only quotation runtime check
+on:
+  push:
+    branches: [diagnostics/quote-no-spend-runtime-20260921]
+    paths: [.github/workflows/quote-no-spend-runtime.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Use existing host access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+      - name: Read booleans and resource totals only
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$APP_PATH"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import os from 'node:os';
+          import { createRequire } from 'node:module';
+          const require = createRequire(process.cwd() + '/package.json');
+          require('@next/env').loadEnvConfig(process.cwd(), false);
+          const env = process.env;
+          const present = name => Boolean(env[name]?.trim());
+          const exists = name => present(name) && fs.existsSync(env[name]);
+          const commit = fs.existsSync('.next/BUILD_COMMIT') ? fs.readFileSync('.next/BUILD_COMMIT', 'utf8').trim() : '';
+          let ollamaReachable = false, installedGgufCount = 0, configuredModelPresent = false;
+          try {
+            // Read-only installed-model metadata. No inference, pulls, cloud or redirects.
+            const response = await fetch('http://127.0.0.1:11434/api/tags', { redirect: 'error', signal: AbortSignal.timeout(2000) });
+            if (response.ok && response.body) {
+              const reader = response.body.getReader();
+              const chunks = []; let size = 0;
+              try {
+                while (true) {
+                  const part = await reader.read(); if (part.done) break;
+                  size += part.value.byteLength;
+                  if (size > 65536) { await reader.cancel(); throw new Error('Metadata limit'); }
+                  chunks.push(part.value);
+                }
+              } finally { reader.releaseLock(); }
+              const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+              if (Array.isArray(data.models)) {
+                ollamaReachable = true;
+                const local = data.models.filter(model => model?.details?.format === 'gguf' && model.remote_host == null && model.remote_model == null);
+                installedGgufCount = local.length;
+                configuredModelPresent = local.some(model => model.name === env.STEEL_PRODUCT_LOCAL_AI_MODEL && model.digest === env.STEEL_PRODUCT_LOCAL_AI_DIGEST);
+              }
+            }
+          } catch {}
+          console.log(JSON.stringify({
+            checkedAt: new Date().toISOString(),
+            release: /^[a-f0-9]{40}$/.test(commit) ? commit : null,
+            paidServicesAllowed: env.STEEL_PRODUCT_PAID_SERVICES_ALLOWED === 'true',
+            localAiEnabled: env.STEEL_PRODUCT_LOCAL_AI_ENABLED === 'true',
+            localOfflineAttested: env.STEEL_PRODUCT_LOCAL_AI_OFFLINE_VERIFIED === 'true',
+            ollamaReachable, installedGgufCount, configuredModelPresent,
+            yandexAiEnabled: env.YANDEX_AI_ENABLED === 'true',
+            marketSearchEnabled: env.STEEL_PRODUCT_MARKET_SEARCH_ENABLED === 'true',
+            marketRegistryConfigured: exists('STEEL_PRODUCT_MARKET_REFERENCE_FILE'),
+            cpuCount: os.cpus().length,
+            totalRamMiB: Math.floor(os.totalmem() / 1048576),
+            freeRamMiB: Math.floor(os.freemem() / 1048576)
+          }));
+          NODE
+          REMOTE
