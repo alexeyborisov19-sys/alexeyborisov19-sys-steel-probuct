@@ -107,12 +107,12 @@ export function NavigationAssistant({ initialOpen = false }: { initialOpen?: boo
             transition={{ duration: 0.18 }}
             className="absolute bottom-[72px] right-0 flex h-[min(620px,calc(100dvh-108px))] w-[min(390px,calc(100vw-28px))] flex-col overflow-hidden border border-white/15 bg-[#0b0e10]/[.985] shadow-[0_28px_80px_rgba(0,0,0,.72)] backdrop-blur-xl"
             role="dialog"
-            aria-label="Помощник Сталь Продукт"
+            aria-label="ИИ-инженер Сталь Продукт"
           >
             <header className="flex items-center gap-3 border-b border-white/10 bg-[linear-gradient(105deg,rgba(234,91,12,.14),rgba(15,18,20,.96)_58%)] px-4 py-4">
               <BrandMark />
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-[.15em] text-steel-orange">Помощник</p>
+                <p className="text-[11px] font-bold uppercase tracking-[.15em] text-steel-orange">ИИ-инженер</p>
                 <h2 className="mt-1 truncate text-sm font-semibold text-white">Сталь Продукт</h2>
                 <p className="mt-1 truncate text-[11px] text-white/40">{pageContext.label}</p>
               </div>
@@ -180,7 +180,7 @@ export function NavigationAssistant({ initialOpen = false }: { initialOpen?: boo
       >
         <BrandMark />
         <span className="hidden min-w-[142px] whitespace-nowrap text-left sm:block">
-          <b className="block text-xs leading-none uppercase tracking-[.1em] text-white">Помощник</b>
+          <b className="block text-xs leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
           <span className="mt-1 block text-xs leading-none text-white/45">Навигация и вопросы</span>
         </span>
       </button>
