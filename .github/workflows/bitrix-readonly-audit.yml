@@ -14,94 +14,206 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - name: Check Bitrix24 access
+      - name: Full aggregate CRM audit
         env:
           BITRIX_WEBHOOK_URL: ${{ secrets.BITRIX_WEBHOOK_URL }}
         run: |
           set -euo pipefail
-
-          test -n "$BITRIX_WEBHOOK_URL" || {
-            echo "BITRIX_WEBHOOK_URL is not configured"
-            exit 1
-          }
-
-          call_bitrix () {
-            method="$1"
-            payload="$2"
-
-            curl -fsS \
-              -X POST \
-              -H "Content-Type: application/json" \
-              -d "$payload" \
-              "${BITRIX_WEBHOOK_URL%/}/${method}.json"
-          }
-
-          echo "Checking profile..."
-          call_bitrix "profile" '{}' > /tmp/profile.json
-
-          echo "Reading CRM deal categories..."
-          call_bitrix "crm.category.list" '{"entityTypeId":2}' > /tmp/categories.json
-
-          echo "Reading deal stages..."
-          call_bitrix "crm.status.list" '{"filter":{"ENTITY_ID":"DEAL_STAGE"}}' > /tmp/stages.json
-
-          echo "Reading first page of deals..."
-          call_bitrix "crm.item.list" '{
-            "entityTypeId":2,
-            "select":[
-              "id",
-              "categoryId",
-              "stageId",
-              "opportunity",
-              "currencyId",
-              "sourceId",
-              "assignedById",
-              "createdTime",
-              "updatedTime",
-              "closed"
-            ],
-            "order":{"id":"ASC"}
-          }' > /tmp/deals.json
+          test -n "$BITRIX_WEBHOOK_URL" || { echo "BITRIX_WEBHOOK_URL is not configured"; exit 1; }
 
           python3 - <<'PY'
-          import json
+          import json, os, urllib.request
+          from collections import Counter, defaultdict
+          from datetime import datetime, timezone, timedelta
 
-          with open("/tmp/profile.json", encoding="utf-8") as f:
-              profile = json.load(f)
+          base = os.environ["BITRIX_WEBHOOK_URL"].rstrip("/") + "/"
 
-          with open("/tmp/categories.json", encoding="utf-8") as f:
-              categories = json.load(f)
+          def call(method, params=None):
+              payload = json.dumps(params or {}).encode("utf-8")
+              req = urllib.request.Request(
+                  base + method + ".json",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=60) as r:
+                  data = json.load(r)
+              if "error" in data:
+                  raise RuntimeError(f"{method}: {data.get('error')}")
+              return data
 
-          with open("/tmp/stages.json", encoding="utf-8") as f:
-              stages = json.load(f)
+          def list_items(entity_type_id, select):
+              out = []
+              start = 0
+              while True:
+                  data = call("crm.item.list", {
+                      "entityTypeId": entity_type_id,
+                      "select": select,
+                      "order": {"id": "ASC"},
+                      "start": start,
+                  })
+                  items = data.get("result", {}).get("items", [])
+                  out.extend(items)
+                  nxt = data.get("next")
+                  if nxt is None or not items:
+                      break
+                  start = nxt
+              return out
 
-          with open("/tmp/deals.json", encoding="utf-8") as f:
-              deals = json.load(f)
+          profile = call("profile").get("result", {})
+          categories = call("crm.category.list", {"entityTypeId": 2}).get("result", {}).get("categories", [])
 
-          if "error" in profile:
-              raise SystemExit(f"Profile error: {profile.get('error')}")
+          stage_rows = []
+          stage_rows.extend(call("crm.status.list", {"filter": {"ENTITY_ID": "DEAL_STAGE"}}).get("result", []))
+          for cat in categories:
+              cid = int(cat.get("id") or cat.get("ID") or 0)
+              if cid:
+                  stage_rows.extend(call("crm.status.list", {"filter": {"ENTITY_ID": f"DEAL_STAGE_{cid}"}}).get("result", []))
 
-          if "error" in categories:
-              raise SystemExit(f"Categories error: {categories.get('error')}")
+          source_rows = call("crm.status.list", {"filter": {"ENTITY_ID": "SOURCE"}}).get("result", [])
 
-          if "error" in stages:
-              raise SystemExit(f"Stages error: {stages.get('error')}")
+          deals = list_items(2, [
+              "id","categoryId","stageId","opportunity","currencyId","sourceId",
+              "assignedById","createdTime","updatedTime","closed","companyId","contactIds"
+          ])
+          contacts = list_items(3, ["id"])
+          companies = list_items(4, ["id"])
 
-          if "error" in deals:
-              raise SystemExit(f"Deals error: {deals.get('error')}")
+          stage_meta = {}
+          for row in stage_rows:
+              sid = str(row.get("STATUS_ID") or row.get("statusId") or row.get("ID") or row.get("id") or "")
+              if sid:
+                  stage_meta[sid] = {
+                      "name": row.get("NAME") or row.get("name") or "",
+                      "semantics": row.get("SEMANTICS") or row.get("semantics") or "",
+                  }
 
-          cats = categories.get("result", {}).get("categories", [])
-          stage_rows = stages.get("result", [])
-          deal_rows = deals.get("result", {}).get("items", [])
+          source_meta = {}
+          for row in source_rows:
+              sid = str(row.get("STATUS_ID") or row.get("statusId") or row.get("ID") or row.get("id") or "")
+              if sid:
+                  source_meta[sid] = row.get("NAME") or row.get("name") or sid
 
-          print("BITRIX_ACCESS_OK=true")
-          print(f"BITRIX_CATEGORIES_COUNT={len(cats)}")
-          print(f"BITRIX_DEFAULT_STAGES_COUNT={len(stage_rows)}")
-          print(f"BITRIX_FIRST_PAGE_DEALS_COUNT={len(deal_rows)}")
+          category_meta = {
+              str(c.get("id") or c.get("ID")): c.get("name") or c.get("NAME") or str(c.get("id") or c.get("ID"))
+              for c in categories
+          }
+          category_meta.setdefault("0", "Default")
 
-          user = profile.get("result", {})
-          print(f"BITRIX_PROFILE_ID={user.get('ID') or user.get('id') or ''}")
+          now = datetime.now(timezone.utc)
+
+          def parse_dt(v):
+              if not v:
+                  return None
+              try:
+                  return datetime.fromisoformat(str(v).replace("Z", "+00:00")).astimezone(timezone.utc)
+              except Exception:
+                  return None
+
+          by_stage = Counter()
+          by_source = Counter()
+          by_category = Counter()
+          by_assignee = Counter()
+          amount_by_currency = defaultdict(float)
+          created_30 = created_90 = created_365 = 0
+          stale_30 = stale_90 = 0
+          open_count = 0
+          won = lost = 0
+
+          for d in deals:
+              stage = str(d.get("stageId") or "")
+              src = str(d.get("sourceId") or "")
+              cat = str(d.get("categoryId") or "0")
+              assignee = str(d.get("assignedById") or "")
+              by_stage[stage] += 1
+              by_source[src or "(empty)"] += 1
+              by_category[cat] += 1
+              by_assignee[assignee or "(empty)"] += 1
+              cur = str(d.get("currencyId") or "(empty)")
+              try:
+                  amount_by_currency[cur] += float(d.get("opportunity") or 0)
+              except Exception:
+                  pass
+
+              closed = str(d.get("closed") or "").upper() == "Y"
+              if not closed:
+                  open_count += 1
+
+              sem = stage_meta.get(stage, {}).get("semantics", "")
+              if sem == "S":
+                  won += 1
+              elif sem == "F":
+                  lost += 1
+
+              created = parse_dt(d.get("createdTime"))
+              if created:
+                  age = now - created
+                  if age <= timedelta(days=30): created_30 += 1
+                  if age <= timedelta(days=90): created_90 += 1
+                  if age <= timedelta(days=365): created_365 += 1
+
+              updated = parse_dt(d.get("updatedTime"))
+              if updated:
+                  age = now - updated
+                  if age >= timedelta(days=30): stale_30 += 1
+                  if age >= timedelta(days=90): stale_90 += 1
+
+          summary = {
+              "access_ok": True,
+              "profile_id": str(profile.get("ID") or profile.get("id") or ""),
+              "totals": {
+                  "deals": len(deals),
+                  "open_deals": open_count,
+                  "closed_deals": len(deals) - open_count,
+                  "won_deals": won,
+                  "lost_deals": lost,
+                  "contacts": len(contacts),
+                  "companies": len(companies),
+                  "created_last_30d": created_30,
+                  "created_last_90d": created_90,
+                  "created_last_365d": created_365,
+                  "stale_30d": stale_30,
+                  "stale_90d": stale_90,
+              },
+              "opportunity_by_currency": dict(sorted(amount_by_currency.items())),
+              "categories": [
+                  {"id": k, "name": category_meta.get(k, k), "deals": v}
+                  for k, v in by_category.most_common()
+              ],
+              "stages": [
+                  {
+                      "id": k,
+                      "name": stage_meta.get(k, {}).get("name", k),
+                      "semantics": stage_meta.get(k, {}).get("semantics", ""),
+                      "deals": v,
+                  }
+                  for k, v in by_stage.most_common()
+              ],
+              "sources": [
+                  {"id": k, "name": source_meta.get(k, k), "deals": v}
+                  for k, v in by_source.most_common()
+              ],
+              "assignee_ids": [
+                  {"id": k, "deals": v}
+                  for k, v in by_assignee.most_common()
+              ],
+              "privacy": "Aggregate audit only; no customer names, phones, emails, deal titles or comments are emitted.",
+          }
+
+          path = "/tmp/bitrix-audit.json"
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(summary, f, ensure_ascii=False, indent=2)
+
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
           PY
+
+      - name: Upload aggregate audit
+        uses: actions/upload-artifact@v7
+        with:
+          name: bitrix-readonly-audit
+          path: /tmp/bitrix-audit.json
+          retention-days: 1
+          if-no-files-found: error
