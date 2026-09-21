@@ -17,6 +17,13 @@ for (const line of raw.split(/\r?\n/)) {
   env.set(match[1], value);
 }
 
+// A deployment probe is still a provider request. Credentials alone are not consent
+// to spend; use the same explicit server setting as the application routes.
+if (env.get("STEEL_PRODUCT_PAID_SERVICES_ALLOWED") !== "true") {
+  console.log("SpeechKit paid check skipped: paid services are not authorized; local fallback remains active.");
+  process.exit(0);
+}
+
 const apiKey = env.get("YANDEX_SPEECHKIT_API_KEY") || env.get("YANDEX_AI_API_KEY");
 if (!apiKey) {
   console.log("SpeechKit premium voice unavailable: no server credential; local fallback remains active.");
@@ -29,6 +36,7 @@ const timeout = setTimeout(() => controller.abort(), 15000);
 try {
   const response = await fetch("https://tts.api.cloud.yandex.net:443/tts/v3/utteranceSynthesis", {
     method: "POST",
+    redirect: "error",
     headers: {
       Authorization: `Api-Key ${apiKey}`,
       "Content-Type": "application/json",
