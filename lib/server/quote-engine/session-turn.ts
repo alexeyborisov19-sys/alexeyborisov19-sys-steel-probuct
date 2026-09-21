@@ -1,3 +1,5 @@
+import { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
+import { captureQuoteSnapshot } from "@/lib/server/quote-engine/session-snapshot";
 import type { AssistantSession } from "@/lib/assistant/types";
 import { classifyProduct, type CalculatorId } from "@/lib/quote-engine/classification";
 import { injectionSafeAnswer, isPromptInjection } from "@/lib/assistant/security";
@@ -15,13 +17,7 @@ export function shouldHandleQuoteTurn(session: AssistantSession, message: string
   return intent.test(message) && (product.test(message) || Boolean(session.state.productType));
 }
 
-/** Production does not silently substitute an unreviewed price for the requested AI-controlled workflow. */
-export function quoteAiReviewRequired(environment: NodeJS.ProcessEnv = process.env): boolean {
-  const setting = environment.STEEL_PRODUCT_QUOTE_AI_REVIEW_REQUIRED;
-  if (setting === "true") return true;
-  if (setting === "false") return false;
-  return environment.NODE_ENV === "production";
-}
+export { quoteAiReviewRequired } from "@/lib/server/quote-engine/review-policy";
 
 export type SessionQuoteReply = {
   sessionId: string;
@@ -45,6 +41,8 @@ export async function runSessionQuoteTurn(
     };
   }
   const calculatorOverride = explicitCalculator ?? (active && active !== "auto" ? active : undefined);
+  // A failed or clarifying correction must never leave the old price attached to a lead.
+  delete session.quoteSnapshot;
   const result = await calculate(message, session.state, {
     calculatorOverride,
     finalization: { requireAiReview: quoteAiReviewRequired() },
@@ -52,6 +50,7 @@ export async function runSessionQuoteTurn(
   const classification = classifyProduct(result.state);
   session.quoteCalculator = calculatorOverride ?? (classification.status === "classified" ? classification.calculator : "auto");
   session.state = result.state;
+  if (result.kind !== "question") session.quoteSnapshot = captureQuoteSnapshot(result);
   session.lastAskedField = undefined;
   const text = result.kind === "question" ? result.question : result.clientMessage;
   const now = new Date().toISOString();
