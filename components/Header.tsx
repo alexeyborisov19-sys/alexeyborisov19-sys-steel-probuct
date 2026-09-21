@@ -118,7 +118,7 @@ export function Header() {
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 xl:flex">
         <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold xl:block">{siteConfig.telephoneDisplay}</a>
-        <Link href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="clip-corner hidden whitespace-nowrap border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black 2xl:block">Расчёт по CAD</Link>
+        <Link href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="clip-corner hidden whitespace-nowrap border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black 2xl:block">CAD-калькулятор</Link>
         <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Получить расчёт</Link>
       </div>
       <button
@@ -139,7 +139,7 @@ export function Header() {
         return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
       })}
       <a href={`tel:${siteConfig.telephone}`} className="text-steel-orange">{siteConfig.telephoneDisplay}</a>
-      <Link href="/online-order" className="mt-2 border border-steel-orange px-4 py-3 text-center text-xs font-bold uppercase text-steel-orange">Расчёт по CAD</Link>
+      <Link href="/online-order" className="mt-2 border border-steel-orange px-4 py-3 text-center text-xs font-bold uppercase text-steel-orange">CAD-калькулятор</Link>
       <Link href="/contacts#contact-form" className="mt-2 bg-steel-orange-deep px-4 py-3 text-center text-xs font-bold uppercase">Получить расчёт</Link>
     </nav>}
   </header>;
