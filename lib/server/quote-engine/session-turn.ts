@@ -6,8 +6,6 @@ import { handleNaturalLanguageQuote } from "@/lib/server/quote-engine/handle-req
 export function isQuoteKnowledgeQuestion(message: string): boolean {
   return /(?:^|[.!?]\s*)(?:а\s+)?(?:что такое|чем отлича[а-яё]*|в ч[её]м разниц[а-яё]*|как (?:вы )?(?:работаете|связаться)|где (?:вы |ваше |находит[а-яё]*))/iu.test(message.trim());
 }
-
-/** Enter calculations for an actual pricing/order request, not every mention of metal. */
 export function shouldHandleQuoteTurn(session: AssistantSession, message: string): boolean {
   if (isPromptInjection(message) || isQuoteKnowledgeQuestion(message)) return false;
   if (session.quoteCalculator) return true;
@@ -17,26 +15,28 @@ export function shouldHandleQuoteTurn(session: AssistantSession, message: string
   return intent.test(message) && (product.test(message) || Boolean(session.state.productType));
 }
 
+/** Production does not silently substitute an unreviewed price for the requested AI-controlled workflow. */
+export function quoteAiReviewRequired(environment: NodeJS.ProcessEnv = process.env): boolean {
+  const setting = environment.STEEL_PRODUCT_QUOTE_AI_REVIEW_REQUIRED;
+  if (setting === "true") return true;
+  if (setting === "false") return false;
+  return environment.NODE_ENV === "production";
+}
+
 export type SessionQuoteReply = {
   sessionId: string;
   kind: "question" | "priced" | "blocked";
   text: string;
 };
 
-/**
- * Both HTTP entry points use one server-owned conversation. A browser reset
- * of its calculator UI cannot erase the calculation context. Only the safe
- * answer is returned and added to history, never costs, policy or scenarios.
- */
+/** Both HTTP entry points share the same server-owned conversation and final checks. */
 export async function runSessionQuoteTurn(
   session: AssistantSession,
   message: string,
   explicitCalculator?: CalculatorId,
   calculate: typeof handleNaturalLanguageQuote = handleNaturalLanguageQuote,
 ): Promise<SessionQuoteReply> {
-  if (isPromptInjection(message)) {
-    return { sessionId: session.id, kind: "question", text: injectionSafeAnswer };
-  }
+  if (isPromptInjection(message)) return { sessionId: session.id, kind: "question", text: injectionSafeAnswer };
   const active = session.quoteCalculator;
   if (explicitCalculator && active && active !== "auto" && active !== explicitCalculator) {
     return {
@@ -45,12 +45,13 @@ export async function runSessionQuoteTurn(
     };
   }
   const calculatorOverride = explicitCalculator ?? (active && active !== "auto" ? active : undefined);
-  const result = await calculate(message, session.state, { calculatorOverride });
+  const result = await calculate(message, session.state, {
+    calculatorOverride,
+    finalization: { requireAiReview: quoteAiReviewRequired() },
+  });
   const classification = classifyProduct(result.state);
-  session.quoteCalculator = calculatorOverride
-    ?? (classification.status === "classified" ? classification.calculator : "auto");
+  session.quoteCalculator = calculatorOverride ?? (classification.status === "classified" ? classification.calculator : "auto");
   session.state = result.state;
-  // The quote planner owns its question sequence, not the general lead form.
   session.lastAskedField = undefined;
   const text = result.kind === "question" ? result.question : result.clientMessage;
   const now = new Date().toISOString();
