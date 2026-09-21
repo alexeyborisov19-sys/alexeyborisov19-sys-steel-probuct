@@ -1,0 +1,64 @@
+name: Inspect existing local AI capacity
+on:
+  push:
+    branches: [ops/quote-local-readiness-20260921]
+    paths: [.github/workflows/quote-local-readiness.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Configure existing server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+      - name: Read capacity and local model manifest only
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$APP_PATH"
+          python3 - <<'PY'
+          import json,os,shutil,urllib.request
+          from pathlib import Path
+          mem={}
+          for line in Path('/proc/meminfo').read_text().splitlines():
+              key,*rest=line.split()
+              if key in ['MemTotal:','MemAvailable:']: mem[key.rstrip(':')]=int(rest[0])//1024
+          values={}
+          for line in Path('.env.production').read_text().splitlines():
+              if '=' in line and not line.startswith('#'):
+                  k,v=line.split('=',1);values[k]=v.strip().strip('\"\'')
+          summary={'memoryMiB':mem,'cpuCount':os.cpu_count(),'diskFreeMiB':shutil.disk_usage('.').free//1048576,
+              'ollamaInstalled':shutil.which('ollama') is not None,
+              'paidServicesExplicitlyEnabled':values.get('STEEL_PRODUCT_PAID_SERVICES_ALLOWED')=='true',
+              'localAiEnabled':values.get('STEEL_PRODUCT_LOCAL_AI_ENABLED')=='true',
+              'localModelConfigured':bool(values.get('STEEL_PRODUCT_LOCAL_AI_MODEL')),
+              'localServiceResponding':False,'localGgufModelCount':0}
+          try:
+              with urllib.request.urlopen('http://127.0.0.1:11434/api/tags',timeout=2) as response:
+                  raw=response.read(65537)
+                  if len(raw)<=65536:
+                      data=json.loads(raw)
+                      models=data.get('models',[])
+                      summary['localServiceResponding']=True
+                      summary['localGgufModelCount']=sum(1 for m in models if m.get('details',{}).get('format')=='gguf' and m.get('size',0)>10000000 and not m.get('remote_host'))
+          except Exception: pass
+          print(json.dumps(summary))
+          PY
+          REMOTE
