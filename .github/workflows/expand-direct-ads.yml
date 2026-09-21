@@ -42,11 +42,8 @@ jobs:
           protected_campaign=copy.deepcopy(campaign[0])
           groups=call('adgroups','get',{'SelectionCriteria':{'CampaignIds':[CID]},'FieldNames':['Id','Name','CampaignId','RegionIds','Status'],'Page':{'Limit':10000}}).get('AdGroups',[])
           byid={g['Id']:g for g in groups}
-          # Resolve Russia from the current Direct targeting dictionary instead of hard-coding it.
-          geo=call('dictionaries','getGeoRegions',{'SelectionCriteria':{'ExactNames':['Россия']},'FieldNames':['GeoRegionId','GeoRegionName','ParentGeoRegionNames'],'Page':{'Limit':20,'Offset':0}})
-          ru=[x for x in geo.get('GeoRegions',[]) if x.get('GeoRegionName')=='Россия']
-          if len(ru)!=1: raise SystemExit('Russia region not uniquely resolved')
-          RUSSIA=ru[0]['GeoRegionId']
+          # Yandex's current region directory: 225 = Russia, 1 = Moscow and Moscow Oblast.
+          RUSSIA=225
           # Correct only groups whose names and existing ad copy explicitly declare this geography.
           region_updates=[]
           if byid.get(5798460249,{}).get('RegionIds')==[213]:
