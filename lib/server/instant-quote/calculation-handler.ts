@@ -1,3 +1,4 @@
+import { bendConfigurationConflict } from "@/lib/instant-quote/cad-configuration-conflicts";
 import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { parsePublicCalculationManifest, CalculationManifestError } from "@/lib/instant-quote/calculation-manifest";
@@ -253,7 +254,8 @@ async function buildAuthoritativeProject(
         // the analyzer type keeps the field optional for injected test doubles.
         const { model, productionReady, authoritativeFactualInputs = {} } = await analyzeStep(inspection, format);
         const thicknessMismatch = thicknessMismatchReason(measuredThicknessMm(model.sheetMetal), item.thicknessMm);
-        if (productionReady && !thicknessMismatch) {
+        const bendMismatch = bendConfigurationConflict(model.geometry.bendCount, item.operations, item.operationInputs.bendCount);
+        if (productionReady && !thicknessMismatch && !bendMismatch) {
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
           // Private STEP evidence stays fail-closed: it reaches the calculation
@@ -271,6 +273,7 @@ async function buildAuthoritativeProject(
             reviewReasons: [
               ...model.warnings,
               ...(thicknessMismatch ? [thicknessMismatch] : []),
+              ...(bendMismatch ? [bendMismatch] : []),
               ...(model.geometry.bendCount != null && model.geometry.bendCount > 0
                 ? [`По модели определено гибов: ${model.geometry.bendCount}. Развёртка гнутой детали требует подтверждения технологом.`]
                 : []),

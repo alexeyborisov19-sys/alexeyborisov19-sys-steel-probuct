@@ -106,6 +106,7 @@ type Candidate = {
   sourceId: string;
   ageHours: number;
   priority: number;
+  explicitlyStale: boolean;
 };
 
 export function enabledPriceSources() {
@@ -113,7 +114,8 @@ export function enabledPriceSources() {
 }
 
 export function snapshotAgeHours(snapshot: StoredPriceSnapshot, now = new Date()) {
-  return Math.max(0, (now.getTime() - new Date(snapshot.fetchedAt).getTime()) / 3_600_000);
+  const age = (now.getTime() - new Date(snapshot.fetchedAt).getTime()) / 3_600_000;
+  return Number.isFinite(age) && age >= 0 ? age : Number.POSITIVE_INFINITY;
 }
 
 function candidatesFor(
@@ -134,6 +136,7 @@ function candidatesFor(
         row,
         sourceId: snapshot.sourceId,
         ageHours: snapshotAgeHours(snapshot, now),
+        explicitlyStale: snapshot.status === "stale",
         priority: sourcePriority.get(snapshot.sourceId) ?? 999,
       })));
 }
@@ -144,7 +147,7 @@ function selection(candidate: Candidate | undefined, thicknessMm: number, staleA
     price: { ...candidate.row, exactThickness: Math.abs(candidate.row.thicknessMm - thicknessMm) < 0.01 },
     sourceId: candidate.sourceId,
     ageHours: candidate.ageHours,
-    stale: candidate.ageHours > staleAfterHours,
+    stale: candidate.explicitlyStale || candidate.ageHours > staleAfterHours,
   };
 }
 
@@ -160,6 +163,8 @@ export function selectBestStoredPrice(
     const da = Math.abs(a.row.thicknessMm - thicknessMm);
     const db = Math.abs(b.row.thicknessMm - thicknessMm);
     if (da !== db) return da - db;
+    const freshness = Number(a.explicitlyStale || a.ageHours > staleAfterHours) - Number(b.explicitlyStale || b.ageHours > staleAfterHours);
+    if (freshness !== 0) return freshness;
     if (a.priority !== b.priority) return a.priority - b.priority;
     return a.ageHours - b.ageHours;
   });
@@ -216,6 +221,8 @@ export function selectBestStoredPriceForStock(
     const da = Math.abs(a.row.thicknessMm - thicknessMm);
     const db = Math.abs(b.row.thicknessMm - thicknessMm);
     if (da !== db) return da - db;
+    const freshness = Number(a.explicitlyStale || a.ageHours > staleAfterHours) - Number(b.explicitlyStale || b.ageHours > staleAfterHours);
+    if (freshness !== 0) return freshness;
     if (a.stockRank !== b.stockRank) return a.stockRank - b.stockRank;
     if (a.priority !== b.priority) return a.priority - b.priority;
     if (a.stockAreaMm2 !== b.stockAreaMm2) return a.stockAreaMm2 - b.stockAreaMm2;
@@ -232,6 +239,7 @@ export function shouldRefreshPriceFeeds(
 ) {
   const enabledIds = new Set(enabledPriceSources().map((source) => source.id));
   const activeSnapshots = snapshots.filter((snapshot) => enabledIds.has(snapshot.sourceId));
-  if (!activeSnapshots.length) return true;
-  return activeSnapshots.some((snapshot) => snapshot.status === "failed" || snapshotAgeHours(snapshot, now) >= refreshEveryHours);
+  return [...enabledIds].some((id) => !activeSnapshots.some((snapshot) =>
+    snapshot.sourceId === id && snapshot.status === "ok" && snapshotAgeHours(snapshot, now) < refreshEveryHours
+  ));
 }

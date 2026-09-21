@@ -120,13 +120,14 @@ export function ClientOperationControls({
                 </label>
               )}
 
+              {enabled && quantity && <button type="button" onClick={() => onQuantityChange({ [quantity.field]: undefined })} className="mt-2 min-h-11 px-4 text-left text-sm text-steel-orange underline underline-offset-4">Не знаю — уточнит инженер</button>}
               {enabled && quantity?.note && (
                 <p className="mt-1 px-4 text-[10px] leading-relaxed text-white/40">{quantity.note}</p>
               )}
 
               {enabled && option.id === "bending" && detectedBendCount != null && detectedBendCount > 0 && (
                 <p className="mt-1 px-4 text-[10px] leading-relaxed text-steel-orange">
-                  Определено по 3D-модели: {detectedBendCount}. Значение можно изменить — инженер подтвердит его при проверке.
+                  Определено по 3D-модели: {detectedBendCount}. Изменение значения требует проверки инженером.
                 </p>
               )}
 
