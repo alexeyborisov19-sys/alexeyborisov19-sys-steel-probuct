@@ -46,6 +46,13 @@ export async function handleNaturalLanguageQuote(
   const askedField = previousPlan.status === "missing-fields" ? previousPlan.missing[0]?.code : undefined;
   const contextualMessage = normalizeQuoteAnswer(message, askedField);
   let state = extractLeadState(priorState, contextualMessage);
+  // "Деталь" plus an explicitly recognized metal is already a metal-parts
+  // request. Do not ask which product it is again or miss its hole/scope gate.
+  // A more specific classification, including cassettes, always takes priority.
+  if (!state.productType && state.material
+    && /(?<![а-яё])детал(?:ь|и|ей|ям|ями|ях)(?![а-яё])/iu.test(message)) {
+    state.productType = "Изделия из листового металла";
+  }
   const evidence = quoteNumericEvidence(contextualMessage);
   for (const field of ["thickness", "quantity"] as const) {
     const value = evidence[field] === undefined ? priorState[field] : evidence[field];
