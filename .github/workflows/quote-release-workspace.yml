@@ -9,24 +9,21 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - name: Archive code and locked dependencies only
+      - name: Export tracked source for local verification
         run: |
           set -euo pipefail
-          printf '%s\n' "$GITHUB_SHA" > RELEASE_WORKSPACE_COMMIT
-          tar --exclude='./.git' --exclude='./.next' --exclude='./.data' --exclude='./.env*' --exclude='./.agents' --exclude='./.codex' --exclude='./.claude' --exclude='./.claude-flow' -czf "$RUNNER_TEMP/quote-release-workspace.tar.gz" .
+          git archive --format=tar.gz --output="$RUNNER_TEMP/quote-source.tar.gz" HEAD -- . ':!public' ':!.agents' ':!.claude' ':!.codex' ':!.claude-flow' ':!.env*'
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/quote-source-commit.txt"
       - uses: actions/upload-artifact@v7
         with:
-          name: quote-release-workspace
-          path: ${{ runner.temp }}/quote-release-workspace.tar.gz
+          name: quote-source
+          path: |
+            ${{ runner.temp }}/quote-source.tar.gz
+            ${{ runner.temp }}/quote-source-commit.txt
           retention-days: 1
           if-no-files-found: error
