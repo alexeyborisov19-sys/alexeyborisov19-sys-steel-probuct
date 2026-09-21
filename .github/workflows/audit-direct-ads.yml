@@ -37,3 +37,5 @@ jobs:
               gk=[k for k in kws if k['AdGroupId']==g['Id']]
               print('GROUP='+json.dumps({'Id':g['Id'],'Name':g['Name'],'RegionIds':g['RegionIds'],'Status':g['Status'],'Keywords':[x['Keyword'] for x in gk],'Ads':[{'Id':a['Id'],'State':a['State'],'Status':a['Status'],**a.get('TextAd',{})} for a in ga]},ensure_ascii=False))
           PY
+
+# trigger
