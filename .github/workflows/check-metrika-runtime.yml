@@ -106,3 +106,5 @@ jobs:
           cat "$APP_PATH/.next/BUILD_COMMIT" 2>/dev/null || true
           echo
           REMOTE
+
+# post-fix trigger
