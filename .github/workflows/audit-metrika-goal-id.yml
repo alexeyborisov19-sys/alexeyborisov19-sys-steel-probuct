@@ -25,3 +25,5 @@ jobs:
             if g.get('id')==612680821:
               print('STRATEGY_GOAL='+json.dumps({'id':g.get('id'),'name':g.get('name'),'type':g.get('type'),'conditions':g.get('conditions'),'status':g.get('status')},ensure_ascii=False))
           PY
+
+# trigger
