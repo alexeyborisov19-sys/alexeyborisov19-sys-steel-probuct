@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 import { NextResponse } from "next/server";
 import { assistantSessionStore } from "@/lib/assistant/session-store";
 import { sessionLeadSummary } from "@/lib/assistant/state";
+import { quoteSnapshotForLead } from "@/lib/server/quote-engine/quote-snapshot";
+import { deliverAssistantLeadToCrm } from "@/lib/server/crm/assistant-lead-delivery";
 import { recordConsentAudit } from "@/lib/legal/consent-audit";
 import { legalDocumentVersions } from "@/lib/legal";
 import { clientKey } from "@/lib/security/client-ip";
@@ -146,6 +148,9 @@ export async function POST(request: Request) {
       email: email || null,
       company: company || null,
       engineeringState: session?.state ?? null,
+      // Last complete attempt is stored with the same consent and retention policy.
+      // Browser-submitted costs or quote objects are deliberately ignored.
+      quoteSnapshot: quoteSnapshotForLead(session),
       summary: session ? sessionLeadSummary(session) : "Диалоговая сессия не найдена; требуется уточнение менеджером.",
       pageUrl: safePageUrl(pageUrl),
       files: quarantinedFiles,
@@ -185,6 +190,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // The request is already durable. CRM failure never changes acceptance into a false rejection.
+    const crmDelivery = await deliverAssistantLeadToCrm(record);
+    const temporary = `${leadFile}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporary, `${JSON.stringify({ ...record, crmDelivery }, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+      await rename(temporary, leadFile);
+    } catch {
+      await unlink(temporary).catch(() => {});
+      safeSecurityLog("assistant-lead", "internal_error", ownerKey);
+    }
     safeSecurityLog("assistant-lead", "stored", ownerKey);
     return NextResponse.json({ ok: true, requestId });
   } catch (error) {

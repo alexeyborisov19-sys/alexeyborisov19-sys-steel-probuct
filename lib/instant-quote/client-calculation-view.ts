@@ -1,9 +1,13 @@
 import type { InstantQuoteProject, ManufacturingOperation } from "@/lib/instant-quote/domain";
+import { CALCULATION_DISCLAIMER_SHORT, AI_REVIEW_UNAVAILABLE_NOTICE } from "@/lib/instant-quote/client-labels";
 
 export type ClientCalculationSignal = {
   partId: string;
   status: "pending" | "ready" | "needs-review" | "blocked";
   approvedSalePriceRub?: number | null;
+  /** Server-owned outcome, never inferred from the existence of a price. */
+  aiReviewed?: boolean;
+  marketVerified?: boolean;
 };
 
 export type ClientPartCalculationView = {
@@ -64,11 +68,22 @@ export function createClientCalculationView(
     parts: project.parts.map((part) => {
       const signal = byPartId.get(part.id);
       const approvedSalePrice = signal?.approvedSalePriceRub;
-      const hasApprovedSalePrice = Number.isFinite(approvedSalePrice) && (approvedSalePrice ?? 0) > 0;
       const status = signal?.status ?? "pending";
+      // A stale amount must not survive a failed/unfinished calculation or review.
+      const hasApprovedSalePrice = status === "ready" && Number.isFinite(approvedSalePrice)
+        && (approvedSalePrice ?? 0) > 0;
       const price = hasApprovedSalePrice
         ? { status: "approved" as const, totalRub: approvedSalePrice! }
         : { status: "not-published" as const };
+      const message = hasApprovedSalePrice
+        ? `Предварительная стоимость позиции: ${rub(approvedSalePrice!)} ₽.`
+        : status === "blocked"
+          ? "Для этой детали требуется уточнение перед расчётом."
+          : status === "needs-review"
+            ? "Для итоговой цены требуется проверка исходных и производственных данных."
+            : status === "ready"
+              ? "Предварительный расчёт завершён."
+              : "Деталь принята в расчёт.";
 
       return {
         partId: part.id,
@@ -87,15 +102,7 @@ export function createClientCalculationView(
           depthMm: part.geometry?.depthMm ?? null,
         },
         price,
-        message: hasApprovedSalePrice
-          ? `Расчёт завершён. Стоимость позиции: ${rub(approvedSalePrice!)} ₽.`
-          : status === "blocked"
-            ? "Для этой детали требуется уточнение перед расчётом."
-            : status === "needs-review"
-              ? "Модель распознана, но для итоговой цены требуется уточнение производственных данных."
-              : status === "ready"
-                ? "Расчёт завершён."
-                : "Деталь принята в расчёт.",
+        message: `${message} ${hasApprovedSalePrice && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
       };
     }),
   };

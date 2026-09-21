@@ -1,3 +1,5 @@
+import type { SessionQuoteSnapshot } from "@/lib/server/quote-engine/quote-snapshot";
+
 export type EngineeringField =
   | "productType"
   | "purpose"
@@ -25,6 +27,10 @@ export type EngineeringLeadState = {
   fileTypes?: string[];
   deadline?: string;
   deliveryRegion?: string;
+  cassetteType?: "open" | "closed";
+  quoteRequiresCad?: boolean;
+  /** Extra operations/geometry cannot disappear after the customer answers a quantity question. */
+  quoteRequiredScope?: string[];
   unknownFields: EngineeringField[];
   missingFields: EngineeringField[];
   readiness: "new" | "clarifying" | "ready_for_lead";
@@ -42,6 +48,9 @@ export type AssistantSession = {
   state: EngineeringLeadState;
   history: ServerConversationMessage[];
   lastAskedField?: EngineeringField;
+  quoteCalculator?: "auto" | "metal-parts" | "metal-cassettes";
+  /** Server-owned audit. Contacts and ownership metadata remain access controlled. */
+  quoteSnapshot?: SessionQuoteSnapshot;
   createdAt: number;
   updatedAt: number;
 };
