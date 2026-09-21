@@ -1,0 +1,76 @@
+name: Correct SPb price group geography
+on:
+  push:
+    branches: [ops/yandex-audit-20260921]
+    paths: ['.github/workflows/fix-direct-spb-price-region.yml']
+permissions:
+  contents: read
+concurrency:
+  group: steelprodukt-direct-attribution
+  cancel-in-progress: false
+jobs:
+  correct-region:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Correct one verified mismatched region without changing budget
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re,datetime,copy
+          from urllib.request import Request,urlopen
+          from urllib.parse import unquote
+          from urllib.error import HTTPError
+          token=os.environ.get('TOKEN','').strip().strip('\"\'')
+          token=re.sub(r'^(OAuth|Bearer)\s+','',token,flags=re.I)
+          match=re.search(r'(?:^|[?#&])access_token=([^&#\s]+)',token)
+          if match: token=unquote(match.group(1))
+          if not token: raise SystemExit('Credential not configured')
+          gid,cid=5798460252,714391927
+          def call(service,method,params):
+              req=Request('https://api.direct.yandex.com/json/v5/'+service,data=json.dumps({'method':method,'params':params}).encode(),headers={'Authorization':'Bearer '+token,'Content-Type':'application/json; charset=utf-8','Accept-Language':'ru'})
+              try:
+                  with urlopen(req,timeout=30) as response:
+                      data=json.load(response); rid=response.headers.get('RequestId')
+              except HTTPError as e:
+                  raise SystemExit('Direct HTTP error '+str(e.code))
+              if data.get('error'): raise SystemExit('API error '+str(data['error'].get('error_code')))
+              return data.get('result',{}),rid
+          def read_group():
+              data,rid=call('adgroups','get',{'SelectionCriteria':{'Ids':[gid]},'FieldNames':['Id','Name','CampaignId','RegionIds','NegativeKeywords','Status']})
+              rows=data.get('AdGroups',[])
+              if len(rows)!=1: raise SystemExit('Target group not uniquely resolved')
+              return rows[0],rid
+          def read_campaign():
+              data,rid=call('campaigns','get',{'SelectionCriteria':{'Ids':[cid]},'FieldNames':['Id','Type','State','DailyBudget'],'TextCampaignFieldNames':['CounterIds','BiddingStrategy','PriorityGoals','Settings','AttributionModel']})
+              rows=data.get('Campaigns',[])
+              if len(rows)!=1: raise SystemExit('Target campaign not uniquely resolved')
+              return rows[0]
+          before,_=read_group()
+          campaign_before=read_campaign()
+          if before.get('Id')!=gid or before.get('CampaignId')!=cid or before.get('Name')!='МК СПб/ЛО | Цена':
+              raise SystemExit('Group identity has changed; no write performed')
+          if campaign_before.get('State')!='ON' or campaign_before.get('Type')!='TEXT_CAMPAIGN':
+              raise SystemExit('Campaign state/type has changed; no write performed')
+          old=before.get('RegionIds')
+          if old not in ([3],[10174]): raise SystemExit('Geography changed since audit; no write performed')
+          ads,_=call('ads','get',{'SelectionCriteria':{'AdGroupIds':[gid]},'FieldNames':['Id','AdGroupId','CampaignId','Type'],'TextAdFieldNames':['Text','Href'],'Page':{'Limit':100,'Offset':0}})
+          matching=[a for a in ads.get('Ads',[]) if a.get('AdGroupId')==gid and a.get('CampaignId')==cid and 'Санкт-Петербург и Ленобласть' in a.get('TextAd',{}).get('Text','') and a.get('TextAd',{}).get('Href','').startswith('https://www.steelprodukt.ru/products/metallokassety?')]
+          if not matching: raise SystemExit('Ad no longer confirms intended SPb geography; no write performed')
+          write_id=None
+          if old==[3]:
+              data,write_id=call('adgroups','update',{'AdGroups':[{'Id':gid,'RegionIds':[10174]}]})
+              rows=data.get('UpdateResults',[])
+              if len(rows)!=1 or rows[0].get('Id')!=gid or rows[0].get('Errors'):
+                  raise SystemExit('Region update rejected')
+          after,read_id=read_group()
+          campaign_after=read_campaign()
+          protected_before={k:v for k,v in before.items() if k not in ['RegionIds','Status']}
+          protected_after={k:v for k,v in after.items() if k not in ['RegionIds','Status']}
+          proof={'as_of_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'campaign_id':cid,'adgroup_id':gid,'field':'RegionIds','before':old,'after':after.get('RegionIds'),'write_performed':old==[3],'other_group_settings_unchanged':protected_before==protected_after,'campaign_settings_unchanged':campaign_before==campaign_after,'status_before':before.get('Status'),'status_after':after.get('Status'),'update_request_id':write_id,'verification_request_id':read_id}
+          print('REGION_VERIFICATION='+json.dumps(proof))
+          if after.get('RegionIds')!=[10174] or not proof['other_group_settings_unchanged'] or not proof['campaign_settings_unchanged']:
+              raise SystemExit('Post-update verification requires review')
+          print('Only one group region corrected. No budget, bids, strategy, ads, keywords or other groups changed.')
+          PY
