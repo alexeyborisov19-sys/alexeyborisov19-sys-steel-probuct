@@ -1,0 +1,119 @@
+name: Expand Direct ad variants safely
+on:
+  push:
+    branches: [ops/direct-ad-expansion-20260921]
+    paths: ['.github/workflows/expand-direct-ads.yml']
+permissions:
+  contents: read
+concurrency:
+  group: steelprodukt-direct-ad-expansion
+  cancel-in-progress: false
+jobs:
+  expand:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Correct named geography and add second ad variants
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re,copy
+          from urllib.request import Request,urlopen
+          from urllib.parse import unquote
+          from urllib.error import HTTPError
+          token=os.environ.get('TOKEN','').strip().strip('"\'')
+          token=re.sub(r'^(OAuth|Bearer)\\s+','',token,flags=re.I)
+          m=re.search(r'(?:^|[?#&])access_token=([^&#\\s]+)',token)
+          if m: token=unquote(m.group(1))
+          if not token: raise SystemExit('Direct credential missing')
+          CID=714391927
+          def call(service,method,params,version='v5'):
+            req=Request('https://api.direct.yandex.com/json/'+version+'/'+service,data=json.dumps({'method':method,'params':params},ensure_ascii=False).encode(),headers={'Authorization':'Bearer '+token,'Content-Type':'application/json; charset=utf-8','Accept-Language':'ru'})
+            try:
+              with urlopen(req,timeout=45) as r: data=json.load(r)
+            except HTTPError as e:
+              body=e.read().decode(errors='replace')[:1000]
+              raise SystemExit('HTTP '+str(e.code)+' '+body)
+            if data.get('error'): raise SystemExit('API '+json.dumps(data['error'],ensure_ascii=False))
+            return data.get('result',{})
+          campaign=call('campaigns','get',{'SelectionCriteria':{'Ids':[CID]},'FieldNames':['Id','Name','Type','State','Status','DailyBudget'],'TextCampaignFieldNames':['CounterIds','BiddingStrategy','PriorityGoals','Settings','AttributionModel']}).get('Campaigns',[])
+          if len(campaign)!=1 or campaign[0]['State']!='ON' or campaign[0]['Type']!='TEXT_CAMPAIGN': raise SystemExit('Campaign identity/state changed')
+          protected_campaign=copy.deepcopy(campaign[0])
+          groups=call('adgroups','get',{'SelectionCriteria':{'CampaignIds':[CID]},'FieldNames':['Id','Name','CampaignId','RegionIds','Status'],'Page':{'Limit':10000}}).get('AdGroups',[])
+          byid={g['Id']:g for g in groups}
+          # Resolve Russia from the current Direct targeting dictionary instead of hard-coding it.
+          geo=call('dictionaries','getGeoRegions',{'SelectionCriteria':{'ExactNames':['Россия']},'FieldNames':['GeoRegionId','GeoRegionName','ParentGeoRegionNames'],'Page':{'Limit':20,'Offset':0}})
+          ru=[x for x in geo.get('GeoRegions',[]) if x.get('GeoRegionName')=='Россия']
+          if len(ru)!=1: raise SystemExit('Russia region not uniquely resolved')
+          RUSSIA=ru[0]['GeoRegionId']
+          # Correct only groups whose names and existing ad copy explicitly declare this geography.
+          region_updates=[]
+          if byid.get(5798460249,{}).get('RegionIds')==[213]:
+            region_updates.append({'Id':5798460249,'RegionIds':[1]})
+          for gid in range(5798460260,5798460265):
+            g=byid.get(gid)
+            if g and g.get('Name','').startswith('МК Россия |') and g.get('RegionIds')!=[RUSSIA]:
+              region_updates.append({'Id':gid,'RegionIds':[RUSSIA]})
+          if region_updates:
+            res=call('adgroups','update',{'AdGroups':region_updates})
+            errs=[e for x in res.get('UpdateResults',[]) for e in x.get('Errors',[])]
+            if errs: raise SystemExit('Region update errors '+json.dumps(errs,ensure_ascii=False))
+          ads=call('ads','get',{'SelectionCriteria':{'CampaignIds':[CID]},'FieldNames':['Id','CampaignId','AdGroupId','Type','State','Status'],'TextAdFieldNames':['Title','Title2','Text','Href','DisplayUrlPath','SitelinkSetId'],'Page':{'Limit':10000}}).get('Ads',[])
+          active={}
+          for a in ads:
+            if a.get('State')!='ARCHIVED': active.setdefault(a['AdGroupId'],[]).append(a)
+          def creative(name):
+            intent=name.split('|',1)[1].strip() if '|' in name else name
+            if name.startswith('МК '):
+              if intent=='Купить/заказать': return ('Металлокассеты на заказ по проекту','Изготовление фасадных металлокассет по проекту. Загрузите КД для расчёта.')
+              if intent=='Производитель': return ('Производство фасадных металлокассет','Фасадные металлокассеты по проекту. Серийное производство из листового металла.')
+              if intent=='Цена': return ('Расчёт стоимости металлокассет','Расчёт по проекту, исполнению и объёму. Загрузите КД для подготовки предложения.')
+              if intent=='НВФ': return ('Металлокассеты для НВФ на заказ','Фасадные кассеты для навесных систем по проекту. Изготовление из листового металла.')
+              if intent=='Тип/исполнение': return ('Металлокассеты разных исполнений','Открытые, закрытые и нестандартные кассеты по проекту. Изготовление на заказ.')
+            fixed={
+              'Доборы | Фасад':('Доборные элементы по чертежам','Фасонные элементы из листового металла по размерам и КД заказчика.'),
+              'Корзины | Кондиционеры':('Фасадные корзины для кондиционеров','Корзины и экраны под габариты наружных блоков и узлы крепления.'),
+              'Решётки | Вентиляция':('Вентиляционные решётки по размерам','Металлические вентрешётки под проём и монтажный узел. Изготовление на заказ.'),
+              'Корпуса | Металл':('Корпуса из листового металла','Корпуса, шкафы и кожухи по КД. Опытный образец и серийное производство.'),
+              'Закладные | Детали':('Закладные детали по чертежам','Изготовление металлических закладных деталей по чертежам и спецификации.'),
+              'По КД | Производство':('Производство изделий по КД','Изделия из листового металла по КД: проверка, производство, контроль и упаковка.'),
+              'Бренд':('Сталь Продукт — изделия из металла','Официальный сайт бренда. Инженерные решения и производство из листового металла.')
+            }
+            return fixed.get(name)
+          new=[]
+          for g in groups:
+            existing=active.get(g['Id'],[])
+            if len(existing)>=2: continue
+            if len(existing)!=1: continue
+            variant=creative(g['Name'])
+            if not variant: continue
+            base=existing[0].get('TextAd',{})
+            title,text=variant
+            if any(a.get('TextAd',{}).get('Title')==title for a in existing): continue
+            item={'AdGroupId':g['Id'],'TextAd':{'Title':title,'Text':text,'Mobile':'NO','Href':base.get('Href'),'DisplayUrlPath':base.get('DisplayUrlPath')}}
+            if base.get('SitelinkSetId'): item['TextAd']['SitelinkSetId']=base['SitelinkSetId']
+            new.append(item)
+          created=[]
+          if new:
+            res=call('ads','add',{'Ads':new})
+            for x in res.get('AddResults',[]):
+              if x.get('Errors'): raise SystemExit('Ad add errors '+json.dumps(x['Errors'],ensure_ascii=False))
+              if x.get('Id'): created.append(x['Id'])
+          if created:
+            mod=call('ads','moderate',{'SelectionCriteria':{'Ids':created}})
+            errors=[e for x in mod.get('ModerateResults',[]) for e in x.get('Errors',[])]
+            if errors: raise SystemExit('Moderation submission errors '+json.dumps(errors,ensure_ascii=False))
+          after_campaign=call('campaigns','get',{'SelectionCriteria':{'Ids':[CID]},'FieldNames':['Id','Name','Type','State','Status','DailyBudget'],'TextCampaignFieldNames':['CounterIds','BiddingStrategy','PriorityGoals','Settings','AttributionModel']}).get('Campaigns',[{}])[0]
+          if protected_campaign!=after_campaign: raise SystemExit('Campaign budget/strategy/settings changed unexpectedly')
+          after_groups=call('adgroups','get',{'SelectionCriteria':{'CampaignIds':[CID]},'FieldNames':['Id','Name','RegionIds','Status'],'Page':{'Limit':10000}}).get('AdGroups',[])
+          verify={g['Id']:g for g in after_groups}
+          if verify[5798460249]['RegionIds']!=[1]: raise SystemExit('Moscow/MO type group geography verification failed')
+          for gid in range(5798460260,5798460265):
+            if verify[gid]['RegionIds']!=[RUSSIA]: raise SystemExit('Russia geography verification failed for '+str(gid))
+          print('RUSSIA_REGION_ID='+str(RUSSIA))
+          print('REGION_UPDATES='+json.dumps(region_updates,ensure_ascii=False))
+          print('ADS_CREATED='+str(len(created)))
+          print('CREATED_IDS='+json.dumps(created))
+          print('VERIFIED: campaign budget, bidding strategy, counter, priority goals and campaign settings unchanged.')
+          PY
