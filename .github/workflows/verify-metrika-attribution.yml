@@ -1,0 +1,44 @@
+name: Verify Metrika attribution
+on:
+  push:
+    branches: [verify/metrika-attribution-20260921]
+    paths: ['.github/workflows/verify-metrika-attribution.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re,datetime
+          from urllib.request import Request,urlopen
+          from urllib.parse import urlencode,unquote
+          t=os.environ['TOKEN'].strip().strip('"\''); t=re.sub(r'^OAuth\\s+','',t,flags=re.I)
+          m=re.search(r'(?:^|[?#&])access_token=([^&#\\s]+)',t)
+          if m:t=unquote(m.group(1))
+          headers={'Authorization':'OAuth '+t,'Accept':'application/json'}
+          def get(q):
+            u='https://api-metrika.yandex.net/stat/v1/data?'+urlencode(q)
+            with urlopen(Request(u,headers=headers),timeout=30) as r:return json.load(r)
+          common={'ids':112542227,'date1':'2026-09-21','date2':'2026-09-21','accuracy':'full','limit':100}
+          for name,dim,metrics in [
+            ('TOTAL','ym:s:date','ym:s:visits,ym:s:users,ym:s:pageviews'),
+            ('SOURCES','ym:s:lastTrafficSource','ym:s:visits,ym:s:users,ym:s:pageviews'),
+            ('DIRECT','ym:s:lastDirectClickOrder','ym:s:visits,ym:s:users,ym:s:pageviews'),
+            ('UTM_SOURCE','ym:s:lastUTMSource','ym:s:visits,ym:s:users,ym:s:pageviews'),
+            ('LANDING','ym:s:startURLPath','ym:s:visits,ym:s:users,ym:s:pageviews'),
+          ]:
+            q={**common,'dimensions':dim,'metrics':metrics}
+            d=get(q)
+            print(name+'='+json.dumps({'totals':d.get('totals'),'data':d.get('data',[])[:30]},ensure_ascii=False))
+          # Read the actual goal ID for the successful quote event and query it.
+          req=Request('https://api-metrika.yandex.net/management/v1/counter/112542227/goals',headers=headers)
+          with urlopen(req,timeout=30) as r: goals=json.load(r).get('goals',[])
+          goal=next((g for g in goals if any(c.get('url')=='quote_request_success' for c in g.get('conditions',[]))),None)
+          if goal:
+            q={**common,'dimensions':'ym:s:date','metrics':'ym:s:goal'+str(goal['id'])+'reaches'}
+            d=get(q); print('QUOTE_SUCCESS='+json.dumps({'goal_id':goal['id'],'totals':d.get('totals'),'data':d.get('data',[])},ensure_ascii=False))
+          PY
