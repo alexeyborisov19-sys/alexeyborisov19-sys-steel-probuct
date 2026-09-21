@@ -1,0 +1,41 @@
+name: Verify Direct currency and region dictionary
+on:
+  push:
+    branches: [ops/yandex-audit-20260921]
+    paths: ['.github/workflows/check-direct-currency-regions.yml']
+permissions:
+  contents: read
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read currency and public geographic dictionary only
+        env:
+          TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re
+          from urllib.request import Request,urlopen
+          from urllib.parse import unquote
+          token=os.environ.get('TOKEN','').strip().strip('\"\'')
+          token=re.sub(r'^(OAuth|Bearer)\s+','',token,flags=re.I)
+          match=re.search(r'(?:^|[?#&])access_token=([^&#\s]+)',token)
+          if match: token=unquote(match.group(1))
+          if not token: raise SystemExit('Credential not configured')
+          def get(service,params):
+              req=Request('https://api.direct.yandex.com/json/v5/'+service,data=json.dumps({'method':'get','params':params}).encode(),headers={'Authorization':'Bearer '+token,'Content-Type':'application/json','Accept-Language':'ru'})
+              with urlopen(req,timeout=35) as response:
+                  data=json.load(response)
+                  rid=response.headers.get('RequestId')
+              if data.get('error'): raise SystemExit('API error '+str(data['error'].get('error_code')))
+              return data.get('result',{}),rid
+          clients,rid=get('clients',{'FieldNames':['Currency']})
+          currencies=sorted(set(c['Currency'] for c in clients.get('Clients',[]) if c.get('Currency')))
+          print('CURRENCY_VERIFIED='+json.dumps({'currencies':currencies,'request_id':rid}))
+          dictionary,rid=get('dictionaries',{'DictionaryNames':['GeoRegions']})
+          wanted={1,2,3,213,225,10174}
+          rows=[{'GeoRegionId':x.get('GeoRegionId'),'GeoRegionName':x.get('GeoRegionName'),'ParentId':x.get('ParentId')} for x in dictionary.get('GeoRegions',[]) if x.get('GeoRegionId') in wanted]
+          print('PUBLIC_REGION_DICTIONARY='+json.dumps({'regions':rows,'request_id':rid},ensure_ascii=False))
+          print('Read only. No advertising, website or account settings changed.')
+          PY
