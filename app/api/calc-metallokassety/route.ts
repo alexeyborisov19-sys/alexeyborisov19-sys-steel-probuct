@@ -1,3 +1,8 @@
+import { reviewCassetteBudget } from "@/lib/server/quote-engine/cassette-budget-review";
+import { assertSameOriginRequest } from "@/lib/security/same-origin";
+import { readJsonBody, PayloadTooLargeError } from "@/lib/security/request-body";
+import { clientKey } from "@/lib/security/client-ip";
+import { consumeRules } from "@/lib/security/rate-limit";
 import { NextResponse } from "next/server";
 import { CALCULATION_DISCLAIMER } from "@/lib/instant-quote/client-labels";
 import {
@@ -19,10 +24,18 @@ function invalid(message: string) {
   return NextResponse.json({ error: message, disclaimer: CALCULATION_DISCLAIMER }, { status: 400, headers: { "Cache-Control": "no-store" } });
 }
 
+export const runtime = "nodejs";
 export async function POST(request: Request) {
+  try { assertSameOriginRequest(request); }
+  catch { return NextResponse.json({ error: "Запрос отклонён." }, { status: 403, headers: { "Cache-Control": "no-store" } }); }
+  const limited = consumeRules(clientKey(request), [{ id: "cassette-budget-minute", limit: 60, windowMs: 60_000 }]);
+  if (limited) return NextResponse.json({ error: "Слишком много расчётов. Повторите позже." }, { status: 429, headers: { "Retry-After": String(limited.retryAfterSeconds), "Cache-Control": "no-store" } });
   let raw: unknown;
-  try { raw = await request.json(); }
-  catch { return invalid("Некорректные данные расчёта."); }
+  try { raw = await readJsonBody(request, 8192); }
+  catch (error) {
+    if (error instanceof PayloadTooLargeError) return NextResponse.json({ error: "Слишком большой запрос." }, { status: 413, headers: { "Cache-Control": "no-store" } });
+    return invalid("Некорректные данные расчёта.");
+  }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return invalid("Некорректные данные расчёта.");
   const payload = raw as Record<string, unknown>;
   const mode = payload.mode === "wall" ? "wall" : payload.mode === "area" ? "area" : null;
@@ -48,13 +61,11 @@ export async function POST(request: Request) {
     || !Number.isSafeInteger(estimate.quantity) || estimate.quantity <= 0) {
     return invalid("Для этих параметров нельзя сформировать ориентировочную стоимость. Проверьте площадь и проёмы.");
   }
-  return NextResponse.json({
-    netAreaM2: estimate.netAreaM2,
-    quantity: estimate.quantity,
-    defaultRateRubM2: estimate.defaultRateRubM2,
-    approximateRateRubM2: estimate.approximateRateRubM2,
-    approximateTotalRub: Math.max(baseline.approximateTotalRub, estimate.approximateTotalRub),
-    disclaimer: CALCULATION_DISCLAIMER,
-    marketVerified: false,
-  }, { headers: { "Cache-Control": "no-store" } });
+  try {
+    const reviewed = await reviewCassetteBudget(input);
+    return NextResponse.json(reviewed.response, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "Не удалось проверить расчёт. Требуется инженер.", disclaimer: CALCULATION_DISCLAIMER },
+      { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 }
