@@ -1,0 +1,27 @@
+name: Audit Metrika strategy goal
+on:
+  push:
+    branches: [audit/metrika-goal-id-20260921]
+    paths: ['.github/workflows/audit-metrika-goal-id.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,re
+          from urllib.request import Request,urlopen
+          from urllib.parse import unquote
+          t=os.environ['TOKEN'].strip().strip('"\''); t=re.sub(r'^OAuth\\s+','',t,flags=re.I)
+          m=re.search(r'(?:^|[?#&])access_token=([^&#\\s]+)',t)
+          if m:t=unquote(m.group(1))
+          q=Request('https://api-metrika.yandex.net/management/v1/counter/112542227/goals',headers={'Authorization':'OAuth '+t,'Accept':'application/json'})
+          with urlopen(q,timeout=30) as r:d=json.load(r)
+          for g in d.get('goals',[]):
+            if g.get('id')==612680821:
+              print('STRATEGY_GOAL='+json.dumps({'id':g.get('id'),'name':g.get('name'),'type':g.get('type'),'conditions':g.get('conditions'),'status':g.get('status')},ensure_ascii=False))
+          PY
