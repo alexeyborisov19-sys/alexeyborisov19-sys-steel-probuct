@@ -1,5 +1,6 @@
 import type { EngineeringLeadState } from "@/lib/assistant/types";
 import { classifyProduct, type CalculatorId } from "@/lib/quote-engine/classification";
+import { hasBendingRequirement } from "@/lib/quote-engine/conversation-input";
 import {
   materialLabelToId,
   nearestCassetteThickness,
@@ -55,11 +56,11 @@ export type QuoteEnginePlan =
  * part it otherwise is.
  */
 function mentionsBending(rawMessage: string): boolean {
-  return /гнут[а-я]*|гиб[а-я]*|отбортов[а-я]*|загиб[а-я]*/iu.test(rawMessage);
+  return hasBendingRequirement(rawMessage);
 }
 
 function metalPartsPlan(state: EngineeringLeadState, rawMessage: string): QuoteEnginePlan {
-  if (mentionsBending(rawMessage)) {
+  if (state.quoteRequiresCad || mentionsBending(rawMessage)) {
     return {
       status: "needs-cad",
       calculator: "metal-parts",
