@@ -25,10 +25,10 @@ export type EngineeringLeadState = {
   fileTypes?: string[];
   deadline?: string;
   deliveryRegion?: string;
-  /** Open/closed type is only required by the cassette calculator. */
   cassetteType?: "open" | "closed";
-  /** A previously stated bend must not disappear after a quantity-only reply. */
   quoteRequiresCad?: boolean;
+  /** Extra operations/geometry cannot disappear after the customer answers a quantity question. */
+  quoteRequiredScope?: string[];
   unknownFields: EngineeringField[];
   missingFields: EngineeringField[];
   readiness: "new" | "clarifying" | "ready_for_lead";
@@ -46,7 +46,6 @@ export type AssistantSession = {
   state: EngineeringLeadState;
   history: ServerConversationMessage[];
   lastAskedField?: EngineeringField;
-  /** Auto starts from free text. A resolved/explicit calculator is pinned across turns. */
   quoteCalculator?: "auto" | "metal-parts" | "metal-cassettes";
   createdAt: number;
   updatedAt: number;
