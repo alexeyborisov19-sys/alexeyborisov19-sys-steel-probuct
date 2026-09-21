@@ -4,6 +4,7 @@ import { decideMarketFloor, type MarketQuoteSpec } from "@/lib/quote-engine/mark
 import { loadQuoteMarketContext, type QuoteMarketContext, type ReadyQuotePlan } from "@/lib/server/quote-engine/market-context";
 import { discoverQuoteMarket, type MarketDiscovery } from "@/lib/server/quote-engine/market-discovery";
 import { reviewQuoteStages, type StageEvidence, type StageReviewCaller } from "@/lib/server/quote-engine/stage-review";
+import { verifyStageEvidence } from "@/lib/server/quote-engine/stage-evidence";
 import type { QuoteEngineResult } from "@/lib/server/quote-engine/execute";
 
 export type QuoteFinalizationOptions = {
@@ -105,9 +106,11 @@ export async function finalizeQuoteResult(
     pricing: { calculatedRubBatch: baseline, finalRubBatch: decision.finalRubBatch, rule: "max(calculated,verified-arithmetic-mean)", floorProtected: decision.finalRubBatch >= baseline },
     disclaimer: { clientMessage },
   };
-  record.stageReview = options.aiReviewCaller === null
+  // Disabling a network reviewer never disables arithmetic and geometry gates.
+  const deterministicFailure = verifyStageEvidence(evidence);
+  record.stageReview = deterministicFailure ?? (options.aiReviewCaller === null
     ? { status: "not-configured", stages: [] }
-    : await reviewQuoteStages(evidence, options.aiReviewCaller);
+    : await reviewQuoteStages(evidence, options.aiReviewCaller));
   const required = options.requireAiReview ?? process.env.STEEL_PRODUCT_QUOTE_AI_REVIEW_REQUIRED === "true";
   if (record.stageReview.status === "needs-review" || (required && record.stageReview.status !== "passed")) {
     return {
