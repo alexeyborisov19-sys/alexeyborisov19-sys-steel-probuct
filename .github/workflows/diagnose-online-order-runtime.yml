@@ -27,49 +27,32 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
 
-      - name: Inspect active Next build and PM2
+      - name: Inspect bounded PM2 memory evidence
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
         run: |
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" \
-            "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+            "$BEGET_USER@$BEGET_HOST" 'bash -s' <<'REMOTE'
           set -euo pipefail
-          cd "$APP_PATH"
-          echo '--- APP PATH ---'
-          pwd
-          echo '--- BUILD COMMIT ---'
-          cat .next/BUILD_COMMIT 2>/dev/null || echo '<missing>'
-          echo
-          echo '--- BUILD ID ---'
-          cat .next/BUILD_ID 2>/dev/null || echo '<missing>'
-          echo
-          echo '--- CAD ROUTE IN ACTIVE MANIFEST ---'
-          grep -F 'api/online-order/cad/analyze' .next/server/app-paths-manifest.json || true
-          echo '--- CAD ROUTE FILE ---'
-          ls -l .next/server/app/api/online-order/cad/analyze/route.js 2>/dev/null || true
-          echo '--- PM2 PROCESS INFO ---'
-          pm2 jlist | node - <<'NODE'
-          let input='';
-          process.stdin.on('data', c => input += c);
-          process.stdin.on('end', () => {
-            for (const p of JSON.parse(input)) {
-              if (p.name !== 'steelprodukt') continue;
-              console.log(JSON.stringify({
-                name: p.name,
-                pid: p.pid,
-                status: p.pm2_env?.status,
-                cwd: p.pm2_env?.pm_cwd,
-                exec: p.pm2_env?.pm_exec_path,
-                args: p.pm2_env?.args,
-                node: p.pm2_env?.node_version,
-                restart_time: p.pm2_env?.restart_time,
-              }, null, 2));
-            }
-          });
-          NODE
-          echo '--- LOCAL ROUTE HEADERS ---'
-          curl -sS -I http://127.0.0.1:3000/api/online-order/cad/analyze || true
+          date -u
+          free -m
+          sudo -iu nodejs bash -s <<'PM2READ'
+          set -euo pipefail
+          pm2 jlist | node -e 'let s=""; process.stdin.on("data",c=>s+=c); process.stdin.on("end",()=>{for(const p of JSON.parse(s)){if(p.name!=="steelprodukt")continue; console.log(JSON.stringify({name:p.name,pid:p.pid,rss:p.monit?.memory,restart_count:p.pm2_env?.restart_time,max_memory_restart:p.pm2_env?.max_memory_restart,status:p.pm2_env?.status,uptime:p.pm2_env?.pm_uptime}));}});'
+          python3 - <<'PYLOG'
+          import pathlib,re
+          p=pathlib.Path.home()/".pm2/pm2.log"
+          if not p.exists():
+              print("PM2 supervisor log unavailable")
+          else:
+              with p.open("rb") as f:
+                  f.seek(0,2)
+                  f.seek(max(0,f.tell()-1048576))
+                  lines=f.read().decode("utf-8",errors="replace").splitlines()
+              hits=[s for s in lines if re.search(r"memory|exceed|SIGKILL|SIGTERM|exited with code",s,re.I) and ("steelprodukt" in s or "memory" in s.lower())]
+              for s in hits[-30:]: print(s[:800])
+          PYLOG
+          PM2READ
           REMOTE
