@@ -4,6 +4,7 @@ export type ProductionOrderPriority = "ordinary" | "urgent" | "critical";
 export type ProductionOrderMaterialSource = "production" | "customer";
 export type ProductionOrderOperationSource = "cad" | "calculation" | "manual" | "mixed";
 export type ProductionOrderArtifactKind = "cad" | "drawing" | "attachment";
+export type ProductionOrderCommercialStatus = "approved" | "estimate" | "unavailable";
 
 export type ProductionOrderOperation = {
   code: ManufacturingOperation;
@@ -28,6 +29,17 @@ export type ProductionOrderPart = {
   };
   operations: ProductionOrderOperation[];
   workshopNote: string | null;
+  commercial: {
+    totalRub: number | null;
+    status: ProductionOrderCommercialStatus;
+  };
+};
+
+export type ProductionOrderArtifactSource = {
+  kind: "quarantine";
+  requestId: string;
+  storageId: string;
+  extension: string;
 };
 
 export type ProductionOrderArtifact = {
@@ -35,6 +47,7 @@ export type ProductionOrderArtifact = {
   kind: ProductionOrderArtifactKind;
   fileName: string;
   partId?: string | null;
+  source?: ProductionOrderArtifactSource | null;
 };
 
 export type ProductionOrderDelivery = {
@@ -64,6 +77,7 @@ export type ProductionOrder = {
   commercial: {
     totalRub: number | null;
     currency: "RUB";
+    status: ProductionOrderCommercialStatus;
   };
 };
 
