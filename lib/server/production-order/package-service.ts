@@ -1,7 +1,12 @@
 import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { ProductionOrder } from "@/lib/production-order/domain";
 import { parseProductionOrder } from "@/lib/production-order/parse-production-order";
-import { planProductionOrderPackage, type ProductionOrderPackagePlan } from "@/lib/server/production-order/storage";
+import {
+  planProductionOrderPackage,
+  productionOrderRevisionDirectory,
+  type ProductionOrderPackagePlan,
+} from "@/lib/server/production-order/storage";
 
 export class ProductionOrderPackageConflictError extends Error {
   constructor(message = "Папка с таким номером КП уже занята другим заказом.") {
@@ -13,6 +18,9 @@ export class ProductionOrderPackageConflictError extends Error {
 export type ProductionOrderPackageResult = {
   created: boolean;
   changed: boolean;
+  revision: number;
+  revisionDirectory: string;
+  revisionManifestPath: string;
   plan: ProductionOrderPackagePlan;
 };
 
@@ -67,19 +75,37 @@ async function atomicWrite(target: string, content: string) {
   }
 }
 
+async function latestRevision(plan: ProductionOrderPackagePlan) {
+  try {
+    const entries = await readdir(plan.revisionsDirectory, { withFileTypes: true });
+    let latest = 0;
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !/^\d{4}$/.test(entry.name)) continue;
+      latest = Math.max(latest, Number(entry.name));
+    }
+    return latest;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return 0;
+    throw error;
+  }
+}
+
 /**
  * Creates the order directory only once. A repeated request for the same
- * orderId updates the manifest in place; a different orderId using the same
- * folder name is rejected instead of silently overwriting another order.
+ * orderId updates the manifest in place and adds a numbered revision only when
+ * data really changed. A different orderId using the same folder name is
+ * rejected instead of silently overwriting another order.
  */
 export async function createOrUpdateProductionOrderPackage(
   order: ProductionOrder,
   root?: string,
 ): Promise<ProductionOrderPackageResult> {
   const plan = planProductionOrderPackage(order, root);
-  const [before, directoryState] = await Promise.all([
+  const [before, directoryState, currentRevision] = await Promise.all([
     existingManifest(plan),
     existingDirectoryState(plan),
+    latestRevision(plan),
   ]);
   if (before && before.orderId !== order.orderId) throw new ProductionOrderPackageConflictError();
   if (!before && directoryState.exists && directoryState.entries.length > 0) {
@@ -94,7 +120,18 @@ export async function createOrUpdateProductionOrderPackage(
   const next = canonical(order);
   const previous = before ? canonical(before) : null;
   const changed = previous !== next;
-  if (changed) await atomicWrite(plan.manifestPath, next);
+  const revision = changed ? currentRevision + 1 : Math.max(1, currentRevision);
+  const revisionDirectory = productionOrderRevisionDirectory(plan, revision);
+  const revisionManifestPath = path.join(revisionDirectory, "order-manifest.json");
+
+  if (changed) {
+    await mkdir(revisionDirectory, { recursive: true, mode: 0o700 });
+    await atomicWrite(revisionManifestPath, next);
+    await atomicWrite(plan.manifestPath, next);
+  } else if (currentRevision === 0) {
+    await mkdir(revisionDirectory, { recursive: true, mode: 0o700 });
+    await atomicWrite(revisionManifestPath, next);
+  }
 
   const folderInfo = await stat(plan.orderDirectory);
   if (!folderInfo.isDirectory()) throw new Error("Не удалось создать папку заказа.");
@@ -102,6 +139,9 @@ export async function createOrUpdateProductionOrderPackage(
   return {
     created: before === null,
     changed,
+    revision,
+    revisionDirectory,
+    revisionManifestPath,
     plan,
   };
 }
