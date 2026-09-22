@@ -23,14 +23,15 @@ function cleanOutput(value: string | Buffer) {
 }
 
 function isCancellation(error: unknown) {
-  const candidate = error as NodeJS.ErrnoException & { stderr?: string | Buffer; stdout?: string | Buffer; code?: string | number };
+  const candidate = error as NodeJS.ErrnoException & { stderr?: string | Buffer; stdout?: string | Buffer };
+  const exitCode = (error as { code?: unknown }).code;
   const text = `${candidate.message ?? ""} ${String(candidate.stderr ?? "")} ${String(candidate.stdout ?? "")}`.toLowerCase();
   return text.includes("user canceled")
     || text.includes("user cancelled")
     || text.includes("operation canceled")
     || text.includes("operation cancelled")
-    || candidate.code === "2"
-    || candidate.code === 2;
+    || exitCode === "2"
+    || exitCode === 2;
 }
 
 async function chooseOnMac() {
