@@ -118,7 +118,7 @@ export function ProductionOrderStorageSettings({
           onChange={(event) => setPathValue(event.target.value)}
           autoComplete="off"
           spellCheck={false}
-          placeholder={process.platform === "win32" ? "D:\\Производство\\Заказы" : "/Volumes/Production/Orders"}
+          placeholder="Например: /Volumes/Production/Orders или D:\\Производство\\Заказы"
           className="min-h-12 grow border border-white/15 bg-black/20 px-4 py-3 font-mono text-sm outline-none focus:border-steel-orange/60"
         />
         <button
