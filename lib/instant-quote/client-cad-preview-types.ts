@@ -45,6 +45,8 @@ export type ClientCadDrawingPreview = {
  * Deliberately small public DTO. It contains only display geometry, coarse
  * dimensions and a coarse review state. Production evidence never belongs here.
  */
+export type ClientCountersinkFeature = { smallDiameterMm: number; largeDiameterMm: number; depthMm: number; includedAngleDeg: number };
+
 export type ClientCadPreview = {
   kind: "client-cad-preview";
   format: CadFormat;
@@ -60,6 +62,10 @@ export type ClientCadPreview = {
      * unambiguous, and for DXF, which is a flat drawing.
      */
     bendCountFromModel: number | null;
+    /** Proven internal conical hole sides; null means not determined, not zero. */
+    countersinkCountFromModel?: number | null;
+    countersinkDetectionComplete?: boolean;
+    countersinkFeaturesFromModel?: ClientCountersinkFeature[];
     /**
      * Sheet thickness measured from the BRep, so the customer is not left
      * guessing which thickness their own model was drawn in. It describes the

@@ -1,3 +1,4 @@
+import { verifiedCountersinkCount } from "./verified-step-machining";
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
 import {
@@ -142,6 +143,9 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
       heightMm: model.geometry.heightMm ?? null,
       depthMm: model.geometry.depthMm ?? null,
       bendCountFromModel: model.geometry.bendCount ?? null,
+      countersinkCountFromModel: verifiedCountersinkCount(model),
+      ...(verifiedCountersinkCount(model) != null ? { countersinkDetectionComplete: model.machiningFeatures!.countersinks.complete } : {}),
+      ...(verifiedCountersinkCount(model) != null ? { countersinkFeaturesFromModel: model.machiningFeatures!.countersinks.items.map(({ smallDiameterMm, largeDiameterMm, depthMm, includedAngleDeg }) => ({ smallDiameterMm, largeDiameterMm, depthMm, includedAngleDeg })) } : {}),
       thicknessFromModelMm: measuredThicknessMm(model.sheetMetal),
     },
     meshes: model.meshes.map(displayMesh),

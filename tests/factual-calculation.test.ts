@@ -286,3 +286,41 @@ test("the batch is rounded once from the exact price, not from the rounded piece
   }
   assert.equal(Number.isFinite(result.confirmedDirectCostRubBatch), true);
 });
+
+
+test("countersink uses explicit per-part count, protected tariff and batch quantity", () => {
+  const result = calculateFactualProductionCost({
+    materialId: "cold", thicknessMm: 1, quantity: 50, geometry: baseGeometry,
+    marketPrice: exactCold1mm, operations: ["countersink"], countersinkCount: 3,
+    rateBook: { ...fixtureRateBook, countersinkRubEach: { rateRub: 12.345, source: fixtureSource } },
+  });
+  assert.equal(result.status, "complete");
+  const line = result.lines.find((entry) => entry.code === "countersink")!;
+  assert.equal(line.quantity, 3);
+  assert.equal(line.amountRubEach, 37.04);
+  assert.equal(line.amountRubBatch, 1851.75);
+  assert.equal(result.parameters.countersinkCountEach, 3);
+});
+
+test("countersink never invents a tariff or accepts an invalid count", () => {
+  const input = { materialId: "cold" as const, thicknessMm: 1, quantity: 5, geometry: baseGeometry,
+    marketPrice: exactCold1mm, operations: ["countersink"] as ["countersink"], rateBook: fixtureRateBook };
+  const missingRate = calculateFactualProductionCost({ ...input, countersinkCount: 2 });
+  assert.equal(missingRate.status, "partial");
+  assert.ok(missingRate.missing.some((entry) => entry.code === "operation-rate"));
+  assert.ok(!missingRate.lines.some((entry) => entry.code === "countersink"));
+  for (const countersinkCount of [undefined, 0, -1, 1.5, 100001, NaN, Infinity]) {
+    const result = calculateFactualProductionCost({ ...input, countersinkCount });
+    assert.ok(result.missing.some((entry) => entry.code === "countersink-count"));
+  }
+});
+
+test("welding prices entered seam length per part times batch without inferring cut length", () => {
+  const input = { materialId: "cold" as const, thicknessMm: 1, quantity: 50, geometry: baseGeometry,
+    marketPrice: exactCold1mm, operations: ["welding"] as ["welding"], rateBook: fixtureRateBook };
+  const result = calculateFactualProductionCost({ ...input, weldLengthM: 0.123456 });
+  const line = result.lines.find((entry) => entry.code === "welding")!;
+  assert.equal(line.amountRubEach, 123.46);
+  assert.equal(line.amountRubBatch, 6172.8);
+  assert.ok(calculateFactualProductionCost(input).missing.some((entry) => entry.code === "weld-length"));
+});

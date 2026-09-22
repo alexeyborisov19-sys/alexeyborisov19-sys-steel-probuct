@@ -73,6 +73,7 @@ export function ClientQuotePrintout({
               </td>
               <td style={{ border: "1px solid #999", padding: "4px 6px", textAlign: "right" }}>
                 {["approved", "estimate"].includes(part.price.status) && part.price.totalRub != null ? `${rub(part.price.totalRub)} ₽${part.price.status === "estimate" ? " (ориентировочно)" : ""}` : "по запросу"}
+                {!!part.price.unpricedOperations?.length && <div>Не включено: {operationLabels(part.price.unpricedOperations).join(", ")}</div>}
               </td>
             </tr>
           ))}

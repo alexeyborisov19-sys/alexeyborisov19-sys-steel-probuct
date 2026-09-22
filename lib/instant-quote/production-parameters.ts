@@ -8,6 +8,7 @@ export type ProductionParameterInput = {
   quantity: number;
   geometry: PartGeometrySummary;
   weldLengthMEach?: number;
+  countersinkCountEach?: number;
   powderSides?: 1 | 2;
   explicitPowderAreaM2Each?: number;
   assemblyMinutesEach?: number;
@@ -56,6 +57,7 @@ export type ProductionParameterSummary = {
     bendCountEach: number | null;
     bendCountBatch: number | null;
   };
+  countersink?: {countEach:number|null;countBatch:number|null};
   welding: {
     weldLengthMEach: number | null;
     weldLengthMBatch: number | null;
@@ -144,6 +146,7 @@ export function deriveProductionParameters(input: ProductionParameterInput): Pro
   const bendCountEach = nonNegative(input.geometry.bendCount);
 
   const weldLengthMEach = positive(input.weldLengthMEach);
+  const countersinkCountEach=Number.isSafeInteger(input.countersinkCountEach)&&(input.countersinkCountEach??0)>0&&input.countersinkCountEach!<=100000?input.countersinkCountEach!:null;
   const powderSides = input.powderSides ?? null;
   const explicitPowderArea = positive(input.explicitPowderAreaM2Each);
   const derivedPowderArea = powderSides && netAreaMm2 != null
@@ -198,6 +201,7 @@ export function deriveProductionParameters(input: ProductionParameterInput): Pro
       bendCountEach,
       bendCountBatch: times(bendCountEach, quantity),
     },
+    countersink: {countEach:countersinkCountEach,countBatch:times(countersinkCountEach,quantity)},
     welding: {
       weldLengthMEach,
       weldLengthMBatch: times(weldLengthMEach, quantity),

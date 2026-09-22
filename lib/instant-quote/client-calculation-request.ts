@@ -5,6 +5,7 @@ import type { MaterialId } from "@/lib/instant-quote/pricing";
 const PUBLIC_OPERATIONS = new Set<ManufacturingOperation>([
   "bending",
   "welding",
+  "countersink",
   "assembly",
   "surface-preparation",
   "powder-coating",
@@ -22,6 +23,7 @@ function publicOperationInputs(
   operations: Set<ManufacturingOperation>,
 ): OperationInputs {
   const result: OperationInputs = {};
+  if (operations.has("countersink") && inputs.countersinkCount != null) result.countersinkCount = inputs.countersinkCount;
   if (operations.has("bending") && inputs.bendCount != null) result.bendCount = inputs.bendCount;
   if (operations.has("welding") && inputs.weldLengthM != null) result.weldLengthM = inputs.weldLengthM;
   if (operations.has("assembly") && inputs.assemblyMinutes != null) result.assemblyMinutes = inputs.assemblyMinutes;

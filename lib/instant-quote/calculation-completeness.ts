@@ -60,6 +60,13 @@ const ARTICLE_GROUPS: ArticleGroup[] = [
     missingLabels: ["Гибка"],
   },
   {
+    key: "countersink",
+    label: "Зенковка",
+    lineCode: "countersink",
+    missingCodes: ["countersink-count", "operation-rate"],
+    missingLabels: ["Зенковка"],
+  },
+  {
     key: "welding",
     label: "Сварка",
     lineCode: "welding",

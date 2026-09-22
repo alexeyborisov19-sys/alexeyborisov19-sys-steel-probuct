@@ -75,3 +75,13 @@ test("requires at least one actual physical change", () => {
     parts: { "part-1": { rateRub: 100, directCostRub: 500 } },
   }));
 });
+
+test("countersink revision accepts only bounded integer counts and explicit clearing", () => {
+  for (const countersinkCount of [1, 100000, null]) {
+    const parsed = parseInternalCalculationRevisionRequest({ reason: "Update operation", parts: { part: { countersinkCount } } });
+    assert.equal(parsed.parts.part.countersinkCount, countersinkCount);
+  }
+  for (const countersinkCount of [0, -1, 1.5, 100001, "invalid"]) {
+    assert.throws(() => parseInternalCalculationRevisionRequest({ reason: "Update operation", parts: { part: { countersinkCount } } }));
+  }
+});

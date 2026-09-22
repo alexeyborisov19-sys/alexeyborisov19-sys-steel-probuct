@@ -1,3 +1,4 @@
+import { validStepMachiningFeatures, type StepMachiningFeatures } from "./step-countersinks";
 import type { PreliminaryStepBlank } from "./preliminary-step-blank";
 import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type { CadFormat, PartGeometrySummary } from "@/lib/instant-quote/domain";
@@ -58,6 +59,7 @@ export type NormalizedCadModel = {
   root: CadAssemblyNode | null;
   features: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  machiningFeatures?: StepMachiningFeatures;
   /** Server-measured raw blank; finishing is excluded and price remains estimate-only. */
   preliminaryBlank?: PreliminaryStepBlank;
   /** Server recomputes this from original CAD; never trust client-submitted measurements. */
@@ -357,6 +359,8 @@ export function validateNormalizedCadModel(input: unknown) {
   }
 
   if (!Array.isArray(model.features)) errors.push("Normalized CAD features must be an array.");
+  if (model.machiningFeatures != null && (!validStepMachiningFeatures(model.machiningFeatures)
+    || (model.format !== "step" && model.format !== "stp") || model.geometry?.bodyCount !== 1)) errors.push("Machining features require valid single-solid STEP evidence.");
   validateSheetMetalAnalysis(model.sheetMetal, errors);
   validateUnfoldGeometry(model.unfoldGeometry, errors);
   if (model.unfoldGeometry && model.format !== "step" && model.format !== "stp") errors.push("BRep unfold geometry is only valid for STEP/STP models.");

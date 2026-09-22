@@ -179,3 +179,66 @@ test("priced CAD DTO includes preliminary non-offer language without exposing it
   assert.match(view.parts[0].message, /Не является офертой/);
   assert.doesNotMatch(JSON.stringify(view), /calculatedRubBatch|quoteControl|stageReview|physicalParameters|rateRub/);
 });
+
+for (const operation of ["countersink", "welding"] as const) {
+  test(`missing ${operation} tariff allows only explicitly disclosed known-scope estimate`, async () => {
+    const f = fixture();
+    f.part.configuration.operations.push(operation);
+    f.cost.status = "partial";
+    f.calculation.parts[0].status = "partial";
+    f.cost.missing = [{ code: "operation-rate", label: operation === "countersink" ? "Зенковка" : "Сварка", reason: "No tariff", blocking: false }];
+    let evidence: Record<string, unknown> | undefined;
+    const result = await reviewCadProjectCalculation(f.project, f.calculation, {}, f.policy, {
+      requireAiReview: true, preliminaryPriceCaller: async value => { evidence = value; return '{"status":"passed"}'; },
+    });
+    assert.equal(result.signals[0].estimatedSalePriceRub, 1200);
+    assert.equal(result.signals[0].approvedSalePriceRub, null);
+    assert.equal(result.signals[0].aiReviewed, false);
+    assert.equal(result.signals[0].status, "needs-review");
+    assert.match(result.signals[0].manufacturingWarnings!.join(" "), /не включена.*тариф не задан/);
+    assert.equal(result.audits[0].publishedRubBatch, null);
+    assert.deepEqual(result.audits[0].unpricedOperations, [operation]);
+    assert.deepEqual(evidence?.requestedOperations, ["laser-cutting"]);
+    assert.deepEqual(evidence?.originalRequestedOperations, ["laser-cutting", operation]);
+    assert.deepEqual(evidence?.unpricedOperations, [operation]);
+    assert.equal(f.cost.status, "partial");
+    f.cost.missing.push({ code: "material-price", label: "Material", reason: "Missing", blocking: true });
+    const held = await reviewCadProjectCalculation(f.project, f.calculation, {}, f.policy, { requireAiReview: false });
+    assert.equal(held.signals[0].estimatedSalePriceRub, undefined);
+  });
+}
+
+test("known-scope estimate keeps topology and arithmetic gates", async () => {
+  for (const failure of ["arithmetic", "geometry", "laser"] as const) {
+    const f = fixture();
+    f.part.configuration.operations.push("countersink");
+    f.cost.status = "partial"; f.calculation.parts[0].status = "partial";
+    f.cost.missing = [{ code: "countersink-count", label: "Зенковка", reason: "Missing", blocking: false }];
+    if (failure === "arithmetic") f.cost.confirmedDirectCostRubBatch += 1;
+    if (failure === "geometry") f.part.geometry!.areaMm2 = 0;
+    if (failure === "laser") f.cost.lines = f.cost.lines.filter(line => line.code !== "laser-cutting");
+    const result = await reviewCadProjectCalculation(f.project, f.calculation, {}, f.policy, { requireAiReview: false });
+    assert.equal(result.signals[0].estimatedSalePriceRub, undefined);
+    assert.equal(result.signals[0].approvedSalePriceRub, null);
+  }
+});
+
+
+test("incomplete countersink recognition remains an explicit preliminary lower bound", async () => {
+  const f = fixture();
+  const output = await reviewCadProjectCalculation(f.project, f.calculation,
+    { [f.part.id]: { countersinkRecognitionIncomplete: true } }, f.policy, { requireAiReview: false });
+  assert.equal(output.signals[0].estimatedSalePriceRub, 1200);
+  assert.equal(output.signals[0].approvedSalePriceRub, null);
+  assert.match(output.signals[0].manufacturingWarnings!.join(" "), /Распознавание зенковок неполное/);
+  assert.equal(output.audits[0].publishedRubBatch, null);
+});
+
+test("partial price DTO exposes excluded operations alongside the amount", () => {
+  const f = fixture();
+  const view = createClientCalculationView(f.project, [{ partId: f.part.id, status: "needs-review", approvedSalePriceRub: null,
+    estimatedSalePriceRub: 1200, unpricedOperations: ["welding", "countersink", "welding"] }]);
+  assert.equal(view.parts[0].price.status, "estimate");
+  assert.deepEqual(view.parts[0].price.unpricedOperations, ["welding", "countersink"]);
+  assert.equal(view.paymentEnabled, false);
+});

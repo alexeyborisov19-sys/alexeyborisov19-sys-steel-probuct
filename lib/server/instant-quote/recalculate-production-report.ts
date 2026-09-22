@@ -18,6 +18,7 @@ import {
 export type PartFactualRevisionPatch = {
   bendCount?: number | null;
   weldLengthM?: number | null;
+  countersinkCount?: number | null;
   powderAreaM2?: number | null;
   assemblyMinutes?: number | null;
   surfacePreparationAreaM2?: number | null;
@@ -66,6 +67,11 @@ function mergeFactualInputs(
       const bendCount = finiteNonNegative(value.bendCount, `${partId}.bendCount`);
       if (bendCount == null) delete row.bendCount;
       else row.bendCount = Math.floor(bendCount);
+    }
+    if(Object.prototype.hasOwnProperty.call(value,"countersinkCount")){
+      if(value.countersinkCount==null)delete row.countersinkCount;
+      else if(!Number.isSafeInteger(value.countersinkCount)||value.countersinkCount<=0||value.countersinkCount>100000)throw new Error(`Invalid revision value: ${partId}.countersinkCount`);
+      else row.countersinkCount=value.countersinkCount;
     }
     if (Object.prototype.hasOwnProperty.call(value, "weldLengthM")) {
       const weldLengthM = finitePositive(value.weldLengthM, `${partId}.weldLengthM`);
@@ -170,6 +176,7 @@ export async function recalculateInternalProductionReport(
       quantity: part.configuration.quantity,
       geometry: part.geometry,
       weldLengthMEach: factual.weldLengthM,
+      countersinkCountEach: factual.countersinkCount,
       powderSides: powderSidesByPartId[part.id],
       explicitPowderAreaM2Each: factual.powderAreaM2,
       assemblyMinutesEach: factual.assemblyMinutes,

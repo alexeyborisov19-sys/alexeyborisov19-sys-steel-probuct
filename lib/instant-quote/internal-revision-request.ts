@@ -1,6 +1,7 @@
 export type InternalPartRevisionRequest = {
   bendCount?: number | null;
   weldLengthM?: number | null;
+  countersinkCount?: number | null;
   powderAreaM2?: number | null;
   powderSides?: 1 | 2 | null;
   assemblyMinutes?: number | null;
@@ -55,6 +56,7 @@ export function parseInternalCalculationRevisionRequest(value: unknown): Interna
     const id = partId(rawPartId);
     const patch = object(rawPatch, `parts.${id}`);
     const bendCount = optionalNumber(patch.bendCount, `${id}.bendCount`, { min: 0, max: 10000, integer: true });
+    const countersinkCount = optionalNumber(patch.countersinkCount, `${id}.countersinkCount`, { min: 1, max: 100000, integer: true });
     const weldLengthM = optionalNumber(patch.weldLengthM, `${id}.weldLengthM`, { min: 0.001, max: 100000 });
     const powderAreaM2 = optionalNumber(patch.powderAreaM2, `${id}.powderAreaM2`, { min: 0.000001, max: 1_000_000 });
     const assemblyMinutes = optionalNumber(patch.assemblyMinutes, `${id}.assemblyMinutes`, { min: 0.001, max: 1_000_000 });
@@ -75,6 +77,7 @@ export function parseInternalCalculationRevisionRequest(value: unknown): Interna
 
     const clean: InternalPartRevisionRequest = {};
     if (bendCount !== undefined) clean.bendCount = bendCount;
+    if (countersinkCount !== undefined) clean.countersinkCount = countersinkCount;
     if (weldLengthM !== undefined) clean.weldLengthM = weldLengthM;
     if (powderAreaM2 !== undefined) clean.powderAreaM2 = powderAreaM2;
     if (powderSides !== undefined) clean.powderSides = powderSides;

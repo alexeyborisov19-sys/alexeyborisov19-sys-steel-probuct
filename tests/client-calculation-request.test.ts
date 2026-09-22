@@ -79,3 +79,17 @@ test("declared operation quantities travel only for the selected operations", ()
   const manifest = createPublicCalculationManifest(configured, ["part-1"]);
   assert.deepEqual(manifest.parts[0].operationInputs, { bendCount: 4, powderSides: 2 });
 });
+
+
+test("countersink selection and count survive browser-to-server manifest roundtrip", async () => {
+  const {parsePublicCalculationManifest}=await import("../lib/instant-quote/calculation-manifest");
+  const configured=structuredClone(project);
+  configured.parts[0].configuration.operations=["laser-cutting","countersink","welding"];
+  configured.parts[0].configuration.operationInputs={countersinkCount:11,weldLengthM:.5};
+  const request=createPublicCalculationManifest(configured,["part-1"]);
+  const parsed=parsePublicCalculationManifest(JSON.stringify(request),1);
+  assert.deepEqual(parsed.parts[0].operations,["laser-cutting","countersink","welding"]);
+  assert.deepEqual(parsed.parts[0].operationInputs,{countersinkCount:11,weldLengthM:.5});
+  configured.parts[0].configuration.operations=["laser-cutting"];
+  assert.deepEqual(createPublicCalculationManifest(configured,["part-1"]).parts[0].operationInputs,{});
+});

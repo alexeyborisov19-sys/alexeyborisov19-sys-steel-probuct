@@ -67,3 +67,11 @@ test("blocks physical calculation when X×Y or thickness are missing", () => {
   assert.ok(result.issues.some((issue) => /толщина/i.test(issue)));
   assert.ok(result.issues.some((issue) => /X×Y/i.test(issue)));
 });
+
+
+test("countersink counts remain physical quantities independent of configured tariff", () => {
+  const result = deriveProductionParameters({ materialId: "cold", thicknessMm: 1, quantity: 50,
+    geometry: { widthMm: 100, heightMm: 100, areaMm2: 10000, blankAreaMm2: 10000, cutLengthMm: 400 },
+    countersinkCountEach: 3 });
+  assert.deepEqual(result.countersink, { countEach: 3, countBatch: 150 });
+});

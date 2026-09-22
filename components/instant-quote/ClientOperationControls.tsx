@@ -1,17 +1,19 @@
 "use client";
 
+import type { ClientCountersinkFeature } from "@/lib/instant-quote/client-cad-preview-types";
 import type { ManufacturingOperation, OperationInputs } from "@/lib/instant-quote/domain";
 
 const OPERATION_OPTIONS: ReadonlyArray<{ id: ManufacturingOperation; label: string }> = [
   { id: "bending", label: "Гибка" },
   { id: "welding", label: "Сварка" },
+  { id: "countersink", label: "Зенковка" },
   { id: "assembly", label: "Сборка" },
   { id: "surface-preparation", label: "Подготовка поверхности" },
   { id: "powder-coating", label: "Порошковая окраска" },
   { id: "packaging", label: "Упаковка" },
 ];
 
-type CountableField = "bendCount" | "weldLengthM" | "assemblyMinutes";
+type CountableField = "bendCount" | "countersinkCount" | "weldLengthM" | "assemblyMinutes";
 
 /**
  * A CAD file carries none of these: a DXF has no bend count, no weld length and
@@ -32,12 +34,13 @@ const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
   note?: string;
 }>> = {
   bending: { field: "bendCount", label: "Гибов на деталь", step: 1, max: 500 },
+  countersink: { field: "countersinkCount", label: "Зенковок на деталь", step: 1, max: 100_000, note: "Каждая обработанная сторона отверстия считается отдельно. Проверьте диаметр, угол и глубину по чертежу." },
   welding: {
     field: "weldLengthM",
     label: "Длина шва, м",
     step: 0.1,
     max: 500,
-    note: "Ваша оценка. Тип соединения, толщина, оснастка и доступ к шву здесь не учитываются — их определит инженер.",
+    note: "Суммарная длина сварных швов на одно изделие. По обычному STEP швы нельзя определить однозначно: укажите длину по чертежу. Тип соединения, катет и доступ к шву подтвердит технолог.",
   },
   assembly: {
     field: "assemblyMinutes",
@@ -65,6 +68,9 @@ export type ClientOperationControlsProps = {
   operationInputs: OperationInputs;
   /** Bends read from the uploaded STEP model, when the evidence was unambiguous. */
   detectedBendCount?: number | null;
+  detectedCountersinkCount?: number | null;
+  countersinkDetectionComplete?: boolean;
+  detectedCountersinks?: ClientCountersinkFeature[];
   onToggle: (operation: ManufacturingOperation) => void;
   onQuantityChange: (patch: OperationInputs) => void;
 };
@@ -73,6 +79,9 @@ export function ClientOperationControls({
   operations,
   operationInputs,
   detectedBendCount = null,
+  detectedCountersinkCount = null,
+  countersinkDetectionComplete,
+  detectedCountersinks = [],
   onToggle,
   onQuantityChange,
 }: ClientOperationControlsProps) {
@@ -102,7 +111,7 @@ export function ClientOperationControls({
                   <span className="grow text-[10px] uppercase tracking-[.1em] text-white/40">{quantity.label}</span>
                   <input
                     type="number"
-                    min={0}
+                    min={option.id === "countersink" ? detectedCountersinkCount ?? 0 : 0}
                     max={quantity.max}
                     step={quantity.step}
                     value={operationInputs[quantity.field] ?? ""}
@@ -111,7 +120,7 @@ export function ClientOperationControls({
                       const parsed = raw === "" ? undefined : Number(raw);
                       onQuantityChange({
                         [quantity.field]: parsed != null && Number.isFinite(parsed) && parsed >= 0
-                          ? Math.min(parsed, quantity.max)
+                          ? Math.max(option.id === "countersink" ? detectedCountersinkCount ?? 0 : 0, Math.min(parsed, quantity.max))
                           : undefined,
                       });
                     }}
@@ -130,6 +139,10 @@ export function ClientOperationControls({
                   Определено по 3D-модели: {detectedBendCount}. Изменение значения требует проверки инженером.
                 </p>
               )}
+
+              {enabled && option.id === "countersink" && detectedCountersinkCount != null && <p className="mt-1 px-4 text-xs leading-relaxed text-steel-orange">По STEP распознано {countersinkDetectionComplete === false ? "не менее " : ""}{detectedCountersinkCount} зенковок. Проверьте полноту по чертежу; дополнительные зенковки можно добавить вручную.</p>}
+
+              {enabled && option.id === "countersink" && detectedCountersinks.length > 0 && <details className="mt-2 px-4 text-xs text-white/70"><summary className="cursor-pointer py-2">Размеры по STEP</summary><ul className="space-y-1">{detectedCountersinks.map((feature, index) => <li key={index}>№ {index + 1}: Ø{Number(feature.smallDiameterMm.toFixed(3))} → Ø{Number(feature.largeDiameterMm.toFixed(3))} мм; глубина {Number(feature.depthMm.toFixed(3))} мм; {Number(feature.includedAngleDeg.toFixed(2))}°</li>)}</ul><p className="mt-2">Малые конические фаски тоже показаны. Назначение и способ обработки подтвердит технолог.</p></details>}
 
               {enabled && sides && (
                 <div className="mt-1 flex items-center gap-3 border border-white/10 bg-[#090c0e] px-4 py-2">

@@ -22,6 +22,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     for (const [partId, patch] of Object.entries(parsed.parts)) {
       const factual: PartFactualRevisionPatch = {};
       if (Object.prototype.hasOwnProperty.call(patch, "bendCount")) factual.bendCount = patch.bendCount;
+      if (Object.prototype.hasOwnProperty.call(patch, "countersinkCount")) factual.countersinkCount = patch.countersinkCount;
       if (Object.prototype.hasOwnProperty.call(patch, "weldLengthM")) factual.weldLengthM = patch.weldLengthM;
       if (Object.prototype.hasOwnProperty.call(patch, "powderAreaM2")) factual.powderAreaM2 = patch.powderAreaM2;
       if (Object.prototype.hasOwnProperty.call(patch, "assemblyMinutes")) factual.assemblyMinutes = patch.assemblyMinutes;
