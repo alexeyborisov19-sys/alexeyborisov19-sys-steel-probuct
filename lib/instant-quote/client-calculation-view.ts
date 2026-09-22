@@ -83,6 +83,8 @@ export function createClientCalculationView(
     parts: project.parts.map((part) => {
       const signal = byPartId.get(part.id);
       const approvedSalePrice = signal?.approvedSalePriceRub;
+      const staleTime=signal?.staleMaterialPriceDate ? Date.parse(signal.staleMaterialPriceDate):NaN;
+      const staleDate=Number.isFinite(staleTime)?new Date(staleTime).toISOString().slice(0,10):null;
       const status = signal?.status ?? "pending";
       // A stale amount must not survive a failed/unfinished calculation or review.
       const hasApprovedSalePrice = status === "ready" && Number.isFinite(approvedSalePrice)
@@ -122,7 +124,7 @@ export function createClientCalculationView(
           depthMm: part.geometry?.depthMm ?? null,
         },
         price,
-        message: `${message} ${hasEstimate && signal?.staleMaterialPriceDate ? `Цена металла взята из последнего сохранённого прайса от ${signal.staleMaterialPriceDate}. Прайс устарел; актуальную закупочную цену должен подтвердить инженер. ` : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? signal.manufacturingWarnings.join(" ")+" " : ""}${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
+        message: `${message} ${hasEstimate && staleDate ? `Цена металла взята из последнего сохранённого прайса от ${staleDate}. Прайс устарел; актуальную закупочную цену должен подтвердить инженер. ` : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? signal.manufacturingWarnings.join(" ")+" " : ""}${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
       };
     }),
   };

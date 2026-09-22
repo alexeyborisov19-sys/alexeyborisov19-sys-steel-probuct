@@ -205,10 +205,10 @@ for(const marker of [true,false])test(`STEP blank estimate needs protected evide
  if(marker)assert.match(createClientCalculationView(f.project,result.signals).parts[0].message,/Фаски, зенковки.*не включены/);
 });
 test('last-known stale metal price forces warning estimate even with fully valid geometry',async()=>{
- const f=fixture();f.cost.staleMaterialPriceUsed={sourceDate:'2026-09-14'};
+ const f=fixture();f.cost.staleMaterialPriceUsed={sourceDate:'2026-09-14T21:16:00.000Z'};
  const flatFeatures={supported:true,reasons:[],holeCount:0,minHoleDiameterMm:null,minLigamentMm:null,minPartSideMm:100};
  const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{flatFeatures}},f.policy,{caller:null,requireAiReview:false});
  assert.equal(result.signals[0].status,'needs-review');assert.equal(result.signals[0].estimatedSalePriceRub,1200);
  assert.equal(result.signals[0].approvedSalePriceRub,null);assert.equal(result.audits[0].publishedRubBatch,null);
- const view=createClientCalculationView(f.project,result.signals);assert.match(view.parts[0].message,/2026-09-14/);assert.match(view.parts[0].message,/Прайс устарел/);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
+ const view=createClientCalculationView(f.project,result.signals);assert.match(view.parts[0].message,/2026-09-14/);assert.match(view.parts[0].message,/Прайс устарел/);assert.doesNotMatch(view.parts[0].message,/T21:16/);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
 });

@@ -26,3 +26,16 @@ test('fresh exact price wins over older private price without substituting mater
  const selected=selectBestStoredPriceForStock(snapshots,'cold',10,{widthMm:100,heightMm:100},new Date('2026-09-22T12:00:00Z'));
  assert.equal(selected.sourceId,'fresh');assert.equal(selected.stale,false);assert.equal(JSON.stringify(snapshots),before);
 });
+
+
+test("canonical ISO source timestamps are retained and accepted as last-known source dates",()=>{
+ const request=input();request.marketPrice!.sourceDate="2026-09-14T21:16:00.000Z";request.marketPrice!.fetchedAt="2026-09-14T21:16:00.000Z";
+ const before=JSON.stringify(request),result=calculateFactualProductionCost(request);
+ assert.equal(result.status,"complete");assert.equal(result.staleMaterialPriceUsed?.sourceDate,"2026-09-14T21:16:00.000Z");
+ assert.equal(result.lines.find(line=>line.code==="material")!.source.confirmedAt,"2026-09-14T21:16:00.000Z");assert.equal(JSON.stringify(request),before);
+});
+for(const date of ["2026-02-30","2026-09-14T99:16:00.000Z","2026-09-15T21:16:00.000Z","2026-09-15"])
+ test(`stale estimate refuses malformed or post-fetch source date ${date}`,()=>{
+  const request=input();request.marketPrice!.fetchedAt="2026-09-14T21:16:00.000Z";request.marketPrice!.sourceDate=date;
+  const result=calculateFactualProductionCost(request);assert.equal(result.status,"partial");assert.equal(result.staleMaterialPriceUsed,undefined);
+ });

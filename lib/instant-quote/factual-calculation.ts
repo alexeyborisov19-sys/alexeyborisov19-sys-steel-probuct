@@ -195,6 +195,18 @@ function addLine(
   });
 }
 
+/** Saved supplier dates may be calendar dates or canonical UTC timestamps.
+ * Reject rollover dates and dates newer than the recorded fetch; never rewrite
+ * the private source field merely to format a public warning. */
+function supplierDateTime(value:unknown):number|null {
+  if(typeof value!=="string")return null;
+  const time=Date.parse(value);if(!Number.isFinite(time))return null;
+  const canonical=new Date(time).toISOString();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(value))return canonical.slice(0,10)===value?time:null;
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value))return canonical===(value.includes(".")?value:value.replace("Z",".000Z"))?time:null;
+  return null;
+}
+
 /**
  * Internal factual engine. It returns direct-cost details and production
  * parameters intended only for protected server-side reporting.
@@ -233,10 +245,9 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
     ? blank.areaMm2 / 1_000_000 * thicknessM * density
     : null;
 
+  const sourceTime=supplierDateTime(input.marketPrice?.sourceDate), fetchedTime=supplierDateTime(input.marketPrice?.fetchedAt);
   const staleEstimateAllowed=input.allowStaleMaterialEstimate===true && input.marketPrice?.materialId===input.materialId
-    && typeof input.marketPrice.sourceDate==='string' && /^\d{4}-\d{2}-\d{2}$/.test(input.marketPrice.sourceDate)
-    && Number.isFinite(Date.parse(input.marketPrice.sourceDate)) && new Date(input.marketPrice.sourceDate).toISOString().slice(0,10)===input.marketPrice.sourceDate
-    && Number.isFinite(Date.parse(input.marketPrice.fetchedAt));
+    && sourceTime!==null && fetchedTime!==null && sourceTime<=fetchedTime;
   if (!input.marketPrice) {
     missing.push({ code: "material-price", label: "Металл", reason: "Нет подтверждённой закупочной цены поставщика.", blocking: false });
   } else if (input.materialPriceStale && !staleEstimateAllowed) {
