@@ -11,7 +11,7 @@ import {
   generateProductionOrderDocuments,
   PdfRendererUnavailableError,
 } from "@/lib/server/production-order/pdf-documents";
-import { readAndRebuildProductionOrder } from "@/lib/server/production-order/order-from-report";
+import { readAndRebuildProductionOrderForProject } from "@/lib/server/production-order/order-from-report";
 import { resolveProductionOrderArtifactSources } from "@/lib/server/production-order/source-artifacts";
 import { copyProductionOrderArtifacts } from "@/lib/server/production-order/storage";
 
@@ -26,13 +26,10 @@ export async function POST(request: NextRequest) {
     } catch {
       throw new PdStage4Error("VALIDATION_ERROR");
     }
-    if (typeof body.calculationFileName !== "string" || !body.calculationFileName.trim()) {
-      throw new PdStage4Error("VALIDATION_ERROR");
-    }
 
     let order;
     try {
-      order = await readAndRebuildProductionOrder(body.calculationFileName.trim(), requestedOrder);
+      order = await readAndRebuildProductionOrderForProject(requestedOrder);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new PdStage4Error("NOT_FOUND");
       throw new PdStage4Error("VALIDATION_ERROR");
