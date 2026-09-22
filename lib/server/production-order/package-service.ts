@@ -47,7 +47,10 @@ async function existingDirectoryState(plan: ProductionOrderPackagePlan) {
 }
 
 function canonical(value: ProductionOrder) {
-  return `${JSON.stringify(value, null, 2)}\n`;
+  // Optional object keys (for example an absent artifact source) must not create
+  // a new revision merely because the strict parser normalizes them to null.
+  const normalized = parseProductionOrder(value);
+  return `${JSON.stringify(normalized, null, 2)}\n`;
 }
 
 async function replaceFile(temporary: string, target: string) {
