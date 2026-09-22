@@ -10,6 +10,8 @@ export const uploadLimits = {
   maximumMultipartBytes: 11 * 1024 * 1024,
 } as const;
 
+export const cadUploadLimits = { maximumFileBytes: 50 * 1024 * 1024, maximumTotalBytes: 100 * 1024 * 1024, maximumFiles: 10, maximumMultipartBytes: 101 * 1024 * 1024 } as const;
+
 const mimeByExtension: Record<string, Set<string>> = {
   pdf: new Set(["application/pdf", "application/octet-stream"]),
   png: new Set(["image/png", "application/octet-stream"]),
@@ -179,15 +181,15 @@ function plausibleCad(extension: string, buffer: Buffer) {
   return isZip(buffer) || isCompoundOffice(buffer);
 }
 
-export async function inspectUploads(files: File[], maximumFiles: number = uploadLimits.maximumFiles) {
+export async function inspectUploads(files: File[], maximumFiles: number = uploadLimits.maximumFiles, limits: {maximumFileBytes:number;maximumTotalBytes:number} = uploadLimits) {
   if (files.length > maximumFiles) {
     throw new UploadValidationError(`Можно прикрепить не более ${maximumFiles} файлов.`);
   }
-  if (files.some((file) => file.size > uploadLimits.maximumFileBytes)) {
-    throw new UploadValidationError("Размер каждого файла не должен превышать 7 МБ.", 413);
+  if (files.some((file) => file.size > limits.maximumFileBytes)) {
+    throw new UploadValidationError(`Размер каждого файла не должен превышать ${limits.maximumFileBytes / 1024 / 1024} МБ.`, 413);
   }
-  if (files.reduce((sum, file) => sum + file.size, 0) > uploadLimits.maximumTotalBytes) {
-    throw new UploadValidationError("Общий размер файлов не должен превышать 10 МБ.", 413);
+  if (files.reduce((sum, file) => sum + file.size, 0) > limits.maximumTotalBytes) {
+    throw new UploadValidationError(`Общий размер файлов не должен превышать ${limits.maximumTotalBytes / 1024 / 1024} МБ.`, 413);
   }
 
   const inspections: UploadInspection[] = [];

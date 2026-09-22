@@ -1,7 +1,12 @@
-import type { DxfShape, ParsedDxf, Point2D } from './dxf';
+import type { ParsedDxf } from './dxf';
+import { FlatContourError, buildFlatContours, contourBounds, contourContains, contourDistance, contourWidth } from './flat-contours';
 
 export type VerifiedFlatFeatures = {
   supported: boolean;
+  /** Exact closed/simple LINE/ARC topology; not a ligament/manufacturing approval. */
+  topologyVerified?: true;
+  /** A known invalid contour must not receive even a preliminary price. */
+  invalidGeometry?: true;
   reasons: string[];
   holeCount: number;
   minHoleDiameterMm: number | null;
@@ -20,57 +25,46 @@ export type FlatFeatureNorm = {
 };
 export type FlatFeatureValidation = { status: 'pass' | 'blocked' | 'needs-review'; reasons: string[]; normVersion: string | null };
 const MAX_HOLES = 1000;
-const unsupported = (reason: string): VerifiedFlatFeatures => ({ supported: false, reasons: [reason], holeCount: 0, minHoleDiameterMm: null, minLigamentMm: null, minPartSideMm: null });
-const finitePoint = (point: Point2D) => Number.isFinite(point.x) && Number.isFinite(point.y) && Math.abs(point.x) <= 1e9 && Math.abs(point.y) <= 1e9;
-const key = (p: Point2D) => `${p.x},${p.y}`;
-const segmentKey = (a: Point2D, b: Point2D) => [key(a), key(b)].sort().join('|');
-
-/** Strict subset only. No tolerances snap imperfect contours into manufacturable rectangles. */
+const unsupported = (reason: string, flags: {topologyVerified?:true;invalidGeometry?:true} = {}): VerifiedFlatFeatures => ({ supported: false, ...flags, reasons: [reason], holeCount: 0, minHoleDiameterMm: null, minLigamentMm: null, minPartSideMm: null });
+/** Convex LINE/ARC contours are measured analytically, never from preview points.
+ * Concave boundaries remain manual: bounding boxes cannot prove narrow-neck safety.
+ */
 export function measureVerifiedFlatFeatures(input: Pick<ParsedDxf, 'shapes' | 'units' | 'unsupportedEntities'>): VerifiedFlatFeatures {
   if (input.units !== 'мм') return unsupported('Единицы геометрии должны быть подтверждены в миллиметрах.');
   if (input.unsupportedEntities.length) return unsupported('Часть геометрии DXF не распознана.');
-  if (!input.shapes.length || input.shapes.length > MAX_HOLES + 4) return unsupported('Число элементов выходит за пределы проверяемого поднабора.');
-  const circles = input.shapes.filter((s): s is Extract<DxfShape, { kind: 'circle' }> => s.kind === 'circle');
-  if (circles.length > MAX_HOLES) return unsupported('Поддерживается не более 1000 круглых отверстий.');
-  const outline = input.shapes.filter(s => s.kind !== 'circle');
-  let segments: { a: Point2D; b: Point2D }[];
-  if (outline.length === 4 && outline.every(s => s.kind === 'line')) {
-    segments = outline as Extract<DxfShape, { kind: 'line' }>[];
-  } else if (outline.length === 1 && outline[0].kind === 'polyline') {
-    const poly = outline[0];
-    if (!poly.closed || poly.points.length !== 4 || poly.bulges.some(b => !Number.isFinite(b) || b !== 0)) return unsupported('Наружный контур должен быть замкнутым прямоугольником без дуг.');
-    segments = poly.points.map((a, i) => ({ a, b: poly.points[(i + 1) % 4] }));
-  } else return unsupported('Поддерживается только один прямоугольный контур с круглыми отверстиями.');
-  const points = segments.flatMap(s => [s.a, s.b]);
-  if (!points.every(finitePoint)) return unsupported('Координаты геометрии недопустимы.');
-  const xs = [...new Set(points.map(p => p.x))].sort((a, b) => a - b);
-  const ys = [...new Set(points.map(p => p.y))].sort((a, b) => a - b);
-  if (xs.length !== 2 || ys.length !== 2) return unsupported('Наружный контур не является осевым прямоугольником.');
-  const corners = [{ x: xs[0], y: ys[0] }, { x: xs[1], y: ys[0] }, { x: xs[1], y: ys[1] }, { x: xs[0], y: ys[1] }];
-  const expected = new Set(corners.map((a, i) => segmentKey(a, corners[(i + 1) % 4])));
-  const actual = new Set(segments.map(s => segmentKey(s.a, s.b)));
-  if (actual.size !== 4 || [...actual].some(s => !expected.has(s))) return unsupported('Стороны прямоугольника разорваны, дублируются или пересекаются.');
-  let diameter = Infinity, ligament = Infinity;
-  for (let i = 0; i < circles.length; i++) {
-    const hole = circles[i];
-    if (!finitePoint(hole.c) || !Number.isFinite(hole.r) || hole.r <= 0 || hole.r > 1e9) return unsupported('Геометрия круглого отверстия недопустима.');
-    const edgeGap = Math.min(hole.c.x - xs[0], xs[1] - hole.c.x, hole.c.y - ys[0], ys[1] - hole.c.y) - hole.r;
-    if (edgeGap <= 0) return unsupported('Отверстие касается наружного контура или выходит за него.');
-    diameter = Math.min(diameter, 2 * hole.r);
-    ligament = Math.min(ligament, edgeGap);
-    for (let j = 0; j < i; j++) {
-      const other = circles[j];
-      const gap = Math.hypot(hole.c.x - other.c.x, hole.c.y - other.c.y) - hole.r - other.r;
-      if (gap <= 0) return unsupported('Отверстия касаются, пересекаются или вложены друг в друга.');
-      ligament = Math.min(ligament, gap);
+  try {
+    const contours = buildFlatContours(input.shapes, {allowConcave:true}).sort((a,b) => b.area-a.area);
+    const outer=contours[0], holes=contours.slice(1);
+    if(holes.length>MAX_HOLES) return unsupported('Слишком много отверстий для автоматической проверки.');
+    let diameter=Infinity,ligament=Infinity;
+    // Validate ALL boundaries before returning any unsupported-feature review.
+    // Otherwise an early concavity/width review could conceal later crossings.
+    for(let i=0;i<holes.length;i++){
+      const hole=holes[i];
+      const gap=contourDistance(outer,hole);
+      if(gap<=1e-8||!contourContains(outer,hole.edges[0].a))return unsupported('Отверстие пересекает наружный контур, касается его или находится снаружи.', {invalidGeometry:true});
+      ligament=Math.min(ligament,gap);
+      for(let j=0;j<i;j++){
+        const other=holes[j], between=contourDistance(hole,other);
+        if(between<=1e-8||contourContains(hole,other.edges[0].a)||contourContains(other,hole.edges[0].a))return unsupported('Отверстия касаются, пересекаются или вложены друг в друга.', {invalidGeometry:true});
+        ligament=Math.min(ligament,between);
+      }
     }
-  }
-  return { supported: true, reasons: [], holeCount: circles.length, minHoleDiameterMm: circles.length ? diameter : null, minLigamentMm: circles.length ? ligament : null, minPartSideMm: Math.min(xs[1] - xs[0], ys[1] - ys[0]) };
+    if(contours.some(contour=>!contour.convex)) return unsupported('Вогнутый контур требует проверки узких перемычек технологом.', {topologyVerified:true});
+    for(const hole of holes){
+      const width=contourWidth(hole);
+      if(width===null||!Number.isFinite(width)||width<=0) return unsupported('Форма отверстия требует проверки минимальной ширины технологом.', {topologyVerified:true});
+      diameter=Math.min(diameter,width);
+    }
+    const bounds=contourBounds(outer);
+    return {supported:true,reasons:[],holeCount:holes.length,minHoleDiameterMm:holes.length?diameter:null,minLigamentMm:holes.length?ligament:null,minPartSideMm:Math.min(bounds.width,bounds.height)};
+  }catch(error){return unsupported(error instanceof Error?error.message:'Геометрия требует проверки технологом.', error instanceof FlatContourError&&error.invalidGeometry ? {invalidGeometry:true}:{});}
 }
 
 /** Missing or inapplicable owner-approved norms never imply permission to manufacture. */
 export function validateVerifiedFlatFeatures(features: VerifiedFlatFeatures, norm: FlatFeatureNorm | null | undefined, selection: { materialId: string; thicknessMm: number }): FlatFeatureValidation {
   const review = (reason: string): FlatFeatureValidation => ({ status: 'needs-review', reasons: [reason], normVersion: null });
+  if(features.invalidGeometry) return {status:'blocked',reasons:features.reasons,normVersion:null};
   if (!features.supported) return { status: 'needs-review', reasons: features.reasons, normVersion: null };
   if (!norm) return review('Подтверждённые технологические нормы не заданы.');
   const nonempty = (value: unknown) => typeof value === 'string' && value.trim().length > 0;

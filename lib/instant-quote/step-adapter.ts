@@ -1,3 +1,4 @@
+import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type {
   CadAnalysisAdapter,
   CadAssemblyNode,
@@ -16,6 +17,8 @@ export type StepKernelResult = {
   root?: CadAssemblyNode | null;
   features?: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  /** Server recomputes this from original CAD; never trust client-submitted measurements. */
+  flatFeatures?: VerifiedFlatFeatures;
   unfoldGeometry?: StepUnfoldGeometryEvidence;
   warnings?: string[];
   parserVersion?: string;
@@ -144,6 +147,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
         root: result.root ?? null,
         features: result.features ?? [],
         sheetMetal: result.sheetMetal,
+        flatFeatures: flatPattern && result.bodyCount === 1 ? result.flatFeatures : undefined,
         unfoldGeometry: result.unfoldGeometry,
         metadata: {
           sourceFileName: request.fileName,

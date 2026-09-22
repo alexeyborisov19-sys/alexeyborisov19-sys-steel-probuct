@@ -5,9 +5,10 @@ import { CadReadError, validateNormalizedCadModel } from "@/lib/instant-quote/ca
 import { decodeDxfText, isBinaryDxf, parseAsciiDxf } from "@/lib/instant-quote/dxf";
 import { clientKey } from "@/lib/security/client-ip";
 import { cadPreviewRateRules, consumeRules } from "@/lib/security/rate-limit";
+import { readMultipartForm, PayloadTooLargeError } from "@/lib/security/request-body";
 import { safeSecurityLog } from "@/lib/security/safe-log";
 import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
-import { inspectUploads, UploadValidationError } from "@/lib/security/uploads";
+import { inspectUploads, UploadValidationError, cadUploadLimits } from "@/lib/security/uploads";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const form = await request.formData();
+    const form = await readMultipartForm(request, cadUploadLimits.maximumFileBytes + 1024 * 1024);
     const entry = form.get("file");
 
     if (!(entry instanceof File)) {
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
     // Same inspection the calculation runs: extension, declared type, magic
     // bytes and the published size limits, so preview and price agree on what
     // is acceptable.
-    const [inspection] = await inspectUploads([entry], 1);
+    const [inspection] = await inspectUploads([entry], 1, cadUploadLimits);
     const bytes = new Uint8Array(
       inspection.buffer.buffer,
       inspection.buffer.byteOffset,
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, preview: createClientCadPreview(model, parsedDxf) });
   } catch (error) {
+    if (error instanceof PayloadTooLargeError) return NextResponse.json({ok:false,error:"Для предпросмотра допустим CAD-файл до 50 МБ."},{status:413});
     if (error instanceof UploadValidationError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
     }

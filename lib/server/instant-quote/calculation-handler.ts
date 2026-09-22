@@ -22,7 +22,7 @@ import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/s
 import {
   inspectUploads,
   quarantineUploads,
-  uploadLimits,
+  cadUploadLimits,
   UploadValidationError,
   type UploadInspection,
   type QuarantinedUpload,
@@ -259,7 +259,7 @@ async function buildAuthoritativeProject(
         const bendMismatch = bendConfigurationConflict(model.geometry.bendCount, item.operations, item.operationInputs.bendCount);
         if (productionReady && !thicknessMismatch && !bendMismatch) {
           geometry = model.geometry;
-          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
+          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings], flatFeatures: model.flatFeatures };
           // Private STEP evidence stays fail-closed: it reaches the calculation
           // only once the flat pattern is confirmed. An unconfirmed part is not
           // priced at all, so withholding it costs nothing — the detected bend
@@ -402,10 +402,10 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
     }
 
     try {
-      const formData = await readMultipartForm(request, uploadLimits.maximumMultipartBytes);
+      const formData = await readMultipartForm(request, cadUploadLimits.maximumMultipartBytes);
       const manifestRaw = String(formData.get("manifest") ?? "");
       const files = formData.getAll("files").filter((item): item is File => item instanceof File && item.size > 0);
-      const inspections = await dependencies.inspectUploads(files);
+      const inspections = await dependencies.inspectUploads(files, cadUploadLimits.maximumFiles, cadUploadLimits);
       const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
 
       for (const item of manifest.parts) {

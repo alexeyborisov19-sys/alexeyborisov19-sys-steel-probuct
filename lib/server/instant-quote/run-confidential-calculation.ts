@@ -94,6 +94,7 @@ export async function runConfidentialCalculationForClient(
     Object.entries(evidenceByPartId).map(([partId, evidence]) => [partId, [...(evidence.unsupportedEntities ?? [])]]),
   );
   const calculationInputSnapshot: InternalCalculationInputSnapshot = {
+    cadEvidenceByPartId: evidenceByPartId,
     project, factualByPartId: explicitFactualByPartId, authoritativeFactualByPartId,
     powderSidesByPartId, unsupportedEntitiesByPartId,
   };

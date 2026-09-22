@@ -27,13 +27,11 @@ test('solid rectangle treats hole rules as not applicable, still checks part siz
  assert.equal(result.supported,true);assert.equal(result.minHoleDiameterMm,null);assert.equal(result.minLigamentMm,null);
  assert.equal(validateVerifiedFlatFeatures(result,norm,selection).status,'pass');
 });
-test('rejects touching, overlapping, nested, exterior, curved and unknown geometry',()=>{
+test('rejects touching, overlapping, nested, exterior, open and unknown geometry',()=>{
  const bad:DxfShape[][]=[
   [rectangle,circle(3,20)],[rectangle,circle(-10,20)],[rectangle,circle(20,20),circle(26,20)],
   [rectangle,circle(20,20),circle(20,20,1)],[rectangle,circle(20,20,-1)],[rectangle,circle(NaN,20)],
   [rectangle,{kind:'arc',c:{x:10,y:10},r:3,start:0,end:180}],
-  [{...rectangle,kind:'polyline',points:[{x:0,y:0},{x:100,y:0},{x:99,y:60},{x:0,y:60}],closed:true,bulges:[]}],
-  [{...rectangle,kind:'polyline',points:[{x:0,y:0},{x:100,y:0},{x:100,y:60},{x:0,y:60}],closed:true,bulges:[1]}],
   [],[rectangle,rectangle],
  ];
  for(const shapes of bad) assert.equal(measure(shapes).supported,false);

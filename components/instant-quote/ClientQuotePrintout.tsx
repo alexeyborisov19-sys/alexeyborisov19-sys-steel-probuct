@@ -27,7 +27,7 @@ export function ClientQuotePrintout({
   totalRub: number | null;
   preparedAt: Date;
 }) {
-  const priced = calculation.parts.filter((part) => part.price.status === "approved" && part.price.totalRub != null);
+  const priced = calculation.parts.filter((part) => ["approved", "estimate"].includes(part.price.status) && part.price.totalRub != null);
 
   return (
     <section className="quote-print-root" aria-hidden="true">
@@ -72,7 +72,7 @@ export function ClientQuotePrintout({
                 {operationLabels(part.configuration.operations).join(", ") || "—"}
               </td>
               <td style={{ border: "1px solid #999", padding: "4px 6px", textAlign: "right" }}>
-                {part.price.status === "approved" && part.price.totalRub != null ? `${rub(part.price.totalRub)} ₽` : "по запросу"}
+                {["approved", "estimate"].includes(part.price.status) && part.price.totalRub != null ? `${rub(part.price.totalRub)} ₽${part.price.status === "estimate" ? " (ориентировочно)" : ""}` : "по запросу"}
               </td>
             </tr>
           ))}
@@ -81,10 +81,11 @@ export function ClientQuotePrintout({
 
       {totalRub != null && priced.length === calculation.parts.length && (
         <p style={{ marginTop: 12, fontSize: 14, fontWeight: 700, textAlign: "right" }}>
-          Итого с НДС: {rub(totalRub)} ₽
+          Итого предварительно: {rub(totalRub)} ₽
         </p>
       )}
 
+      {calculation.parts.some(part => part.price.status === "estimate") && <p>Ориентировочная стоимость. Изготовляемость, зоны гиба и окончательную цену подтвердит инженер. Запуск в производство не согласован.</p>}
       <p style={{ marginTop: 18, fontSize: 10, lineHeight: 1.6, color: "#333" }}>
         {CALCULATION_DISCLAIMER} Оплата на сайте не подключена.
       </p>
