@@ -37,6 +37,8 @@ export type ProjectFactualCalculationResult = {
 };
 
 export type PartCadEvidence = {
+  /** Measured from original CAD on server, never accepted from request metadata. */
+  flatFeatures?: import("./verified-flat-features").VerifiedFlatFeatures;
   /** SHA-256 of actual inspected upload bytes, computed by the server. */
   sourceSha256?: string;
   unsupportedEntities?: string[];
@@ -105,7 +107,9 @@ export function calculateProjectFactualCost(
       { width: part.geometry.widthMm, height: part.geometry.heightMm, units: "мм" },
       thicknessMm,
       materialId,
+      evidence.flatFeatures,
     );
+    if (part.configuration.operations.includes("bending")) dfm.push({ code: "bending-feature-rules", severity: "manual", title: "Зоны гиба и инструмент требуют проверки технолога", detail: "Утверждённые нормы отверстий и перемычек не заменяют нормы гибки." });
     if ((evidence.unsupportedEntities?.length ?? 0) > 0) {
       // Blocking, not advisory. Every unread entity is geometry that may carry
       // cut length, pierces or area the price is built from, so a part whose

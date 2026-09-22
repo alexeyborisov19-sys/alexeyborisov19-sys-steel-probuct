@@ -78,3 +78,9 @@ export const productionLeadTimeSummary =
 export const customerMaterialSummary =
   "Работаем с металлом заказчика после входного контроля марки, толщины, габаритов и состояния поверхности. " +
   "До запуска подтверждаем, что материал подходит для выбранных операций.";
+
+// Owner confirmation in task, 2026-09-22. No separate minimum part-size restriction.
+export const laserFeatureNorms = {
+ version: "owner-2026-09-22", minHoleDiameterThicknessRatio: 1, minLigamentMm: 3, minPartSideMm: null,
+ source: { id: "owner-confirmation-2026-09-22", label: "Подтверждено владельцем Сталь Продукт", confirmedAt: "2026-09-22", note: "Минимальное отверстие равно толщине металла; минимальная перемычка 3 мм; отдельного минимального размера детали нет." },
+} as const;

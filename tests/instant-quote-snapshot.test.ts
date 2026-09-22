@@ -100,7 +100,7 @@ test("quote snapshot preserves source metadata while incomplete feature DFM keep
   assert.equal(quote.lines[0].priceSource?.sourceId, "synthetic-supplier");
   assert.equal(quote.lines[0].priceSource?.source, "Synthetic supplier fixture");
   assert.equal(quote.lines[0].status, "manual");
-  assert.ok(quote.lines[0].reviewReasons.some((reason) => reason.includes("Feature")));
+  assert.ok(quote.lines[0].reviewReasons.some((reason) => reason.includes("проверки геометрии")));
   assert.equal(quote.automaticOrderReady, false);
 });
 
