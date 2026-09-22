@@ -1,5 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import type { ProductionOrder } from "@/lib/production-order/domain";
 import { parseProductionOrder } from "@/lib/production-order/parse-production-order";
 import { planProductionOrderPackage, type ProductionOrderPackagePlan } from "@/lib/server/production-order/storage";
@@ -31,14 +30,28 @@ function canonical(value: ProductionOrder) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
+async function replaceFile(temporary: string, target: string) {
+  try {
+    await rename(temporary, target);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "EEXIST" && code !== "EPERM" && code !== "ENOTEMPTY") throw error;
+    await unlink(target).catch((unlinkError: NodeJS.ErrnoException) => {
+      if (unlinkError.code !== "ENOENT") throw unlinkError;
+    });
+    await rename(temporary, target);
+  }
+}
+
 async function atomicWrite(target: string, content: string) {
   const temporary = `${target}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(temporary, content, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  let committed = false;
   try {
-    await import("node:fs/promises").then(({ rename }) => rename(temporary, target));
-  } catch (error) {
-    await import("node:fs/promises").then(({ unlink }) => unlink(temporary).catch(() => undefined));
-    throw error;
+    await writeFile(temporary, content, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await replaceFile(temporary, target);
+    committed = true;
+  } finally {
+    if (!committed) await unlink(temporary).catch(() => undefined);
   }
 }
 
