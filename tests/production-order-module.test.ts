@@ -15,18 +15,18 @@ function project(parts = 1): InstantQuoteProject {
     parts: Array.from({ length: parts }, (_, index) => ({
       id: `part-${index + 1}`,
       fileName: `Деталь-${index + 1}.step`,
-      format: "step" as const,
+      format: "step",
       fileSizeBytes: 100,
       createdAt: "2026-09-22T10:00:00.000Z",
-      state: "configurable" as const,
+      state: "configurable",
       geometry: { widthMm: 100, heightMm: 50, depthMm: 20, bendCount: 2, cutLengthMm: 900 },
       configuration: {
         materialId: "hot",
         thicknessMm: 2,
         quantity: 3,
-        operations: ["laser-cutting", "bending"] as const,
+        operations: ["laser-cutting", "bending"],
       },
-      quote: { kind: "not-requested" as const },
+      quote: { kind: "not-requested" },
     })),
   };
 }
@@ -44,7 +44,7 @@ test("builds a deterministic production order and dynamic routes", () => {
   assert.equal(order.orderId, "SP-ORDER-project-test-26-1649");
   assert.equal(order.parts.length, 1);
   assert.equal(order.parts[0]?.materialLabel, "Сталь г/к");
-  assert.deepEqual(groupProductionOrderRoutes(order).map((route) => route.label), ["Гибка", "Лазерная резка"].sort((a,b)=>a.localeCompare(b,"ru")).sort(() => 0));
+  assert.deepEqual(groupProductionOrderRoutes(order).map((route) => route.label), ["Гибка", "Лазерная резка"]);
   assert.deepEqual(productionOrderVisibleSections(order), { routes: true, coating: false, delivery: false, files: true });
 });
 
