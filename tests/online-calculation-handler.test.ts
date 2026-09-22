@@ -369,3 +369,27 @@ test("invalid private operation is rejected before calculation", async () => {
   const body = await res.json() as { code?: string };
   assert.equal(body.code, "INVALID_CONFIGURATION");
 });
+
+test("server prices a validated STEP blank only with the estimate marker and keeps its warning", async () => {
+  const warning = "Additional machining excluded";
+  const model = stepModel({ widthMm: 120, heightMm: 80, areaMm2: 9600, blankAreaMm2: 9600,
+    cutLengthMm: 400, contourCount: 1, pierceCount: 1, bendCount: 0, bodyCount: 1, volumeMm3: 19008 }, [warning]);
+  model.sheetMetal = { source: "brep", status: "candidate", planarFaceCount: 2, cylindricalFaceCount: 0, otherFaceCount: 1,
+    thicknessCandidate: { thicknessMm: 2, confidence: "medium", evidencePairs: 1, evidenceFaceIds: ["a", "b"] }, bendCandidates: [], warnings: [] };
+  model.preliminaryBlank = { source: "planar-face-preliminary", widthMm: 120, heightMm: 80, areaMm2: 9600,
+    blankAreaMm2: 9600, cutLengthMm: 400, contourCount: 1, thicknessMm: 2, removedVolumeFraction: .01,
+    excludedOperations: ["edge-finishing"], warning };
+  let checked = false;
+  const handler = createOnlineCalculationHandler(stepDependencies({ productionReady: false, model,
+    onRun: (project, evidence) => {
+      checked = true;
+      assert.equal(project.parts[0].geometry?.cutLengthMm, 400);
+      assert.equal(project.parts[0].state, "manual-review");
+      assert.equal(evidence["step-part-1"].preliminaryGeometrySource, "measured-step-blank");
+      assert.deepEqual(evidence["step-part-1"].reviewReasons, [warning]);
+    },
+  }));
+  const response = await handler(stepRequest(stepManifest));
+  assert.equal(response.status, 200);
+  assert.equal(checked, true);
+});

@@ -91,6 +91,8 @@ export type FactualCalculationInput = {
   marketPrice: MaterialMarketPrice | null;
   materialPriceSourceId?: string | null;
   materialPriceStale?: boolean;
+  /** Owner-authorized last-known exact-material price, strictly estimate-only. */
+  allowStaleMaterialEstimate?: boolean;
   /**
    * Owner-approved percentage added on top of the supplier's metal price.
    * It stays an explicit caller input so the engine keeps its rule of never
@@ -115,6 +117,7 @@ export type FactualCalculationResult = {
   thicknessMm: number;
   /** True only for explicitly estimated tariffs; manufacturing approval prohibited. */
   estimatedRateUsed?: boolean;
+  staleMaterialPriceUsed?: {sourceDate:string};
   materialAllocationStrategy: BlankStrategy | null;
   parameters: {
     netAreaMm2: number | null;
@@ -207,6 +210,7 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
   const warnings: string[] = [];
   const lines: FactualCalculationLine[] = [];
   let estimatedRateUsed = false;
+  let staleMaterialPriceUsed: FactualCalculationResult["staleMaterialPriceUsed"];
 
   if (!positiveFinite(input.thicknessMm)) {
     missing.push({ code: "geometry", label: "Толщина", reason: "Не подтверждена положительная толщина материала.", blocking: true });
@@ -229,9 +233,13 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
     ? blank.areaMm2 / 1_000_000 * thicknessM * density
     : null;
 
+  const staleEstimateAllowed=input.allowStaleMaterialEstimate===true && input.marketPrice?.materialId===input.materialId
+    && typeof input.marketPrice.sourceDate==='string' && /^\d{4}-\d{2}-\d{2}$/.test(input.marketPrice.sourceDate)
+    && Number.isFinite(Date.parse(input.marketPrice.sourceDate)) && new Date(input.marketPrice.sourceDate).toISOString().slice(0,10)===input.marketPrice.sourceDate
+    && Number.isFinite(Date.parse(input.marketPrice.fetchedAt));
   if (!input.marketPrice) {
     missing.push({ code: "material-price", label: "Металл", reason: "Нет подтверждённой закупочной цены поставщика.", blocking: false });
-  } else if (input.materialPriceStale) {
+  } else if (input.materialPriceStale && !staleEstimateAllowed) {
     missing.push({ code: "material-price-stale", label: "Металл", reason: "Последний подтверждённый прайс поставщика устарел и должен быть обновлён.", blocking: false });
   } else if (!input.marketPrice.exactThickness || Math.abs(input.marketPrice.thicknessMm - input.thicknessMm) >= 0.01) {
     missing.push({
@@ -246,6 +254,10 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
       ? input.marketPrice.rubPerTonFrom3t
       : input.marketPrice.rubPerTon;
     if (positiveFinite(rubPerTon)) {
+      if(input.materialPriceStale){
+        staleMaterialPriceUsed={sourceDate:input.marketPrice.sourceDate};
+        warnings.push(`Использована последняя сохранённая цена металла от ${input.marketPrice.sourceDate}. Прайс устарел; это только ориентировочная оценка до подтверждения закупочной цены.`);
+      }
       const upliftPct = positiveFinite(input.materialMarketUpliftPct) ? input.materialMarketUpliftPct : 0;
       const pricedRubPerTon = applyMetalUplift(rubPerTon, upliftPct);
       addLine(lines, {
@@ -475,6 +487,7 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
     materialId: input.materialId,
     thicknessMm: input.thicknessMm,
     ...(estimatedRateUsed ? { estimatedRateUsed: true } : {}),
+    ...(staleMaterialPriceUsed ? {staleMaterialPriceUsed} : {}),
     materialAllocationStrategy: blank?.strategy ?? null,
     parameters: {
       netAreaMm2,

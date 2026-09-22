@@ -81,6 +81,6 @@ export const customerMaterialSummary =
 
 // Owner confirmation in task, 2026-09-22. No separate minimum part-size restriction.
 export const laserFeatureNorms = {
- version: "owner-2026-09-22", minHoleDiameterThicknessRatio: 1, minLigamentMm: 3, minPartSideMm: null,
- source: { id: "owner-confirmation-2026-09-22", label: "Подтверждено владельцем Сталь Продукт", confirmedAt: "2026-09-22", note: "Минимальное отверстие равно толщине металла; минимальная перемычка 3 мм; отдельного минимального размера детали нет." },
+ version: "owner-2026-09-22-ligament-1mm", minHoleDiameterThicknessRatio: 1, minLigamentMm: 1, minPartSideMm: null,
+ source: { id: "owner-confirmation-2026-09-22-ligament-1mm", label: "Подтверждено владельцем Сталь Продукт", confirmedAt: "2026-09-22", note: "Минимальное отверстие равно толщине металла; минимальная перемычка 1 мм; отдельного минимального размера детали нет." },
 } as const;

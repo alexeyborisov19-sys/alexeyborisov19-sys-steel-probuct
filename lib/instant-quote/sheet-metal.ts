@@ -114,6 +114,9 @@ type CylinderPairEvidence = {
 
 export type SheetMetalAnalysisOptions = {
   volumeMm3?: number;
+  /** Internal OCCT proof: original single solid equals an exact face extrusion.
+   * Never populate from user parameters, model guesses or sampled previews. */
+  verifiedPrism?: { faceId: string; oppositeFaceId: string; thicknessMm: number };
 };
 
 const PARALLEL_DOT = 0.9995;
@@ -243,6 +246,63 @@ function pickThicknessCandidate(faces: PlaneFaceObservation[]): SheetMetalThickn
   };
 }
 
+/** Independent prism proof for small/thick flat parts. A sheet slenderness
+ * heuristic is not a manufacturing minimum. Promotion requires matching end
+ * boundaries, exact normal extrusion sides, complete boundary adjacency, and
+ * independent surface-area/volume reconciliation. Unsupported side surfaces
+ * remain unresolved; their mere presence never grants this promotion. */
+function provenPlanarPrismThickness(
+  planes: PlaneFaceObservation[], cylinders: CylinderFaceObservation[],
+  otherFaceCount: number, volumeMm3: number | undefined,
+): SheetMetalThicknessCandidate | undefined {
+  if(otherFaceCount!==0 || !finitePositive(volumeMm3??0) || planes.length<2 || planes.length>500) return undefined;
+  const near=(a:number,b:number)=>Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=Math.max(1e-7,Math.max(Math.abs(a),Math.abs(b))*1e-8);
+  const ordered=[...planes].sort((a,b)=>b.areaMm2-a.areaMm2), primary=ordered[0];
+  const normal=normalized(primary.normal);
+  if(!normal || !primary.edgeHashes?.length || !finitePositive(primary.boundaryLengthMm??0)
+    || !Number.isInteger(primary.wireCount) || primary.wireCount!<1
+    || !primary.uvSizeMm?.every(finitePositive)) return undefined;
+  for(const opposite of ordered.slice(1)){
+    const otherNormal=normalized(opposite.normal);
+    if(!otherNormal || dot(normal,otherNormal)>-1+1e-8
+      || !near(primary.areaMm2,opposite.areaMm2)
+      || !near(primary.boundaryLengthMm!,opposite.boundaryLengthMm??NaN)
+      || primary.wireCount!==opposite.wireCount || !opposite.edgeHashes?.length) continue;
+    const displacement=subtract(opposite.centerMm,primary.centerMm),signedThickness=dot(displacement,normal),thicknessMm=Math.abs(signedThickness);
+    if(!finitePositive(thicknessMm) || thicknessMm<MIN_SEPARATION_MM
+      || length(subtract(displacement,scale(normal,signedThickness)))>1e-7) continue;
+    const sides=planes.filter(face=>face!==primary&&face!==opposite);
+    if(sides.some(face=>{const n=normalized(face.normal);return !n||Math.abs(dot(n,normal))>1e-8;})) continue;
+    if(cylinders.some(face=>{const axis=face.axis?normalized(face.axis):null;return !axis||Math.abs(dot(axis,normal))<1-1e-8;})) continue;
+    const lateral=[...sides,...cylinders];
+    if(!lateral.length) continue;
+    const topEdges=new Set(primary.edgeHashes),bottomEdges=new Set(opposite.edgeHashes);
+    if(lateral.some(face=>!face.edgeHashes?.some(id=>topEdges.has(id))||!face.edgeHashes?.some(id=>bottomEdges.has(id)))) continue;
+    // Every end-face boundary must have a side wall, including through holes.
+    if([...topEdges,...bottomEdges].some(id=>lateral.filter(face=>face.edgeHashes?.includes(id)).length!==1)) continue;
+    const sideArea=lateral.reduce((sum,face)=>sum+face.areaMm2,0);
+    if(!near(sideArea,primary.boundaryLengthMm!*thicknessMm)
+      || !near(volumeMm3!,primary.areaMm2*thicknessMm)) continue;
+    return {thicknessMm,confidence:'medium',evidencePairs:1,evidenceFaceIds:[primary.id,opposite.id]};
+  }
+  return undefined;
+}
+
+function kernelProvenPrismThickness(planes:PlaneFaceObservation[],options:SheetMetalAnalysisOptions):SheetMetalThicknessCandidate|undefined {
+  const proof=options.verifiedPrism;
+  if(!proof || proof.faceId===proof.oppositeFaceId || !finitePositive(proof.thicknessMm) || !finitePositive(options.volumeMm3??0))return undefined;
+  const a=planes.find(face=>face.id===proof.faceId),b=planes.find(face=>face.id===proof.oppositeFaceId);
+  if(!a||!b)return undefined;
+  const an=normalized(a.normal),bn=normalized(b.normal);
+  const near=(x:number,y:number)=>Number.isFinite(x)&&Number.isFinite(y)&&Math.abs(x-y)<=Math.max(1e-7,Math.max(Math.abs(x),Math.abs(y))*1e-8);
+  if(!an||!bn||dot(an,bn)>-1+1e-8 || !near(a.areaMm2,b.areaMm2)
+    || !near(Math.abs(dot(subtract(a.centerMm,b.centerMm),an)),proof.thicknessMm)
+    || !near(a.areaMm2*proof.thicknessMm,options.volumeMm3!)
+    || !near(a.boundaryLengthMm??NaN,b.boundaryLengthMm??NaN)
+    || !Number.isInteger(a.wireCount)||a.wireCount!<1||a.wireCount!==b.wireCount) return undefined;
+  return {thicknessMm:proof.thicknessMm,confidence:'medium',evidencePairs:1,evidenceFaceIds:[a.id,b.id]};
+}
+
 function perpendicularDistanceBetweenAxes(left: CylinderFaceObservation, right: CylinderFaceObservation) {
   if (!left.originMm || !right.originMm || !left.axis || !right.axis) return null;
   const leftAxis = normalized(left.axis);
@@ -352,8 +412,9 @@ function pickPlanarFlatPatternCandidate(
   thicknessCandidate: SheetMetalThicknessCandidate | undefined,
   bendCandidates: SheetMetalBendCandidate[],
   volumeMm3: number | undefined,
+  kernelPrismVerified = false,
 ): SheetMetalFlatPatternCandidate | undefined {
-  if (!thicknessCandidate || thicknessCandidate.confidence !== "medium" || bendCandidates.length || otherFaceCount > 0) return undefined;
+  if (!thicknessCandidate || thicknessCandidate.confidence !== "medium" || bendCandidates.length || (!kernelPrismVerified && otherFaceCount > 0)) return undefined;
   if (!finitePositive(volumeMm3 ?? 0)) return undefined;
 
   const evidencePlanes = planes
@@ -379,7 +440,7 @@ function pickPlanarFlatPatternCandidate(
   const contourCount = primary.wireCount ?? 0;
   if (!finitePositive(widthMm) || !finitePositive(heightMm) || !finitePositive(cutLengthMm) || !Number.isInteger(contourCount) || contourCount < 1) return undefined;
 
-  for (const cylinder of cylinders) {
+  for (const cylinder of kernelPrismVerified ? [] : cylinders) {
     const axis = cylinder.axis ? normalized(cylinder.axis) : null;
     if (!axis || Math.abs(dot(axis, primaryNormal)) < 0.995) return undefined;
   }
@@ -438,8 +499,11 @@ export function analyzeSheetMetalTopology(
   const cylindricalFaces = observations.cylindricalFaces.filter(
     (face) => finitePositive(face.areaMm2) && finitePositive(face.radiusMm),
   );
-  const thicknessCandidate = pickThicknessCandidate(planarFaces);
-  const bendCandidates = pickBendCandidates(cylindricalFaces, planarFaces, thicknessCandidate);
+  const heuristicThickness = pickThicknessCandidate(planarFaces);
+  const kernelPrismThickness = kernelProvenPrismThickness(planarFaces,options);
+  const thicknessCandidate = kernelPrismThickness ?? (heuristicThickness?.confidence === 'medium' ? heuristicThickness
+    : provenPlanarPrismThickness(planarFaces,cylindricalFaces,observations.otherFaceCount,options.volumeMm3) ?? heuristicThickness);
+  const bendCandidates = kernelPrismThickness ? [] : pickBendCandidates(cylindricalFaces, planarFaces, thicknessCandidate);
   const flatPatternCandidate = pickPlanarFlatPatternCandidate(
     planarFaces,
     cylindricalFaces,
@@ -447,6 +511,7 @@ export function analyzeSheetMetalTopology(
     thicknessCandidate,
     bendCandidates,
     options.volumeMm3,
+    Boolean(kernelPrismThickness),
   );
   const warnings: string[] = [];
 

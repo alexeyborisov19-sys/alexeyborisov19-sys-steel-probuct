@@ -175,3 +175,40 @@ for(const topology of ["verified","unknown","invalid"] as const)test(`concave es
  const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{flatFeatures:features}},f.policy,{caller:null,requireAiReview:false});
  assert.equal(Boolean(result.signals[0].estimatedSalePriceRub),topology==="verified");
 });
+for(const kind of ['hole','ligament','table','thickness'] as const)test(`owner authorized measured ${kind} violation has estimate plus explicit warning, never approval`,async()=>{
+ const f=fixture();
+ const features={supported:true,reasons:[],holeCount:1,minHoleDiameterMm:kind==='hole'?.9:1,minLigamentMm:kind==='ligament'?.9:1,minPartSideMm:100};
+ if(kind==='table')f.part.geometry!.widthMm=4000;
+ if(kind==='thickness'){f.part.configuration.thicknessMm=.4;f.cost.thicknessMm=.4;}
+ const checks=runVerifiedLaserDfm({width:f.part.geometry!.widthMm!,height:100,units:'мм'},f.cost.thicknessMm,'hot',features);
+ f.calculation.parts[0].dfmBlockingReasons=checks.filter(c=>c.severity==='error').map(c=>c.title);
+ assert.ok(f.calculation.parts[0].dfmBlockingReasons.length);
+ const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{flatFeatures:features}},f.policy,{caller:null,requireAiReview:false});
+ assert.equal(result.signals[0].status,'needs-review');assert.equal(result.signals[0].estimatedSalePriceRub,1200);
+ assert.equal(result.signals[0].approvedSalePriceRub,null);assert.equal(result.audits[0].publishedRubBatch,null);
+ const view=createClientCalculationView(f.project,result.signals);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
+ assert.match(view.parts[0].message,/Изготовление требует отдельного согласования/);
+ assert.doesNotMatch(view.parts[0].message,/owner-2026|owner-confirmation/);
+});
+test('invalid measured topology never obtains owner manufacturing-rule waiver',async()=>{
+ const f=fixture();const flatFeatures={supported:false,invalidGeometry:true as const,reasons:['Контур пересекается.'],holeCount:0,minHoleDiameterMm:null,minLigamentMm:null,minPartSideMm:null};
+ f.calculation.parts[0].dfmBlockingReasons=runVerifiedLaserDfm({width:100,height:100,units:'мм'},1,'hot',flatFeatures).filter(c=>c.severity==='error').map(c=>c.title);
+ const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{flatFeatures}},f.policy,{caller:null,requireAiReview:false});
+ assert.equal(result.signals[0].estimatedSalePriceRub,undefined);assert.equal(result.signals[0].approvedSalePriceRub,null);
+});
+for(const marker of [true,false])test(`STEP blank estimate needs protected evidence marker: ${marker}`,async()=>{
+ const f=reviewFixture();f.part.format='step';f.part.geometry!.bodyCount=1;f.part.geometry!.bendCount=0;
+ const reason='Дополнительная обработка требует отдельного расчёта.';
+ f.calculation.parts[0].dfmReviewReasons.push(reason);
+ const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{...(marker?{preliminaryGeometrySource:'measured-step-blank' as const}:{}),reviewReasons:[reason]}},f.policy,{caller:null,requireAiReview:false});
+ assert.equal(Boolean(result.signals[0].estimatedSalePriceRub),marker);assert.equal(result.signals[0].status,'needs-review');assert.equal(result.audits[0].publishedRubBatch,null);
+ if(marker)assert.match(createClientCalculationView(f.project,result.signals).parts[0].message,/Фаски, зенковки.*не включены/);
+});
+test('last-known stale metal price forces warning estimate even with fully valid geometry',async()=>{
+ const f=fixture();f.cost.staleMaterialPriceUsed={sourceDate:'2026-09-14'};
+ const flatFeatures={supported:true,reasons:[],holeCount:0,minHoleDiameterMm:null,minLigamentMm:null,minPartSideMm:100};
+ const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{flatFeatures}},f.policy,{caller:null,requireAiReview:false});
+ assert.equal(result.signals[0].status,'needs-review');assert.equal(result.signals[0].estimatedSalePriceRub,1200);
+ assert.equal(result.signals[0].approvedSalePriceRub,null);assert.equal(result.audits[0].publishedRubBatch,null);
+ const view=createClientCalculationView(f.project,result.signals);assert.match(view.parts[0].message,/2026-09-14/);assert.match(view.parts[0].message,/Прайс устарел/);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
+});

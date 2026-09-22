@@ -1,3 +1,5 @@
+import { verifiedStepBlankCostSource } from "@/lib/instant-quote/verified-step-blank-cost";
+import { verifiedBentStepCostSource } from "@/lib/instant-quote/verified-bent-step-cost";
 import { measureVerifiedFlatFeatures } from "@/lib/instant-quote/verified-flat-features";
 import { bendConfigurationConflict } from "@/lib/instant-quote/cad-configuration-conflicts";
 import { createHash, randomUUID } from "node:crypto";
@@ -90,7 +92,7 @@ async function analyzePlanarStep(inspection: UploadInspection, format: "step" | 
     && (model.geometry.cutLengthMm ?? 0) > 0
     && (model.geometry.contourCount ?? 0) > 0;
   const authoritativeFactualInputs: PartFactualInputs = {
-    ...(productionReady && privateEvidence?.surfaceAreaMm2
+    ...((productionReady || verifiedStepBlankCostSource(model)) && privateEvidence?.surfaceAreaMm2
       ? { powderAreaM2: privateEvidence.surfaceAreaMm2 / 1_000_000 }
       : {}),
     // Counted from verified BRep evidence, which does not require a confirmed
@@ -257,19 +259,19 @@ async function buildAuthoritativeProject(
         const { model, productionReady, authoritativeFactualInputs = {} } = await analyzeStep(inspection, format);
         const thicknessMismatch = thicknessMismatchReason(measuredThicknessMm(model.sheetMetal), item.thicknessMm);
         const bendMismatch = bendConfigurationConflict(model.geometry.bendCount, item.operations, item.operationInputs.bendCount);
-        if (productionReady && !thicknessMismatch && !bendMismatch) {
+        const preliminaryBlankSource = verifiedStepBlankCostSource(model);
+        if ((productionReady || preliminaryBlankSource) && !thicknessMismatch && !bendMismatch) {
           geometry = model.geometry;
-          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings], flatFeatures: model.flatFeatures };
-          // Private STEP evidence stays fail-closed: it reaches the calculation
-          // only once the flat pattern is confirmed. An unconfirmed part is not
-          // priced at all, so withholding it costs nothing — the detected bend
-          // count still reaches the customer through the preview, and the
-          // engineer through the review note below.
+          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings], flatFeatures: model.flatFeatures, preliminaryGeometrySource: preliminaryBlankSource ?? verifiedBentStepCostSource(model) };
+          // Surface area and bends are independently measured from original CAD.
+          // Preliminary blank geometry still carries its estimate-only marker.
           if (Object.keys(authoritativeFactualInputs).length > 0) {
             authoritativeFactualByPartId[item.clientPartId] = { ...authoritativeFactualInputs };
           }
-          state = model.warnings.length ? "manual-review" : "configurable";
-          analysisNotes.push(`STEP ${inspection.safeName}: server OpenCascade confirmed a high-confidence planar sheet flat pattern.`);
+          state = preliminaryBlankSource || model.warnings.length ? "manual-review" : "configurable";
+          analysisNotes.push(preliminaryBlankSource
+            ? `STEP ${inspection.safeName}: preliminary blank cost only; edge finishing and additional machining are excluded pending engineering review.`
+            : `STEP ${inspection.safeName}: server OpenCascade confirmed measured cost geometry; manufacturing diagnostics remain in the review.`);
         } else {
           evidenceByPartId[item.clientPartId] = {
             reviewReasons: [

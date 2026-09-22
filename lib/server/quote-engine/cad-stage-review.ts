@@ -1,5 +1,6 @@
+import { laserFeatureNorms } from "@/data/manufacturing-facts";
 import { completeWithConfiguredModel } from "@/lib/server/quote-engine/model-completion";
-import { runVerifiedLaserDfm } from "@/lib/instant-quote/dfm";
+import { runVerifiedLaserDfm, isEstimateOnlyManufacturingConstraint } from "@/lib/instant-quote/dfm";
 import { createHash } from "node:crypto";
 import type { InstantQuoteProject, ProjectPart } from "@/lib/instant-quote/domain";
 import type { ClientCalculationSignal } from "@/lib/instant-quote/client-calculation-view";
@@ -86,7 +87,10 @@ async function reviewPart(
       : missing.has("operation-rate") || missing.has("laser-pierce-policy") ? "operation-rate" : undefined;
     return { ...held, signal: { ...held.signal, ...(reason ? { unavailableReason: reason } : {}) } };
   }
-  if (!part.geometry || result.dfmBlockingReasons.length || (cad?.unsupportedEntities?.length ?? 0) > 0) {
+  const measuredDfm=part.geometry?runVerifiedLaserDfm({width:part.geometry.widthMm!,height:part.geometry.heightMm!,units:"мм"},cost.thicknessMm,cost.materialId,cad?.flatFeatures):[];
+  const manufacturingConstraints=measuredDfm.filter(check=>isEstimateOnlyManufacturingConstraint(check,cad?.flatFeatures));
+  const costBlockingReasons=result.dfmBlockingReasons.filter(reason=>!manufacturingConstraints.some(check=>check.title===reason));
+  if (!part.geometry || costBlockingReasons.length || (cad?.unsupportedEntities?.length ?? 0) > 0) {
     return hold(issue("geometry", "inconsistent-geometry"));
   }
   if (cost.quantity !== part.configuration.quantity || cost.materialId !== part.configuration.materialId
@@ -111,18 +115,28 @@ async function reviewPart(
     return hold(issue("pricing", "price-below-floor"));
   }
   audit.calculatedRubBatch = baseline;
-  if (cost.estimatedRateUsed || result.dfmReviewReasons.length || (cad?.reviewReasons?.length ?? 0) > 0) {
+  const measuredBentStep = cad?.preliminaryGeometrySource === "measured-bent-step"
+    && (part.format === "step" || part.format === "stp") && part.geometry.bodyCount === 1
+    && Number.isSafeInteger(part.geometry.bendCount) && (part.geometry.bendCount ?? 0) > 0
+    && part.configuration.operations.includes("bending")
+    && cost.parameters.bendCountEach === part.geometry.bendCount
+    && (part.configuration.operationInputs?.bendCount == null || part.configuration.operationInputs.bendCount === part.geometry.bendCount);
+  const measuredStepBlank = cad?.preliminaryGeometrySource === "measured-step-blank"
+    && (part.format === "step" || part.format === "stp") && part.geometry.bodyCount === 1
+    && (part.geometry.bendCount ?? 0) === 0;
+  const preliminaryStep = measuredBentStep || measuredStepBlank;
+  if (manufacturingConstraints.length || preliminaryStep || cost.staleMaterialPriceUsed || cost.estimatedRateUsed || result.dfmReviewReasons.length || (cad?.reviewReasons?.length ?? 0) > 0) {
     const held = hold(issue("geometry", "inconsistent-geometry"));
     const g = part.geometry;
     const dfm = runVerifiedLaserDfm({ width: g.widthMm!, height: g.heightMm!, units: "мм" }, cost.thicknessMm, cost.materialId, cad?.flatFeatures);
     if (part.configuration.operations.includes("bending")) dfm.push({ code: "bending-feature-rules", severity: "manual", title: "Зоны гиба и инструмент требуют проверки технолога", detail: "" });
     const manual = dfm.filter(check => check.severity === "manual");
-    const onlyManufacturingReview = (cost.estimatedRateUsed || manual.length > 0) && manual.every(check => ["feature-rules", "bending-feature-rules"].includes(check.code)
+    const onlyManufacturingReview = (manufacturingConstraints.length || preliminaryStep || cost.staleMaterialPriceUsed || cost.estimatedRateUsed || manual.length > 0) && manual.every(check => ["feature-rules", "bending-feature-rules"].includes(check.code)
         // Exact configured rates can support an estimate without asserting that
         // the black-steel manufacturing capability applies to galvanized steel.
         || (check.code === "material-thickness-review" && ["hot", "cold", "zinc"].includes(cost.materialId)))
-      && result.dfmReviewReasons.every(reason => manual.some(check => check.title === reason))
-      && !dfm.some(check => check.severity === "error") && !(cad?.reviewReasons?.length);
+      && result.dfmReviewReasons.every(reason => manual.some(check => check.title === reason) || (preliminaryStep && cad?.reviewReasons?.includes(reason)))
+      && !dfm.some(check => check.severity === "error" && !isEstimateOnlyManufacturingConstraint(check,cad?.flatFeatures)) && (preliminaryStep || !(cad?.reviewReasons?.length));
     const completeGeometry = [g.widthMm, g.heightMm, g.areaMm2, g.blankAreaMm2, g.cutLengthMm].every(value => typeof value === "number" && Number.isFinite(value) && value > 0)
       && Number.isSafeInteger(g.pierceCount) && g.pierceCount! > 0;
     const articlesBatch = cost.lines.reduce((sum, line) => sum + line.amountRubBatch, 0);
@@ -145,7 +159,10 @@ async function reviewPart(
       }
       // A commercial estimate is not manufacturing approval. Keep the failed
       // geometry review and approved/published price unset in the audit.
-      return { signal: { ...held.signal, estimatedSalePriceRub: baseline, ...(cost.estimatedRateUsed ? { estimatedRateUsed: true } : {}), aiReviewed: false, marketVerified: false }, audit };
+      return { signal: { ...held.signal, estimatedSalePriceRub: baseline, ...(cost.staleMaterialPriceUsed ? {staleMaterialPriceDate:cost.staleMaterialPriceUsed.sourceDate} : {}), ...((manufacturingConstraints.length || measuredStepBlank) ? {manufacturingWarnings:[
+        ...manufacturingConstraints.map(check=>`${check.title} ${check.code === "feature-rules" ? `Отверстие должно быть не меньше толщины металла (${cost.thicknessMm} мм); перемычка — не меньше ${laserFeatureNorms.minLigamentMm} мм.` : check.detail} Изготовление требует отдельного согласования технологом.`),
+        ...(measuredStepBlank ? ["Стоимость заготовки и выбранных операций. Фаски, зенковки и другая дополнительная обработка не включены; требуется проверка технолога."] : []),
+      ]} : {}), ...(cost.estimatedRateUsed ? { estimatedRateUsed: true } : {}), aiReviewed: false, marketVerified: false }, audit };
     }
     return held;
   }

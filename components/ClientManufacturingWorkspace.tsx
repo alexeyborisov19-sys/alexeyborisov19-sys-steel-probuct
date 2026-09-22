@@ -105,7 +105,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4"><span className="text-sm font-medium">Дополнительная обработка</span><span aria-hidden="true" className="text-xl text-steel-orange group-open:rotate-45">+</span></summary>
                 <div className="border-t border-white/10 p-3 [&_p]:text-xs [&_p]:text-white/70 [&_label_span]:text-xs [&_label_span]:text-white/70"><ClientOperationControls operations={operations} operationInputs={operationInputs} detectedBendCount={activePreview?.cad.bendCountFromModel ?? null} onToggle={toggleOperation} onQuantityChange={updateOperationInputs} /></div>
               </details>
-              <ClientOperationSummary operations={operations} operationInputs={operationInputs} detectedBendCount={activePreview?.cad.bendCountFromModel ?? null} />
+              <ClientOperationSummary quantity={quantity} operations={operations} operationInputs={operationInputs} detectedBendCount={activePreview?.cad.bendCountFromModel ?? null} />
             </section>
 
             <section className="rounded-xl border border-steel-orange/35 bg-[#172028] p-5" aria-label="Результат расчёта">

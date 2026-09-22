@@ -8,6 +8,9 @@ export type ClientCalculationSignal = {
   /** Server-authorized commercial estimate; never a manufacturing approval. */
   estimatedSalePriceRub?: number | null;
   estimatedRateUsed?: boolean;
+  staleMaterialPriceDate?: string;
+  /** Fixed server-derived manufacturing warnings; no private rates/evidence. */
+  manufacturingWarnings?: string[];
   unavailableReason?: "laser-rate" | "material-price" | "material-price-stale" | "operation-input" | "operation-rate";
   /** Server-owned outcome, never inferred from the existence of a price. */
   aiReviewed?: boolean;
@@ -119,7 +122,7 @@ export function createClientCalculationView(
           depthMm: part.geometry?.depthMm ?? null,
         },
         price,
-        message: `${message} ${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
+        message: `${message} ${hasEstimate && signal?.staleMaterialPriceDate ? `Цена металла взята из последнего сохранённого прайса от ${signal.staleMaterialPriceDate}. Прайс устарел; актуальную закупочную цену должен подтвердить инженер. ` : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? signal.manufacturingWarnings.join(" ")+" " : ""}${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
       };
     }),
   };

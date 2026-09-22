@@ -79,6 +79,12 @@ export function ClientQuotePrintout({
         </tbody>
       </table>
 
+      {calculation.parts.filter(part => part.price.status !== "approved").map(part => (
+        <p key={`review-${part.partId}`} style={{ fontSize: 10, lineHeight: 1.5, breakInside: "avoid" }}>
+          <strong>{part.fileName}:</strong> {part.message}
+        </p>
+      ))}
+
       {totalRub != null && priced.length === calculation.parts.length && (
         <p style={{ marginTop: 12, fontSize: 14, fontWeight: 700, textAlign: "right" }}>
           Итого предварительно: {rub(totalRub)} ₽

@@ -1,3 +1,5 @@
+import { measurePreliminaryStepBlank, type PreliminaryStepBlank } from "./preliminary-step-blank";
+import { verifyStepPrism } from "./verified-step-prism";
 import { measureStepFaceFeatures, matchingStepFaceFeatures } from "./step-flat-features";
 import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type { CadMeshPrimitive } from "@/lib/instant-quote/cad-model";
@@ -256,7 +258,7 @@ function collectSheetMetalAnalysis(
   kernel: OcctKernelInstance,
   shape: OcctShapeHandle,
   volumeMm3?: number,
-): { sheetMetal: SheetMetalAnalysis; unfoldGeometry?: StepUnfoldGeometryEvidence; flatFeatures?: VerifiedFlatFeatures } {
+): { sheetMetal: SheetMetalAnalysis; unfoldGeometry?: StepUnfoldGeometryEvidence; flatFeatures?: VerifiedFlatFeatures; preliminaryBlank?: PreliminaryStepBlank } {
   const faces = kernel.getSubShapes(shape, "face");
   const planarFaces: PlaneFaceObservation[] = [];
   const planarBoundaries: PlanarFaceBoundary3DObservation[] = [];
@@ -364,7 +366,11 @@ function collectSheetMetalAnalysis(
   }
 
   const observations = { planarFaces, cylindricalFaces, otherFaceCount };
-  const sheetMetal = analyzeSheetMetalTopology(observations, { volumeMm3 });
+  const initialSheetMetal = analyzeSheetMetalTopology(observations, { volumeMm3 });
+  let verifiedPrism: ReturnType<typeof verifyStepPrism>;
+  try { verifiedPrism = verifyStepPrism(kernel, shape, planarFaces, volumeMm3, initialSheetMetal.thicknessCandidate?.thicknessMm); }
+  catch { /* Optional exact prism proof must not erase the existing analysis. */ }
+  const sheetMetal = verifiedPrism ? analyzeSheetMetalTopology(observations, { volumeMm3, verifiedPrism }) : initialSheetMetal;
 
   // Measured here because this is where the face observations live; they stay
   // internal to the kernel and only the derived blank travels on. The solid's
@@ -416,7 +422,12 @@ function collectSheetMetalAnalysis(
   } catch {
     // Optional feature extraction must never erase successful geometry or preview.
   }
-  return { sheetMetal, unfoldGeometry, flatFeatures };
+  let preliminaryBlank: PreliminaryStepBlank | undefined;
+  if (!sheetMetal.flatPatternCandidate && sheetMetal.development?.status !== "measured" && thicknessMm != null) {
+    try { preliminaryBlank = measurePreliminaryStepBlank(kernel, shape, planarFaces, volumeMm3, thicknessMm); }
+    catch { /* No approximate blank is better than claiming a failed proof. */ }
+  }
+  return { sheetMetal, unfoldGeometry, flatFeatures, preliminaryBlank };
 }
 
 /**
@@ -467,12 +478,14 @@ class OcctStepKernel implements StepKernelPort {
       }
 
       let sheetMetal: SheetMetalAnalysis | undefined;
+      let preliminaryBlank: PreliminaryStepBlank | undefined;
       let flatFeatures: VerifiedFlatFeatures | undefined;
       let unfoldGeometry: StepUnfoldGeometryEvidence | undefined;
       const warnings: string[] = [];
       try {
         const analysis = collectSheetMetalAnalysis(kernel, shape, volumeMm3);
         sheetMetal = analysis.sheetMetal;
+        preliminaryBlank = analysis.preliminaryBlank;
         flatFeatures = analysis.flatFeatures;
         unfoldGeometry = analysis.unfoldGeometry;
       } catch {
@@ -497,6 +510,7 @@ class OcctStepKernel implements StepKernelPort {
         root: null,
         features: [],
         sheetMetal,
+        preliminaryBlank,
         flatFeatures,
         unfoldGeometry,
         warnings,
