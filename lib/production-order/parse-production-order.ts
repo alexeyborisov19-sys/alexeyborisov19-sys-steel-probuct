@@ -2,6 +2,8 @@ import type { ManufacturingOperation } from "@/lib/instant-quote/domain";
 import type {
   ProductionOrder,
   ProductionOrderArtifact,
+  ProductionOrderArtifactSource,
+  ProductionOrderCommercialStatus,
   ProductionOrderDelivery,
   ProductionOrderOperation,
   ProductionOrderPart,
@@ -18,6 +20,8 @@ const OPERATION_CODES = [
   "powder-coating",
   "packaging",
 ] as const satisfies readonly ManufacturingOperation[];
+
+const COMMERCIAL_STATUSES = ["approved", "estimate", "unavailable"] as const satisfies readonly ProductionOrderCommercialStatus[];
 
 function record(value: unknown, field: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`Invalid ${field}`);
@@ -87,11 +91,20 @@ function operation(value: unknown, index: number): ProductionOrderOperation {
   };
 }
 
+function commercialStatus(value: unknown, field: string, fallback: ProductionOrderCommercialStatus) {
+  if (value === undefined || value === null || value === "") return fallback;
+  return enumValue(value, COMMERCIAL_STATUSES, field);
+}
+
 function part(value: unknown, index: number): ProductionOrderPart {
   const item = record(value, `parts[${index}]`);
   const dimensions = record(item.dimensionsMm, `parts[${index}].dimensionsMm`);
   const operations = item.operations;
   if (!Array.isArray(operations) || operations.length > 20) throw new Error(`Invalid parts[${index}].operations`);
+  const commercial = item.commercial && typeof item.commercial === "object" && !Array.isArray(item.commercial)
+    ? record(item.commercial, `parts[${index}].commercial`)
+    : {};
+  const totalRub = decimalOrNull(commercial.totalRub, `parts[${index}].commercial.totalRub`, 0, 1_000_000_000_000);
 
   return {
     partId: text(item.partId, `parts[${index}].partId`, 1, 160),
@@ -109,6 +122,31 @@ function part(value: unknown, index: number): ProductionOrderPart {
     },
     operations: operations.map(operation),
     workshopNote: optionalText(item.workshopNote, `parts[${index}].workshopNote`, 2_000),
+    commercial: {
+      totalRub,
+      status: commercialStatus(commercial.status, `parts[${index}].commercial.status`, totalRub == null ? "unavailable" : "estimate"),
+    },
+  };
+}
+
+function artifactSource(value: unknown, index: number): ProductionOrderArtifactSource | null {
+  if (value === null || value === undefined) return null;
+  const item = record(value, `artifacts[${index}].source`);
+  const requestId = text(item.requestId, `artifacts[${index}].source.requestId`, 1, 40);
+  const storageId = safeFileName(item.storageId, `artifacts[${index}].source.storageId`);
+  const extension = text(item.extension, `artifacts[${index}].source.extension`, 1, 16).toLowerCase();
+  if (!/^CALC-[A-F0-9]{8}-[A-F0-9]{3}$/.test(requestId)) throw new Error(`Invalid artifacts[${index}].source.requestId`);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[a-z0-9]+$/i.test(storageId)) {
+    throw new Error(`Invalid artifacts[${index}].source.storageId`);
+  }
+  if (!/^[a-z0-9]+$/.test(extension) || !storageId.toLowerCase().endsWith(`.${extension}`)) {
+    throw new Error(`Invalid artifacts[${index}].source.extension`);
+  }
+  return {
+    kind: enumValue(item.kind, ["quarantine"] as const, `artifacts[${index}].source.kind`),
+    requestId,
+    storageId,
+    extension,
   };
 }
 
@@ -121,6 +159,7 @@ function artifact(value: unknown, index: number, partIds: Set<string>): Producti
     kind: enumValue(item.kind, ["cad", "drawing", "attachment"] as const, `artifacts[${index}].kind`),
     fileName: safeFileName(item.fileName, `artifacts[${index}].fileName`),
     partId,
+    source: artifactSource(item.source, index),
   };
 }
 
@@ -150,6 +189,7 @@ export function parseProductionOrder(value: unknown): ProductionOrder {
   if (new Set(artifacts.map((entry) => entry.id)).size !== artifacts.length) throw new Error("Duplicate artifact identity");
 
   const commercial = record(item.commercial, "commercial");
+  const totalRub = decimalOrNull(commercial.totalRub, "commercial.totalRub", 0, 1_000_000_000_000);
   return {
     schemaVersion: "1",
     orderId: text(item.orderId, "orderId", 1, 180),
@@ -168,8 +208,9 @@ export function parseProductionOrder(value: unknown): ProductionOrder {
     delivery: delivery(item.delivery),
     productionNote: optionalText(item.productionNote, "productionNote", 4_000),
     commercial: {
-      totalRub: decimalOrNull(commercial.totalRub, "commercial.totalRub", 0, 1_000_000_000_000),
+      totalRub,
       currency: enumValue(commercial.currency, ["RUB"] as const, "commercial.currency"),
+      status: commercialStatus(commercial.status, "commercial.status", totalRub == null ? "unavailable" : "estimate"),
     },
   };
 }
