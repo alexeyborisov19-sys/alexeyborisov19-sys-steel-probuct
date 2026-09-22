@@ -11,6 +11,7 @@ import {
   generateProductionOrderDocuments,
   PdfRendererUnavailableError,
 } from "@/lib/server/production-order/pdf-documents";
+import { readAndRebuildProductionOrder } from "@/lib/server/production-order/order-from-report";
 import { resolveProductionOrderArtifactSources } from "@/lib/server/production-order/source-artifacts";
 import { copyProductionOrderArtifacts } from "@/lib/server/production-order/storage";
 
@@ -19,10 +20,21 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   return pdStage4Mutation(request, "VIEW_DASHBOARD", async (context, body) => {
+    let requestedOrder;
+    try {
+      requestedOrder = parseProductionOrder(body.order);
+    } catch {
+      throw new PdStage4Error("VALIDATION_ERROR");
+    }
+    if (typeof body.calculationFileName !== "string" || !body.calculationFileName.trim()) {
+      throw new PdStage4Error("VALIDATION_ERROR");
+    }
+
     let order;
     try {
-      order = parseProductionOrder(body.order);
-    } catch {
+      order = await readAndRebuildProductionOrder(body.calculationFileName.trim(), requestedOrder);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new PdStage4Error("NOT_FOUND");
       throw new PdStage4Error("VALIDATION_ERROR");
     }
 
