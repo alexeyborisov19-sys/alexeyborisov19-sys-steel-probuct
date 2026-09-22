@@ -15,7 +15,7 @@ import {
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { PartFactualInputs, ProjectCadEvidence } from "@/lib/instant-quote/project-factual-calculation";
 import { clientKey } from "@/lib/security/client-ip";
-import { consumeRules, quoteRateRules } from "@/lib/security/rate-limit";
+import { consumeRules, selectCadCalculationRateRules } from "@/lib/security/rate-limit";
 import { PayloadTooLargeError, readMultipartForm } from "@/lib/security/request-body";
 import { safeSecurityLog } from "@/lib/security/safe-log";
 import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
@@ -391,7 +391,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       throw error;
     }
 
-    const limited = consumeRules(ownerKey, quoteRateRules);
+    const limited = consumeRules(ownerKey, selectCadCalculationRateRules());
     if (limited) {
       return response(429, requestId, {
         ok: false,
