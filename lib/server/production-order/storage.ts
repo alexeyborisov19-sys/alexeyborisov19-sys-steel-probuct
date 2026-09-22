@@ -1,6 +1,7 @@
 import { copyFile, mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ProductionOrder, ProductionOrderArtifactKind } from "@/lib/production-order/domain";
+import { loadConfiguredOrderStorageRootSync } from "@/lib/server/production-order/storage-settings";
 
 export type ProductionOrderPackagePlan = {
   root: string;
@@ -59,10 +60,11 @@ function artifactFolderName(kind: ProductionOrderArtifactKind) {
   return "Вложения";
 }
 
-export function loadOrderStorageRoot(environment: NodeJS.ProcessEnv = process.env) {
-  const configured = environment.STEEL_PRODUCT_ORDER_ROOT?.trim();
-  if (!configured) throw new Error("STEEL_PRODUCT_ORDER_ROOT is not configured");
-  return assertPrivateRoot(configured);
+/** Saved UI settings win; STEEL_PRODUCT_ORDER_ROOT remains a deployment fallback. */
+export function loadOrderStorageRoot(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+) {
+  return assertPrivateRoot(loadConfiguredOrderStorageRootSync(environment));
 }
 
 export function planProductionOrderPackage(order: ProductionOrder, root = loadOrderStorageRoot()): ProductionOrderPackagePlan {
