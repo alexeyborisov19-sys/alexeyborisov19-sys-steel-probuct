@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import type { ProductionOrder } from "@/lib/production-order/domain";
 import { parseProductionOrder } from "@/lib/production-order/parse-production-order";
 import { planProductionOrderPackage, type ProductionOrderPackagePlan } from "@/lib/server/production-order/storage";
@@ -22,6 +22,18 @@ async function existingManifest(plan: ProductionOrderPackagePlan) {
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function existingDirectoryState(plan: ProductionOrderPackagePlan) {
+  try {
+    const info = await stat(plan.orderDirectory);
+    if (!info.isDirectory()) throw new ProductionOrderPackageConflictError("Путь заказа уже занят файлом.");
+    return { exists: true, entries: await readdir(plan.orderDirectory) };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return { exists: false, entries: [] as string[] };
     throw error;
   }
 }
@@ -65,8 +77,14 @@ export async function createOrUpdateProductionOrderPackage(
   root?: string,
 ): Promise<ProductionOrderPackageResult> {
   const plan = planProductionOrderPackage(order, root);
-  const before = await existingManifest(plan);
+  const [before, directoryState] = await Promise.all([
+    existingManifest(plan),
+    existingDirectoryState(plan),
+  ]);
   if (before && before.orderId !== order.orderId) throw new ProductionOrderPackageConflictError();
+  if (!before && directoryState.exists && directoryState.entries.length > 0) {
+    throw new ProductionOrderPackageConflictError("Папка уже существует и содержит файлы, но не принадлежит этому заказу.");
+  }
 
   await mkdir(plan.orderDirectory, { recursive: true, mode: 0o700 });
   for (const directory of Object.values(plan.artifactDirectories)) {
