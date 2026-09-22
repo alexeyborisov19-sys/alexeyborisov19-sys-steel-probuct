@@ -1,6 +1,5 @@
-import { constants } from "node:fs";
-import { chmod, mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { constants, readFileSync } from "node:fs";
+import { chmod, mkdir, open, readFile, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
@@ -136,13 +135,14 @@ export function normalizeProductionOrderRoot(value: string) {
 }
 
 export async function verifyProductionOrderRootWritable(value: string) {
-  const root = normalizeProductionOrderRoot(value);
-  const info = await stat(root).catch((error: NodeJS.ErrnoException) => {
+  const normalized = normalizeProductionOrderRoot(value);
+  const info = await stat(normalized).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "ENOENT") throw new Error("Указанная папка не найдена.");
     throw error;
   });
   if (!info.isDirectory()) throw new Error("Указанный путь не является папкой.");
 
+  const root = assertOutsidePublic(await realpath(normalized));
   const probePath = path.join(root, `.steelprodukt-write-test-${randomUUID()}.tmp`);
   let handle: Awaited<ReturnType<typeof open>> | null = null;
   try {
@@ -155,6 +155,19 @@ export async function verifyProductionOrderRootWritable(value: string) {
     await unlink(probePath).catch(() => undefined);
   }
   return root;
+}
+
+async function replaceSettingsFile(temporary: string, target: string) {
+  try {
+    await rename(temporary, target);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "EEXIST" && code !== "EPERM" && code !== "ENOTEMPTY") throw error;
+    await unlink(target).catch((unlinkError: NodeJS.ErrnoException) => {
+      if (unlinkError.code !== "ENOENT") throw unlinkError;
+    });
+    await rename(temporary, target);
+  }
 }
 
 export async function saveProductionOrderStorageSettings(input: {
@@ -178,9 +191,15 @@ export async function saveProductionOrderStorageSettings(input: {
 
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await chmod(directory, 0o700).catch(() => undefined);
-  await writeFile(temporary, `${JSON.stringify(settings, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
-  await chmod(temporary, 0o600).catch(() => undefined);
-  await rename(temporary, target);
-  await chmod(target, 0o600).catch(() => undefined);
+  let committed = false;
+  try {
+    await writeFile(temporary, `${JSON.stringify(settings, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await chmod(temporary, 0o600).catch(() => undefined);
+    await replaceSettingsFile(temporary, target);
+    committed = true;
+    await chmod(target, 0o600).catch(() => undefined);
+  } finally {
+    if (!committed) await unlink(temporary).catch(() => undefined);
+  }
   return { ...settings, source: "saved" as const };
 }
