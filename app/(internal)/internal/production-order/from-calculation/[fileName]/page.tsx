@@ -5,6 +5,10 @@ import { InternalPageHeader, InternalShell } from "@/components/pd-admin/Interna
 import { Panel } from "@/components/pd-admin/Ui";
 import { requirePdPageContext } from "@/lib/pd-admin/auth/page-context";
 import { readInternalProductionReport } from "@/lib/server/instant-quote/private-production-report";
+import {
+  productionOrderArtifactsFromReport,
+  productionOrderCommercialByPartId,
+} from "@/lib/server/production-order/calculation-adapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +33,8 @@ export default async function ProductionOrderFromCalculationPage({
 
   const snapshot = report.calculationInputSnapshot;
   const responsible = context.user.displayName;
+  const artifacts = productionOrderArtifactsFromReport(report);
+  const commercialByPartId = productionOrderCommercialByPartId(report);
   context.close();
 
   return <InternalShell {...shell}>
@@ -50,6 +56,8 @@ export default async function ProductionOrderFromCalculationPage({
         productionParametersByPartId={report.productionParametersByPartId}
         initialCreatedAt={new Date().toISOString()}
         initialResponsible={responsible}
+        initialArtifacts={artifacts}
+        commercialByPartId={commercialByPartId}
       />
     </Panel> : <Panel title="Исходные данные недоступны">
       <div className="border border-amber-400/20 bg-amber-400/[.04] p-4 text-sm leading-relaxed text-amber-100/80">
