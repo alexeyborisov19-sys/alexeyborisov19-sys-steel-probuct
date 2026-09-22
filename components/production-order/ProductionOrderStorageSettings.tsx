@@ -53,7 +53,8 @@ export function ProductionOrderStorageSettings({
     const root = trimTrailingSeparators(pathValue.trim());
     if (!root) return null;
     const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
-    return `${root}${separator}26-1649 ООО Ромашка - Корпуса`;
+    const joiner = root.endsWith("/") || root.endsWith("\\") ? "" : separator;
+    return `${root}${joiner}26-1649 ООО Ромашка - Корпуса`;
   }, [pathValue]);
 
   const browse = async () => {
