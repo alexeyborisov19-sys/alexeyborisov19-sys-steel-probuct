@@ -10,6 +10,9 @@ import type { PartFactualInputs } from "@/lib/instant-quote/project-factual-calc
  * 2. server-authoritative CAD evidence;
  * 3. conservative derivation from an explicitly selected number of coating sides.
  *
+ * Countersinks are an exception: measured holes are a floor that a declared
+ * or revised count may increase, but cannot reduce.
+ *
  * Nothing in this resolver invents a physical parameter. In particular, a DXF
  * without an explicit side count for coating or surface preparation leaves that
  * article incomplete.
@@ -32,6 +35,15 @@ export function resolveEffectiveFactualInputs(
       ...(authoritativeByPartId[partId] ?? {}),
       ...(explicitByPartId[partId] ?? {}),
     };
+    const validCount = (value: number | undefined): value is number =>
+      Number.isSafeInteger(value) && value! > 0 && value! <= 100_000;
+    const measuredCount = authoritativeByPartId[partId]?.countersinkCount;
+    const declaredCount = explicitByPartId[partId]?.countersinkCount;
+    const counts = [measuredCount, declaredCount].filter(validCount);
+    // Clearing or lowering a revision cannot erase holes present in the CAD.
+    // Invalid declarations never become a billable quantity.
+    if (counts.length) resolved[partId].countersinkCount = Math.max(...counts);
+    else delete resolved[partId].countersinkCount;
   }
 
   // Coating and surface preparation are both derived the same way: the part's

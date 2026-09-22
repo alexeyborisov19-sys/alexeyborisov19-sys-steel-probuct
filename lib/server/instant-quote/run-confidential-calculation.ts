@@ -75,6 +75,7 @@ export async function runConfidentialCalculationForClient(
     productionParametersByPartId[part.id] = deriveProductionParameters({
       materialId, thicknessMm, quantity: part.configuration.quantity, geometry: part.geometry,
       weldLengthMEach: factual.weldLengthM,
+      countersinkCountEach: factual.countersinkCount,
       powderSides: powderSidesByPartId[part.id],
       explicitPowderAreaM2Each: factual.powderAreaM2,
       assemblyMinutesEach: factual.assemblyMinutes,

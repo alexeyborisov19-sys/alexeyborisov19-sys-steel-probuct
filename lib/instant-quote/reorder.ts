@@ -35,6 +35,7 @@ function normalizeOperations(operations: string[]): ManufacturingOperation[] {
     "laser-cutting",
     "bending",
     "welding",
+    "countersink",
     "assembly",
     "surface-preparation",
     "powder-coating",

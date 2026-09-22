@@ -1,3 +1,4 @@
+import type { StepMachiningFeatures } from "./step-countersinks";
 import type { PreliminaryStepBlank } from "./preliminary-step-blank";
 import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type {
@@ -18,6 +19,7 @@ export type StepKernelResult = {
   root?: CadAssemblyNode | null;
   features?: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  machiningFeatures?: StepMachiningFeatures;
   /** Server-measured raw blank; finishing is excluded and price remains estimate-only. */
   preliminaryBlank?: PreliminaryStepBlank;
   /** Server recomputes this from original CAD; never trust client-submitted measurements. */
@@ -152,6 +154,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
         root: result.root ?? null,
         features: result.features ?? [],
         sheetMetal: result.sheetMetal,
+        machiningFeatures: result.bodyCount === 1 ? result.machiningFeatures : undefined,
         preliminaryBlank: preliminary,
         flatFeatures: flatPattern && result.bodyCount === 1 ? result.flatFeatures : undefined,
         unfoldGeometry: result.unfoldGeometry,

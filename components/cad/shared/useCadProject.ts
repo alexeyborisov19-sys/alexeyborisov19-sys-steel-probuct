@@ -231,6 +231,12 @@ export function useCadProject() {
             next = togglePartOperation(next, partId, "bending", true);
             next = setPartOperationInputs(next, partId, { bendCount: bends });
           }
+          const countersinks = preview.cad.countersinkCountFromModel;
+          if (countersinks != null && countersinks > 0) {
+            next = togglePartOperation(next, partId, "countersink", true);
+            const declared = next.parts.find(part => part.id === partId)?.configuration.operationInputs?.countersinkCount;
+            next = setPartOperationInputs(next, partId, { countersinkCount: Math.max(countersinks, declared ?? 0) });
+          }
           return setPartState(next, partId, preview.status === "needs-review" ? "manual-review" : "configurable");
         });
         setStatusByPartId((current) => ({

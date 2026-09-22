@@ -34,6 +34,7 @@ export type FactualRateBook = {
   laserRubPerM: LaserFactualRate[];
   bendRubEach: FactualRate | null;
   weldRubPerM: FactualRate | null;
+  countersinkRubEach?: FactualRate | null;
   powderRubPerM2: FactualRate | null;
   assemblyRubPerHour?: FactualRate | null;
   surfacePreparationRubPerM2?: FactualRate | null;
@@ -46,6 +47,7 @@ export type FactualCalculationLineCode =
   | "laser-piercing"
   | "bending"
   | "welding"
+  | "countersink"
   | "powder-coating"
   | "assembly"
   | "surface-preparation"
@@ -70,6 +72,7 @@ export type FactualCalculationMissingCode =
   | "laser-pierce-policy"
   | "bend-count"
   | "weld-length"
+  | "countersink-count"
   | "powder-area"
   | "assembly-time"
   | "surface-preparation-area"
@@ -103,6 +106,7 @@ export type FactualCalculationInput = {
   rateBook: FactualRateBook;
   bendCount?: number;
   weldLengthM?: number;
+  countersinkCount?: number;
   powderAreaM2?: number;
   assemblyMinutes?: number;
   surfacePreparationAreaM2?: number;
@@ -128,6 +132,7 @@ export type FactualCalculationResult = {
     pierceCountEach: number;
     bendCountEach: number | null;
     weldLengthMEach: number | null;
+    countersinkCountEach?: number | null;
     powderAreaM2Each: number | null;
     assemblyMinutesEach: number | null;
     surfacePreparationAreaM2Each: number | null;
@@ -386,6 +391,17 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
     }
   }
 
+  const countersinkCountEach=Number.isSafeInteger(input.countersinkCount) && (input.countersinkCount??0)>0 && input.countersinkCount!<=100000 ? input.countersinkCount! : null;
+  if(input.operations.includes("countersink")){
+    if(countersinkCountEach==null){
+      missing.push({code:"countersink-count",label:"Зенковка",reason:"Укажите целое количество зенкуемых отверстий на деталь (1–100000).",blocking:false});
+    }else if(!input.rateBook.countersinkRubEach || !positiveFinite(input.rateBook.countersinkRubEach.rateRub)){
+      missing.push({code:"operation-rate",label:"Зенковка",reason:"Нет утверждённой закрытой ставки зенковки за отверстие.",blocking:false});
+    }else{
+      addLine(lines,{code:"countersink",label:"Зенковка",quantity:countersinkCountEach,unit:"отв./шт",rateRub:input.rateBook.countersinkRubEach.rateRub,quantityBatch:quantity,source:input.rateBook.countersinkRubEach.source});
+    }
+  }
+
   const powderAreaM2Each = positiveFinite(input.powderAreaM2) ? input.powderAreaM2 : null;
   if (input.operations.includes("powder-coating")) {
     if (powderAreaM2Each == null) {
@@ -466,7 +482,6 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
 
   const unpricedOperations: Array<{ operation: ManufacturingOperation; label: string }> = [
     { operation: "threading", label: "Нарезание резьбы" },
-    { operation: "countersink", label: "Зенковка" },
   ];
   for (const item of unpricedOperations) {
     if (input.operations.includes(item.operation)) {
@@ -509,6 +524,7 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
       pierceCountEach,
       bendCountEach,
       weldLengthMEach,
+      countersinkCountEach,
       powderAreaM2Each,
       assemblyMinutesEach,
       surfacePreparationAreaM2Each,

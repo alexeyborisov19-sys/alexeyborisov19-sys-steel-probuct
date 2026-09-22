@@ -1,0 +1,48 @@
+name: Update protected operation rates
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: protected-operation-rates
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Transfer and apply private rate patch
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+          RATE_PATCH: ${{ secrets.STEEL_PRODUCT_OPERATION_RATE_PATCH }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$RATE_PATCH"
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+          printf '%s' "$RATE_PATCH" > "$RUNNER_TEMP/rates.json"
+          REMOTE_DIR="/tmp/steel-rate-patch-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "umask 077; mkdir '$REMOTE_DIR'"
+          scp -q -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" "$RUNNER_TEMP/rates.json" scripts/apply-private-rate-patch.py "$BEGET_USER@$BEGET_HOST:$REMOTE_DIR/"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "RATE_DIR='$REMOTE_DIR' bash -s" <<'REMOTE'
+          set -euo pipefail
+          timer_active=false
+          systemctl is-active --quiet steelprodukt-metal-prices.timer && timer_active=true
+          cleanup() { rm -rf "$RATE_DIR"; if "$timer_active" = true; then systemctl start steelprodukt-metal-prices.timer; fi; }
+          trap cleanup EXIT
+          if "$timer_active" = true; then systemctl stop steelprodukt-metal-prices.timer; fi
+          for attempt in $(seq 1 60); do
+            if ! systemctl is-active --quiet steelprodukt-metal-prices.service; then break; fi
+            sleep 2
+          done
+          if systemctl is-active --quiet steelprodukt-metal-prices.service; then echo 'Price refresh still running; no change applied.'; exit 1; fi
+          python3 "$RATE_DIR/apply-private-rate-patch.py" /var/lib/steelprodukt/production/calculation-basis.json "$RATE_DIR/rates.json"
+          chown nodejs:nodejs /var/lib/steelprodukt/production/calculation-basis.json
+          chmod 600 /var/lib/steelprodukt/production/calculation-basis.json
+          REMOTE
+          rm -f "$RUNNER_TEMP/rates.json"

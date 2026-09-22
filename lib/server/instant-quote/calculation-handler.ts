@@ -1,3 +1,4 @@
+import { verifiedCountersinkCount } from "@/lib/instant-quote/verified-step-machining";
 import { verifiedStepBlankCostSource } from "@/lib/instant-quote/verified-step-blank-cost";
 import { verifiedBentStepCostSource } from "@/lib/instant-quote/verified-bent-step-cost";
 import { measureVerifiedFlatFeatures } from "@/lib/instant-quote/verified-flat-features";
@@ -98,6 +99,7 @@ async function analyzePlanarStep(inspection: UploadInspection, format: "step" | 
     // Counted from verified BRep evidence, which does not require a confirmed
     // flat pattern, so a bent part still reports its bends.
     ...(model.geometry.bendCount != null ? { bendCount: model.geometry.bendCount } : {}),
+    ...(verifiedCountersinkCount(model) != null ? { countersinkCount: verifiedCountersinkCount(model)! } : {}),
   };
 
   return { model, productionReady, authoritativeFactualInputs };
@@ -262,7 +264,11 @@ async function buildAuthoritativeProject(
         const preliminaryBlankSource = verifiedStepBlankCostSource(model);
         if ((productionReady || preliminaryBlankSource) && !thicknessMismatch && !bendMismatch) {
           geometry = model.geometry;
-          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings], flatFeatures: model.flatFeatures, preliminaryGeometrySource: preliminaryBlankSource ?? verifiedBentStepCostSource(model) };
+          const measuredCountersinks = verifiedCountersinkCount(model);
+          if (item.operations.includes("countersink") && measuredCountersinks != null) {
+            item.operationInputs.countersinkCount = Math.max(measuredCountersinks, item.operationInputs.countersinkCount ?? 0);
+          }
+          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings], flatFeatures: model.flatFeatures, ...(measuredCountersinks != null && model.machiningFeatures?.countersinks.complete === false ? { countersinkRecognitionIncomplete: true } : {}), preliminaryGeometrySource: preliminaryBlankSource ?? verifiedBentStepCostSource(model) };
           // Surface area and bends are independently measured from original CAD.
           // Preliminary blank geometry still carries its estimate-only marker.
           if (Object.keys(authoritativeFactualInputs).length > 0) {
@@ -339,6 +345,7 @@ async function buildAuthoritativeProject(
   for (const item of manifest.parts) {
     const declared: PartFactualInputs = {};
     if (item.operationInputs.bendCount != null) declared.bendCount = item.operationInputs.bendCount;
+    if (item.operationInputs.countersinkCount != null) declared.countersinkCount = item.operationInputs.countersinkCount;
     if (item.operationInputs.weldLengthM != null) declared.weldLengthM = item.operationInputs.weldLengthM;
     if (item.operationInputs.assemblyMinutes != null) declared.assemblyMinutes = item.operationInputs.assemblyMinutes;
     if (Object.keys(declared).length > 0) declaredFactualByPartId[item.clientPartId] = declared;

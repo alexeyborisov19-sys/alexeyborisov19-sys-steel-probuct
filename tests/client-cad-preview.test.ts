@@ -51,6 +51,7 @@ test("client CAD preview strips production geometry and evidence", () => {
     heightMm: 80,
     depthMm: 2,
     bendCountFromModel: null,
+    countersinkCountFromModel: null,
     thicknessFromModelMm: null,
   });
   assert.equal(preview.status, "needs-review");

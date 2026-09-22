@@ -78,3 +78,24 @@ test("keeps DXF coating area unresolved when coating sides are not explicitly se
   const resolved = resolveEffectiveFactualInputs(projectWithGeometry(400000), {}, {});
   assert.equal(resolved["part-1"], undefined);
 });
+
+test("countersink declarations and revisions can add holes but cannot lower measured count", () => {
+  const project = projectWithGeometry(400000);
+  const authoritative = { "part-1": { countersinkCount: 11 } };
+  for (const [declaredCount, expected] of [[15, 15], [11, 11], [4, 11], [undefined, 11], [0, 11], [1.5, 11], [100001, 11], [NaN, 11]] as const) {
+    const explicit = { "part-1": { countersinkCount: declaredCount } };
+    const result = resolveEffectiveFactualInputs(project, explicit, {}, authoritative);
+    assert.equal(result["part-1"].countersinkCount, expected);
+    assert.equal(authoritative["part-1"].countersinkCount, 11);
+    assert.equal(explicit["part-1"].countersinkCount, declaredCount);
+  }
+});
+
+test("without measured countersinks only valid explicit quantities are retained", () => {
+  for (const count of [1, 100000]) {
+    assert.equal(resolveEffectiveFactualInputs(projectWithGeometry(), { "part-1": { countersinkCount: count } }, {})["part-1"].countersinkCount, count);
+  }
+  for (const count of [0, -1, 1.5, 100001, NaN, Infinity]) {
+    assert.equal(resolveEffectiveFactualInputs(projectWithGeometry(), { "part-1": { countersinkCount: count } }, {})["part-1"].countersinkCount, undefined);
+  }
+});

@@ -12,6 +12,7 @@ export type ClientCalculationSignal = {
   materialPriceDate?: string;
   /** Fixed server-derived manufacturing warnings; no private rates/evidence. */
   manufacturingWarnings?: string[];
+  unpricedOperations?: ManufacturingOperation[];
   unavailableReason?: "laser-rate" | "material-price" | "material-price-stale" | "operation-input" | "operation-rate";
   /** Server-owned outcome, never inferred from the existence of a price. */
   aiReviewed?: boolean;
@@ -38,6 +39,7 @@ export type ClientPartCalculationView = {
     status: "not-published" | "approved" | "estimate";
     totalRub?: number;
     materialPriceDate?: string;
+    unpricedOperations?: ManufacturingOperation[];
   };
   message: string;
 };
@@ -95,6 +97,7 @@ export function createClientCalculationView(
         && (approvedSalePrice ?? 0) > 0;
       const estimatedSalePrice = signal?.estimatedSalePriceRub;
       const hasEstimate = status === "needs-review" && Number.isFinite(estimatedSalePrice) && (estimatedSalePrice ?? 0) > 0;
+      const unpricedOperations = [...new Set((signal?.unpricedOperations ?? []).filter(operation => operation === "welding" || operation === "countersink"))];
       const price = hasApprovedSalePrice
         ? { status: "approved" as const, totalRub: approvedSalePrice! }
         : hasEstimate ? { status: "estimate" as const, totalRub: estimatedSalePrice! } : { status: "not-published" as const };
@@ -127,7 +130,7 @@ export function createClientCalculationView(
           heightMm: part.geometry?.heightMm ?? null,
           depthMm: part.geometry?.depthMm ?? null,
         },
-        price: { ...price, ...((hasApprovedSalePrice || hasEstimate) && priceDate ? { materialPriceDate: priceDate } : {}) },
+        price: { ...price, ...(hasEstimate && unpricedOperations.length ? { unpricedOperations } : {}), ...((hasApprovedSalePrice || hasEstimate) && priceDate ? { materialPriceDate: priceDate } : {}) },
         message: `${message} ${(hasApprovedSalePrice || hasEstimate) && priceDate && !staleDate ? `Прайс металла от ${priceDate}. ` : ""}${hasEstimate && staleDate ? `Цена металла взята из последнего сохранённого прайса от ${staleDate}. Прайс устарел; актуальную закупочную цену должен подтвердить инженер. ` : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? signal.manufacturingWarnings.join(" ")+" " : ""}${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
       };
     }),

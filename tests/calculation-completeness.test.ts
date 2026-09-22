@@ -267,3 +267,24 @@ test("aggregates project readiness from all part checks", () => {
   assert.equal(summary.blockedParts, 0);
   assert.ok(summary.scorePct < 100);
 });
+
+for (const code of ["countersink-count", "operation-rate"] as const) {
+  test(`missing countersink ${code} remains visible and below full completeness`, () => {
+    const calculation = factual({ status: "partial", missing: [{ code, label: "Зенковка", reason: "Не подтверждено", blocking: false }] });
+    const summary = summarizePartCalculationCompleteness(part(calculation), parameters);
+    assert.equal(summary.status, "review");
+    assert.ok(summary.scorePct < 100);
+    assert.equal(summary.items.filter(item => item.label === "Зенковка").length, 1);
+    assert.equal(summary.items.find(item => item.key === "article:countersink")?.state, "missing");
+    assert.ok(!summary.items.some(item => item.key === "article:welding"));
+  });
+}
+
+test("priced countersink is represented as its own confirmed article", () => {
+  const calculation = factual();
+  calculation.lines.push({ code: "countersink", label: "Зенковка", quantity: 3, unit: "отв./шт", rateRub: 12,
+    amountRubEach: 36, amountRubBatch: 360, source });
+  const summary = summarizePartCalculationCompleteness(part(calculation), parameters);
+  assert.equal(summary.items.find(item => item.key === "article:countersink")?.state, "confirmed");
+  assert.equal(summary.scorePct, 100);
+});

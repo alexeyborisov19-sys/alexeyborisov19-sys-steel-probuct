@@ -160,6 +160,7 @@ function parseBasis(value: unknown): PrivateCalculationBasis {
       laserRubPerM,
       bendRubEach: rate(rateBookRaw.bendRubEach, "bendRubEach"),
       weldRubPerM: rate(rateBookRaw.weldRubPerM, "weldRubPerM"),
+      countersinkRubEach: rate(rateBookRaw.countersinkRubEach, "countersinkRubEach"),
       powderRubPerM2: rate(rateBookRaw.powderRubPerM2, "powderRubPerM2"),
       assemblyRubPerHour: rate(rateBookRaw.assemblyRubPerHour, "assemblyRubPerHour"),
       surfacePreparationRubPerM2: rate(rateBookRaw.surfacePreparationRubPerM2, "surfacePreparationRubPerM2"),

@@ -48,6 +48,7 @@ export type PartGeometrySummary = {
 export type OperationInputs = {
   bendCount?: number;
   weldLengthM?: number;
+  countersinkCount?: number;
   powderSides?: 1 | 2;
   surfacePreparationSides?: 1 | 2;
   assemblyMinutes?: number;

@@ -19,13 +19,16 @@ export function ClientOperationSummary({ operations, operationInputs, detectedBe
   const bends = bendingQuantitySummary(operations, operationInputs, detectedBendCount, quantity);
   const missing = [
     operations.includes("bending") && operationInputs.bendCount == null && detectedBendCount == null ? "количество гибов" : null,
-    operations.includes("welding") && operationInputs.weldLengthM == null ? "длина шва" : null,
+    operations.includes("welding") && !(operationInputs.weldLengthM && operationInputs.weldLengthM > 0) ? "длина шва" : null,
+    operations.includes("countersink") && !(operationInputs.countersinkCount && operationInputs.countersinkCount > 0) ? "количество зенковок" : null,
     operations.includes("assembly") && operationInputs.assemblyMinutes == null ? "норма сборки" : null,
     operations.includes("powder-coating") && operationInputs.powderSides == null ? "стороны окраски" : null,
     operations.includes("surface-preparation") && operationInputs.surfacePreparationSides == null ? "стороны подготовки" : null,
   ].filter(Boolean);
   return <div>
     <p className="mt-3 text-xs leading-5 text-white/75"><span className="text-white/50">Состав: </span>{operationLabels([...operations]).join(" · ")}</p>
+    {operations.includes("countersink") && (operationInputs.countersinkCount ?? 0) > 0 && <p className="mt-2 text-sm leading-5 text-white/85">Зенковка: {operationInputs.countersinkCount} на деталь × {quantity} шт. = {operationInputs.countersinkCount! * quantity} в партии.</p>}
+    {operations.includes("welding") && (operationInputs.weldLengthM ?? 0) > 0 && <p className="mt-2 text-sm leading-5 text-white/85">Сварка: {operationInputs.weldLengthM} м/изделие × {quantity} шт. = {Number((operationInputs.weldLengthM! * quantity).toFixed(6))} м шва в партии.</p>}
     {bends && <p className="mt-2 text-sm leading-5 text-white/85">{bends}</p>}
     {missing.length > 0 && <p className="mt-2 text-xs leading-5 text-amber-200">Уточнит инженер: {missing.join(", ")}. Без исходных данных автоматическая цена не подтверждается.</p>}
   </div>;

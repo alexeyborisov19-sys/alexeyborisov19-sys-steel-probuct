@@ -29,6 +29,7 @@ const PUBLIC_MATERIALS = new Set<MaterialId>(["hot", "cold", "zinc"]);
 const PUBLIC_OPERATIONS = new Set<ManufacturingOperation>([
   "bending",
   "welding",
+  "countersink",
   "assembly",
   "surface-preparation",
   "powder-coating",
@@ -82,6 +83,9 @@ function operationInputs(
 
   if (item.bendCount != null && operations.has("bending")) {
     result.bendCount = boundedNumber(item.bendCount, `${label}.bendCount`, 500, true);
+  }
+  if (item.countersinkCount != null && operations.has("countersink")) {
+    result.countersinkCount = boundedNumber(item.countersinkCount, `${label}.countersinkCount`, 100_000, true);
   }
   if (item.weldLengthM != null && operations.has("welding")) {
     result.weldLengthM = boundedNumber(item.weldLengthM, `${label}.weldLengthM`, 500, false);

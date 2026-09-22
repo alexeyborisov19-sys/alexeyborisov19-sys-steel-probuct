@@ -9,11 +9,10 @@ const controls = readFileSync(new URL("../components/instant-quote/ClientOperati
 test("public online-order configurator exposes only verified operation claims", () => {
   for (const source of [workspace, controls]) {
     assert.doesNotMatch(source, /id:\s*"threading"/);
-    assert.doesNotMatch(source, /id:\s*"countersink"/);
     assert.doesNotMatch(source, />Резьба</);
-    assert.doesNotMatch(source, />Зенковка</);
   }
 
+  assert.match(controls, /id:\s*"countersink"/);
   assert.match(controls, /id:\s*"bending"/);
   assert.match(controls, /id:\s*"welding"/);
   assert.match(controls, /id:\s*"assembly"/);

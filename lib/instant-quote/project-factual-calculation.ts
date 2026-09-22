@@ -11,6 +11,7 @@ import type { MaterialId } from "@/lib/instant-quote/pricing";
 export type PartFactualInputs = {
   bendCount?: number;
   weldLengthM?: number;
+  countersinkCount?: number;
   powderAreaM2?: number;
   assemblyMinutes?: number;
   surfacePreparationAreaM2?: number;
@@ -37,6 +38,8 @@ export type ProjectFactualCalculationResult = {
 };
 
 export type PartCadEvidence = {
+  /** The counted conical holes are a lower bound when other surfaces remain unclassified. */
+  countersinkRecognitionIncomplete?: boolean;
   /** Derived only from original STEP by protected server analysis; estimate-only. */
   preliminaryGeometrySource?: "measured-bent-step" | "measured-step-blank";
   /** Measured from original CAD on server, never accepted from request metadata. */
@@ -170,6 +173,7 @@ export function calculateProjectFactualCost(
       rateBook,
       bendCount: factualInputs.bendCount,
       weldLengthM: factualInputs.weldLengthM,
+      countersinkCount: factualInputs.countersinkCount,
       powderAreaM2: factualInputs.powderAreaM2,
       assemblyMinutes: factualInputs.assemblyMinutes,
       surfacePreparationAreaM2: factualInputs.surfacePreparationAreaM2,

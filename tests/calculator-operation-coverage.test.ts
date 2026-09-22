@@ -176,7 +176,7 @@ test("quantities only a technologist knows are labelled as the customer's own es
   // Weld length and assembly minutes go straight into the automatic price, but
   // a customer is not a technologist: five minutes entered instead of thirty is
   // a five-fold error in that article. The field says whose number it is.
-  for (const marker of ["Ваша оценка", "определит инженер", "определит технолог"]) {
+  for (const marker of ["Ваша оценка", "подтвердит технолог", "определит технолог"]) {
     assert.ok(controls.includes(marker), `operation controls missing "${marker}"`);
   }
 

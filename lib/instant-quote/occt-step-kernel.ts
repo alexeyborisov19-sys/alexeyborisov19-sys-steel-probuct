@@ -1,3 +1,4 @@
+import { measureStepCountersinks, type StepMachiningFeatures } from "./step-countersinks";
 import { measurePreliminaryStepBlank, type PreliminaryStepBlank } from "./preliminary-step-blank";
 import { verifyStepPrism } from "./verified-step-prism";
 import { measureStepFaceFeatures, matchingStepFaceFeatures } from "./step-flat-features";
@@ -492,6 +493,10 @@ class OcctStepKernel implements StepKernelPort {
         warnings.push("BRep-анализ листовой геометрии не завершён; STEP остаётся доступен для 3D-просмотра и ручной технологической проверки.");
       }
 
+      let machiningFeatures: StepMachiningFeatures | undefined;
+      try { machiningFeatures = measureStepCountersinks(kernel, shape); }
+      catch { /* Optional machining recognition cannot invalidate CAD preview. */ }
+
       const primitive: CadMeshPrimitive = {
         id: "step-model",
         name: "STEP model",
@@ -510,6 +515,7 @@ class OcctStepKernel implements StepKernelPort {
         root: null,
         features: [],
         sheetMetal,
+        machiningFeatures,
         preliminaryBlank,
         flatFeatures,
         unfoldGeometry,
