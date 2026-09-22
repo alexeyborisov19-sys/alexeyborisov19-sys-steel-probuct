@@ -14,6 +14,8 @@ const roleLabels = {
 
 const mainNavigation = [
   ["Обзор", "/internal/personal-data", "VIEW_DASHBOARD"],
+  ["Производственные расчёты", "/internal/production-calculations", "VIEW_DASHBOARD"],
+  ["Папка заказов", "/internal/production-order/settings", "VIEW_DASHBOARD"],
   ["Заявки", "/internal/personal-data/leads", "VIEW_MASKED_LEADS"],
   ["Согласия", "/internal/personal-data/consents", "VIEW_CONSENT"],
   ["Журнал доступа", "/internal/personal-data/access-log", "VIEW_ACCESS_LOG"],
