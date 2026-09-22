@@ -21,11 +21,11 @@ async function analyzeForClientPreview(input: {
   bytes: Uint8Array;
 }) {
   if (input.format === "step" || input.format === "stp") {
-    const [{ createStepCadAdapter }, { occtStepKernel }] = await Promise.all([
+    const [{ createStepCadAdapter }, { isolatedStepKernel }] = await Promise.all([
       import("@/lib/instant-quote/step-adapter"),
-      import("@/lib/instant-quote/occt-step-kernel"),
+      import("@/lib/server/instant-quote/step-process-runtime"),
     ]);
-    return createStepCadAdapter(occtStepKernel).analyze(input);
+    return createStepCadAdapter(isolatedStepKernel).analyze(input);
   }
 
   return analyzeCad(input);

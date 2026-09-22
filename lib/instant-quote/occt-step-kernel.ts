@@ -451,6 +451,10 @@ class OcctStepKernel implements StepKernelPort {
   }
 
   async readStep(bytes: Uint8Array): Promise<StepKernelResult> {
+    return (await this.readStepWithPrivateEvidence(bytes)).result;
+  }
+
+  async readStepWithPrivateEvidence(bytes: Uint8Array): Promise<{ result: StepKernelResult; surfaceAreaMm2?: number }> {
     if (!bytes.byteLength) throw new Error("STEP-файл пустой.");
 
     const kernel = await this.kernel();
@@ -508,7 +512,12 @@ class OcctStepKernel implements StepKernelPort {
       if (!volumeMm3) warnings.push("STEP не содержит подтверждённого замкнутого объёма; масса и толщина требуют дополнительного анализа.");
       if (solidCount === 0) warnings.push("OpenCascade не обнаружил отдельные solid-тела; модель доступна для просмотра, но требует технологической проверки.");
 
-      return {
+      let surfaceAreaMm2: number | undefined;
+      try {
+        const measured = kernel.getSurfaceArea(shape);
+        if (Number.isFinite(measured) && measured > 0) surfaceAreaMm2 = measured;
+      } catch { /* Private coating evidence is optional. */ }
+      return { surfaceAreaMm2, result: {
         meshes: [primitive],
         volumeMm3,
         bodyCount: solidCount || undefined,
@@ -521,7 +530,7 @@ class OcctStepKernel implements StepKernelPort {
         unfoldGeometry,
         warnings,
         parserVersion: "5.0.0",
-      };
+      } };
     } finally {
       kernel.release(shape);
     }

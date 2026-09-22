@@ -64,12 +64,12 @@ export type OnlineCalculationHandlerDependencies = {
 };
 
 async function analyzePlanarStep(inspection: UploadInspection, format: "step" | "stp"): Promise<StepServerAnalysis> {
-  const [{ createStepCadAdapter }, { occtStepKernel }, { measurePrivateStepProductionEvidence }] = await Promise.all([
+  const [{ createStepCadAdapter }, { isolatedStepKernel }, { measurePrivateStepProductionEvidence }] = await Promise.all([
     import("@/lib/instant-quote/step-adapter"),
-    import("@/lib/instant-quote/occt-step-kernel"),
+    import("@/lib/server/instant-quote/step-process-runtime"),
     import("@/lib/server/instant-quote/private-step-production-evidence"),
   ]);
-  const adapter = createStepCadAdapter(occtStepKernel);
+  const adapter = createStepCadAdapter(isolatedStepKernel);
   const bytes = new Uint8Array(
     inspection.buffer.buffer,
     inspection.buffer.byteOffset,
