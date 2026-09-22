@@ -9,6 +9,7 @@ export type ClientCalculationSignal = {
   estimatedSalePriceRub?: number | null;
   estimatedRateUsed?: boolean;
   staleMaterialPriceDate?: string;
+  materialPriceDate?: string;
   /** Fixed server-derived manufacturing warnings; no private rates/evidence. */
   manufacturingWarnings?: string[];
   unavailableReason?: "laser-rate" | "material-price" | "material-price-stale" | "operation-input" | "operation-rate";
@@ -36,6 +37,7 @@ export type ClientPartCalculationView = {
   price: {
     status: "not-published" | "approved" | "estimate";
     totalRub?: number;
+    materialPriceDate?: string;
   };
   message: string;
 };
@@ -85,6 +87,8 @@ export function createClientCalculationView(
       const approvedSalePrice = signal?.approvedSalePriceRub;
       const staleTime=signal?.staleMaterialPriceDate ? Date.parse(signal.staleMaterialPriceDate):NaN;
       const staleDate=Number.isFinite(staleTime)?new Date(staleTime).toISOString().slice(0,10):null;
+      const priceTime = Date.parse(signal?.materialPriceDate ?? signal?.staleMaterialPriceDate ?? "");
+      const priceDate = Number.isFinite(priceTime) ? new Date(priceTime).toISOString().slice(0, 10) : null;
       const status = signal?.status ?? "pending";
       // A stale amount must not survive a failed/unfinished calculation or review.
       const hasApprovedSalePrice = status === "ready" && Number.isFinite(approvedSalePrice)
@@ -123,8 +127,8 @@ export function createClientCalculationView(
           heightMm: part.geometry?.heightMm ?? null,
           depthMm: part.geometry?.depthMm ?? null,
         },
-        price,
-        message: `${message} ${hasEstimate && staleDate ? `Цена металла взята из последнего сохранённого прайса от ${staleDate}. Прайс устарел; актуальную закупочную цену должен подтвердить инженер. ` : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? signal.manufacturingWarnings.join(" ")+" " : ""}${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
+        price: { ...price, ...((hasApprovedSalePrice || hasEstimate) && priceDate ? { materialPriceDate: priceDate } : {}) },
+        message: `${message} ${(hasApprovedSalePrice || hasEstimate) && priceDate && !staleDate ? `Прайс металла от ${priceDate}. ` : ""}${hasEstimate && staleDate ? `Цена металла взята из последнего сохранённого прайса от ${staleDate}. Прайс устарел; актуальную закупочную цену должен подтвердить инженер. ` : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? signal.manufacturingWarnings.join(" ")+" " : ""}${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
       };
     }),
   };

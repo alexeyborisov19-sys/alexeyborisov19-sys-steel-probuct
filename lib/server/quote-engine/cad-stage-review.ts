@@ -114,6 +114,7 @@ async function reviewPart(
   if (!Number.isFinite(baseline) || baseline <= 0 || baseline + 0.005 < cost.confirmedDirectCostRubBatch) {
     return hold(issue("pricing", "price-below-floor"));
   }
+  const materialPriceDate = cost.lines.find(line => line.code === "material")?.source.confirmedAt;
   audit.calculatedRubBatch = baseline;
   const measuredBentStep = cad?.preliminaryGeometrySource === "measured-bent-step"
     && (part.format === "step" || part.format === "stp") && part.geometry.bodyCount === 1
@@ -159,7 +160,7 @@ async function reviewPart(
       }
       // A commercial estimate is not manufacturing approval. Keep the failed
       // geometry review and approved/published price unset in the audit.
-      return { signal: { ...held.signal, estimatedSalePriceRub: baseline, ...(cost.staleMaterialPriceUsed ? {staleMaterialPriceDate:cost.staleMaterialPriceUsed.sourceDate} : {}), ...((manufacturingConstraints.length || measuredStepBlank) ? {manufacturingWarnings:[
+      return { signal: { ...held.signal, estimatedSalePriceRub: baseline, materialPriceDate, ...(cost.staleMaterialPriceUsed ? {staleMaterialPriceDate:cost.staleMaterialPriceUsed.sourceDate} : {}), ...((manufacturingConstraints.length || measuredStepBlank) ? {manufacturingWarnings:[
         ...manufacturingConstraints.map(check=>`${check.title} ${check.code === "feature-rules" ? `Отверстие должно быть не меньше толщины металла (${cost.thicknessMm} мм); перемычка — не меньше ${laserFeatureNorms.minLigamentMm} мм.` : check.detail} Изготовление требует отдельного согласования технологом.`),
         ...(measuredStepBlank ? ["Стоимость заготовки и выбранных операций. Фаски, зенковки и другая дополнительная обработка не включены; требуется проверка технолога."] : []),
       ]} : {}), ...(cost.estimatedRateUsed ? { estimatedRateUsed: true } : {}), aiReviewed: false, marketVerified: false }, audit };
@@ -206,7 +207,7 @@ async function reviewPart(
   const required = options.requireAiReview ?? quoteAiReviewRequired();
   if (audit.review.status === "needs-review" || (required && audit.review.status !== "passed")) return hold(audit.review);
   audit.publishedRubBatch = final;
-  return { signal: { partId: part.id, status: "ready", approvedSalePriceRub: final,
+  return { signal: { partId: part.id, status: "ready", approvedSalePriceRub: final, materialPriceDate,
     aiReviewed: audit.review.status === "passed", marketVerified: decision.marketMeanRubBatch !== null }, audit };
 }
 
