@@ -41,6 +41,7 @@ const securityHeaders = [
 const stablePublicAssetCache = "public, max-age=86400, stale-while-revalidate=604800";
 
 const nextConfig: NextConfig = {
+  experimental: { middlewareClientMaxBodySize: "101mb" },
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // Keep the native WASM package external on the Node.js server. Next's server

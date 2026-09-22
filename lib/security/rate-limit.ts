@@ -99,6 +99,21 @@ export const cadPreviewRateRules: RateLimitRule[] = [
   { id: "cad-preview-day", limit: 200, windowMs: 86_400_000 },
 ];
 
+/** Recalculating CAD variants is distinct from submitting a contact request. */
+export const cadCalculationRateRules: RateLimitRule[] = [
+  { id: "cad-calculation-minute", limit: 6, windowMs: 60_000 },
+  { id: "cad-calculation-day", limit: 200, windowMs: 86_400_000 },
+];
+const desktopCadCalculationRateRules: RateLimitRule[] = [
+  { id: "desktop-cad-calculation-minute", limit: 60, windowMs: 60_000 },
+  { id: "desktop-cad-calculation-day", limit: 2000, windowMs: 86_400_000 },
+];
+/** The desktop deployment authenticates before invoking this handler. Never
+ * select limits from request headers, cookies, manifest or query parameters. */
+export function selectCadCalculationRateRules(environment: Record<string, string | undefined> = process.env): RateLimitRule[] {
+  return environment.STEEL_PRODUCT_LOCAL_DESKTOP === "true" ? desktopCadCalculationRateRules : cadCalculationRateRules;
+}
+
 export const quoteRateRules: RateLimitRule[] = [
   { id: "quote-minute", limit: 3, windowMs: 60_000 },
   { id: "quote-day", limit: 20, windowMs: 86_400_000 },

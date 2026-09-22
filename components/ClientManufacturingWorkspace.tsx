@@ -20,12 +20,14 @@ const fieldClass = "mt-2 min-h-12 w-full rounded-lg border border-white/20 bg-[#
 const actionClass = "inline-flex min-h-12 items-center justify-center rounded-lg bg-steel-orange px-5 py-3 text-sm font-semibold text-black transition hover:bg-orange-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-steel-orange disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50";
 
 export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "public" | "production" } = {}) {
-  const { inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict } = useCadProject();
+  const { inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict } = useCadProject();
   const [preferredView, setPreferredView] = useState<"2d" | "3d">("3d");
   const hasParts = project.parts.length > 0;
   const showMesh = Boolean(activePreview?.meshes.length) && (preferredView === "3d" || !activePreview?.drawing);
-  const activeTotal = activeCalculation?.price.status === "approved" ? activeCalculation.price.totalRub : null;
-  const needsReview = Boolean(activeCalculation && activeCalculation.price.status !== "approved");
+  const activeTotal = activeCalculation && ["approved", "estimate"].includes(activeCalculation.price.status) ? activeCalculation.price.totalRub : null;
+  const needsReview = Boolean(calculation?.parts.some(part => part.price.status !== "approved"));
+  const displayedTotalRub = approvedProjectTotalRub ?? estimatedProjectTotalRub;
+  const hasEstimate = Boolean(calculation?.parts.some(part => part.price.status === "estimate"));
   const handoffHref = mode === "production" ? "/internal/production-calculations" : quoteHandoffHref;
   const operations = activePart?.configuration.operations ?? [];
   const operationInputs = activePart?.configuration.operationInputs ?? {};
@@ -63,7 +65,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-[.16em] text-steel-orange">От модели к готовой детали</span>
                   <h2 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">Ваш чертёж.<br />Наше производство.</h2>
-                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">Загрузите файл, выберите материал и количество. Посмотрите деталь и получите предварительный расчёт без регистрации.</p>
+                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">DXF или STEP до 50 МБ на файл, до 100 МБ на проект. Выберите материал и количество. Посмотрите деталь и получите предварительный расчёт без регистрации.</p>
                   <button type="button" onClick={() => inputRef.current?.click()} className={`${actionClass} mt-7`}>Выбрать файлы <span aria-hidden="true" className="ml-5">↑</span></button>
                   <p className="mt-3 text-sm text-white/60">Или перетащите файлы в эту область</p>
                   <Link href="/contacts?source=online-order#contact-form" className="mt-6 inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4">Нет CAD-файла — помощь инженера</Link>
@@ -107,10 +109,11 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
             </section>
 
             <section className="rounded-xl border border-steel-orange/35 bg-[#172028] p-5" aria-label="Результат расчёта">
-              <div className="flex items-start justify-between gap-3"><h2 className="text-sm font-medium text-white/75">Предварительная стоимость</h2><span className="shrink-0 text-xs text-white/55">{project.parts.length} поз.</span></div>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-steel-orange tabular-nums">{approvedProjectTotalRub != null ? `${fmt(approvedProjectTotalRub)} ₽` : calculation ? "На проверке" : "—"}</p>
+              <div className="flex items-start justify-between gap-3"><h2 className="text-sm font-medium text-white/75">{hasEstimate ? "Ориентировочная стоимость" : "Предварительная стоимость"}</h2><span className="shrink-0 text-xs text-white/55">{project.parts.length} поз.</span></div>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-steel-orange tabular-nums">{displayedTotalRub != null ? `${fmt(displayedTotalRub!)} ₽` : calculation ? "На проверке" : "—"}</p>
               {typeof activeTotal === "number" && <p className="mt-2 text-sm text-white/75">{project.parts.length > 1 ? `Эта позиция: ${fmt(activeTotal)} ₽ · ` : ""}{fmt(activeTotal / quantity)} ₽ / шт. при {quantity} шт.</p>}
-              {approvedProjectTotalRub != null && <p className="mt-2 text-xs text-white/65">Налоговые условия и окончательная цена — в коммерческом предложении.</p>}
+              {displayedTotalRub != null && <p className="mt-2 text-xs text-white/65">Налоговые условия и окончательная цена — в коммерческом предложении.</p>}
+              {hasEstimate && <p className="mt-3 text-sm text-amber-200">Изготовляемость и окончательную цену подтвердит инженер. Запуск в производство не согласован.</p>}
               <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className={`${actionClass} mt-5 w-full`}>{calculateLabel}</button>
               {projectCalculationMessage && <div role={calculationFailed ? "alert" : "status"} className={`mt-3 text-sm leading-6 ${calculationFailed ? "text-amber-200" : "text-white/75"}`}><p>{projectCalculationMessage}</p>{calculationFailed && <button type="button" onClick={() => void calculateProject()} className="mt-2 min-h-11 text-steel-orange underline underline-offset-4">Повторить расчёт</button>}</div>}
               <Link href={handoffHref} className="mt-3 flex min-h-12 items-center justify-center rounded-lg border border-white/25 px-4 py-3 text-center text-sm font-medium transition hover:border-steel-orange">{needsReview ? "Передать инженеру на проверку" : "Отправить заявку"}<span className="ml-3" aria-hidden="true">→</span></Link>
@@ -121,8 +124,8 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
           </aside>}
         </div>
       </section>
-      {hasParts && <div className="mobile-quote-bar fixed inset-x-0 z-[80] flex items-center gap-3 border-t border-white/20 bg-[#141b21]/95 px-4 py-3 backdrop-blur-sm lg:hidden"><div className="min-w-0 grow"><p className="text-xs leading-4 text-white/70" title={CALCULATION_DISCLAIMER}>{CALCULATION_DISCLAIMER_SHORT}</p><p className="truncate text-lg font-semibold text-steel-orange">{approvedProjectTotalRub != null ? `${fmt(approvedProjectTotalRub)} ₽` : needsReview ? "Нужна проверка" : "—"}</p></div>{approvedProjectTotalRub != null || needsReview ? <Link href={handoffHref} className={`${actionClass} shrink-0`}>{needsReview ? "Инженеру" : "Отправить"}</Link> : <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className={`${actionClass} shrink-0`}>{calculateLabelShort}</button>}</div>}
-      {calculation && <ClientQuotePrintout calculation={calculation} totalRub={approvedProjectTotalRub} preparedAt={calculatedAt ?? new Date()} />}
+      {hasParts && <div className="mobile-quote-bar fixed inset-x-0 z-[80] flex items-center gap-3 border-t border-white/20 bg-[#141b21]/95 px-4 py-3 backdrop-blur-sm lg:hidden"><div className="min-w-0 grow"><p className="text-xs leading-4 text-white/70" title={CALCULATION_DISCLAIMER}>{hasEstimate ? "Ориентировочно · проверит инженер" : CALCULATION_DISCLAIMER_SHORT}</p><p className="truncate text-lg font-semibold text-steel-orange">{displayedTotalRub != null ? `${fmt(displayedTotalRub!)} ₽` : needsReview ? "Нужна проверка" : "—"}</p></div>{displayedTotalRub != null || needsReview ? <Link href={handoffHref} className={`${actionClass} shrink-0`}>{needsReview ? "Инженеру" : "Отправить"}</Link> : <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className={`${actionClass} shrink-0`}>{calculateLabelShort}</button>}</div>}
+      {calculation && <ClientQuotePrintout calculation={calculation} totalRub={displayedTotalRub} preparedAt={calculatedAt ?? new Date()} />}
       <input ref={inputRef} type="file" accept={accepted} multiple onChange={onChange} className="hidden" aria-label="Загрузить CAD-файлы" />
     </div>
   );

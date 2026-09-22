@@ -23,7 +23,13 @@ export type CadAnalysisApiResponse = {
 export function isClientCalculationView(value: unknown): value is ClientProjectCalculationView {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ClientProjectCalculationView>;
-  return candidate.kind === "client-calculation" && Array.isArray(candidate.parts) && candidate.paymentEnabled === false;
+  return candidate.kind === "client-calculation" && Array.isArray(candidate.parts) && candidate.paymentEnabled === false
+    && candidate.parts.every(part => {
+      if (!part || typeof part !== "object" || !part.price || typeof part.price !== "object") return false;
+      if (part.price.status === "not-published") return part.price.totalRub == null;
+      return ((part.price.status === "approved" && part.status === "ready") || (part.price.status === "estimate" && part.status === "needs-review"))
+        && typeof part.price.totalRub === "number" && Number.isFinite(part.price.totalRub) && part.price.totalRub > 0;
+    });
 }
 
 export function isClientCadPreview(value: unknown): value is ClientCadPreview {

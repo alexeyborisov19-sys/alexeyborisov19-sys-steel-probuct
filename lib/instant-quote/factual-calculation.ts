@@ -1,3 +1,4 @@
+import { estimateThinLaserRate } from './laser-rate-estimate';
 import type { ManufacturingOperation, PartGeometrySummary } from "@/lib/instant-quote/domain";
 import { resolveMaterialStockPlan, type BlankStrategy } from "@/lib/instant-quote/blanking";
 import { applyMetalUplift, type MaterialId, type MaterialMarketPrice } from "@/lib/instant-quote/pricing";
@@ -112,6 +113,8 @@ export type FactualCalculationResult = {
   quantity: number;
   materialId: MaterialId;
   thicknessMm: number;
+  /** True only for explicitly estimated tariffs; manufacturing approval prohibited. */
+  estimatedRateUsed?: boolean;
   materialAllocationStrategy: BlankStrategy | null;
   parameters: {
     netAreaMm2: number | null;
@@ -195,13 +198,15 @@ function addLine(
  *
  * Unknown rates/inputs are explicit in `missing`; the engine never imports a
  * public fallback tariff, nearest thickness, hidden markup, overhead, setup or
- * commercial uplift.
+ * commercial uplift. The owner-authorized 0.7 mm extrapolation is the sole
+ * explicit exception and is marked estimatedRateUsed for estimate-only review.
  */
 export function calculateFactualProductionCost(input: FactualCalculationInput): FactualCalculationResult {
   const quantity = Math.max(1, Math.floor(Number.isFinite(input.quantity) ? input.quantity : 1));
   const missing: FactualCalculationMissing[] = [];
   const warnings: string[] = [];
   const lines: FactualCalculationLine[] = [];
+  let estimatedRateUsed = false;
 
   if (!positiveFinite(input.thicknessMm)) {
     missing.push({ code: "geometry", label: "Толщина", reason: "Не подтверждена положительная толщина материала.", blocking: true });
@@ -269,7 +274,10 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
   const totalBatchCutM = cutLengthMEach * quantity;
   const pierceCountEach = Math.max(0, input.geometry.pierceCount ?? input.geometry.contourCount ?? 0);
   if (input.operations.includes("laser-cutting")) {
-    const laserRate = exactLaserRate(input.rateBook, input.materialId, input.thicknessMm);
+    const exactRate = exactLaserRate(input.rateBook, input.materialId, input.thicknessMm);
+    const laserRate = exactRate ?? estimateThinLaserRate(input.rateBook, input.materialId, input.thicknessMm);
+    estimatedRateUsed = !exactRate && laserRate !== null;
+    if (estimatedRateUsed) warnings.push("Ставка резки 0,7 мм рассчитана по соседним толщинам 0,8 и 1,0 мм. Это предварительная оценка, требующая подтверждения технологом.");
     if (!laserRate || !positiveFinite(laserRate.rateRub)) {
       missing.push({
         code: "laser-rate",
@@ -466,6 +474,7 @@ export function calculateFactualProductionCost(input: FactualCalculationInput): 
     quantity,
     materialId: input.materialId,
     thicknessMm: input.thicknessMm,
+    ...(estimatedRateUsed ? { estimatedRateUsed: true } : {}),
     materialAllocationStrategy: blank?.strategy ?? null,
     parameters: {
       netAreaMm2,

@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { isBinaryDxf } from "@/lib/instant-quote/dxf";
 import { cadPreviewRateRules } from "@/lib/security/rate-limit";
-import { uploadLimits } from "@/lib/security/uploads";
+import { uploadLimits, cadUploadLimits } from "@/lib/security/uploads";
 
 const routePath = new URL("../app/api/online-order/cad/analyze/route.ts", import.meta.url);
 
@@ -15,7 +15,7 @@ test("the preview endpoint carries the same protections as the calculation it pr
   // at the same door.
   assert.match(source, /assertSameOriginRequest\(request\)/);
   assert.match(source, /consumeRules\(ownerKey, cadPreviewRateRules\)/);
-  assert.match(source, /inspectUploads\(\[entry\], 1\)/);
+  assert.match(source, /inspectUploads\(\[entry\], 1, cadUploadLimits\)/);
 });
 
 test("preview no longer accepts a file the calculation would later refuse", async () => {
@@ -25,7 +25,9 @@ test("preview no longer accepts a file the calculation would later refuse", asyn
   // model, configure it, and only then be told it was too large to price.
   assert.equal(source.includes("MAX_ALPHA_CAD_BYTES"), false);
   assert.equal(source.includes("25 * 1024 * 1024"), false);
-  assert.equal(uploadLimits.maximumFileBytes, 7 * 1024 * 1024);
+  assert.equal(uploadLimits.maximumFileBytes, 7 * 1024 * 1024); // Ordinary lead forms unchanged.
+  assert.equal(cadUploadLimits.maximumFileBytes, 50 * 1024 * 1024);
+  assert.match(source, /readMultipartForm\(request, cadUploadLimits.maximumFileBytes/);
 });
 
 test("the preview rate limit fits a whole project without letting a script hold the kernel", () => {

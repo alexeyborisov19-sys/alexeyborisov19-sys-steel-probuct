@@ -15,14 +15,14 @@ import {
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { PartFactualInputs, ProjectCadEvidence } from "@/lib/instant-quote/project-factual-calculation";
 import { clientKey } from "@/lib/security/client-ip";
-import { consumeRules, quoteRateRules } from "@/lib/security/rate-limit";
+import { consumeRules, selectCadCalculationRateRules } from "@/lib/security/rate-limit";
 import { PayloadTooLargeError, readMultipartForm } from "@/lib/security/request-body";
 import { safeSecurityLog } from "@/lib/security/safe-log";
 import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
 import {
   inspectUploads,
   quarantineUploads,
-  uploadLimits,
+  cadUploadLimits,
   UploadValidationError,
   type UploadInspection,
   type QuarantinedUpload,
@@ -259,7 +259,7 @@ async function buildAuthoritativeProject(
         const bendMismatch = bendConfigurationConflict(model.geometry.bendCount, item.operations, item.operationInputs.bendCount);
         if (productionReady && !thicknessMismatch && !bendMismatch) {
           geometry = model.geometry;
-          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings] };
+          evidenceByPartId[item.clientPartId] = { reviewReasons: [...model.warnings], flatFeatures: model.flatFeatures };
           // Private STEP evidence stays fail-closed: it reaches the calculation
           // only once the flat pattern is confirmed. An unconfirmed part is not
           // priced at all, so withholding it costs nothing — the detected bend
@@ -391,7 +391,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       throw error;
     }
 
-    const limited = consumeRules(ownerKey, quoteRateRules);
+    const limited = consumeRules(ownerKey, selectCadCalculationRateRules());
     if (limited) {
       return response(429, requestId, {
         ok: false,
@@ -402,10 +402,10 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
     }
 
     try {
-      const formData = await readMultipartForm(request, uploadLimits.maximumMultipartBytes);
+      const formData = await readMultipartForm(request, cadUploadLimits.maximumMultipartBytes);
       const manifestRaw = String(formData.get("manifest") ?? "");
       const files = formData.getAll("files").filter((item): item is File => item instanceof File && item.size > 0);
-      const inspections = await dependencies.inspectUploads(files);
+      const inspections = await dependencies.inspectUploads(files, cadUploadLimits.maximumFiles, cadUploadLimits);
       const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
 
       for (const item of manifest.parts) {

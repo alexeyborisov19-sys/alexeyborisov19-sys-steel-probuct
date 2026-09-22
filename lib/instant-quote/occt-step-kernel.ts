@@ -1,3 +1,5 @@
+import { measureStepFaceFeatures, matchingStepFaceFeatures } from "./step-flat-features";
+import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type { CadMeshPrimitive } from "@/lib/instant-quote/cad-model";
 import {
   analyzeSheetMetalTopology,
@@ -254,7 +256,7 @@ function collectSheetMetalAnalysis(
   kernel: OcctKernelInstance,
   shape: OcctShapeHandle,
   volumeMm3?: number,
-): { sheetMetal: SheetMetalAnalysis; unfoldGeometry?: StepUnfoldGeometryEvidence } {
+): { sheetMetal: SheetMetalAnalysis; unfoldGeometry?: StepUnfoldGeometryEvidence; flatFeatures?: VerifiedFlatFeatures } {
   const faces = kernel.getSubShapes(shape, "face");
   const planarFaces: PlaneFaceObservation[] = [];
   const planarBoundaries: PlanarFaceBoundary3DObservation[] = [];
@@ -386,7 +388,35 @@ function collectSheetMetalAnalysis(
       })
     : undefined;
 
-  return { sheetMetal, unfoldGeometry };
+  let flatFeatures: VerifiedFlatFeatures | undefined;
+  const flat = sheetMetal.flatPatternCandidate;
+  try {
+  // Feature clearance promotion requires a tighter prism reconciliation than
+  // the diagnostic flat-pattern candidate (which allows import tolerances).
+  const expectedVolume = flat && sheetMetal.thicknessCandidate
+    ? flat.areaMm2 * sheetMetal.thicknessCandidate.thicknessMm : undefined;
+  if (flat?.confidence === "high" && kernel.subShapeCount(shape, "solid") === 1
+    && expectedVolume != null && volumeMm3 != null
+    && Math.abs(expectedVolume - volumeMm3) <= Math.max(1e-6, expectedVolume * 1e-8)) {
+    const measurementFaces = kernel.getSubShapes(shape, "face");
+    try {
+      const findFace = (id: string) => measurementFaces.find((face, index) => `face-${index}-${kernel.hashCode(face, HASH_UPPER_BOUND)}` === id);
+      const primary = findFace(flat.faceId), opposite = findFace(flat.oppositeFaceId);
+      if (primary && opposite) {
+        const a = measureStepFaceFeatures(kernel, primary), b = measureStepFaceFeatures(kernel, opposite);
+        if (matchingStepFaceFeatures(a,b) && b) {
+          const minimum = (key: "minHoleDiameterMm" | "minLigamentMm" | "minPartSideMm") =>
+            a[key] === null || b[key] === null ? null : Math.min(a[key],b[key]);
+          flatFeatures = { ...a, minHoleDiameterMm: minimum("minHoleDiameterMm"),
+            minLigamentMm: minimum("minLigamentMm"), minPartSideMm: minimum("minPartSideMm") };
+        }
+      }
+    } finally { measurementFaces.forEach(face => kernel.release(face)); }
+  }
+  } catch {
+    // Optional feature extraction must never erase successful geometry or preview.
+  }
+  return { sheetMetal, unfoldGeometry, flatFeatures };
 }
 
 /**
@@ -437,11 +467,13 @@ class OcctStepKernel implements StepKernelPort {
       }
 
       let sheetMetal: SheetMetalAnalysis | undefined;
+      let flatFeatures: VerifiedFlatFeatures | undefined;
       let unfoldGeometry: StepUnfoldGeometryEvidence | undefined;
       const warnings: string[] = [];
       try {
         const analysis = collectSheetMetalAnalysis(kernel, shape, volumeMm3);
         sheetMetal = analysis.sheetMetal;
+        flatFeatures = analysis.flatFeatures;
         unfoldGeometry = analysis.unfoldGeometry;
       } catch {
         warnings.push("BRep-анализ листовой геометрии не завершён; STEP остаётся доступен для 3D-просмотра и ручной технологической проверки.");
@@ -465,6 +497,7 @@ class OcctStepKernel implements StepKernelPort {
         root: null,
         features: [],
         sheetMetal,
+        flatFeatures,
         unfoldGeometry,
         warnings,
         parserVersion: "5.0.0",

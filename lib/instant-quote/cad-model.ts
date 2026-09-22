@@ -1,3 +1,4 @@
+import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type { CadFormat, PartGeometrySummary } from "@/lib/instant-quote/domain";
 import type { SheetMetalAnalysis, SheetMetalBoundaryPreview } from "@/lib/instant-quote/sheet-metal";
 import type {
@@ -56,6 +57,8 @@ export type NormalizedCadModel = {
   root: CadAssemblyNode | null;
   features: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  /** Server recomputes this from original CAD; never trust client-submitted measurements. */
+  flatFeatures?: VerifiedFlatFeatures;
   unfoldGeometry?: StepUnfoldGeometryEvidence;
   metadata: {
     sourceFileName: string;

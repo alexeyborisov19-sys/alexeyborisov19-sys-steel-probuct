@@ -9,6 +9,8 @@ import type { PartFactualInputs, ProjectFactualCalculationResult } from "@/lib/i
 import type { ProductionParameterSummary } from "@/lib/instant-quote/production-parameters";
 
 export type InternalCalculationInputSnapshot = {
+  /** Original server measurements retained for immutable revisions. */
+  cadEvidenceByPartId?: import("@/lib/instant-quote/project-factual-calculation").ProjectCadEvidence;
   project: InstantQuoteProject;
   factualByPartId: Record<string, PartFactualInputs>;
   powderSidesByPartId: Record<string, 1 | 2>;

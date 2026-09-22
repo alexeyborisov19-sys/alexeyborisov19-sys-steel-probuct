@@ -61,6 +61,11 @@ export function useCadProject() {
     if (approved.length !== calculation.parts.length) return null;
     return approved.reduce((sum, part) => sum + (part.price.totalRub ?? 0), 0);
   }, [calculation]);
+  const estimatedProjectTotalRub = useMemo(() => {
+    if (!calculation?.parts.length || !calculation.parts.every(part =>
+      ["approved", "estimate"].includes(part.price.status) && typeof part.price.totalRub === "number" && Number.isFinite(part.price.totalRub) && part.price.totalRub > 0)) return null;
+    return calculation.parts.reduce((sum,part) => sum + part.price.totalRub!, 0);
+  }, [calculation]);
   // The public calculator never submits orders on its own: it hands the customer
   // over to the existing contacts form, which is the flow that records 152-ФЗ
   // consent and stores the lead. Only the customer's own inputs travel in the URL.
@@ -200,7 +205,7 @@ export function useCadProject() {
         });
         const payload = await response.json().catch(() => null) as CadAnalysisApiResponse | null;
         if (!response.ok || !payload?.ok || !isClientCadPreview(payload.preview)) {
-          refusal = typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : null;
+          refusal = typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : response.status === 413 ? "Файл слишком большой. Допустимо до 50 МБ на CAD-файл и 100 МБ на проект." : null;
           throw new Error("CAD preview refused.");
         }
 
@@ -364,6 +369,8 @@ export function useCadProject() {
       setProjectCalculationMessage(
         allPricesApproved
           ? "Расчёт проекта завершён."
+          : calculationResult.parts.every(part => ["approved", "estimate"].includes(part.price.status))
+            ? "Ориентировочная стоимость рассчитана. Изготовляемость и окончательную цену должен подтвердить инженер."
           : "Расчёт выполнен, но автоматическая цена для части позиций не сформирована. Проверьте материал, толщину и исходные данные выбранных операций.",
       );
     } catch (error) {
@@ -392,5 +399,5 @@ export function useCadProject() {
     ["Z", fmtMetric(activePreview.cad.depthMm)],
   ] : [];
 
-  return { inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, workflowSteps, dropStaleCalculation, ingestFiles, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict, filesByPartId, previewsByPartId };
+  return { inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, workflowSteps, dropStaleCalculation, ingestFiles, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict, filesByPartId, previewsByPartId };
 }

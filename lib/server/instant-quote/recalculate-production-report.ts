@@ -113,7 +113,7 @@ function mergePowderSides(
 function evidenceFromSnapshot(snapshot: InternalCalculationInputSnapshot): ProjectDxfEvidence {
   return Object.fromEntries(snapshot.project.parts.map((part) => [
     part.id,
-    { unsupportedEntities: [...(snapshot.unsupportedEntitiesByPartId[part.id] ?? [])] },
+    { ...snapshot.cadEvidenceByPartId?.[part.id], unsupportedEntities: [...(snapshot.unsupportedEntitiesByPartId[part.id] ?? [])] },
   ]));
 }
 
@@ -179,6 +179,7 @@ export async function recalculateInternalProductionReport(
   }
 
   const nextSnapshot: InternalCalculationInputSnapshot = {
+    cadEvidenceByPartId: snapshot.cadEvidenceByPartId,
     project: snapshot.project,
     factualByPartId,
     authoritativeFactualByPartId,
