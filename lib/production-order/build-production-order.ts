@@ -3,6 +3,7 @@ import type { ProductionParameterSummary } from "@/lib/instant-quote/production-
 import type {
   ProductionOrder,
   ProductionOrderArtifact,
+  ProductionOrderCommercialStatus,
   ProductionOrderDelivery,
   ProductionOrderMaterialSource,
   ProductionOrderOperation,
@@ -138,6 +139,11 @@ function stableOrderId(projectId: string, quoteNumber: string) {
   return `SP-ORDER-${token || "order"}`;
 }
 
+export type ProductionOrderCommercialPartInput = {
+  totalRub: number | null;
+  status: ProductionOrderCommercialStatus;
+};
+
 export type BuildProductionOrderInput = {
   project: InstantQuoteProject;
   quoteNumber: string;
@@ -152,6 +158,7 @@ export type BuildProductionOrderInput = {
   artifacts?: ProductionOrderArtifact[];
   delivery?: ProductionOrderDelivery | null;
   productionNote?: string | null;
+  commercialByPartId?: Record<string, ProductionOrderCommercialPartInput>;
   commercialTotalRub?: number | null;
   now?: Date;
 };
@@ -164,6 +171,47 @@ export function buildProductionOrderFromProject(input: BuildProductionOrderInput
   const quoteTitle = cleanRequired(input.quoteTitle, "quoteTitle", 160);
   const customerName = cleanRequired(input.customerName, "customerName", 200);
   const now = input.now ?? new Date();
+
+  const parts = input.project.parts.map((part, index) => {
+    const production = input.productionParametersByPartId?.[part.id];
+    const operations = [...new Set(part.configuration.operations)].map((code) => buildOperation(code, production));
+    const suppliedCommercial = input.commercialByPartId?.[part.id];
+    const commercialTotalRub = finite(suppliedCommercial?.totalRub);
+    const commercialStatus = commercialTotalRub == null ? "unavailable" : suppliedCommercial?.status ?? "estimate";
+    return {
+      partId: part.id,
+      position: index + 1,
+      name: part.fileName.replace(/\.[^.]+$/, "") || `Позиция ${index + 1}`,
+      quantity: positiveInteger(part.configuration.quantity),
+      fileName: part.fileName,
+      materialId: part.configuration.materialId,
+      materialLabel: (part.configuration.materialId && MATERIAL_LABELS[part.configuration.materialId]) || part.configuration.materialId || "Не указан",
+      thicknessMm: finite(part.configuration.thicknessMm),
+      dimensionsMm: {
+        width: finite(part.geometry?.widthMm),
+        height: finite(part.geometry?.heightMm),
+        depth: finite(part.geometry?.depthMm),
+      },
+      operations,
+      workshopNote: null,
+      commercial: {
+        totalRub: commercialTotalRub,
+        status: commercialStatus,
+      },
+    };
+  });
+
+  const allPartPricesKnown = parts.every((part) => part.commercial.totalRub != null);
+  const calculatedTotal = allPartPricesKnown
+    ? parts.reduce((sum, part) => sum + (part.commercial.totalRub ?? 0), 0)
+    : finite(input.commercialTotalRub);
+  const commercialStatus: ProductionOrderCommercialStatus = calculatedTotal == null
+    ? "unavailable"
+    : parts.some((part) => part.commercial.status === "estimate")
+      ? "estimate"
+      : parts.every((part) => part.commercial.status === "approved")
+        ? "approved"
+        : "estimate";
 
   return {
     schemaVersion: "1",
@@ -178,33 +226,14 @@ export function buildProductionOrderFromProject(input: BuildProductionOrderInput
     priority: input.priority ?? "ordinary",
     responsible: cleanOptional(input.responsible, 160),
     materialSource: input.materialSource ?? "production",
-    parts: input.project.parts.map((part, index) => {
-      const production = input.productionParametersByPartId?.[part.id];
-      const operations = [...new Set(part.configuration.operations)].map((code) => buildOperation(code, production));
-      return {
-        partId: part.id,
-        position: index + 1,
-        name: part.fileName.replace(/\.[^.]+$/, "") || `Позиция ${index + 1}`,
-        quantity: positiveInteger(part.configuration.quantity),
-        fileName: part.fileName,
-        materialId: part.configuration.materialId,
-        materialLabel: (part.configuration.materialId && MATERIAL_LABELS[part.configuration.materialId]) || part.configuration.materialId || "Не указан",
-        thicknessMm: finite(part.configuration.thicknessMm),
-        dimensionsMm: {
-          width: finite(part.geometry?.widthMm),
-          height: finite(part.geometry?.heightMm),
-          depth: finite(part.geometry?.depthMm),
-        },
-        operations,
-        workshopNote: null,
-      };
-    }),
+    parts,
     artifacts: [...(input.artifacts ?? [])],
     delivery: input.delivery ?? null,
     productionNote: cleanOptional(input.productionNote, 4000),
     commercial: {
-      totalRub: finite(input.commercialTotalRub),
+      totalRub: calculatedTotal,
       currency: "RUB",
+      status: commercialStatus,
     },
   };
 }
