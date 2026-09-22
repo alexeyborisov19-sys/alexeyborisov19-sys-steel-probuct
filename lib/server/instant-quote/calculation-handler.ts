@@ -1,3 +1,4 @@
+import { measureVerifiedFlatFeatures } from "@/lib/instant-quote/verified-flat-features";
 import { bendConfigurationConflict } from "@/lib/instant-quote/cad-configuration-conflicts";
 import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -225,6 +226,7 @@ async function buildAuthoritativeProject(
           const parsed = parseDxfInspection(inspection);
           geometry = model.geometry;
           evidenceByPartId[item.clientPartId] = {
+            flatFeatures: measureVerifiedFlatFeatures(parsed),
             unsupportedEntities: [...parsed.unsupportedEntities],
             ...(parsed.skippedServiceLayers.length
               ? { skippedServiceLayers: [...parsed.skippedServiceLayers] }

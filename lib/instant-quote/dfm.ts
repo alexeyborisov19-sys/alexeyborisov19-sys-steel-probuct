@@ -1,4 +1,6 @@
-import { laserCuttingCapabilities } from "@/data/manufacturing-facts";
+import { laserCuttingCapabilities, laserFeatureNorms } from "@/data/manufacturing-facts";
+
+import { validateVerifiedFlatFeatures, type VerifiedFlatFeatures } from "./verified-flat-features";
 
 export type DfmSeverity = "pass" | "warning" | "error" | "manual";
 
@@ -37,6 +39,7 @@ export function runVerifiedLaserDfm(
   geometry: DfmGeometryInput,
   thicknessMm: number,
   materialId: string = "unknown",
+  features?: VerifiedFlatFeatures,
 ): DfmResult[] {
   const results: DfmResult[] = [];
   const range = parseMmRange(laserCuttingCapabilities.thicknessRange);
@@ -100,12 +103,18 @@ export function runVerifiedLaserDfm(
     );
   }
 
-  results.push({
-    code: "feature-rules",
-    title: "Feature-проверки требуют технологической базы",
-    detail: "Минимальные отверстия, перемычки, радиусы, зоны гиба и инструмент не проверяются, пока для них не заведены подтверждённые производственные нормы.",
-    severity: "manual",
-  });
+  if (features) {
+    const validation = validateVerifiedFlatFeatures(features, {
+      ...laserFeatureNorms, materialId, thicknessMm,
+      minHoleDiameterMm: thicknessMm * laserFeatureNorms.minHoleDiameterThicknessRatio,
+    }, { materialId, thicknessMm });
+    results.push({ code: "feature-rules", severity: validation.status === "pass" ? "pass" : validation.status === "blocked" ? "error" : "manual",
+      title: validation.status === "pass" ? "Отверстия и перемычки соответствуют утверждённым нормам" : validation.reasons.join(" "),
+      detail: `Минимальное отверстие: ${thicknessMm} мм; перемычка: ${laserFeatureNorms.minLigamentMm} мм. Отдельного минимального размера детали нет. Нормы ${laserFeatureNorms.version}.`,
+    });
+  } else {
+    results.push({ code: "feature-rules", title: "Отверстия и перемычки требуют проверки геометрии", detail: "Нормы утверждены: отверстие не меньше толщины, перемычка не меньше 3 мм. Автоматические измерения для этого контура пока не подтверждены.", severity: "manual" });
+  }
 
   return results;
 }

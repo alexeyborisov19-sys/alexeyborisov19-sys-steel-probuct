@@ -208,3 +208,15 @@ test("a part without geometry leads with the reason the analysis measured", () =
   const silent = calculateProjectFactualCost(withoutGeometry, {}, snapshots, rateBook, {}, now);
   assert.equal(silent.parts[0].dfmReviewReasons.length, 1);
 });
+
+
+test("approved server-measured features clear the laser gate, violations block, bending still needs review", () => {
+ const measured = {supported:true,reasons:[],holeCount:1,minHoleDiameterMm:1,minLigamentMm:3,minPartSideMm:500};
+ const laserProject: InstantQuoteProject = {...project, parts:project.parts.map(p=>({...p,configuration:{...p.configuration,operations:["laser-cutting"]}}))};
+ const calculate = (flatFeatures: typeof measured, candidate=laserProject) => calculateProjectFactualCost(candidate,{"part-1":{flatFeatures}},snapshots,rateBook,{},now).parts[0];
+ const passed=calculate(measured);
+ assert.equal(passed.status,"complete");assert.deepEqual(passed.dfmReviewReasons,[]);
+ assert.equal(calculate({...measured,minHoleDiameterMm:0.99}).status,"blocked");
+ assert.equal(calculate({...measured,minLigamentMm:2.99}).status,"blocked");
+ assert.ok(calculate(measured,project).dfmReviewReasons.some(reason=>reason.includes("гиба")));
+});
