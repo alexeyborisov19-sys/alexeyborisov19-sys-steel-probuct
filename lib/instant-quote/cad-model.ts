@@ -1,3 +1,4 @@
+import type { PreliminaryStepBlank } from "./preliminary-step-blank";
 import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type { CadFormat, PartGeometrySummary } from "@/lib/instant-quote/domain";
 import type { SheetMetalAnalysis, SheetMetalBoundaryPreview } from "@/lib/instant-quote/sheet-metal";
@@ -57,6 +58,8 @@ export type NormalizedCadModel = {
   root: CadAssemblyNode | null;
   features: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  /** Server-measured raw blank; finishing is excluded and price remains estimate-only. */
+  preliminaryBlank?: PreliminaryStepBlank;
   /** Server recomputes this from original CAD; never trust client-submitted measurements. */
   flatFeatures?: VerifiedFlatFeatures;
   unfoldGeometry?: StepUnfoldGeometryEvidence;

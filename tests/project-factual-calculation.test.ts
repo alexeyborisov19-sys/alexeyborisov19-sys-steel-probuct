@@ -210,13 +210,31 @@ test("a part without geometry leads with the reason the analysis measured", () =
 });
 
 
-test("approved server-measured features clear the laser gate, violations block, bending still needs review", () => {
- const measured = {supported:true,reasons:[],holeCount:1,minHoleDiameterMm:1,minLigamentMm:3,minPartSideMm:500};
+test("approved server-measured features clear the laser gate, violations retain cost with manufacturing hold, bending still needs review", () => {
+ const measured = {supported:true,reasons:[],holeCount:1,minHoleDiameterMm:1,minLigamentMm:1,minPartSideMm:500};
  const laserProject: InstantQuoteProject = {...project, parts:project.parts.map(p=>({...p,configuration:{...p.configuration,operations:["laser-cutting"]}}))};
  const calculate = (flatFeatures: typeof measured, candidate=laserProject) => calculateProjectFactualCost(candidate,{"part-1":{flatFeatures}},snapshots,rateBook,{},now).parts[0];
  const passed=calculate(measured);
  assert.equal(passed.status,"complete");assert.deepEqual(passed.dfmReviewReasons,[]);
- assert.equal(calculate({...measured,minHoleDiameterMm:0.99}).status,"blocked");
- assert.equal(calculate({...measured,minLigamentMm:2.99}).status,"blocked");
+ const smallHole=calculate({...measured,minHoleDiameterMm:0.99});
+ assert.equal(smallHole.status,"complete");assert.ok(smallHole.dfmBlockingReasons.length);assert.ok(smallHole.calculation);
+ const thinLigament=calculate({...measured,minLigamentMm:.99});
+ assert.equal(thinLigament.status,"complete");assert.ok(thinLigament.dfmBlockingReasons.length);
  assert.ok(calculate(measured,project).dfmReviewReasons.some(reason=>reason.includes("гиба")));
+});
+
+
+test("known invalid topology still blocks cost despite the manufacturing-constraint estimate policy",()=>{
+ const bad={supported:false,invalidGeometry:true as const,reasons:["Контур пересекается."],holeCount:0,minHoleDiameterMm:null,minLigamentMm:null,minPartSideMm:null};
+ const result=calculateProjectFactualCost(project,{"part-1":{flatFeatures:bad}},snapshots,rateBook,{},now).parts[0];
+ assert.equal(result.status,"blocked");assert.equal(result.calculation,null);assert.ok(result.dfmBlockingReasons.length);
+});
+
+
+test("project cost opts into dated stale prices without modifying saved snapshots",()=>{
+ const old=snapshots.map(snapshot=>({...snapshot,sourceDate:"2098-12-20",fetchedAt:"2098-12-20T00:00:00Z",rows:snapshot.rows.map(row=>({...row,sourceDate:"2098-12-20",fetchedAt:"2098-12-20T00:00:00Z"}))}));
+ const before=JSON.stringify(old),result=calculateProjectFactualCost(project,parsedByPartId,old,rateBook,{},now);
+ assert.equal(result.parts[0].status,"complete");assert.equal(result.parts[0].calculation?.staleMaterialPriceUsed?.sourceDate,"2098-12-20");assert.equal(JSON.stringify(old),before);
+ const future=old.map(snapshot=>({...snapshot,fetchedAt:"2100-01-01T00:00:00Z"}));
+ assert.equal(calculateProjectFactualCost(project,parsedByPartId,future,rateBook,{},now).parts[0].calculation?.staleMaterialPriceUsed,undefined);
 });

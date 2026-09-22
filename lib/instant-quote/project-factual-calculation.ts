@@ -1,5 +1,5 @@
 import type { InstantQuoteProject } from "@/lib/instant-quote/domain";
-import { runVerifiedLaserDfm } from "@/lib/instant-quote/dfm";
+import { runVerifiedLaserDfm, isEstimateOnlyManufacturingConstraint } from "@/lib/instant-quote/dfm";
 import {
   calculateFactualProductionCost,
   type FactualCalculationResult,
@@ -37,6 +37,8 @@ export type ProjectFactualCalculationResult = {
 };
 
 export type PartCadEvidence = {
+  /** Derived only from original STEP by protected server analysis; estimate-only. */
+  preliminaryGeometrySource?: "measured-bent-step" | "measured-step-blank";
   /** Measured from original CAD on server, never accepted from request metadata. */
   flatFeatures?: import("./verified-flat-features").VerifiedFlatFeatures;
   /** SHA-256 of actual inspected upload bytes, computed by the server. */
@@ -131,7 +133,10 @@ export function calculateProjectFactualCost(
       ...dfm.filter((item) => item.severity === "manual" || item.severity === "warning").map((item) => item.title),
       ...(evidence.reviewReasons ?? []),
     ];
-    if (dfmBlockingReasons.length) {
+    // Keep every violation in the internal manufacturing report. Only its role
+    // as a cost blocker changes: owner permits estimates for measured rules.
+    const costBlockingDfm=dfm.filter(item=>item.severity==='error'&&!isEstimateOnlyManufacturingConstraint(item,evidence.flatFeatures));
+    if (costBlockingDfm.length) {
       return {
         partId: part.id,
         status: "blocked",
@@ -157,6 +162,9 @@ export function calculateProjectFactualCost(
       marketPrice: selection.price,
       materialPriceSourceId: selection.sourceId,
       materialPriceStale: selection.stale,
+      // Invalid/future snapshot timestamps are not a last-known price. The
+      // selector already prioritizes fresh exact material/thickness sources.
+      allowStaleMaterialEstimate: selection.ageHours!=null && Number.isFinite(selection.ageHours) && selection.ageHours>=0,
       materialMarketUpliftPct: options.materialMarketUpliftPct,
       operations: part.configuration.operations,
       rateBook,

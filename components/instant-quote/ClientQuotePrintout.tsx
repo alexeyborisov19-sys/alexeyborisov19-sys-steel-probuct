@@ -61,7 +61,7 @@ export function ClientQuotePrintout({
           {calculation.parts.map((part, index) => (
             <tr key={part.partId}>
               <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{index + 1}</td>
-              <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{part.fileName}</td>
+              <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{part.fileName}{part.price.materialPriceDate && <div style={{ marginTop: 4 }}>Прайс металла от {part.price.materialPriceDate}</div>}</td>
               <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{materialLabel(part.configuration.materialId)}</td>
               <td style={{ border: "1px solid #999", padding: "4px 6px" }}>
                 {part.configuration.thicknessMm == null ? "—" : `${part.configuration.thicknessMm} мм`}
@@ -78,6 +78,12 @@ export function ClientQuotePrintout({
           ))}
         </tbody>
       </table>
+
+      {calculation.parts.filter(part => part.price.status !== "approved").map(part => (
+        <p key={`review-${part.partId}`} style={{ fontSize: 10, lineHeight: 1.5, breakInside: "avoid" }}>
+          <strong>{part.fileName}:</strong> {part.message}
+        </p>
+      ))}
 
       {totalRub != null && priced.length === calculation.parts.length && (
         <p style={{ marginTop: 12, fontSize: 14, fontWeight: 700, textAlign: "right" }}>

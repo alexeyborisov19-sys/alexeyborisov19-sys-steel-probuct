@@ -1,3 +1,4 @@
+import type { PreliminaryStepBlank } from "./preliminary-step-blank";
 import type { VerifiedFlatFeatures } from "./verified-flat-features";
 import type {
   CadAnalysisAdapter,
@@ -17,6 +18,8 @@ export type StepKernelResult = {
   root?: CadAssemblyNode | null;
   features?: SheetMetalFeature[];
   sheetMetal?: SheetMetalAnalysis;
+  /** Server-measured raw blank; finishing is excluded and price remains estimate-only. */
+  preliminaryBlank?: PreliminaryStepBlank;
   /** Server recomputes this from original CAD; never trust client-submitted measurements. */
   flatFeatures?: VerifiedFlatFeatures;
   unfoldGeometry?: StepUnfoldGeometryEvidence;
@@ -127,19 +130,21 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
         ? promotedBentGeometry(result)
         : null;
 
+      const preliminary = !flatPattern && !bent && result.bodyCount === 1 ? result.preliminaryBlank : undefined;
+
       return {
         format: request.format,
         units: "mm",
         geometry: {
-          widthMm: flatPattern?.widthMm ?? bent?.widthMm ?? bounds.size[0],
-          heightMm: flatPattern?.heightMm ?? bent?.heightMm ?? bounds.size[1],
+          widthMm: flatPattern?.widthMm ?? bent?.widthMm ?? preliminary?.widthMm ?? bounds.size[0],
+          heightMm: flatPattern?.heightMm ?? bent?.heightMm ?? preliminary?.heightMm ?? bounds.size[1],
           depthMm: bounds.size[2],
-          areaMm2: flatPattern?.areaMm2 ?? bent?.areaMm2,
-          blankAreaMm2: flatPattern?.blankAreaMm2 ?? bent?.blankAreaMm2,
-          cutLengthMm: flatPattern?.cutLengthMm ?? bent?.cutLengthMm,
-          contourCount: flatPattern?.contourCount ?? bent?.contourCount,
-          pierceCount: flatPattern?.contourCount ?? bent?.pierceCount,
-          bendCount,
+          areaMm2: flatPattern?.areaMm2 ?? bent?.areaMm2 ?? preliminary?.areaMm2,
+          blankAreaMm2: flatPattern?.blankAreaMm2 ?? bent?.blankAreaMm2 ?? preliminary?.blankAreaMm2,
+          cutLengthMm: flatPattern?.cutLengthMm ?? bent?.cutLengthMm ?? preliminary?.cutLengthMm,
+          contourCount: flatPattern?.contourCount ?? bent?.contourCount ?? preliminary?.contourCount,
+          pierceCount: flatPattern?.contourCount ?? bent?.pierceCount ?? preliminary?.contourCount,
+          bendCount: preliminary ? 0 : bendCount,
           bodyCount: result.bodyCount ?? result.meshes.length,
           volumeMm3: result.volumeMm3,
         },
@@ -147,6 +152,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
         root: result.root ?? null,
         features: result.features ?? [],
         sheetMetal: result.sheetMetal,
+        preliminaryBlank: preliminary,
         flatFeatures: flatPattern && result.bodyCount === 1 ? result.flatFeatures : undefined,
         unfoldGeometry: result.unfoldGeometry,
         metadata: {
@@ -162,7 +168,7 @@ export function createStepCadAdapter(kernel: StepKernelPort): CadAnalysisAdapter
         // turn superseded candidate-only messages into commercial-review flags.
         warnings: flatPattern
           ? [...(result.warnings ?? [])]
-          : [...(result.warnings ?? []), ...(result.sheetMetal?.warnings ?? [])],
+          : [...(result.warnings ?? []), ...(result.sheetMetal?.warnings ?? []), ...(preliminary ? [preliminary.warning] : [])],
       };
     },
   };

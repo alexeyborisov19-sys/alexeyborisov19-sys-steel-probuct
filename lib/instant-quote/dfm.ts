@@ -113,8 +113,16 @@ export function runVerifiedLaserDfm(
       detail: `Минимальное отверстие: ${thicknessMm} мм; перемычка: ${laserFeatureNorms.minLigamentMm} мм. Отдельного минимального размера детали нет. Нормы ${laserFeatureNorms.version}.`,
     });
   } else {
-    results.push({ code: "feature-rules", title: "Отверстия и перемычки требуют проверки геометрии", detail: "Нормы утверждены: отверстие не меньше толщины, перемычка не меньше 3 мм. Автоматические измерения для этого контура пока не подтверждены.", severity: "manual" });
+    results.push({ code: "feature-rules", title: "Отверстия и перемычки требуют проверки геометрии", detail: `Нормы утверждены: отверстие не меньше толщины, перемычка не меньше ${laserFeatureNorms.minLigamentMm} мм. Автоматические измерения для этого контура пока не подтверждены.`, severity: "manual" });
   }
 
   return results;
+}
+
+/** Owner allows cost estimates for measured manufacturing constraints, never
+ * production approval. Invalid/unread geometry is not a manufacturing waiver. */
+export function isEstimateOnlyManufacturingConstraint(check:DfmResult,features:VerifiedFlatFeatures|undefined):boolean {
+  if(check.severity!=='error' || features?.invalidGeometry) return false;
+  if(check.code==='table'||check.code==='thickness') return true;
+  return check.code==='feature-rules' && features?.supported===true;
 }

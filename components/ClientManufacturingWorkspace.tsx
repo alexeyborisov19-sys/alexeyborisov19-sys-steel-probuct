@@ -105,13 +105,14 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4"><span className="text-sm font-medium">Дополнительная обработка</span><span aria-hidden="true" className="text-xl text-steel-orange group-open:rotate-45">+</span></summary>
                 <div className="border-t border-white/10 p-3 [&_p]:text-xs [&_p]:text-white/70 [&_label_span]:text-xs [&_label_span]:text-white/70"><ClientOperationControls operations={operations} operationInputs={operationInputs} detectedBendCount={activePreview?.cad.bendCountFromModel ?? null} onToggle={toggleOperation} onQuantityChange={updateOperationInputs} /></div>
               </details>
-              <ClientOperationSummary operations={operations} operationInputs={operationInputs} detectedBendCount={activePreview?.cad.bendCountFromModel ?? null} />
+              <ClientOperationSummary quantity={quantity} operations={operations} operationInputs={operationInputs} detectedBendCount={activePreview?.cad.bendCountFromModel ?? null} />
             </section>
 
             <section className="rounded-xl border border-steel-orange/35 bg-[#172028] p-5" aria-label="Результат расчёта">
               <div className="flex items-start justify-between gap-3"><h2 className="text-sm font-medium text-white/75">{hasEstimate ? "Ориентировочная стоимость" : "Предварительная стоимость"}</h2><span className="shrink-0 text-xs text-white/55">{project.parts.length} поз.</span></div>
               <p className="mt-3 text-3xl font-semibold tracking-tight text-steel-orange tabular-nums">{displayedTotalRub != null ? `${fmt(displayedTotalRub!)} ₽` : calculation ? "На проверке" : "—"}</p>
               {typeof activeTotal === "number" && <p className="mt-2 text-sm text-white/75">{project.parts.length > 1 ? `Эта позиция: ${fmt(activeTotal)} ₽ · ` : ""}{fmt(activeTotal / quantity)} ₽ / шт. при {quantity} шт.</p>}
+              {displayedTotalRub != null && calculation?.parts.some(part => part.price.materialPriceDate) && <p className="mt-2 text-xs text-white/75">Прайс металла от {[...new Set(calculation.parts.map(part => part.price.materialPriceDate).filter(Boolean))].join(", ")}</p>}
               {displayedTotalRub != null && <p className="mt-2 text-xs text-white/65">Налоговые условия и окончательная цена — в коммерческом предложении.</p>}
               {hasEstimate && <p className="mt-3 text-sm text-amber-200">Изготовляемость и окончательную цену подтвердит инженер. Запуск в производство не согласован.</p>}
               <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className={`${actionClass} mt-5 w-full`}>{calculateLabel}</button>
