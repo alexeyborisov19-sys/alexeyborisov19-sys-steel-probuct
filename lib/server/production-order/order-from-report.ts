@@ -2,6 +2,7 @@ import type { ProductionOrder, ProductionOrderCommercialStatus } from "@/lib/pro
 import { buildProductionOrderFromProject } from "@/lib/production-order/build-production-order";
 import { parseProductionOrder } from "@/lib/production-order/parse-production-order";
 import {
+  listInternalProductionReports,
   readInternalProductionReport,
   type InternalProductionReport,
 } from "@/lib/server/instant-quote/private-production-report";
@@ -90,10 +91,19 @@ export function rebuildProductionOrderFromReport(
   });
 }
 
-export async function readAndRebuildProductionOrder(
-  reportFileName: string,
+function notFoundError(projectId: string) {
+  const error = new Error(`Производственный расчёт ${projectId} не найден.`) as NodeJS.ErrnoException;
+  error.code = "ENOENT";
+  return error;
+}
+
+/** Uses the latest stored report for the immutable project id. */
+export async function readAndRebuildProductionOrderForProject(
   requestedOrder: ProductionOrder,
 ) {
-  const report = await readInternalProductionReport(reportFileName);
+  const rows = await listInternalProductionReports(1_000);
+  const row = rows.find((item) => item.projectId === requestedOrder.projectId);
+  if (!row) throw notFoundError(requestedOrder.projectId);
+  const report = await readInternalProductionReport(row.fileName);
   return rebuildProductionOrderFromReport(report, requestedOrder);
 }
