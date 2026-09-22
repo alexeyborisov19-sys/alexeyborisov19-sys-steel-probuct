@@ -9,6 +9,8 @@ export type ProductionOrderPackagePlan = {
   quotePdfPath: string;
   productionOrderPdfPath: string;
   manifestPath: string;
+  journalPath: string;
+  revisionsDirectory: string;
   artifactDirectories: Partial<Record<ProductionOrderArtifactKind, string>>;
 };
 
@@ -81,8 +83,15 @@ export function planProductionOrderPackage(order: ProductionOrder, root = loadOr
     quotePdfPath: resolveInside(orderDirectory, safeWindowsPathSegment(`КП ${order.quoteNumber}.pdf`, 180)),
     productionOrderPdfPath: resolveInside(orderDirectory, safeWindowsPathSegment(`Заявка в производство ${order.quoteNumber}.pdf`, 180)),
     manifestPath: resolveInside(orderDirectory, "order-manifest.json"),
+    journalPath: resolveInside(orderDirectory, "order-journal.jsonl"),
+    revisionsDirectory: resolveInside(orderDirectory, "Ревизии"),
     artifactDirectories,
   };
+}
+
+export function productionOrderRevisionDirectory(plan: ProductionOrderPackagePlan, revision: number) {
+  if (!Number.isSafeInteger(revision) || revision < 1 || revision > 9999) throw new Error("Invalid order revision");
+  return resolveInside(plan.revisionsDirectory, String(revision).padStart(4, "0"));
 }
 
 export async function prepareProductionOrderPackage(order: ProductionOrder, root?: string) {
