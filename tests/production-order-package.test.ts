@@ -49,25 +49,35 @@ function order(projectId = "project-package") {
   });
 }
 
-test("package creation is idempotent and updates the same order", async () => {
+test("package creation is idempotent and creates revisions only for changes", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "steelprodukt-order-"));
   try {
     const initial = order();
     const first = await createOrUpdateProductionOrderPackage(initial, root);
     assert.equal(first.created, true);
     assert.equal(first.changed, true);
+    assert.equal(first.revision, 1);
+    assert.ok(first.revisionDirectory.endsWith(path.join("Ревизии", "0001")));
 
     const second = await createOrUpdateProductionOrderPackage(initial, root);
     assert.equal(second.created, false);
     assert.equal(second.changed, false);
+    assert.equal(second.revision, 1);
+    assert.equal(second.revisionDirectory, first.revisionDirectory);
 
     const updated = { ...initial, responsible: "Новый ответственный" };
     const third = await createOrUpdateProductionOrderPackage(updated, root);
     assert.equal(third.created, false);
     assert.equal(third.changed, true);
+    assert.equal(third.revision, 2);
+    assert.ok(third.revisionDirectory.endsWith(path.join("Ревизии", "0002")));
 
     const stored = parseProductionOrder(JSON.parse(await readFile(third.plan.manifestPath, "utf8")) as unknown);
     assert.equal(stored.responsible, "Новый ответственный");
+    const revisionOne = parseProductionOrder(JSON.parse(await readFile(first.revisionManifestPath, "utf8")) as unknown);
+    const revisionTwo = parseProductionOrder(JSON.parse(await readFile(third.revisionManifestPath, "utf8")) as unknown);
+    assert.equal(revisionOne.responsible, "Алексей");
+    assert.equal(revisionTwo.responsible, "Новый ответственный");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
