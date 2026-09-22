@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { InstantQuoteProject } from "../lib/instant-quote/domain";
 import { buildProductionOrderFromProject, groupProductionOrderRoutes, productionOrderVisibleSections } from "../lib/production-order/build-production-order";
-import { buildOrderFolderName, planProductionOrderPackage, safeWindowsPathSegment } from "../lib/server/production-order/storage";
+import { buildOrderFolderName, loadOrderStorageRoot, planProductionOrderPackage, safeWindowsPathSegment } from "../lib/server/production-order/storage";
+import {
+  loadConfiguredOrderStorageRootSync,
+  productionOrderSettingsFile,
+  readProductionOrderStorageSettings,
+  saveProductionOrderStorageSettings,
+} from "../lib/server/production-order/storage-settings";
 import { loadProductionOrderBitrixConfig, upsertProductionOrderDeal } from "../lib/server/production-order/bitrix-deal";
 
 function project(parts = 1): InstantQuoteProject {
@@ -77,6 +86,45 @@ test("creates a Windows-safe order folder without changing Cyrillic", () => {
   assert.ok(plan.orderDirectory.endsWith("26-1649 ООО Ромашка - Корпуса"));
   assert.ok(plan.quotePdfPath.endsWith("КП 26-1649.pdf"));
   assert.ok(plan.productionOrderPdfPath.endsWith("Заявка в производство 26-1649.pdf"));
+});
+
+test("saved order root survives reload and overrides environment fallback", async (t) => {
+  const sandbox = await mkdtemp(path.join(os.tmpdir(), "steelprodukt-order-settings-"));
+  t.after(async () => { await rm(sandbox, { recursive: true, force: true }); });
+
+  const settingsRoot = path.join(sandbox, "private-settings");
+  const savedRoot = path.join(sandbox, "orders-saved");
+  const environmentRoot = path.join(sandbox, "orders-environment");
+  await Promise.all([
+    mkdir(savedRoot, { recursive: true }),
+    mkdir(environmentRoot, { recursive: true }),
+  ]);
+
+  const environment = {
+    STEEL_PRODUCT_PRIVATE_SETTINGS_ROOT: settingsRoot,
+    STEEL_PRODUCT_ORDER_ROOT: environmentRoot,
+  };
+  const now = new Date("2026-09-22T19:45:00.000Z");
+  const saved = await saveProductionOrderStorageSettings({
+    ordersRoot: savedRoot,
+    actor: { userId: "user-1", displayName: "Алексей" },
+    environment,
+    now,
+  });
+
+  assert.equal(saved.ordersRoot, path.resolve(savedRoot));
+  assert.equal(saved.source, "saved");
+  assert.equal(saved.updatedAt, now.toISOString());
+
+  const reloaded = await readProductionOrderStorageSettings(environment);
+  assert.equal(reloaded.source, "saved");
+  assert.equal(reloaded.ordersRoot, path.resolve(savedRoot));
+  assert.equal(reloaded.updatedByDisplayName, "Алексей");
+  assert.equal(loadConfiguredOrderStorageRootSync(environment), path.resolve(savedRoot));
+  assert.equal(loadOrderStorageRoot(environment), path.resolve(savedRoot));
+
+  const raw = JSON.parse(await readFile(productionOrderSettingsFile(environment), "utf8")) as { ordersRoot?: string };
+  assert.equal(raw.ordersRoot, path.resolve(savedRoot));
 });
 
 test("Bitrix deal config requires explicit category and stage", () => {
