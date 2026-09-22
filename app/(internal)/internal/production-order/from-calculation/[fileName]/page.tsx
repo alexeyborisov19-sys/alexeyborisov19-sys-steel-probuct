@@ -52,7 +52,6 @@ export default async function ProductionOrderFromCalculationPage({
     {snapshot ? <Panel title="Данные КП и производственной заявки">
       <ProductionOrderDraftEditor
         csrfToken={shell.csrfToken}
-        calculationFileName={decodedFileName}
         project={snapshot.project}
         productionParametersByPartId={report.productionParametersByPartId}
         initialCreatedAt={new Date().toISOString()}
