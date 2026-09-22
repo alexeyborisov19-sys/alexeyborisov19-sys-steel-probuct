@@ -18,18 +18,19 @@ export function nativeFolderPickerSupported(platform: NodeJS.Platform = process.
   return platform === "darwin" || platform === "win32" || platform === "linux";
 }
 
-function cleanOutput(value: string) {
-  return value.replace(/[\r\n]+$/g, "").trim();
+function cleanOutput(value: string | Buffer) {
+  return String(value).replace(/[\r\n]+$/g, "").trim();
 }
 
 function isCancellation(error: unknown) {
-  const candidate = error as NodeJS.ErrnoException & { stderr?: string; stdout?: string };
-  const text = `${candidate.message ?? ""} ${candidate.stderr ?? ""} ${candidate.stdout ?? ""}`.toLowerCase();
+  const candidate = error as NodeJS.ErrnoException & { stderr?: string | Buffer; stdout?: string | Buffer; code?: string | number };
+  const text = `${candidate.message ?? ""} ${String(candidate.stderr ?? "")} ${String(candidate.stdout ?? "")}`.toLowerCase();
   return text.includes("user canceled")
     || text.includes("user cancelled")
     || text.includes("operation canceled")
     || text.includes("operation cancelled")
-    || candidate.code === "2";
+    || candidate.code === "2"
+    || candidate.code === 2;
 }
 
 async function chooseOnMac() {
