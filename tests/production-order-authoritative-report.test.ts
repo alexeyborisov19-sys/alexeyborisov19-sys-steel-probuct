@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { InstantQuoteProject } from "../lib/instant-quote/domain";
 import { buildProductionOrderFromProject } from "../lib/production-order/build-production-order";
+import { rebuildProductionOrderFromReport } from "../lib/production-order/rebuild-production-order";
 import type { InternalProductionReport } from "../lib/server/instant-quote/private-production-report";
-import { rebuildProductionOrderFromReport } from "../lib/server/production-order/order-from-report";
 
 function project(): InstantQuoteProject {
   return {
