@@ -7,7 +7,7 @@ import {
   upsertProductionOrderDeal,
 } from "@/lib/server/production-order/bitrix-deal";
 import { appendProductionOrderJournal } from "@/lib/server/production-order/journal";
-import { readAndRebuildProductionOrder } from "@/lib/server/production-order/order-from-report";
+import { readAndRebuildProductionOrderForProject } from "@/lib/server/production-order/order-from-report";
 import {
   createOrUpdateProductionOrderPackage,
   ProductionOrderPackageConflictError,
@@ -24,13 +24,10 @@ export async function POST(request: NextRequest) {
     } catch {
       throw new PdStage4Error("VALIDATION_ERROR");
     }
-    if (typeof body.calculationFileName !== "string" || !body.calculationFileName.trim()) {
-      throw new PdStage4Error("VALIDATION_ERROR");
-    }
 
     let order;
     try {
-      order = await readAndRebuildProductionOrder(body.calculationFileName.trim(), requestedOrder);
+      order = await readAndRebuildProductionOrderForProject(requestedOrder);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new PdStage4Error("NOT_FOUND");
       throw new PdStage4Error("VALIDATION_ERROR");
