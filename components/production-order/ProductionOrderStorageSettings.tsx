@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ProductionOrderStorageSnapshot } from "@/lib/server/production-order/storage-settings";
 
 type SafePayload<T> = {
@@ -27,6 +27,12 @@ function errorMessage(code: string | undefined, action: "browse" | "save") {
   return action === "browse" ? "Не удалось открыть обзор папок." : "Не удалось сохранить путь.";
 }
 
+function trimTrailingSeparators(value: string) {
+  if (value === "/") return value;
+  if (/^[A-Za-z]:\\$/.test(value)) return value;
+  return value.replace(/[\\/]+$/g, "");
+}
+
 export function ProductionOrderStorageSettings({
   csrfToken,
   initialSettings,
@@ -42,6 +48,13 @@ export function ProductionOrderStorageSettings({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const orderFolderExample = useMemo(() => {
+    const root = trimTrailingSeparators(pathValue.trim());
+    if (!root) return null;
+    const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
+    return `${root}${separator}26-1649 ООО Ромашка - Корпуса`;
+  }, [pathValue]);
 
   const browse = async () => {
     setError(null);
@@ -64,6 +77,8 @@ export function ProductionOrderStorageSettings({
       if (payload.data.status === "selected" && payload.data.path) {
         setPathValue(payload.data.path);
         setMessage("Папка выбрана. Нажмите «Сохранить путь», чтобы использовать её для новых заказов.");
+      } else {
+        setMessage("Выбор папки отменён. Сохранённый путь не изменён.");
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : errorMessage(undefined, "browse"));
@@ -96,7 +111,7 @@ export function ProductionOrderStorageSettings({
       }
       setSettings(payload.data.settings);
       setPathValue(payload.data.settings.ordersRoot ?? "");
-      setMessage("Путь сохранён. Новые папки КП будут создаваться внутри этой папки.");
+      setMessage("Путь сохранён и уже будет использоваться при создании новых папок КП.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : errorMessage(undefined, "save"));
     } finally {
@@ -139,6 +154,11 @@ export function ProductionOrderStorageSettings({
         </button>
       </div>
     </label>
+
+    {orderFolderExample && <div className="border border-white/10 bg-black/15 p-3 text-xs text-white/45">
+      Пример новой папки заказа:
+      <div className="mt-1 break-all font-mono text-sm text-white/75">{orderFolderExample}</div>
+    </div>}
 
     <div className="grid gap-3 text-sm md:grid-cols-3">
       <div className="border border-white/10 p-3"><div className="text-xs uppercase tracking-[.1em] text-white/35">Состояние</div><div className="mt-1 font-semibold">{settings.ordersRoot ? "Настроено" : "Не настроено"}</div></div>
