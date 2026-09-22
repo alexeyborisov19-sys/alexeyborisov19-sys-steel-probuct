@@ -1,0 +1,71 @@
+name: Remove fixed per-item calculation charge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/install-remove-fixed-calculation-charge.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Restart Next runtime with protected production environment
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          test -s "$APP_PATH/.env.production"
+          python3 - "$APP_PATH/.env.production" <<'PYTHON'
+          import os, sys, shutil, tempfile
+          from pathlib import Path
+          from datetime import datetime, timezone
+          path = Path(sys.argv[1])
+          backup = path.with_name('.env.before-fixed-charge-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S'))
+          shutil.copy2(path, backup)
+          os.chmod(backup, 0o600)
+          values = {'STEEL_PRODUCT_FIXED_ADD_RUB': '0', 'STEEL_PRODUCT_FIXED_ADD_ENABLED': 'false'}
+          lines = [line for line in path.read_text().splitlines() if line.split('=', 1)[0].strip() not in values]
+          lines += [f'{key}={value}' for key, value in values.items()]
+          fd, name = tempfile.mkstemp(dir=path.parent, prefix='.env-fixed-charge-')
+          with os.fdopen(fd, 'w') as output:
+              output.write('\n'.join(lines) + '\n')
+          os.chmod(name, 0o600)
+          stat = path.stat()
+          os.chown(name, stat.st_uid, stat.st_gid)
+          os.replace(name, path)
+          print('Fixed per-item charge disabled; all other environment values preserved.')
+          PYTHON
+          sudo -iu nodejs bash -lc "cd '$APP_PATH' && STEEL_PRODUCT_FIXED_ADD_RUB=0 STEEL_PRODUCT_FIXED_ADD_ENABLED=false pm2 restart steelprodukt --update-env >/dev/null"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+              echo "Production runtime restarted with calculation environment."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Health check failed after restart."
+          exit 1
+          REMOTE
