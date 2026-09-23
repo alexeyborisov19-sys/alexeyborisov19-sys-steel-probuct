@@ -34,7 +34,9 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
-            "APP_PATH='$BEGET_APP_PATH' python3 - <<'PY'"
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          python3 - <<'PY'
           import imaplib
           import os
           from pathlib import Path
@@ -68,7 +70,7 @@ jobs:
               if typ != "OK":
                   raise SystemExit("Read-only EXAMINE failed")
 
-              typ, status = client.status("INBOX", "(MESSAGES UNSEEN)")
+              typ, _ = client.status("INBOX", "(MESSAGES UNSEEN)")
               if typ != "OK":
                   raise SystemExit("Read-only STATUS failed")
 
@@ -83,3 +85,4 @@ jobs:
               except Exception:
                   pass
           PY
+          REMOTE
