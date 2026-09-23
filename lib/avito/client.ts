@@ -152,6 +152,16 @@ export class AvitoClient {
     return this.authorized(`/core/v1/accounts/${encodeURIComponent(String(userId))}/balance/`);
   }
 
+  async getOperationsHistory(dateTimeFrom: string, dateTimeTo: string): Promise<unknown> {
+    return this.authorized(
+      "/core/v1/accounts/operations_history/",
+      {
+        method: "POST",
+        body: JSON.stringify({ dateTimeFrom, dateTimeTo }),
+      },
+    );
+  }
+
   async getSpendings(
     userId: string | number,
     dateFrom: string,
