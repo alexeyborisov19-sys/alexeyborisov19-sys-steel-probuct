@@ -166,8 +166,21 @@ export function QuoteRequestForm() {
       const url = new URL(window.location.href);
       formData.append("pageUrl", url.href);
       formData.append("referrer", document.referrer);
+
+      // Attribution is read only when the user submits the form after giving the
+      // required personal-data consent. No advertising identifier is persisted
+      // in cookies/localStorage merely for attribution.
+      const attributionSources = [url];
+      try {
+        const referrerUrl = new URL(document.referrer);
+        if (referrerUrl.origin === url.origin) attributionSources.push(referrerUrl);
+      } catch {
+        // External/empty referrers are intentionally ignored here.
+      }
       ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "yclid", "gclid"].forEach((key) => {
-        const value = url.searchParams.get(key);
+        const value = attributionSources
+          .map((source) => source.searchParams.get(key))
+          .find((candidate) => Boolean(candidate));
         if (value) formData.append(key, value);
       });
     }
