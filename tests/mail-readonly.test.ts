@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const scriptUrl = new URL("../scripts/mail-readonly.py", import.meta.url);
@@ -39,4 +40,12 @@ test("mail operator keeps message reads non-destructive", async () => {
 
   assert.match(source, /uid\("fetch", uid, "\(BODY\.PEEK\[\] RFC822\.SIZE\)"\)/);
   assert.match(source, /select\(self\.config\.mailbox, readonly=True\)/);
+});
+
+
+test("mail operator compiles with the production Python runtime", () => {
+  const result = spawnSync("python3", ["-m", "py_compile", new URL("../scripts/mail-readonly.py", import.meta.url).pathname], {
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout || "python3 py_compile failed");
 });
