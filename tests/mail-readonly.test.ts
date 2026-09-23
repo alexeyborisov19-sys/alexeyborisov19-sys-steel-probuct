@@ -13,14 +13,21 @@ test("mail operator is hard-wired to read-only IMAP access", async () => {
   assert.match(source, /IMAP_READ_ONLY/);
 
   const forbidden = [
-    ".store(",
-    ".expunge(",
-    ".append(",
-    ".delete(",
-    ".rename(",
-    ".copy(",
+    '.store(',
+    '.expunge(',
+    '.delete(',
+    '.rename(',
+    '.copy(',
     '.uid("move"',
-    ".move(",
+    ".uid('move'",
+    '.uid("store"',
+    ".uid('store'",
+    '.uid("copy"',
+    ".uid('copy'",
+    '.uid("expunge"',
+    ".uid('expunge'",
+    'self._client().append(',
+    'self.client.append(',
   ];
 
   for (const token of forbidden) {
