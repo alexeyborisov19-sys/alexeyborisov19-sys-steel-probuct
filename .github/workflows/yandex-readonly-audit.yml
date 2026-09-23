@@ -177,6 +177,25 @@ jobs:
             } else console.log("TRAFFIC_SOURCES_ERROR:", safe(traffic.body));
           }
 
+          const daily = new URL("https://api-metrika.yandex.net/stat/v1/data");
+          daily.searchParams.set("ids", canonicalCounter);
+          daily.searchParams.set("date1","7daysAgo");
+          daily.searchParams.set("date2","today");
+          daily.searchParams.set("dimensions","ym:s:date,ym:s:trafficSource");
+          daily.searchParams.set("metrics","ym:s:visits");
+          daily.searchParams.set("accuracy","full");
+          daily.searchParams.set("lang","ru");
+          daily.searchParams.set("limit","100");
+          const dailyTraffic = await request(daily.toString(), ym);
+          console.log("DAILY_TRAFFIC_HTTP:", dailyTraffic.status);
+          if (dailyTraffic.ok) {
+            console.log("DAILY_TRAFFIC:", safe((dailyTraffic.body?.data || []).map(row => ({
+              date: row.dimensions?.[0]?.name || row.dimensions?.[0]?.id,
+              source: row.dimensions?.[1]?.name || row.dimensions?.[1]?.id,
+              visits: row.metrics?.[0]
+            }))));
+          } else console.log("DAILY_TRAFFIC_ERROR:", safe(dailyTraffic.body));
+
           // WEBMASTER
           console.log("\n=== WEBMASTER ===");
           const yw = normToken(process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || process.env.YD_TOKEN || process.env.YM_TOKEN || "");
@@ -297,14 +316,39 @@ jobs:
               console.log("CAMPAIGNS_ERROR:", safe(camps.body));
             }
 
-            // Last 30 days performance report. This is a read-only POST to Reports.
+            const adsPayload = {
+              method: "get",
+              params: {
+                SelectionCriteria: {CampaignIds: [714391927]},
+                FieldNames: ["Id","CampaignId","AdGroupId","Status","State","StatusClarification","Type"],
+                TextAdFieldNames: ["Href"],
+                ResponsiveAdFieldNames: ["Href","DisplayDomain"],
+                TextImageAdFieldNames: ["Href"],
+                TextAdBuilderAdFieldNames: ["Href"],
+                CpcVideoAdBuilderAdFieldNames: ["Href"],
+                Page: {Limit: 1000, Offset: 0}
+              }
+            };
+            const ads = await requestDirect("https://api.direct.yandex.com/json/v501/ads", yd, adsPayload, login);
+            console.log("ADS_HTTP:", ads.status);
+            if (ads.ok && ads.body?.result?.Ads) {
+              console.log("ADS_DESTINATIONS:", safe(ads.body.result.Ads.map(a => ({
+                id: a.Id,
+                type: a.Type,
+                status: a.Status,
+                state: a.State,
+                href: a.ResponsiveAd?.Href || a.TextAd?.Href || a.TextImageAd?.Href || a.TextAdBuilderAd?.Href || a.CpcVideoAdBuilderAd?.Href || null
+              }))));
+            } else console.log("ADS_ERROR:", safe(ads.body));
+
+            // Recent performance report. This is a read-only POST to Reports.
             const d2 = new Date();
             const d1 = new Date(d2.getTime() - 6*86400000);
             const fmt = d => d.toISOString().slice(0,10);
             const reportSpec = {
               params: {
                 SelectionCriteria: {DateFrom: fmt(d1), DateTo: fmt(d2), Filter: []},
-                FieldNames: ["CampaignId","CampaignName","Impressions","Clicks","Cost","Conversions","CostPerConversion"],
+                FieldNames: ["Date","CampaignId","CampaignName","Impressions","Clicks","Cost","Conversions","CostPerConversion"],
                 ReportName: "SteelProdukt readonly audit",
                 ReportType: "CAMPAIGN_PERFORMANCE_REPORT",
                 DateRangeType: "CUSTOM_DATE",
