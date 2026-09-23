@@ -1,0 +1,337 @@
+name: Yandex read-only audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/yandex-readonly-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YW_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+      YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read Yandex Metrika, Webmaster and Direct
+        shell: bash
+        run: |
+          cat > /tmp/audit.mjs <<'NODE'
+          const counterId = 112542227;
+          const canonicalCounter = String(counterId);
+
+          function normToken(raw = "") {
+            let v = String(raw).trim().replace(/^OAuth\s+/i, "").replace(/^Bearer\s+/i, "");
+            const m = v.match(/(?:^|[#?&])access_token=([^&#\s]+)/i);
+            if (m) {
+              try { v = decodeURIComponent(m[1]); } catch { v = m[1]; }
+            }
+            return v.trim();
+          }
+          function safe(obj) {
+            return JSON.stringify(obj, null, 2);
+          }
+          async function request(url, token, opts = {}) {
+            const res = await fetch(url, {
+              ...opts,
+              headers: {
+                Authorization: `OAuth ${token}`,
+                Accept: "application/json",
+                ...(opts.body ? {"Content-Type":"application/json"} : {}),
+                ...(opts.headers || {}),
+              },
+              signal: AbortSignal.timeout(25000),
+            });
+            const text = await res.text();
+            let body;
+            try { body = text ? JSON.parse(text) : {}; } catch { body = text; }
+            return {status: res.status, ok: res.ok, body, headers: Object.fromEntries(res.headers.entries())};
+          }
+          async function requestDirect(url, token, body, clientLogin = "") {
+            const headers = {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "Accept-Language": "ru",
+            };
+            if (clientLogin) headers["Client-Login"] = clientLogin;
+            const res = await fetch(url, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(body),
+              signal: AbortSignal.timeout(30000),
+            });
+            const text = await res.text();
+            let parsed;
+            try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text; }
+            return {status: res.status, ok: res.ok, body: parsed, headers: Object.fromEntries(res.headers.entries())};
+          }
+
+          console.log("=== YANDEX READ-ONLY AUDIT ===");
+          console.log("Timestamp:", new Date().toISOString());
+
+          // METRIKA
+          const ym = normToken(process.env.YM_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "");
+          console.log("\n=== METRIKA ===");
+          if (!ym) {
+            console.log("METRIKA_TOKEN: MISSING");
+          } else {
+            const counter = await request(
+              `https://api-metrika.yandex.net/management/v1/counter/${counterId}?field=counter_flags`,
+              ym
+            );
+            console.log("COUNTER_HTTP:", counter.status);
+            if (counter.ok) {
+              const c = counter.body?.counter || {};
+              console.log("COUNTER:", safe({
+                id: c.id,
+                name: c.name,
+                site: c.site,
+                status: c.status,
+                permission: c.permission,
+                counter_flags: c.counter_flags
+              }));
+            } else {
+              console.log("COUNTER_ERROR:", safe(counter.body));
+            }
+
+            const goals = await request(
+              `https://api-metrika.yandex.net/management/v1/counter/${counterId}/goals`,
+              ym
+            );
+            console.log("GOALS_HTTP:", goals.status);
+            let primaryGoalId = null;
+            if (goals.ok) {
+              const list = goals.body?.goals || [];
+              const simplified = list.map(g => ({
+                id: g.id,
+                name: g.name,
+                type: g.type,
+                status: g.status,
+                target: (g.conditions || []).find(x => x.type === "exact")?.url || null
+              }));
+              const primary = simplified.find(g => g.target === "quote_request_success" || g.name === "Форма заявки — успешно отправлена");
+              primaryGoalId = primary?.id || null;
+              console.log("GOALS_COUNT:", simplified.length);
+              console.log("PRIMARY_GOAL:", safe(primary || null));
+              console.log("REQUIRED_TARGETS_PRESENT:", safe([
+                "quote_form_started","quote_file_attached","quote_request_submit","quote_request_success",
+                "catalog_download","email_click","assistant_opened","assistant_lead_success"
+              ].reduce((a,t)=>{a[t]=simplified.some(g=>g.target===t);return a;},{})));
+            } else {
+              console.log("GOALS_ERROR:", safe(goals.body));
+            }
+
+            async function metrikaReport(label, date1, date2, extraMetrics = []) {
+              const metrics = ["ym:s:visits","ym:s:users","ym:s:pageviews","ym:s:bounceRate","ym:s:pageDepth","ym:s:avgVisitDurationSeconds", ...extraMetrics].join(",");
+              const u = new URL("https://api-metrika.yandex.net/stat/v1/data");
+              u.searchParams.set("ids", canonicalCounter);
+              u.searchParams.set("date1", date1);
+              u.searchParams.set("date2", date2);
+              u.searchParams.set("metrics", metrics);
+              u.searchParams.set("accuracy", "full");
+              u.searchParams.set("lang", "ru");
+              const r = await request(u.toString(), ym);
+              console.log(`${label}_HTTP:`, r.status);
+              if (r.ok) console.log(`${label}:`, safe({
+                totals: r.body?.totals,
+                sample_share: r.body?.sample_share,
+                sampled: r.body?.sampled,
+                data_lag: r.body?.data_lag
+              }));
+              else console.log(`${label}_ERROR:`, safe(r.body));
+            }
+
+            const goalMetrics = primaryGoalId ? [
+              `ym:s:goal${primaryGoalId}reaches`,
+              `ym:s:goal${primaryGoalId}visits`,
+              `ym:s:goal${primaryGoalId}conversionRate`
+            ] : [];
+            await metrikaReport("LAST_7_DAYS","7daysAgo","today",goalMetrics);
+            await metrikaReport("LAST_30_DAYS","30daysAgo","today",goalMetrics);
+
+            const src = new URL("https://api-metrika.yandex.net/stat/v1/data");
+            src.searchParams.set("ids", canonicalCounter);
+            src.searchParams.set("date1","30daysAgo");
+            src.searchParams.set("date2","today");
+            src.searchParams.set("dimensions","ym:s:trafficSource");
+            src.searchParams.set("metrics","ym:s:visits,ym:s:users");
+            src.searchParams.set("accuracy","full");
+            src.searchParams.set("lang","ru");
+            src.searchParams.set("limit","20");
+            const traffic = await request(src.toString(), ym);
+            console.log("TRAFFIC_SOURCES_HTTP:", traffic.status);
+            if (traffic.ok) {
+              console.log("TRAFFIC_SOURCES:", safe((traffic.body?.data || []).map(row => ({
+                source: row.dimensions?.[0]?.name || row.dimensions?.[0]?.id,
+                visits: row.metrics?.[0],
+                users: row.metrics?.[1]
+              }))));
+            } else console.log("TRAFFIC_SOURCES_ERROR:", safe(traffic.body));
+          }
+
+          // WEBMASTER
+          console.log("\n=== WEBMASTER ===");
+          const yw = normToken(process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || process.env.YM_TOKEN || "");
+          if (!yw) {
+            console.log("WEBMASTER_TOKEN: MISSING");
+          } else {
+            const user = await request("https://api.webmaster.yandex.net/v4/user", yw);
+            console.log("USER_HTTP:", user.status);
+            if (!user.ok) {
+              console.log("USER_ERROR:", safe(user.body));
+            } else {
+              const uid = user.body?.user_id;
+              console.log("USER_ID_PRESENT:", Boolean(uid));
+              const hosts = await request(`https://api.webmaster.yandex.net/v4/user/${uid}/hosts`, yw);
+              console.log("HOSTS_HTTP:", hosts.status);
+              if (!hosts.ok) {
+                console.log("HOSTS_ERROR:", safe(hosts.body));
+              } else {
+                const list = hosts.body?.hosts || [];
+                const host = list.find(h => /(^|\.)steelprodukt\.ru\/?$/i.test(new URL(h.unicode_host_url || h.ascii_host_url).hostname))
+                  || list.find(h => String(h.unicode_host_url || h.ascii_host_url).includes("steelprodukt.ru"));
+                console.log("HOST_FOUND:", Boolean(host));
+                if (host) {
+                  console.log("HOST:", safe({
+                    host_id: host.host_id,
+                    url: host.unicode_host_url || host.ascii_host_url,
+                    verified: host.verified,
+                    host_data_status: host.host_data_status,
+                    main_mirror: host.main_mirror?.unicode_host_url || host.main_mirror?.ascii_host_url || null
+                  }));
+                  const hid = encodeURIComponent(host.host_id);
+                  for (const [label, suffix] of [
+                    ["SUMMARY","summary"],
+                    ["DIAGNOSTICS","diagnostics"],
+                    ["VERIFICATION","verification"],
+                    ["SITEMAPS","sitemaps?limit=100"],
+                  ]) {
+                    const rr = await request(`https://api.webmaster.yandex.net/v4/user/${uid}/hosts/${hid}/${suffix}`, yw);
+                    console.log(`${label}_HTTP:`, rr.status);
+                    if (rr.ok) {
+                      let out = rr.body;
+                      if (label === "DIAGNOSTICS") {
+                        const p = rr.body?.problems || {};
+                        out = Object.fromEntries(Object.entries(p).filter(([,v]) => v?.state === "PRESENT" || v?.state === "UNDEFINED"));
+                      }
+                      if (label === "SITEMAPS") {
+                        out = (rr.body?.sitemaps || []).map(s => ({
+                          url: s.sitemap_url,
+                          errors_count: s.errors_count,
+                          urls_count: s.urls_count,
+                          last_access_date: s.last_access_date,
+                          source: s.source || s.sources,
+                          type: s.sitemap_type
+                        }));
+                      }
+                      console.log(`${label}:`, safe(out));
+                    } else console.log(`${label}_ERROR:`, safe(rr.body));
+                  }
+                }
+              }
+            }
+          }
+
+          // DIRECT
+          console.log("\n=== DIRECT ===");
+          const yd = normToken(process.env.YD_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "");
+          const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
+          if (!yd) {
+            console.log("DIRECT_TOKEN: MISSING");
+          } else {
+            const payload = {
+              method: "get",
+              params: {
+                SelectionCriteria: {},
+                FieldNames: ["Id","Name","StartDate","Type","Status","State","StatusPayment","StatusClarification","Statistics","Currency","DailyBudget"],
+                TextCampaignFieldNames: ["CounterIds","AttributionModel","PriorityGoals","Settings"],
+                UnifiedCampaignFieldNames: ["CounterIds","AttributionModel","PriorityGoals","TrackingParams","Settings"],
+                CpmBannerCampaignFieldNames: ["CounterIds","Settings"],
+                Page: {Limit: 1000, Offset: 0}
+              }
+            };
+            const camps = await requestDirect("https://api.direct.yandex.com/json/v501/campaigns", yd, payload, login);
+            console.log("CAMPAIGNS_HTTP:", camps.status);
+            if (camps.ok && camps.body?.result?.Campaigns) {
+              const list = camps.body.result.Campaigns;
+              console.log("CAMPAIGNS_COUNT:", list.length);
+              const simplified = list.map(c => {
+                const specific = c.TextCampaign || c.UnifiedCampaign || c.CpmBannerCampaign || {};
+                return {
+                  id: c.Id,
+                  name: c.Name,
+                  type: c.Type,
+                  status: c.Status,
+                  state: c.State,
+                  statusPayment: c.StatusPayment,
+                  statusClarification: c.StatusClarification,
+                  impressions: c.Statistics?.Impressions,
+                  clicks: c.Statistics?.Clicks,
+                  dailyBudget: c.DailyBudget,
+                  counterIds: specific.CounterIds || [],
+                  attributionModel: specific.AttributionModel || null,
+                  priorityGoals: specific.PriorityGoals?.Items || specific.PriorityGoals || null,
+                  trackingParams: specific.TrackingParams || null
+                };
+              });
+              console.log("CAMPAIGNS:", safe(simplified));
+              const target = simplified.find(c => String(c.id) === "714391927");
+              console.log("CAMPAIGN_714391927:", safe(target || null));
+              console.log("COUNTER_112542227_LINKED:", safe(simplified.map(c => ({
+                id:c.id,
+                name:c.name,
+                linked:(c.counterIds || []).map(String).includes(canonicalCounter)
+              }))));
+            } else {
+              console.log("CAMPAIGNS_ERROR:", safe(camps.body));
+            }
+
+            // Last 30 days performance report. This is a read-only POST to Reports.
+            const d2 = new Date();
+            const d1 = new Date(d2.getTime() - 29*86400000);
+            const fmt = d => d.toISOString().slice(0,10);
+            const reportSpec = {
+              params: {
+                SelectionCriteria: {Filter: []},
+                FieldNames: ["CampaignId","CampaignName","Impressions","Clicks","Cost","Conversions","CostPerConversion"],
+                ReportName: "SteelProdukt readonly audit",
+                ReportType: "CAMPAIGN_PERFORMANCE_REPORT",
+                DateRangeType: "CUSTOM_DATE",
+                DateFrom: fmt(d1),
+                DateTo: fmt(d2),
+                Format: "TSV",
+                IncludeVAT: "NO",
+                IncludeDiscount: "NO"
+              }
+            };
+            const headers = {
+              Authorization: `Bearer ${yd}`,
+              Accept: "text/tab-separated-values",
+              "Content-Type": "application/json",
+              "Accept-Language": "ru",
+              "processingMode": "auto"
+            };
+            if (login) headers["Client-Login"] = login;
+            const rep = await fetch("https://api.direct.yandex.com/json/v501/reports", {
+              method:"POST", headers, body:JSON.stringify(reportSpec), signal:AbortSignal.timeout(30000)
+            });
+            const repText = await rep.text();
+            console.log("REPORT_HTTP:", rep.status);
+            console.log("REPORT_REQUEST_ID:", rep.headers.get("requestId") || "");
+            console.log("REPORT_RETRY_IN:", rep.headers.get("retryIn") || "");
+            if (rep.status === 200) {
+              console.log("REPORT_TSV:\n" + repText.slice(0,20000));
+            } else {
+              console.log("REPORT_BODY:", repText.slice(0,4000));
+            }
+          }
+          NODE
+          node /tmp/audit.mjs
