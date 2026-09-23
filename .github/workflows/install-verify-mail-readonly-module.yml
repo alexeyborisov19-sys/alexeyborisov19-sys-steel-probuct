@@ -52,7 +52,21 @@ jobs:
           print("MAILBOX_MESSAGE_COUNT=" + str(d["messages"]))
           PY
 
+          set +e
           python3 scripts/mail-readonly.py list --limit 1 > "$WORK/list.json"
+          LIST_CODE="$?"
+          set -e
+          if [ "$LIST_CODE" -ne 0 ]; then
+            python3 - "$WORK/list.json" <<'PYERR'
+          import json, sys
+          try:
+              d=json.load(open(sys.argv[1], encoding="utf-8"))
+              print("MAIL_LIST_ERROR=" + str(d.get("error") or "unknown"))
+          except Exception:
+              print("MAIL_LIST_ERROR=invalid diagnostic response")
+          PYERR
+            exit "$LIST_CODE"
+          fi
           UID="$(python3 - "$WORK/list.json" <<'PY'
           import json, sys
           d=json.load(open(sys.argv[1], encoding="utf-8"))
