@@ -1,0 +1,48 @@
+name: Check SMTP authentication
+
+on:
+  push:
+    paths:
+      - '.github/workflows/install-check-smtp-auth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install nodemailer
+        run: npm install --no-save nodemailer@9.0.3
+
+      - name: Verify VK WorkSpace SMTP authentication
+        env:
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          if [ -z "${SMTP_PASSWORD:-}" ]; then
+            echo "SMTP_PASSWORD is not configured."
+            exit 1
+          fi
+          node --input-type=module <<'NODE'
+          import nodemailer from "nodemailer";
+          const transporter = nodemailer.createTransport({
+            host: "smtp.mail.ru",
+            port: 465,
+            secure: true,
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 20000,
+            auth: {
+              user: "info@steelprodukt.ru",
+              pass: process.env.SMTP_PASSWORD,
+            },
+          });
+          await transporter.verify();
+          console.log("SMTP authentication verified.");
+          NODE
