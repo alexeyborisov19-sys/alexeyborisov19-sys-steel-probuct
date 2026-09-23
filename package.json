@@ -33,7 +33,8 @@
     "pd:journal": "node --import tsx scripts/pd-regulator-journal.ts",
     "avito:audit": "node --import tsx scripts/avito-audit.ts",
     "predev": "node scripts/build-step-worker.mjs",
-    "pretest": "node scripts/build-step-worker.mjs"
+    "pretest": "node scripts/build-step-worker.mjs",
+    "mail:readonly": "python3 scripts/mail-readonly.py"
   },
   "dependencies": {
     "framer-motion": "^12.43.0",
