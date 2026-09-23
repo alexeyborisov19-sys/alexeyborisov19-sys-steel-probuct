@@ -492,7 +492,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-            className="assistant-panel absolute bottom-[74px] right-0 flex h-[min(720px,calc(100dvh-110px))] w-[min(430px,calc(100vw-32px))] flex-col overflow-hidden border border-white/15 bg-[#0b0e10]/[.985] shadow-[0_28px_90px_rgba(0,0,0,.72)] backdrop-blur-xl"
+            className="assistant-panel ym-hide-content absolute bottom-[74px] right-0 flex h-[min(720px,calc(100dvh-110px))] w-[min(430px,calc(100vw-32px))] flex-col overflow-hidden border border-white/15 bg-[#0b0e10]/[.985] shadow-[0_28px_90px_rgba(0,0,0,.72)] backdrop-blur-xl"
             role="dialog"
             aria-label="Инженерный помощник Сталь Продукт"
           >
