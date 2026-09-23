@@ -19,8 +19,8 @@ test("mail operator is hard-wired to read-only IMAP access", async () => {
     ".delete(",
     ".rename(",
     ".copy(",
-    " MOVE ",
-    " UID MOVE ",
+    '.uid("move"',
+    ".move(",
   ];
 
   for (const token of forbidden) {
