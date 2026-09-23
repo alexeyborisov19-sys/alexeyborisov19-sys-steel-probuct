@@ -67,7 +67,7 @@ jobs:
           PYERR
             exit "$LIST_CODE"
           fi
-          UID="$(python3 - "$WORK/list.json" <<'PY'
+          MAIL_UID="$(python3 - "$WORK/list.json" <<'PY'
           import json, sys
           d=json.load(open(sys.argv[1], encoding="utf-8"))
           assert d.get("readOnly") is True
@@ -80,7 +80,7 @@ jobs:
           )"
           echo "MAIL_LIST=success"
 
-          python3 scripts/mail-readonly.py message "$UID" > "$WORK/message.json"
+          python3 scripts/mail-readonly.py message "$MAIL_UID" > "$WORK/message.json"
           python3 - "$WORK/message.json" <<'PY'
           import json, sys
           d=json.load(open(sys.argv[1], encoding="utf-8"))
@@ -94,7 +94,7 @@ jobs:
           print("MAIL_ATTACHMENT_METADATA=success")
           PY
 
-          python3 scripts/mail-readonly.py thread "$UID" --limit 10 --scan-limit 50 > "$WORK/thread.json"
+          python3 scripts/mail-readonly.py thread "$MAIL_UID" --limit 10 --scan-limit 50 > "$WORK/thread.json"
           python3 - "$WORK/thread.json" <<'PY'
           import json, sys
           d=json.load(open(sys.argv[1], encoding="utf-8"))
