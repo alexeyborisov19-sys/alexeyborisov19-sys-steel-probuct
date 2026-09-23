@@ -66,9 +66,11 @@ test("public legal texts describe analytics hosts without exposing literal third
   assert.match(hostLabel, /<span>mc<\/span>/);
   assert.match(hostLabel, /<span>\.yandex<\/span>/);
   assert.match(hostLabel, /<span>\.<\/span>/);
-  assert.match(privacy, /Если пользователь не отключил аналитику/);
+  assert.match(privacy, /Только после отдельного явного разрешения пользователя/);
   assert.match(consent, /не распространяется на аналитические cookies/);
-  assert.match(services, /Веб-аналитика Яндекс Метрики используется по умолчанию/);
+  assert.match(services, /Яндекс Метрика и Вебвизор включаются только после отдельного явного разрешения пользователя/);
+  assert.doesNotMatch(privacy, /Метрика используется по умолчанию/i);
+  assert.doesNotMatch(services, /Метрики используется по умолчанию/i);
   assert.match(footer, /legalDocuments\.map[\s\S]*prefetch=\{false\}/);
   assert.doesNotMatch(nextConfig, /images\.unsplash\.com/);
 });
