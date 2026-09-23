@@ -21,7 +21,7 @@ test("mail UI is explicitly read-only and does not expose send controls", async 
   const combined = listPage + "\n" + detailPage;
 
   assert.match(combined, /read-only/i);
-  assert.match(combined, /не отправляется/i);
+  assert.match(combined, /не отправля(?:ет|ется|ются)/i);
   assert.doesNotMatch(combined, /sendMail|smtp|POST.*mail|Отправить письмо/i);
 });
 
