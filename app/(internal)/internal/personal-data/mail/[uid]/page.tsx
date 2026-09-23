@@ -101,7 +101,7 @@ export default async function MailMessagePage({
 
         <Panel title="Черновик ответа">
           <pre className="whitespace-pre-wrap break-words border border-white/10 bg-black/20 p-4 font-sans text-sm leading-6 text-white/80">{analysis.draft}</pre>
-          <p className="mt-3 text-xs leading-5 text-amber-200/70">{analysis.note}</p>
+          <p className="mt-3 text-xs leading-5 text-amber-200/70">Черновик не отправляется автоматически и не сохраняется в почтовом ящике.</p>
         </Panel>
       </div>
     </div>
