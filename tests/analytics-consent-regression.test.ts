@@ -66,3 +66,17 @@ test("Metrika uses the counter-specific loader behind the consent gate", () => {
   assert.ok(source.includes("{counterIds.length ? <Script"));
   assert.doesNotMatch(source, /<noscript|rel=["']preconnect/);
 });
+
+
+test("public legal copy matches explicit opt-in and Webvisor hides sensitive surfaces", () => {
+  const cookies = readFileSync(new URL("../app/(public)/legal/cookies/page.tsx", import.meta.url), "utf8");
+  const privacy = readFileSync(new URL("../app/(public)/legal/privacy/page.tsx", import.meta.url), "utf8");
+  const quote = readFileSync(new URL("../components/QuoteRequestForm.tsx", import.meta.url), "utf8");
+  const assistant = readFileSync(new URL("../components/EngineeringAssistant.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(cookies, /Аналитика включена по умолчанию/);
+  assert.match(cookies, /До выбора пользователя аналитика выключена/);
+  assert.match(privacy, /Только после отдельного явного разрешения пользователя/);
+  assert.match(quote, /ym-hide-content/);
+  assert.match(assistant, /ym-hide-content/);
+});
