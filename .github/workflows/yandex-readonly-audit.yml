@@ -253,7 +253,7 @@ jobs:
                 SelectionCriteria: {},
                 FieldNames: ["Id","Name","StartDate","Type","Status","State","StatusPayment","StatusClarification","Statistics","Currency","DailyBudget"],
                 TextCampaignFieldNames: ["CounterIds","AttributionModel","PriorityGoals","Settings"],
-                UnifiedCampaignFieldNames: ["CounterIds","AttributionModel","PriorityGoals","TrackingParams","Settings"],
+                UnifiedCampaignFieldNames: ["CounterIds","AttributionModel","PriorityGoals","TrackingParams","Settings","BiddingStrategy"],
                 CpmBannerCampaignFieldNames: ["CounterIds","Settings"],
                 Page: {Limit: 1000, Offset: 0}
               }
@@ -268,6 +268,8 @@ jobs:
                 return {
                   id: c.Id,
                   name: c.Name,
+                  startDate: c.StartDate,
+                  currency: c.Currency,
                   type: c.Type,
                   status: c.Status,
                   state: c.State,
@@ -279,7 +281,8 @@ jobs:
                   counterIds: Array.isArray(specific.CounterIds) ? specific.CounterIds : (specific.CounterIds?.Items || []),
                   attributionModel: specific.AttributionModel || null,
                   priorityGoals: specific.PriorityGoals?.Items || specific.PriorityGoals || null,
-                  trackingParams: specific.TrackingParams || null
+                  trackingParams: specific.TrackingParams || null,
+                  biddingStrategy: specific.BiddingStrategy || null
                 };
               });
               console.log("CAMPAIGNS:", safe(simplified));
@@ -296,7 +299,7 @@ jobs:
 
             // Last 30 days performance report. This is a read-only POST to Reports.
             const d2 = new Date();
-            const d1 = new Date(d2.getTime() - 29*86400000);
+            const d1 = new Date(d2.getTime() - 6*86400000);
             const fmt = d => d.toISOString().slice(0,10);
             const reportSpec = {
               params: {
@@ -315,7 +318,8 @@ jobs:
               Accept: "text/tab-separated-values",
               "Content-Type": "application/json",
               "Accept-Language": "ru",
-              "processingMode": "auto"
+              "processingMode": "auto",
+              "returnMoneyInMicros": "false"
             };
             if (login) headers["Client-Login"] = login;
             const rep = await fetch("https://api.direct.yandex.com/json/v501/reports", {
