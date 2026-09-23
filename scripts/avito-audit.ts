@@ -73,6 +73,7 @@ async function main() {
 
   let balance: unknown = null;
   let spendings: unknown = null;
+  const spendingsByTitle: Record<string, unknown> = {};
   const operations: unknown[] = [];
 
   try {
@@ -85,6 +86,29 @@ async function main() {
     spendings = await client.getSpendings(self.id, dateFrom, dateTo);
   } catch (error) {
     spendings = { error: error instanceof Error ? error.message : String(error) };
+  }
+
+  const spendingTitles = [
+    "Лазерная резка металла",
+    "Корзина для кондиционеров под заказ",
+    "Порошковая покраска металла",
+    "Гибка листового металла",
+    "Профессиональная дробеструйная обработка",
+    "Пескоструйная обработка. Дробеструй",
+    "Гибка металла чпу",
+    "Фасадные металлокассеты, металлокассеты",
+    "Электрошкафы металлические",
+    "Производство закладных деталей, полос, пластин",
+    "Закладные детали, полосы, пластины",
+  ];
+  for (const title of spendingTitles) {
+    const ids = allItems.filter((item) => item.title === title).map((item) => item.id);
+    if (!ids.length) continue;
+    try {
+      spendingsByTitle[title] = await client.getSpendings(self.id, dateFrom, dateTo, ids);
+    } catch (error) {
+      spendingsByTitle[title] = { error: error instanceof Error ? error.message : String(error) };
+    }
   }
 
   for (let cursor = new Date(from); cursor < now; ) {
@@ -147,7 +171,7 @@ async function main() {
       name: self.name ?? null,
     },
     period: { dateFrom, dateTo },
-    financials: { balance, spendings, operations },
+    financials: { balance, spendings, spendingsByTitle, operations },
     detailSamples,
     counts: {
       totalItems: rows.length,
