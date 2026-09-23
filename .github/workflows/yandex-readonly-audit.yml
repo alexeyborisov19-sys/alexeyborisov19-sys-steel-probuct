@@ -179,7 +179,7 @@ jobs:
 
           // WEBMASTER
           console.log("\n=== WEBMASTER ===");
-          const yw = normToken(process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || process.env.YM_TOKEN || "");
+          const yw = normToken(process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || process.env.YD_TOKEN || process.env.YM_TOKEN || "");
           if (!yw) {
             console.log("WEBMASTER_TOKEN: MISSING");
           } else {
@@ -276,7 +276,7 @@ jobs:
                   impressions: c.Statistics?.Impressions,
                   clicks: c.Statistics?.Clicks,
                   dailyBudget: c.DailyBudget,
-                  counterIds: specific.CounterIds || [],
+                  counterIds: Array.isArray(specific.CounterIds) ? specific.CounterIds : (specific.CounterIds?.Items || []),
                   attributionModel: specific.AttributionModel || null,
                   priorityGoals: specific.PriorityGoals?.Items || specific.PriorityGoals || null,
                   trackingParams: specific.TrackingParams || null
@@ -300,13 +300,11 @@ jobs:
             const fmt = d => d.toISOString().slice(0,10);
             const reportSpec = {
               params: {
-                SelectionCriteria: {Filter: []},
+                SelectionCriteria: {DateFrom: fmt(d1), DateTo: fmt(d2), Filter: []},
                 FieldNames: ["CampaignId","CampaignName","Impressions","Clicks","Cost","Conversions","CostPerConversion"],
                 ReportName: "SteelProdukt readonly audit",
                 ReportType: "CAMPAIGN_PERFORMANCE_REPORT",
                 DateRangeType: "CUSTOM_DATE",
-                DateFrom: fmt(d1),
-                DateTo: fmt(d2),
                 Format: "TSV",
                 IncludeVAT: "NO",
                 IncludeDiscount: "NO"
