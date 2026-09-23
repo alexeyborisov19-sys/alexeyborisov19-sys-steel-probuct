@@ -93,3 +93,21 @@ test("advertising attribution is preserved without pre-consent persistent storag
   assert.match(form, /formData\.get\("personalDataConsent"\) !== "yes"/);
   assert.match(form, /attributionSources = \[url\]/);
 });
+
+
+test("sensitive form and assistant content stays hidden from Webvisor", () => {
+  const quote = readFileSync(new URL("../components/QuoteRequestForm.tsx", import.meta.url), "utf8");
+  const assistant = readFileSync(new URL("../components/EngineeringAssistant.tsx", import.meta.url), "utf8");
+  const cookies = readFileSync(new URL("../app/(public)/legal/cookies/page.tsx", import.meta.url), "utf8");
+  const privacy = readFileSync(new URL("../app/(public)/legal/privacy/page.tsx", import.meta.url), "utf8");
+
+  assert.match(quote, /ym-hide-content ym-disable-submit/);
+  assert.match(assistant, /assistant-panel ym-hide-content/);
+  assert.match(assistant, /ym-hide-content ym-disable-submit mt-6 space-y-4/);
+
+  assert.match(cookies, /Только после отдельного явного разрешения пользователя/);
+  assert.match(cookies, /До выбора пользователя аналитика выключена/);
+  assert.match(privacy, /Только после отдельного явного разрешения пользователя/);
+  assert.doesNotMatch(cookies, /аналитика включена по умолчанию/i);
+  assert.doesNotMatch(privacy, /аналитика включена по умолчанию/i);
+});
