@@ -80,3 +80,16 @@ test("public legal copy matches explicit opt-in and Webvisor hides sensitive sur
   assert.match(quote, /ym-hide-content/);
   assert.match(assistant, /ym-hide-content/);
 });
+
+
+test("advertising attribution is preserved without pre-consent persistent storage", () => {
+  const link = readFileSync(new URL("../components/AttributionLink.tsx", import.meta.url), "utf8");
+  const form = readFileSync(new URL("../components/QuoteRequestForm.tsx", import.meta.url), "utf8");
+  const product = readFileSync(new URL("../app/(public)/products/metallokassety/page.tsx", import.meta.url), "utf8");
+
+  assert.match(link, /yclid/);
+  assert.doesNotMatch(link, /localStorage|sessionStorage|document\.cookie/);
+  assert.match(product, /AttributionLink href="\/contacts#contact-form"/);
+  assert.match(form, /formData\.get\("personalDataConsent"\) !== "yes"/);
+  assert.match(form, /attributionSources = \[url\]/);
+});
