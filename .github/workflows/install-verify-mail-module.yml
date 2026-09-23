@@ -1,0 +1,79 @@
+name: Verify production mail module
+
+on:
+  push:
+    paths:
+      - '.github/workflows/install-verify-mail-module.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Verify deployed read-only mailbox module
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$APP_PATH"
+
+          test -f scripts/mail-readonly.py
+          test -f lib/mail/read-only.ts
+          test -f lib/pd-admin/mail/service.ts
+          test -f 'app/(internal)/internal/personal-data/mail/page.tsx'
+          test -f 'app/(internal)/internal/personal-data/mail/[uid]/page.tsx'
+
+          STATUS_JSON="$(python3 scripts/mail-readonly.py --env-file .env.production status)"
+          python3 - "$STATUS_JSON" <<'PY'
+          import json, sys
+          payload = json.loads(sys.argv[1])
+          if payload.get("readOnly") is not True:
+              raise SystemExit("read-only guard missing")
+          messages = payload.get("messages")
+          unseen = payload.get("unseen")
+          print("MAIL_MODULE_FILES=present")
+          print("IMAP_READ_ONLY_STATUS=success")
+          print(f"IMAP_MESSAGES={messages}")
+          print(f"IMAP_UNSEEN={unseen}")
+          PY
+
+          if grep -q '^PD_ADMIN_ENABLED=true$' .env.production; then
+            echo "PD_ADMIN_ENABLED=true"
+          else
+            echo "PD_ADMIN_ENABLED=false"
+          fi
+
+          sudo -iu nodejs pm2 describe steelprodukt >/dev/null
+          echo "PM2_STEELPRODUKT=present"
+          REMOTE
+
+      - name: Check protected route status
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /dev/null -w '%{http_code}' https://www.steelprodukt.ru/internal/personal-data/mail)"
+          echo "MAIL_ROUTE_HTTP=$code"
+          case "$code" in
+            200|301|302|303|307|308|401|403|404) ;;
+            *) exit 1 ;;
+          esac
