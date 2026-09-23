@@ -1,0 +1,181 @@
+name: Switch Yandex Direct to click accumulation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/yandex-direct-switch-to-clicks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Switch campaign 714391927 to maximum clicks and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${YD_TOKEN:-}" ]; then
+            echo "YANDEX_DIRECT_OAUTH_TOKEN is not configured." >&2
+            exit 1
+          fi
+
+          cat > /tmp/direct-switch.mjs <<'NODE'
+          const campaignId = 714391927;
+          const weeklySpendLimit = 3000 * 1_000_000;
+
+          function normalizeToken(raw = "") {
+            let value = String(raw).trim().replace(/^OAuth\s+/i, "").replace(/^Bearer\s+/i, "");
+            const match = value.match(/(?:^|[#?&])access_token=([^&#\s]+)/i);
+            if (match) {
+              try { value = decodeURIComponent(match[1]); } catch { value = match[1]; }
+            }
+            return value.trim();
+          }
+
+          const token = normalizeToken(process.env.YD_TOKEN || "");
+          const clientLogin = String(process.env.YD_CLIENT_LOGIN || "").trim();
+
+          async function direct(body) {
+            const headers = {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "Accept-Language": "ru",
+            };
+            if (clientLogin) headers["Client-Login"] = clientLogin;
+
+            const response = await fetch("https://api.direct.yandex.com/json/v501/campaigns", {
+              method: "POST",
+              headers,
+              body: JSON.stringify(body),
+              signal: AbortSignal.timeout(30000),
+            });
+            const text = await response.text();
+            let parsed;
+            try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text; }
+            if (!response.ok || parsed?.error) {
+              throw new Error(`Direct API error ${response.status}: ${text.slice(0,4000)}`);
+            }
+            return parsed;
+          }
+
+          async function readCampaign() {
+            const result = await direct({
+              method: "get",
+              params: {
+                SelectionCriteria: { Ids: [campaignId] },
+                FieldNames: [
+                  "Id","Name","Type","Status","State","StatusPayment",
+                  "StatusClarification","Statistics","Currency","DailyBudget"
+                ],
+                UnifiedCampaignFieldNames: [
+                  "CounterIds","AttributionModel","PriorityGoals",
+                  "TrackingParams","Settings","BiddingStrategy"
+                ]
+              }
+            });
+            const campaign = result?.result?.Campaigns?.[0];
+            if (!campaign) throw new Error("Campaign 714391927 was not returned by Direct API.");
+            return campaign;
+          }
+
+          const before = await readCampaign();
+          const beforeStrategy = before.UnifiedCampaign?.BiddingStrategy;
+          console.log("BEFORE:", JSON.stringify({
+            id: before.Id,
+            name: before.Name,
+            status: before.Status,
+            state: before.State,
+            statusClarification: before.StatusClarification,
+            counterIds: before.UnifiedCampaign?.CounterIds?.Items || [],
+            strategy: beforeStrategy
+          }, null, 2));
+
+          const update = await direct({
+            method: "update",
+            params: {
+              Campaigns: [{
+                Id: campaignId,
+                UnifiedCampaign: {
+                  BiddingStrategy: {
+                    Search: {
+                      BiddingStrategyType: "WB_MAXIMUM_CLICKS",
+                      WbMaximumClicks: {
+                        WeeklySpendLimit: weeklySpendLimit,
+                        BidCeiling: null
+                      }
+                    },
+                    Network: {
+                      BiddingStrategyType: "SERVING_OFF"
+                    }
+                  }
+                }
+              }]
+            }
+          });
+
+          const item = update?.result?.UpdateResults?.[0];
+          if (!item || item.Errors?.length) {
+            throw new Error("Direct campaign update failed: " + JSON.stringify(item || update));
+          }
+          console.log("UPDATE_RESULT:", JSON.stringify(item));
+
+          // Direct can apply the new strategy asynchronously. Poll briefly and
+          // fail closed unless the exact requested configuration is visible.
+          let after = null;
+          for (let attempt = 0; attempt < 8; attempt++) {
+            if (attempt) await new Promise(resolve => setTimeout(resolve, 2500));
+            after = await readCampaign();
+            const s = after.UnifiedCampaign?.BiddingStrategy;
+            const search = s?.Search;
+            const network = s?.Network;
+            const budget = search?.WbMaximumClicks?.WeeklySpendLimit;
+            if (
+              search?.BiddingStrategyType === "WB_MAXIMUM_CLICKS" &&
+              budget === weeklySpendLimit &&
+              network?.BiddingStrategyType === "SERVING_OFF"
+            ) break;
+          }
+
+          const strategy = after?.UnifiedCampaign?.BiddingStrategy;
+          const search = strategy?.Search;
+          const network = strategy?.Network;
+          const counterIds = after?.UnifiedCampaign?.CounterIds?.Items || [];
+
+          console.log("AFTER:", JSON.stringify({
+            id: after?.Id,
+            name: after?.Name,
+            status: after?.Status,
+            state: after?.State,
+            statusClarification: after?.StatusClarification,
+            counterIds,
+            strategy
+          }, null, 2));
+
+          if (search?.BiddingStrategyType !== "WB_MAXIMUM_CLICKS") {
+            throw new Error("Verification failed: search strategy is not WB_MAXIMUM_CLICKS.");
+          }
+          if (search?.WbMaximumClicks?.WeeklySpendLimit !== weeklySpendLimit) {
+            throw new Error("Verification failed: weekly spend limit is not 3000 RUB.");
+          }
+          if (network?.BiddingStrategyType !== "SERVING_OFF") {
+            throw new Error("Verification failed: ad network is not disabled.");
+          }
+          if (!counterIds.map(String).includes("112542227")) {
+            throw new Error("Verification failed: canonical Metrika counter is no longer linked.");
+          }
+          if (after?.State !== "ON") {
+            throw new Error(`Verification failed: campaign state is ${after?.State}, expected ON.`);
+          }
+
+          console.log("VERIFIED: campaign 714391927 uses maximum clicks, 3000 RUB/week, network off, counter 112542227 linked.");
+          NODE
+
+          node /tmp/direct-switch.mjs
