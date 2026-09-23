@@ -80,6 +80,7 @@ async function main() {
     price: item.price ?? null,
     duplicateTitleCandidate: duplicateIds.has(String(item.id)),
     stats: statsById.get(String(item.id)) ?? null,
+    source: item,
   }));
 
   const report = {
