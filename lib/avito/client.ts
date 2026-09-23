@@ -148,6 +148,34 @@ export class AvitoClient {
     return this.authorized(`/core/v1/accounts/${encodeURIComponent(String(userId))}/items/${encodeURIComponent(String(itemId))}/`);
   }
 
+  async getBalance(userId: string | number): Promise<unknown> {
+    return this.authorized(`/core/v1/accounts/${encodeURIComponent(String(userId))}/balance/`);
+  }
+
+  async getSpendings(
+    userId: string | number,
+    dateFrom: string,
+    dateTo: string,
+    itemIds?: Array<string | number>,
+  ): Promise<unknown> {
+    const filter = itemIds?.length
+      ? { itemIDs: itemIds.map((id) => Number.isNaN(Number(id)) ? id : Number(id)) }
+      : undefined;
+    return this.authorized(
+      `/stats/v2/accounts/${encodeURIComponent(String(userId))}/spendings`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          dateFrom,
+          dateTo,
+          grouping: "month",
+          spendingTypes: ["all"],
+          ...(filter ? { filter } : {}),
+        }),
+      },
+    );
+  }
+
   async getItemStats(
     userId: string | number,
     itemIds: Array<string | number>,
