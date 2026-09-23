@@ -18,22 +18,22 @@ export const legalOperator = {
     correspondentAccount: "30101810145250000411",
     bik: "044525411",
   },
-  policyVersion: "13 сентября 2026 года",
+  policyVersion: "23 сентября 2026 года",
 } as const;
 
 export const legalDocumentVersions = {
-  privacy: "2026-09-20",
+  privacy: "2026-09-23",
   personalDataConsent: "2026-08-27",
   marketingConsent: "2026-07-30",
-  cookies: "2026-09-20",
+  cookies: "2026-09-23",
   terms: "2026-07-30",
   services: "2026-09-19",
 } as const;
 
 export const legalDocumentDisplayDates = {
-  privacy: "20 сентября 2026 года",
+  privacy: "23 сентября 2026 года",
   personalDataConsent: "27 августа 2026 года",
-  cookies: "20 сентября 2026 года",
+  cookies: "23 сентября 2026 года",
   services: "19 сентября 2026 года",
 } as const;
 
