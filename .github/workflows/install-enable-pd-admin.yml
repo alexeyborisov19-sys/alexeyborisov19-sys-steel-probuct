@@ -15,9 +15,9 @@ jobs:
     steps:
       - name: Configure secure server access
         env:
-          BEGET_HOST: \${{ secrets.BEGET_HOST }}
-          BEGET_SSH_PORT: \${{ secrets.BEGET_SSH_PORT }}
-          BEGET_SSH_PRIVATE_KEY: \${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
@@ -27,10 +27,10 @@ jobs:
 
       - name: Enable closed PD admin and restart production
         env:
-          BEGET_HOST: \${{ secrets.BEGET_HOST }}
-          BEGET_USER: \${{ secrets.BEGET_USER }}
-          BEGET_SSH_PORT: \${{ secrets.BEGET_SSH_PORT }}
-          BEGET_APP_PATH: \${{ secrets.BEGET_APP_PATH }}
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
@@ -40,7 +40,7 @@ jobs:
           test -f "$ENV_FILE"
 
           for key in PD_SEARCH_HMAC_KEY PD_SESSION_HASH_KEY PD_AUDIT_CHAIN_KEY PD_ADMIN_DB_PATH PD_EXPORT_PATH; do
-            grep -q "^\${key}=." "$ENV_FILE" || {
+            grep -q "^${key}=." "$ENV_FILE" || {
               echo "Required PD admin configuration is missing: $key"
               exit 1
             }
