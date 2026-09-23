@@ -1,0 +1,95 @@
+name: Verify read-only mail module
+
+on:
+  push:
+    paths:
+      - '.github/workflows/install-verify-mail-readonly-module.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Exercise production read-only mail commands without logging message data
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$APP_PATH"
+          WORK="$(mktemp -d)"
+          cleanup() { rm -rf "$WORK"; }
+          trap cleanup EXIT
+
+          python3 scripts/mail-readonly.py status > "$WORK/status.json"
+          python3 - "$WORK/status.json" <<'PY'
+          import json, sys
+          d=json.load(open(sys.argv[1], encoding="utf-8"))
+          assert d.get("readOnly") is True
+          assert isinstance(d.get("messages"), int)
+          print("MAIL_STATUS=success")
+          print("MAIL_READ_ONLY=true")
+          print("MAILBOX_MESSAGE_COUNT=" + str(d["messages"]))
+          PY
+
+          python3 scripts/mail-readonly.py list --limit 1 > "$WORK/list.json"
+          UID="$(python3 - "$WORK/list.json" <<'PY'
+          import json, sys
+          d=json.load(open(sys.argv[1], encoding="utf-8"))
+          assert d.get("readOnly") is True
+          messages=d.get("messages") or []
+          assert len(messages) == 1
+          uid=str(messages[0].get("uid") or "")
+          assert uid.isdigit()
+          print(uid)
+          PY
+          )"
+          echo "MAIL_LIST=success"
+
+          python3 scripts/mail-readonly.py message "$UID" > "$WORK/message.json"
+          python3 - "$WORK/message.json" <<'PY'
+          import json, sys
+          d=json.load(open(sys.argv[1], encoding="utf-8"))
+          assert d.get("readOnly") is True
+          m=d.get("message") or {}
+          assert str(m.get("uid") or "").isdigit()
+          assert isinstance(m.get("text"), str)
+          assert isinstance(m.get("attachments"), list)
+          print("MAIL_MESSAGE_READ=success")
+          print("MAIL_MESSAGE_TEXT_AVAILABLE=" + str(bool(m.get("text"))).lower())
+          print("MAIL_ATTACHMENT_METADATA=success")
+          PY
+
+          python3 scripts/mail-readonly.py thread "$UID" --limit 10 --scan-limit 50 > "$WORK/thread.json"
+          python3 - "$WORK/thread.json" <<'PY'
+          import json, sys
+          d=json.load(open(sys.argv[1], encoding="utf-8"))
+          assert d.get("readOnly") is True
+          messages=d.get("messages")
+          assert isinstance(messages, list) and len(messages) >= 1
+          print("MAIL_THREAD_READ=success")
+          print("MAIL_THREAD_COUNT=" + str(len(messages)))
+          PY
+
+          echo "MAIL_MUTATION_COMMANDS=disabled"
+          REMOTE
