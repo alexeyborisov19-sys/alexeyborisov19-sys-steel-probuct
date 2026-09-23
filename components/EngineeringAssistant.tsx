@@ -709,7 +709,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={submitLead} className="mt-6 space-y-4">
+                  <form onSubmit={submitLead} className="ym-hide-content ym-disable-submit mt-6 space-y-4">
                     <label className="sr-only" aria-hidden="true">
                       Не заполняйте это поле
                       <input name="website" tabIndex={-1} autoComplete="off" />
