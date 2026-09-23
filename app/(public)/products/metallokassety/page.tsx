@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AttributionLink } from "@/components/AttributionLink";
 import type { Metadata } from "next";
 import { PageLayout } from "@/components/PageLayout";
 import { JsonLd } from "@/components/JsonLd";
@@ -92,7 +93,7 @@ export default function MetalCassetteCollectionPage() {
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-white/62">«Сталь Продукт» производит металлокассеты и связанные фасонные элементы по проектным размерам. Открытый и закрытый тип рассматриваются как разные конструкции: отличается крепление, рядовой стык, монтажная последовательность и логика расчёта.</p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link href="#calculator-metallokasset" className="clip-corner bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase">Рассчитать цену&nbsp; ↓</Link>
-                  <Link href="/contacts#contact-form" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase transition hover:border-steel-orange hover:text-steel-orange">Отправить проект&nbsp; →</Link>
+                  <AttributionLink href="/contacts#contact-form" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase transition hover:border-steel-orange hover:text-steel-orange">Отправить проект&nbsp; →</AttributionLink>
                   <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="border border-steel-orange/45 px-5 py-3 text-xs font-bold uppercase text-steel-orange">Каталог PDF&nbsp; ↗</a>
                 </div>
               </div>
@@ -204,7 +205,7 @@ export default function MetalCassetteCollectionPage() {
               <h2 className="mt-2 text-2xl font-semibold uppercase">Есть фасадная раскладка или спецификация?</h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">Передайте исходные данные. Проверим тип кассет, узлы, размеры и состав поставки и подготовим точное коммерческое предложение.</p>
             </div>
-            <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-8 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</Link>
+            <AttributionLink href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-8 py-4 text-sm font-bold uppercase">Получить расчёт&nbsp; →</AttributionLink>
           </div>
         </section>
       </PageLayout>
