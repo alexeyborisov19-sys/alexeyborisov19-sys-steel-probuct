@@ -59,6 +59,63 @@ async function main() {
     if (id !== undefined && id !== null) statsById.set(String(id), row);
   }
 
+  function totals(item: AvitoItem) {
+    const row = statsById.get(String(item.id));
+    const stats = Array.isArray(row?.stats) ? row.stats as Record<string, unknown>[] : [];
+    return stats.reduce(
+      (acc, stat) => ({
+        views: acc.views + Number(stat.uniqViews ?? 0),
+        contacts: acc.contacts + Number(stat.uniqContacts ?? 0),
+      }),
+      { views: 0, contacts: 0 },
+    );
+  }
+
+  let balance: unknown = null;
+  let spendings: unknown = null;
+  const operations: unknown[] = [];
+
+  try {
+    balance = await client.getBalance(self.id);
+  } catch (error) {
+    balance = { error: error instanceof Error ? error.message : String(error) };
+  }
+
+  try {
+    spendings = await client.getSpendings(self.id, dateFrom, dateTo);
+  } catch (error) {
+    spendings = { error: error instanceof Error ? error.message : String(error) };
+  }
+
+  for (let cursor = new Date(from); cursor < now; ) {
+    const end = new Date(Math.min(cursor.getTime() + 7 * 86400000, now.getTime()));
+    try {
+      operations.push(await client.getOperationsHistory(cursor.toISOString(), end.toISOString()));
+    } catch (error) {
+      operations.push({ error: error instanceof Error ? error.message : String(error), dateTimeFrom: cursor.toISOString(), dateTimeTo: end.toISOString() });
+    }
+    cursor = end;
+  }
+
+  const basketItems = allItems
+    .filter((item) => String(item.title ?? "").toLocaleLowerCase("ru-RU").includes("корзина для кондиционеров"))
+    .sort((a, b) => {
+      const ta = totals(a);
+      const tb = totals(b);
+      return (tb.contacts - ta.contacts) || (tb.views - ta.views);
+    })
+    .slice(0, 10);
+  const cassetteItems = allItems.filter((item) => String(item.title ?? "").toLocaleLowerCase("ru-RU").includes("металлокасс"));
+  const detailItems = [...new Map([...basketItems, ...cassetteItems].map((item) => [String(item.id), item])).values()];
+  const detailSamples: Record<string, unknown> = {};
+  for (const item of detailItems) {
+    try {
+      detailSamples[String(item.id)] = await client.getItemInfo(self.id, item.id);
+    } catch (error) {
+      detailSamples[String(item.id)] = { error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
   const titleGroups = new Map<string, string[]>();
   for (const item of allItems) {
     const key = normalizeTitle(item.title);
@@ -90,6 +147,8 @@ async function main() {
       name: self.name ?? null,
     },
     period: { dateFrom, dateTo },
+    financials: { balance, spendings, operations },
+    detailSamples,
     counts: {
       totalItems: rows.length,
       duplicateTitleCandidates: rows.filter((row) => row.duplicateTitleCandidate).length,
