@@ -1,3 +1,4 @@
+import { readManualSheetDxf, manualHoleGroups, MANUAL_HOLE_NOTE, MANUAL_SHEET_WARNING } from '@/lib/instant-quote/manual-sheet';
 import { verifiedCountersinkCount } from "@/lib/instant-quote/verified-step-machining";
 import { verifiedStepBlankCostSource } from "@/lib/instant-quote/verified-step-blank-cost";
 import { verifiedBentStepCostSource } from "@/lib/instant-quote/verified-bent-step-cost";
@@ -114,7 +115,7 @@ const defaults: OnlineCalculationHandlerDependencies = {
     // graph. Production requests load it on demand; unit tests can inject a
     // safe calculation stub without resolving private server-only modules.
     const { runConfidentialCalculationForClient } = await import("@/lib/server/instant-quote/run-confidential-calculation");
-    return runConfidentialCalculationForClient(...args);
+    return runConfidentialCalculationForClient(args[0], args[1], {...args[2], publicEstimate: true}, args[3]);
   },
 };
 
@@ -229,7 +230,11 @@ async function buildAuthoritativeProject(
           const model = await dxfCadAdapter.analyze({ fileName: inspection.safeName, format, bytes });
           const parsed = parseDxfInspection(inspection);
           geometry = model.geometry;
-          evidenceByPartId[item.clientPartId] = {
+          const manual = readManualSheetDxf(decodeDxfText(bytes));
+          evidenceByPartId[item.clientPartId] = manual ? {
+            preliminaryGeometrySource: "manual-rectangular-blank",
+            reviewReasons: [MANUAL_SHEET_WARNING, ...(manual.holes ? [MANUAL_HOLE_NOTE] : []), ...manualHoleGroups(manual).filter(group=>group.diameterMm < item.thicknessMm).map(group=>`Условный диаметр отверстий ${group.diameterMm} мм меньше толщины металла ${item.thicknessMm} мм. Требуется проверка инженером.`)],
+          } : {
             flatFeatures: measureVerifiedFlatFeatures(parsed),
             unsupportedEntities: [...parsed.unsupportedEntities],
             ...(parsed.skippedServiceLayers.length
@@ -414,7 +419,7 @@ export function createOnlineCalculationHandler(overrides: Partial<OnlineCalculat
       const formData = await readMultipartForm(request, cadUploadLimits.maximumMultipartBytes);
       const manifestRaw = String(formData.get("manifest") ?? "");
       const files = formData.getAll("files").filter((item): item is File => item instanceof File && item.size > 0);
-      const inspections = await dependencies.inspectUploads(files, cadUploadLimits.maximumFiles, cadUploadLimits);
+      const inspections = await dependencies.inspectUploads(files, 5, cadUploadLimits);
       const manifest = parsePublicCalculationManifest(manifestRaw, inspections.length);
 
       for (const item of manifest.parts) {

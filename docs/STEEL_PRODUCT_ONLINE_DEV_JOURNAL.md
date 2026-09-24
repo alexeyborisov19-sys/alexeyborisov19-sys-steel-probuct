@@ -1,3 +1,16 @@
+## Live checkpoint — public manual calculator verification
+
+DONE: manual dimensions, 5 positions / 5 hole groups, edit-in-place, private averaged laser tiers. 1399 tests including 2304 synthetic variants passed; 768 isolated private-basis variants passed. Browser manual/legacy CAD checks and build/lint passed. Fixed fast-entry focus regression discovered by browser.
+IN PROGRESS: final extended browser run (operation-preserving edit and mixed STEP), then exact-SHA CI and owner-authorized publication.
+NEXT ACTION: merge only after current SHA CI, verify production manual input and STEP without creating leads. See docs/verification/public-manual-calculator-20260924.md.
+
+## Live checkpoint — public manual calculator, 24 September 2026
+
+Base: main 9d2260cf02b42de7355ab5dc42742eb76418313b, PR #176 and deployment 36054356271 succeeded with live browser QA. Owner explicitly authorizes implementation and publication: maximum 5 positions and 5 hole groups each, private averaged tariffs, verification across operations. Desktop remains separate (100 positions).
+DONE: reviewed desktop manual geometry and confidential pricing boundary.
+IN PROGRESS: manual geometry entry/editing, 5/5 server limits, server-only mean laser volume-tier rates per exact material/thickness; existing metal prices and other rates retained.
+NEXT ACTION: regression/matrix tests, browser, confidentiality review, exact SHA CI, deployment and live QA.
+
 ## Live checkpoint - calculation-variation verification, 24 September 2026
 
 DONE: eight new regressions failed before the website fixes and now pass. Full website suite: 1390 tests passed; production build and lint passed. Real local browser checked DXF, bent STEP, 50-piece quantities, all seven services, missing secondary inputs, unread CAD beside a priced part, and responsive widths 390/768/1440 without JS errors. The partial subtotal is explicitly labelled and is never used as the complete printed quote total. No dependencies, private tariffs, confidential geometry, authentication or payment changes.

@@ -1,4 +1,5 @@
 import "server-only";
+import {publicEstimateRateBook} from "./public-estimate-rates";
 
 import type { InstantQuoteProject } from "@/lib/instant-quote/domain";
 import { createClientCalculationView, type ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
@@ -13,6 +14,8 @@ import { createInternalProductionReport, writeInternalProductionReport, type Int
 import { reviewCadProjectCalculation } from "@/lib/server/quote-engine/cad-stage-review";
 
 export type ConfidentialCalculationInputs = {
+  /** Server-selected; never accepted from the public manifest. */
+  publicEstimate?: boolean;
   factualByPartId?: Record<string, PartFactualInputs>;
   /** Physical values confirmed by protected server-side CAD analysis. */
   authoritativeFactualByPartId?: Record<string, PartFactualInputs>;
@@ -60,7 +63,7 @@ export async function runConfidentialCalculationForClient(
   calculationStage("FACTUAL_INPUTS_OK");
   calculationStage("FACTUAL_CALCULATION_START");
   const calculation = calculateProjectFactualCost(
-    project, evidenceByPartId, basis.materialPriceSnapshots, basis.rateBook,
+    project, evidenceByPartId, basis.materialPriceSnapshots, inputs.publicEstimate ? publicEstimateRateBook(basis.rateBook) : basis.rateBook,
     effectiveFactualByPartId, now, { materialMarketUpliftPct: metalMarketUpliftPct() },
   );
   calculationStage("FACTUAL_CALCULATION_OK");
@@ -104,7 +107,7 @@ export async function runConfidentialCalculationForClient(
   const report = {
     ...createInternalProductionReport({
       projectId: project.id, basisVersion: basis.version, calculation,
-      productionParametersByPartId, internalNotes: inputs.internalNotes,
+      productionParametersByPartId, internalNotes: [...(inputs.internalNotes ?? []), ...(inputs.publicEstimate ? ["Public estimate: averaged volume-tier laser rates; factory operation rates and commercial coefficients remain private."] : [])],
       calculationInputSnapshot, now,
     }),
     quoteControl,
@@ -115,7 +118,7 @@ export async function runConfidentialCalculationForClient(
   calculationStage("REPORT_WRITE_OK");
 
   calculationStage("CLIENT_RESULT_START");
-  const signals = quoteControl.signals;
+  const signals = quoteControl.signals.map(signal => inputs.publicEstimate && signal.approvedSalePriceRub != null ? {...signal,status:'needs-review' as const,estimatedSalePriceRub:signal.approvedSalePriceRub,approvedSalePriceRub:null} : signal);
   const result = createClientCalculationView(project, signals);
   calculationStage("CLIENT_RESULT_OK");
   return result;
