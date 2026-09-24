@@ -34,7 +34,8 @@
     "avito:audit": "node --import tsx scripts/avito-audit.ts",
     "predev": "node scripts/build-step-worker.mjs",
     "pretest": "node scripts/build-step-worker.mjs",
-    "mail:readonly": "python3 scripts/mail-readonly.py"
+    "mail:readonly": "python3 scripts/mail-readonly.py",
+    "pd:reset-admin-password": "node --import tsx scripts/pd-reset-admin-password.ts"
   },
   "dependencies": {
     "framer-motion": "^12.43.0",
