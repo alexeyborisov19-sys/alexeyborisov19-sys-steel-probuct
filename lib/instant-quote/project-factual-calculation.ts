@@ -41,7 +41,7 @@ export type PartCadEvidence = {
   /** The counted conical holes are a lower bound when other surfaces remain unclassified. */
   countersinkRecognitionIncomplete?: boolean;
   /** Derived only from original STEP by protected server analysis; estimate-only. */
-  preliminaryGeometrySource?: "measured-bent-step" | "measured-step-blank";
+  preliminaryGeometrySource?: "measured-bent-step" | "measured-step-blank" | "manual-rectangular-blank";
   /** Measured from original CAD on server, never accepted from request metadata. */
   flatFeatures?: import("./verified-flat-features").VerifiedFlatFeatures;
   /** SHA-256 of actual inspected upload bytes, computed by the server. */

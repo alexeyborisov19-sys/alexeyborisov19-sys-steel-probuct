@@ -13,11 +13,11 @@ test("the browser stops at the same project size the server enforces", async () 
     readFile(manifestPath, "utf8"),
   ]);
 
-  // The manifest refuses an eleventh position. Without the same ceiling in the
+  // The manifest refuses an sixth position. Without the same ceiling in the
   // browser, adding one silently breaks the whole project at calculate time
   // rather than the one file that did not fit.
-  assert.match(manifest, /parts\.length > 10/);
-  assert.match(workspace, /const MAX_PROJECT_PARTS = 10;/);
+  assert.match(manifest, /parts\.length > 5/);
+  assert.match(workspace, /const MAX_PROJECT_PARTS = 5;/);
   assert.match(workspace, /files\.slice\(0, Math\.max\(0, room\)\)/);
   assert.equal(uploadLimits.maximumFiles, 10);
 });
@@ -25,7 +25,7 @@ test("the browser stops at the same project size the server enforces", async () 
 test("the public CAD workspace starts a new uploaded part with the priced cold-rolled option", async () => {
   const workspace = await readFile(workspacePath, "utf8");
 
-  assert.match(workspace, /setPartMaterial\(nextProject, partId, "cold", addedAt\)/);
+  assert.match(workspace, /setPartMaterial\(nextProject, partId, configurations\?\.\[index\]\?\.materialId\?\?"cold", addedAt\)/);
 });
 
 test("a thickness read from the model is selected, not left at the default", async () => {

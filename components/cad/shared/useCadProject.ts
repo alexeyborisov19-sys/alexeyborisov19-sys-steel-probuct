@@ -6,11 +6,11 @@ import { createCalculationFormData } from "@/lib/instant-quote/client-calculatio
 import { isClientCadPreview, isClientCalculationView, type CadAnalysisApiResponse, type CalculationApiResponse } from "@/lib/instant-quote/client-api-contracts";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-types";
-import { createEmptyProject, type ManufacturingOperation, type OperationInputs } from "@/lib/instant-quote/domain";
+import { createEmptyProject, type ManufacturingOperation, type OperationInputs, type PartConfiguration } from "@/lib/instant-quote/domain";
 import { modelReadings, nearestThicknessOption } from "@/lib/instant-quote/client-labels";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import { addPartToProject, removePartFromProject, setPartMaterial, setPartQuantity, setPartState, setPartOperationInputs, setPartThickness, togglePartOperation, updatePartGeometry } from "@/lib/instant-quote/project";
-const MAX_PROJECT_PARTS = 10;
+const MAX_PROJECT_PARTS = 5;
 const RECALCULATING_MESSAGE = "Идёт расчёт проекта…";
 function fmt(value: number) { return value.toLocaleString("ru-RU", { maximumFractionDigits: 2 }); }
 function fmtMetric(value: number | null) { return value == null ? "—" : `${fmt(value)} мм`; }
@@ -22,6 +22,8 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) { return Array.from(e
 
 /** Shared CAD state and server transport; no production arithmetic runs in the browser. */
 export function useCadProject() {
+  const ingestLock=useRef(false);
+  const [isIngesting,setIsIngesting]=useState(false);
   const analysisControllers = useRef(new Map<string, AbortController>());
   useEffect(() => () => { for (const controller of analysisControllers.current.values()) controller.abort(); }, []);
   const calculationEpoch = useRef(0);
@@ -90,7 +92,7 @@ export function useCadProject() {
   const bendConflict = activePart ? bendConfigurationConflict(activePreview?.cad.bendCountFromModel, activePart.configuration.operations, activePart.configuration.operationInputs?.bendCount) : null;
   const allFilesPresent = project.parts.length > 0 && project.parts.every((part) => Boolean(filesByPartId[part.id]));
   const anyAnalyzing = Object.values(analyzingByPartId).some(Boolean);
-  const canCalculate = allFilesPresent && !anyAnalyzing && !isCalculating;
+  const canCalculate = allFilesPresent && !anyAnalyzing && !isCalculating && !isIngesting;
   // Files are analysed in parallel, so the selected position can look ready
   // while another one is still being read. Without this the button is simply
   // dead and grey, with nothing on screen saying why.
@@ -138,10 +140,13 @@ export function useCadProject() {
     dropStaleCalculation({ changed: partId });
   };
 
-  const ingestFiles = async (files: File[]) => {
+  const ingestFiles = async (files: File[], configurations?: PartConfiguration[], replaceId?: string) => {
+    if(ingestLock.current)throw new Error("Дождитесь добавления текущих изделий.");
     if (!files.length) return;
     let nextProject = project;
-    const room = MAX_PROJECT_PARTS - nextProject.parts.length;
+    const replacing=replaceId?nextProject.parts.find(p=>p.id===replaceId):undefined;
+    if(replaceId&&(!replacing||files.length!==1))throw new Error("Позиция для изменения не найдена.");
+    const room = replacing ? 1 : MAX_PROJECT_PARTS - nextProject.parts.length;
     const accepting = files.slice(0, Math.max(0, room));
     const overflowMessage = accepting.length < files.length
       ? `В одном проекте можно рассчитать не более ${MAX_PROJECT_PARTS} позиций. Лишние файлы не добавлены — рассчитайте их отдельным проектом.`
@@ -150,16 +155,20 @@ export function useCadProject() {
       setProjectCalculationMessage(overflowMessage);
       return;
     }
+    ingestLock.current=true;setIsIngesting(true);
+    try {
     const rejectedFiles: string[] = [];
     const jobs: Array<{ file: File; partId: string; format: "dxf" | "dwg" | "step" | "stp" }> = [];
 
     accepting.forEach((file, index) => {
       try {
         const addedAt = new Date(Date.now() + index);
-        nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, addedAt);
+        if(replacing){nextProject={...nextProject,activePartId:replacing.id,parts:nextProject.parts.map(p=>p.id===replacing.id?{...p,fileName:file.name,fileSizeBytes:file.size,geometry:null,configuration:configurations?.[index]??p.configuration}:p)};}
+        else nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, addedAt);
         const partId = nextProject.activePartId;
         if (partId) {
-          nextProject = setPartMaterial(nextProject, partId, "cold", addedAt);
+          nextProject = setPartMaterial(nextProject, partId, configurations?.[index]?.materialId??"cold", addedAt);
+          if(configurations?.[index])nextProject={...nextProject,parts:nextProject.parts.map(p=>p.id===partId?{...p,configuration:configurations[index]}:p)};
         }
         const part = partId ? nextProject.parts.find((item) => item.id === partId) : null;
         if (partId && part) jobs.push({ file, partId, format: part.format });
@@ -169,6 +178,7 @@ export function useCadProject() {
     });
 
     setProject(nextProject);
+    if(configurations)setMaterialConfirmed(current=>({...current,...Object.fromEntries(jobs.map(job=>[job.partId,true]))}));
     // A new position makes the project total stale, so the sentences the
     // priced positions are still showing go with it.
     dropStaleCalculation();
@@ -260,12 +270,13 @@ export function useCadProject() {
         }
       }
     }));
+    } finally {ingestLock.current=false;setIsIngesting(false);}
   };
 
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    void ingestFiles(files);
+    void ingestFiles(files).catch(e=>setProjectCalculationMessage(e.message));
   };
   const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
     if (!hasDraggedFiles(event)) return;
@@ -289,7 +300,7 @@ export function useCadProject() {
     event.preventDefault();
     dragDepthRef.current = 0;
     setIsDraggingFiles(false);
-    void ingestFiles(Array.from(event.dataTransfer.files ?? []));
+    void ingestFiles(Array.from(event.dataTransfer.files ?? [])).catch(e=>setProjectCalculationMessage(e.message));
   };
 
   const updateQuantity = (value: number) => {
@@ -405,5 +416,5 @@ export function useCadProject() {
     ["Z", fmtMetric(activePreview.cad.depthMm)],
   ] : [];
 
-  return { inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, workflowSteps, dropStaleCalculation, ingestFiles, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict, filesByPartId, previewsByPartId };
+  return { isIngesting, inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, workflowSteps, dropStaleCalculation, ingestFiles, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict, filesByPartId, previewsByPartId };
 }

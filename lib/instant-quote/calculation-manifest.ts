@@ -120,8 +120,8 @@ export function parsePublicCalculationManifest(raw: string, fileCount: number): 
   const title = typeof root.title === "string" && root.title.trim()
     ? cleanText(root.title, "title", 120)
     : "Производственный проект";
-  if (!Array.isArray(root.parts) || root.parts.length === 0 || root.parts.length > 10) {
-    throw new CalculationManifestError("Проект должен содержать от 1 до 10 позиций.");
+  if (!Array.isArray(root.parts) || root.parts.length === 0 || root.parts.length > 5) {
+    throw new CalculationManifestError("Проект должен содержать от 1 до 5 позиций.");
   }
   if (fileCount !== root.parts.length) throw new CalculationManifestError("Количество CAD-файлов не совпадает с количеством позиций.");
 

@@ -1,3 +1,4 @@
+import { readManualSheetDxf, manualSheetGeometry, MANUAL_SHEET_WARNING } from './manual-sheet';
 import { CadReadError, type CadAnalysisAdapter, type NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { decodeDxfText, parseAsciiDxf } from "@/lib/instant-quote/dxf";
 
@@ -17,6 +18,7 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
   async analyze(request): Promise<NormalizedCadModel> {
     if (request.format !== "dxf") throw new Error("DXF adapter received a non-DXF file.");
     const text = decodeDxfText(request.bytes);
+    const manual = readManualSheetDxf(text);
     const parsed = parseAsciiDxf(text);
     const scale = mmScaleForInsUnits(parsed.unitsCode);
 
@@ -49,7 +51,7 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
     return {
       format: "dxf",
       units: "mm",
-      geometry: {
+      geometry: manual ? manualSheetGeometry(manual) : {
         widthMm,
         heightMm,
         areaMm2,
@@ -69,6 +71,7 @@ export const dxfCadAdapter: CadAnalysisAdapter = {
         analyzedAt: new Date().toISOString(),
       },
       warnings: [
+        ...(manual ? [MANUAL_SHEET_WARNING] : []),
         ...(scale !== 1 ? [`Геометрия автоматически нормализована из «${parsed.units}» в миллиметры.`] : []),
         ...(parsed.unitsSource === "measurement"
           ? [`В чертеже не задан $INSUNITS. Единицы «${parsed.units}» определены по заголовку $MEASUREMENT — подтвердите масштаб детали перед запуском в производство.`]

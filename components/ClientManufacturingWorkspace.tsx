@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalculatorLogo } from "@/components/CalculatorLogo";
 import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
@@ -13,6 +13,8 @@ import { CALCULATION_DISCLAIMER, CALCULATION_DISCLAIMER_SHORT, operationLabels, 
 import type { MaterialId } from "@/lib/instant-quote/pricing";
 import { setActivePart } from "@/lib/instant-quote/project";
 
+import {PublicManualSheetParts} from '@/components/cad/public/PublicManualSheetParts';
+import {readManualSheetDxf,type ManualSheetInput} from '@/lib/instant-quote/manual-sheet';
 const accepted = ".dxf,.dwg,.step,.stp";
 const materials = (["hot", "cold", "zinc"] as const).map((id) => ({ id: id as MaterialId, label: MATERIAL_LABELS[id] }));
 const fmt = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
@@ -22,8 +24,12 @@ const actionClass = "inline-flex min-h-12 items-center justify-center rounded-lg
 import {summarizeClientPrices} from '@/lib/instant-quote/client-price-summary';
 
 export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "public" | "production" } = {}) {
-  const { inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict } = useCadProject();
+  const { ingestFiles, filesByPartId, isIngesting, inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict } = useCadProject();
   const [preferredView, setPreferredView] = useState<"2d" | "3d">("3d");
+  const [manualEditor,setManualEditor]=useState<'add'|'edit'|null>(null);
+  const [activeManual,setActiveManual]=useState<ManualSheetInput|null>(null);
+  const activeFile=activePart?filesByPartId[activePart.id]:undefined;
+  useEffect(()=>{let cancelled=false;setActiveManual(null);if(activeFile&&/\.dxf$/i.test(activeFile.name))void activeFile.slice(0,128).text().then(async header=>{if(cancelled||!header.startsWith('999\nSTEEL_PRODUCT_MANUAL_BLANK_'))return;try{const input=readManualSheetDxf(await activeFile.text());if(!cancelled)setActiveManual(input);}catch{}});return()=>{cancelled=true;};},[activeFile]);
   const hasParts = project.parts.length > 0;
   const showMesh = Boolean(activePreview?.meshes.length) && (preferredView === "3d" || !activePreview?.drawing);
   const activeTotal = activeCalculation && ["approved", "estimate"].includes(activeCalculation.price.status) ? activeCalculation.price.totalRub : null;
@@ -43,36 +49,40 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
           <CalculatorLogo className="w-40 sm:w-48" />
           <ol className="flex flex-wrap gap-x-5 gap-y-2 text-xs sm:text-sm" aria-label="Порядок расчёта">
-            {["Загрузить CAD", "Выбрать параметры", "Получить расчёт"].map((label, index) => <li key={label} className={(index === 0 && !hasParts) || (index === 1 && hasParts && !calculation) || (index === 2 && calculation) ? "text-white" : "text-white/55"}><span className="mr-2 font-mono text-steel-orange">0{index + 1}</span>{label}</li>)}
+            {["CAD или размеры", "Материал и обработка", "Получить стоимость"].map((label, index) => <li key={label} className={(index === 0 && !hasParts) || (index === 1 && hasParts && !calculation) || (index === 2 && calculation) ? "text-white" : "text-white/55"}><span className="mr-2 font-mono text-steel-orange">0{index + 1}</span>{label}</li>)}
           </ol>
         </header>
 
+        <div className="mb-5 flex flex-wrap items-center gap-3" aria-label="Способ добавления изделия"><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>inputRef.current?.click()} className="min-h-12 rounded-lg border border-white/25 px-4 py-3 text-sm disabled:opacity-40">Загрузить CAD</button><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>setManualEditor('add')} className={actionClass}>Ввести размеры вручную</button><span className="text-sm text-white/65">{project.parts.length} / 5 изделий</span></div>
+        {manualEditor&&<div className="mb-6 rounded-xl border border-steel-orange/50 bg-[#141b21] p-4 sm:p-6"><div className="mb-3 flex justify-end"><button type="button" onClick={()=>setManualEditor(null)} className="min-h-11 px-3 text-sm underline underline-offset-4">Закрыть ввод размеров</button></div><PublicManualSheetParts key={manualEditor==='edit'?activePart?.id:'add'} count={project.parts.length-(manualEditor==='edit'?1:0)} initial={manualEditor==='edit'&&activePart&&activeManual?{name:activePart.fileName,input:activeManual,configuration:activePart.configuration}:undefined} onAdd={async(files,configurations)=>{await ingestFiles(files,configurations,manualEditor==='edit'?activePart?.id:undefined);setManualEditor(null);}}/></div>}
+        {projectCalculationMessage&&!hasParts&&<p role="status" className="mb-4 text-amber-200">{projectCalculationMessage}</p>}
         {hasParts && <nav className="mb-4 flex min-w-0 flex-wrap items-start gap-3" aria-label="Детали проекта">
           <details className="min-w-0 flex-1 rounded-lg border border-white/15 bg-[#141b21]">
             <summary className="cursor-pointer truncate px-4 py-3 text-sm"><span className="mr-2 text-steel-orange">{project.parts.length} поз.</span>{activePart?.fileName}</summary>
-            <div className="max-h-64 overflow-y-auto border-t border-white/10">{project.parts.map((part, index) => <button key={part.id} type="button" aria-current={part.id === activePart?.id ? "true" : undefined} onClick={() => setProject((current) => setActivePart(current, part.id))} className={`flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-white/10 ${part.id === activePart?.id ? "bg-white/10" : ""}`}><span className="font-mono text-white/50">{String(index + 1).padStart(2, "0")}</span><span className="min-w-0 flex-1 truncate">{part.fileName}</span><span className="shrink-0 text-white/70">{part.configuration.quantity} шт.</span></button>)}</div>
+            <div className="max-h-64 overflow-y-auto border-t border-white/10">{project.parts.map((part, index) => <button key={part.id} type="button" aria-current={part.id === activePart?.id ? "true" : undefined} onClick={() => {setManualEditor(null);setProject((current) => setActivePart(current, part.id));}} className={`flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-white/10 ${part.id === activePart?.id ? "bg-white/10" : ""}`}><span className="font-mono text-white/50">{String(index + 1).padStart(2, "0")}</span><span className="min-w-0 flex-1 truncate">{part.fileName}</span><span className="shrink-0 text-white/70">{part.configuration.quantity} шт.</span></button>)}</div>
           </details>
-          <button type="button" onClick={() => inputRef.current?.click()} className="min-h-12 rounded-lg border border-white/25 px-4 py-3 text-sm hover:border-steel-orange">+ Добавить CAD</button>
+
         </nav>}
 
-        <div className={hasParts ? "grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]" : ""}>
+        <div className={hasParts ? "grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]" : manualEditor ? "hidden" : ""}>
           <div className="min-w-0">
             <div className={`relative overflow-hidden rounded-xl border ${isDraggingFiles ? "border-steel-orange" : "border-white/15"}`} onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
               {hasParts && <div className="flex min-h-14 flex-wrap items-center justify-between gap-2 bg-[#172028] px-4 py-3">
                 <p className="min-w-0 flex-1 truncate text-sm font-medium">{activePart?.fileName}</p>
                 <div className="flex items-center gap-2">
                   {activePreview?.drawing && Boolean(activePreview.meshes.length) && <div className="flex gap-1" aria-label="Вид модели">{(["2d", "3d"] as const).map((view) => <button key={view} type="button" onClick={() => setPreferredView(view)} aria-pressed={preferredView === view} className={`min-h-11 rounded px-3 text-xs ${preferredView === view ? "bg-steel-orange text-black" : "bg-white/10"}`}>{view.toUpperCase()}</button>)}</div>}
-                  <button type="button" onClick={removeActivePart} className="min-h-11 px-2 text-xs text-white/65 hover:text-red-300">Удалить</button>
+                  {activeManual&&<button type="button" disabled={isIngesting} onClick={()=>setManualEditor('edit')} className="min-h-11 px-2 text-xs text-steel-orange">Изменить размеры</button>}
+                  <button type="button" onClick={()=>{setManualEditor(null);removeActivePart();}} className="min-h-11 px-2 text-xs text-white/65 hover:text-red-300">Удалить</button>
                 </div>
               </div>}
               {!hasParts ? <div className="grid min-h-[420px] gap-8 bg-[#141c22] p-6 sm:p-10 lg:grid-cols-[1fr_.65fr] lg:items-center lg:p-14">
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-[.16em] text-steel-orange">От модели к готовой детали</span>
-                  <h2 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">Ваш чертёж.<br />Наше производство.</h2>
-                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">DXF или STEP до 50 МБ на файл, до 100 МБ на проект. Выберите материал и количество. Посмотрите деталь и получите предварительный расчёт без регистрации.</p>
+                  <h2 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">Деталь по чертежу<br />или вашим размерам.</h2>
+                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">До 5 изделий: загрузите DXF или STEP либо укажите внешние размеры и отверстия. До 50 МБ на файл и 100 МБ на проект. Выберите материал и количество. Посмотрите деталь и получите предварительный расчёт без регистрации.</p>
                   <button type="button" onClick={() => inputRef.current?.click()} className={`${actionClass} mt-7`}>Выбрать файлы <span aria-hidden="true" className="ml-5">↑</span></button>
                   <p className="mt-3 text-sm text-white/60">Или перетащите файлы в эту область</p>
-                  <Link href="/contacts?source=online-order#contact-form" className="mt-6 inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4">Нет CAD-файла — помощь инженера</Link>
+                  <Link href="/contacts?source=online-order#contact-form" className="mt-6 inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4">Нужна помощь с деталью — обратиться к инженеру</Link>
                 </div>
                 <div className="rounded-xl border border-white/15 bg-[#0c1115] p-6">
                   <p className="mb-5 text-sm font-semibold">Что можно загрузить</p>
@@ -88,6 +98,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
               {isDraggingFiles && <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#0c1115]/95 p-8 text-center text-xl text-steel-orange">Отпустите файлы, чтобы добавить в проект</div>}
             </div>
             {activePart && <div className={`mt-4 rounded-lg border px-4 py-4 ${needsReview || bendConflict ? "border-amber-300/35 bg-amber-300/[.05]" : "border-white/15"}`}>
+              {activeManual&&<p className="mb-2 text-sm text-amber-200">По габаритам, приблизительно. На схеме показан внешний прямоугольник; расположение отверстий не задано.</p>}
               <p className="text-sm font-medium">{needsReview ? "Нужна проверка инженером" : "Проверка геометрии"}</p>
               <p className="mt-2 text-sm leading-6 text-white/70">{statusByPartId[activePart.id] ?? activePreview?.message ?? "Проверьте параметры и запустите расчёт."}</p>
               {activePreview?.cad.bendCountFromModel != null && <p className="mt-2 text-sm text-white/75">Гибы по модели: {activePreview.cad.bendCountFromModel}. Проверьте состав обработки справа.</p>}

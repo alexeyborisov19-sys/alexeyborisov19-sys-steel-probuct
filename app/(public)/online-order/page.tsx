@@ -31,6 +31,7 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 const faqItems = [
+  {question:"Можно рассчитать без чертежа?", answer:"Да. Введите внешние размеры плоской заготовки, толщину, материал и количество. В одном расчёте — до 5 изделий, у каждого до 5 типов отверстий с отдельными диаметрами и количеством. Отверстия условно считаются круглыми, без задания расположения. Полученная стоимость ориентировочная; форму и изготовляемость проверяет инженер."},
   {
     question: "Какие файлы можно загрузить?",
     answer: "DXF с плоской развёрткой и STEP или STP с трёхмерной деталью. Можно загрузить несколько файлов сразу — каждый станет отдельной позицией проекта. DWG принимается после проверки инженером.",
@@ -107,7 +108,7 @@ export default function OnlineOrderPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[.16em] text-steel-orange">От КД до готовой партии</p>
               <h2 id="how-it-works" className="mt-3 text-2xl font-semibold">Как работает онлайн-расчёт</h2>
-              <p className="mt-4 max-w-lg text-sm leading-7 text-white/70">Геометрия из CAD, выбранный металл, количество и указанные операции. Цена металла поступает из актуального прайса поставщика. Неоднозначную геометрию и незаданные параметры проверяет инженер.</p>
+              <p className="mt-4 max-w-lg text-sm leading-7 text-white/70">Геометрия из CAD или введённые вами габариты, выбранный металл, количество и указанные операции. Цена металла поступает из актуального прайса поставщика. Неоднозначную геометрию и незаданные параметры проверяет инженер.</p>
               <p className="mt-3 max-w-lg text-sm leading-7 text-white/70">Расход листа до финальной раскладки оценивается по заготовке. Итоговые стоимость и сроки подтверждаются после проверки проекта.</p>
               <Link href="/production" className="mt-5 inline-flex min-h-11 items-center text-sm text-steel-orange underline underline-offset-4">Возможности производства →</Link>
               <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/70"><Link href="/production/lazernaya-rezka-metalla" className="min-h-11 py-3 underline underline-offset-4">Лазерная резка</Link><Link href="/production/gibka-listovogo-metalla" className="min-h-11 py-3 underline underline-offset-4">Гибка листа</Link><Link href="/contacts#contact-form" className="min-h-11 py-3 underline underline-offset-4">Связаться с инженером</Link></div>

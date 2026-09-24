@@ -254,3 +254,11 @@ for(const required of [false,true])test(`review deadline preserves only a warnin
   if(!required)assert.match(result.signals[0].manufacturingWarnings?.join(' ')??'',/Лимит времени/);
  }finally{Date.now=original;}
 });
+
+test('manual rectangular blank always remains an estimate with its geometry warning',async()=>{
+ const f=fixture();f.part.state='manual-review';
+ const warning='Размеры и отверстия введены вручную: требуется проверка чертежа.';
+ f.calculation.parts[0].dfmReviewReasons=[warning];
+ const output=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{preliminaryGeometrySource:'manual-rectangular-blank',reviewReasons:[warning]}},f.policy,{requireAiReview:false,caller:null});
+ assert.ok(output.signals[0].estimatedSalePriceRub!>0);assert.equal(output.signals[0].approvedSalePriceRub,null);assert.ok(output.signals[0].manufacturingWarnings?.includes(warning));
+});

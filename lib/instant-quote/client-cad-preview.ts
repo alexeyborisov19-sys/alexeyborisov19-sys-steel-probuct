@@ -1,3 +1,4 @@
+import {MANUAL_SHEET_WARNING} from './manual-sheet';
 import { verifiedCountersinkCount } from "./verified-step-machining";
 import type { NormalizedCadModel } from "@/lib/instant-quote/cad-model";
 import { measuredThicknessMm } from "@/lib/instant-quote/sheet-metal";
@@ -152,7 +153,7 @@ export function createClientCadPreview(model: NormalizedCadModel, parsedDxf?: Pa
     root: model.root,
     drawing: parsedDxf ? createClientDxfDrawingPreview(parsedDxf) : null,
     status: needsReview ? "needs-review" : "recognized",
-    message: bent && priced
+    message: model.warnings.includes(MANUAL_SHEET_WARNING) ? MANUAL_SHEET_WARNING : bent && priced
       ? "Деталь с гибами. Толщина, гибы и размер развёртки определены по модели — стоимость рассчитывается автоматически."
       : bent
         ? "Деталь с гибами. Гибы и толщина определены по модели, но развёртку этой детали автоматически подтвердить не удалось, поэтому её проверит технолог."
