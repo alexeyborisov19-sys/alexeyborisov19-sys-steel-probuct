@@ -1,5 +1,6 @@
 import { statSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { stdin, stderr, stdout } from "node:process";
 import type { Readable, Writable } from "node:stream";
 import { hashPassword, passwordAlgorithm, passwordVersion } from "@/lib/pd-admin/auth/password";
@@ -165,11 +166,14 @@ export async function runResetAdminPassword(options: ResetAdminOptions = {}) {
   }
 }
 
-runResetAdminPassword()
-  .then((exitCode) => {
-    process.exitCode = exitCode;
-  })
-  .catch(() => {
-    line(stderr, "Administrator password was not reset.");
-    process.exitCode = 1;
-  });
+const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null;
+if (invokedPath === import.meta.url) {
+  runResetAdminPassword()
+    .then((exitCode) => {
+      process.exitCode = exitCode;
+    })
+    .catch(() => {
+      line(stderr, "Administrator password was not reset.");
+      process.exitCode = 1;
+    });
+}
