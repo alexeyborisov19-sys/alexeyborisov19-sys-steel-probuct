@@ -120,7 +120,7 @@ export function ClientOperationControls({
                       const parsed = raw === "" ? undefined : Number(raw);
                       onQuantityChange({
                         [quantity.field]: parsed != null && Number.isFinite(parsed) && parsed >= 0
-                          ? Math.max(option.id === "countersink" ? detectedCountersinkCount ?? 0 : 0, Math.min(parsed, quantity.max))
+                          ? Math.max(option.id === "countersink" ? detectedCountersinkCount ?? 0 : 0, Math.min(quantity.field === "bendCount" || quantity.field === "countersinkCount" ? Math.floor(parsed) : parsed, quantity.max))
                           : undefined,
                       });
                     }}

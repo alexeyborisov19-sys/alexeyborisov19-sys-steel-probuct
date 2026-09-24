@@ -242,3 +242,15 @@ test("partial price DTO exposes excluded operations alongside the amount", () =>
   assert.deepEqual(view.parts[0].price.unpricedOperations, ["welding", "countersink"]);
   assert.equal(view.paymentEnabled, false);
 });
+
+for(const required of [false,true])test(`review deadline preserves only a warning estimate when AI is optional: required=${required}`,async()=>{
+ const f=fixture();const original=Date.now;let ticks=0;
+ try{
+  Date.now=()=>ticks++===0?0:1_000_000;
+  const result=await reviewCadProjectCalculation(f.project,f.calculation,{},f.policy,{requireAiReview:required,caller:async()=>{throw Error('Expired model review must not run');}});
+  assert.equal(result.signals[0].approvedSalePriceRub,null);
+  assert.equal(result.signals[0].estimatedSalePriceRub,required?undefined:1200);
+  assert.equal(result.audits[0].publishedRubBatch,null);
+  if(!required)assert.match(result.signals[0].manufacturingWarnings?.join(' ')??'',/Лимит времени/);
+ }finally{Date.now=original;}
+});

@@ -212,3 +212,31 @@ test('last-known stale metal price forces warning estimate even with fully valid
  assert.equal(result.signals[0].approvedSalePriceRub,null);assert.equal(result.audits[0].publishedRubBatch,null);
  const view=createClientCalculationView(f.project,result.signals);assert.match(view.parts[0].message,/2026-09-14/);assert.match(view.parts[0].message,/Прайс устарел/);assert.doesNotMatch(view.parts[0].message,/T21:16/);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
 });
+
+for(const [operation,code,label] of [
+ ['bending','bend-count','Гибка'], ['bending','operation-rate','Гибка'],
+ ['welding','weld-length','Сварка'], ['countersink','countersink-count','Зенковка'],
+ ['assembly','assembly-time','Сборка'], ['surface-preparation','surface-preparation-area','Подготовка поверхности'],
+ ['powder-coating','powder-area','Порошковая окраска'], ['packaging','operation-rate','Упаковка'],
+] as const)test(`missing ${operation} preserves base price with explicit exclusion`,async()=>{
+ const f=reviewFixture();f.part.configuration.operations.push(operation);
+ f.cost.status='partial';f.calculation.parts[0].status='partial';
+ f.cost.missing=[{code,label,reason:'Private details must stay private',blocking:false}];
+ const result=await reviewCadProjectCalculation(f.project,f.calculation,{},f.policy,{caller:null,requireAiReview:false});
+ const view=createClientCalculationView(f.project,result.signals);
+ assert.equal(view.parts[0].price.totalRub,1200);
+ assert.equal(view.parts[0].price.status,'estimate');
+ assert.deepEqual(view.parts[0].price.unpricedOperations,[operation]);
+ assert.match(view.parts[0].message,/не включен/);
+ assert.doesNotMatch(view.parts[0].message,/Private details/);
+ assert.equal(isClientCalculationView(view),true);
+});
+
+test('explicit zero bends on a flat part does not require a nonzero bending article',async()=>{
+ const f=reviewFixture();f.part.configuration.operations.push('bending');
+ f.part.configuration.operationInputs={bendCount:0};f.part.geometry!.bendCount=0;
+ f.cost.parameters.bendCountEach=0;
+ const result=await reviewCadProjectCalculation(f.project,f.calculation,{},f.policy,{caller:null,requireAiReview:false});
+ assert.equal(result.signals[0].estimatedSalePriceRub,1200);
+ assert.equal(result.signals[0].approvedSalePriceRub,null);
+});

@@ -97,7 +97,7 @@ export function createClientCalculationView(
         && (approvedSalePrice ?? 0) > 0;
       const estimatedSalePrice = signal?.estimatedSalePriceRub;
       const hasEstimate = status === "needs-review" && Number.isFinite(estimatedSalePrice) && (estimatedSalePrice ?? 0) > 0;
-      const unpricedOperations = [...new Set((signal?.unpricedOperations ?? []).filter(operation => operation === "welding" || operation === "countersink"))];
+      const unpricedOperations = [...new Set((signal?.unpricedOperations ?? []).filter(operation => ["welding", "countersink", "bending", "assembly", "surface-preparation", "powder-coating", "packaging"].includes(operation)))];
       const price = hasApprovedSalePrice
         ? { status: "approved" as const, totalRub: approvedSalePrice! }
         : hasEstimate ? { status: "estimate" as const, totalRub: estimatedSalePrice! } : { status: "not-published" as const };

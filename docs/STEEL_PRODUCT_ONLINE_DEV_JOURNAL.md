@@ -1,3 +1,17 @@
+## Live checkpoint - calculation-variation verification, 24 September 2026
+
+DONE: eight new regressions failed before the website fixes and now pass. Full website suite: 1390 tests passed; production build and lint passed. Real local browser checked DXF, bent STEP, 50-piece quantities, all seven services, missing secondary inputs, unread CAD beside a priced part, and responsive widths 390/768/1440 without JS errors. The partial subtotal is explicitly labelled and is never used as the complete printed quote total. No dependencies, private tariffs, confidential geometry, authentication or payment changes.
+Mac delivery is installed and verified (desktop source commit 822a666; 292 tests plus browser and installed-package 128-service matrix including 100 positions).
+IN PROGRESS / NEXT ACTION: exact-SHA PR CI, owner-authorized publication, live-site verification. Source tests and browser evidence are complete; deployment is not claimed yet.
+
+## Live checkpoint — аудит вариаций расчёта, 24.09.2026
+
+База актуального main: 2fec50cdb88aec04ad5709a4051f6539a8332cde, изолированная ветка fix/calculation-variants-20260924. Промежуточные изменения main (навигация и вход администратора) просмотрены и сохраняются. PR-triggered workflow runs для этого main SHA отсутствуют; GREEN для новой ветки пока не заявляется.
+Владелец поручил проверить все варианты услуг, количества, добавления деталей и исправлять ошибки; ранее прямо разрешил публикацию. Старый запрет публикации ниже не отменяет последующее разрешение владельца. Платежи и выпуск в производство не включаются.
+DONE: ошибки воспроизведены и исправлены в отдельном Mac-приложении; 292 теста, браузерная проверка, 128 комбинаций услуг через сервер, спецификация 100 позиций.
+IN PROGRESS: перенос узких исправлений в сайт: целые счётчики операций и границы количества, явная частичная оценка при недостающей вторичной услуге, сохранение оценки при истечении необязательной ИИ-проверки.
+NEXT ACTION: regression-first проверки, production build/браузер/CI точного SHA, разрешённая публикация и проверка живого сайта. Private basis, секреты и файлы заказчиков в Git не переносятся.
+
 ## Live checkpoint — настройки производства и устойчивость STEP, 22.09.2026
 
 DONE: PR #170 (main 9873671) опубликован, защищённые расценки из Excel применены. PR #171 (main da4b8b4), workflow 35729365393: фиксированная доплата отключена. Живой сайт и приложение: пластина 075.310.04 — 21,32 ₽, 50 шт. — 1066 ₽, предупреждение и дата прайса сохранены.

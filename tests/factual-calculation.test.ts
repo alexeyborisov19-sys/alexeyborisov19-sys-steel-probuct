@@ -324,3 +324,33 @@ test("welding prices entered seam length per part times batch without inferring 
   assert.equal(line.amountRubBatch, 6172.8);
   assert.ok(calculateFactualProductionCost(input).missing.some((entry) => entry.code === "weld-length"));
 });
+
+test('all 128 service combinations preserve batch arithmetic at six quantities', () => {
+  const extra = ['bending', 'welding', 'countersink', 'assembly', 'surface-preparation', 'powder-coating', 'packaging'] as const;
+  const rates: FactualRateBook = {
+    ...fixtureRateBook,
+    countersinkRubEach: {rateRub: 12, source: fixtureSource},
+    assemblyRubPerHour: {rateRub: 600, source: fixtureSource},
+    surfacePreparationRubPerM2: {rateRub: 50, source: fixtureSource},
+    packagingRubEach: {rateRub: 20, source: fixtureSource},
+  };
+  for (let mask = 0; mask < 128; mask++) {
+    const selected = extra.filter((_, index) => mask & (1 << index));
+    for (const quantity of [1, 2, 10, 40, 200, 100000]) {
+      const result = calculateFactualProductionCost({
+        materialId: 'cold', thicknessMm: 1, quantity, geometry: {...baseGeometry, pierceCount: 4},
+        marketPrice: exactCold1mm, operations: ['laser-cutting', ...selected], rateBook: rates,
+        bendCount: 3, weldLengthM: 0.5, countersinkCount: 4, assemblyMinutes: 6,
+        powderAreaM2: 1, surfacePreparationAreaM2: 1,
+      });
+      assert.equal(result.status, 'complete', `mask=${mask}, quantity=${quantity}`);
+      assert.equal(result.lines.length, 3 + selected.length);
+      assert.equal(result.confirmedDirectCostRubBatch, result.confirmedDirectCostRubEach * quantity);
+      for (const line of result.lines) {
+        assert.ok(Number.isFinite(line.amountRubBatch) && line.amountRubBatch > 0);
+        assert.equal(line.amountRubBatch, line.amountRubEach * quantity);
+      }
+      for (const operation of extra) assert.equal(result.lines.some(line => line.code === operation), selected.includes(operation));
+    }
+  }
+});

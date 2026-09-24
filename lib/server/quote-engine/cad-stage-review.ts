@@ -2,7 +2,7 @@ import { laserFeatureNorms } from "@/data/manufacturing-facts";
 import { completeWithConfiguredModel } from "@/lib/server/quote-engine/model-completion";
 import { runVerifiedLaserDfm, isEstimateOnlyManufacturingConstraint } from "@/lib/instant-quote/dfm";
 import { createHash } from "node:crypto";
-import type { InstantQuoteProject, ProjectPart } from "@/lib/instant-quote/domain";
+import type { InstantQuoteProject, ProjectPart, ManufacturingOperation } from "@/lib/instant-quote/domain";
 import type { ClientCalculationSignal } from "@/lib/instant-quote/client-calculation-view";
 import type { ProjectFactualCalculationResult, ProjectFactualPartResult, ProjectCadEvidence } from "@/lib/instant-quote/project-factual-calculation";
 import { CALCULATION_DISCLAIMER_SHORT } from "@/lib/instant-quote/client-labels";
@@ -79,22 +79,35 @@ async function reviewPart(
     return { signal: { partId: part.id, status, approvedSalePriceRub: null }, audit };
   };
   const cost = result?.calculation;
-  // Only these explicit secondary-operation gaps may leave a priced base scope.
-  // Missing material, laser, geometry or any other article still blocks the estimate.
-  const omitted = new Set<"countersink" | "welding">();
+  // Secondary service gaps do not erase the fully priced metal/cutting scope.
+  // Every omitted service is explicit; missing base geometry/material/cutting still blocks it.
+  const omitted = new Set<ManufacturingOperation>();
+  const serviceByLabel: Record<string, ManufacturingOperation> = {
+    "Гибка": "bending", "Гибка по массе": "bending", "Сварка": "welding",
+    "Зенковка": "countersink", "Сборка": "assembly", "Подготовка поверхности": "surface-preparation",
+    "Порошковая окраска": "powder-coating", "Упаковка": "packaging",
+  };
+  const serviceByMissingCode: Record<string, ManufacturingOperation> = {
+    "bend-count": "bending", "weld-length": "welding", "countersink-count": "countersink",
+    "assembly-time": "assembly", "surface-preparation-area": "surface-preparation", "powder-area": "powder-coating",
+  };
   const knownScopeOnly = result?.status === "partial" && cost?.status === "partial" && cost.missing.length > 0
     && cost.missing.every(item => {
-      const operation = item.code === "countersink-count" || (item.code === "operation-rate" && item.label === "Зенковка") ? "countersink"
-        : item.code === "weld-length" || (item.code === "operation-rate" && item.label === "Сварка") ? "welding" : null;
+      const operation = serviceByMissingCode[item.code]
+        ?? (item.code === "operation-rate" ? serviceByLabel[item.label]
+          : item.code === "geometry" && item.label === "Гибка по массе" ? "bending" : undefined);
       if (!operation || item.blocking || !part.configuration.operations.includes(operation)) return false;
       omitted.add(operation);
       return true;
     });
   const unpricedOperations = knownScopeOnly ? [...omitted] : [];
-  const pricedRequestedOperations = part.configuration.operations.filter(operation => !unpricedOperations.some(unpriced => unpriced === operation));
+  const pricedRequestedOperations = part.configuration.operations.filter(operation => !unpricedOperations.some(unpriced => unpriced === operation)
+    && !(operation === "bending" && cost?.parameters.bendCountEach === 0 && !(part.geometry?.bendCount)));
   const omittedWarnings = unpricedOperations.map(operation => operation === "countersink"
     ? `Зенковка${cost?.parameters.countersinkCountEach ? ` (${cost.parameters.countersinkCountEach} отв. на деталь)` : ""} не включена в стоимость: ${cost?.missing.some(item => item.code === "countersink-count") ? "количество отверстий не задано" : "тариф не задан"}. Требуется отдельный расчёт.`
-    : `Сварка не включена в стоимость: ${cost?.missing.some(item => item.code === "weld-length") ? "длина шва не задана" : "тариф не задан"}. Требуется отдельный расчёт.`);
+    : operation === "bending" ? `${cost?.missing.some(item => item.label === "Гибка по массе") ? "Гибка по массе" : "Гибка"} не включена в стоимость: количество гибов, масса изделия или тариф не определены. Требуется отдельный расчёт.`
+    : operation === "welding" ? `Сварка не включена в стоимость: ${cost?.missing.some(item => item.code === "weld-length") ? "длина шва не задана" : "тариф не задан"}. Требуется отдельный расчёт.`
+    : `${Object.entries(serviceByLabel).find(([, id]) => id === operation)?.[0] ?? operation}: не включено в стоимость; заполните параметры операции и проверьте тариф. Требуется отдельный расчёт.`);
   if (!result || !cost || (!knownScopeOnly && (result.status !== "complete" || cost.status !== "complete" || cost.missing.length))) {
     const held = hold(issue("calculation", "incomplete-calculation"));
     const missing = new Set(cost?.missing.map(item => item.code) ?? []);
@@ -247,13 +260,26 @@ export async function reviewCadProjectCalculation(
   const results = new Map(calculation.parts.map((part) => [part.partId, part]));
   const rows: Array<Awaited<ReturnType<typeof reviewPart>>> = new Array(project.parts.length);
   let cursor = 0;
+  const requiredReview = options.requireAiReview ?? quoteAiReviewRequired();
   const deadline = Date.now() + 25_000;
   const worker = async () => {
     while (cursor < project.parts.length) {
       const index = cursor++;
       const part = project.parts[index];
       try {
-        if (Date.now() > deadline) throw new Error("CAD review budget exhausted");
+        if (Date.now() > deadline) {
+          if (requiredReview) throw new Error("CAD review budget exhausted");
+          // A large order must not lose deterministic prices merely because the optional model ran out of time.
+          const fallback = await reviewPart(part, results.get(part.id), evidenceByPartId[part.id], policy, {...options, caller: null, requireAiReview: false});
+          const amount = fallback.signal.estimatedSalePriceRub ?? fallback.signal.approvedSalePriceRub;
+          rows[index] = {
+            signal: {...fallback.signal, status: "needs-review", approvedSalePriceRub: null,
+              ...(amount != null ? {estimatedSalePriceRub: amount} : {}), aiReviewed: false,
+              manufacturingWarnings: [...(fallback.signal.manufacturingWarnings ?? []), "Лимит времени дополнительной ИИ-проверки исчерпан. Показан расчёт по формулам; требуется проверка технолога."]},
+            audit: {...fallback.audit, publishedRubBatch: null, review: {status: "unavailable", stages: []}},
+          };
+          continue;
+        }
         rows[index] = await reviewPart(part, results.get(part.id), evidenceByPartId[part.id], policy, options);
       } catch {
         rows[index] = {
