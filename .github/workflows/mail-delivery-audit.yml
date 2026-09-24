@@ -1,0 +1,220 @@
+name: Mail delivery audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/mail-delivery-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check production mail configuration without exposing secrets
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST"             "APP_PATH='$BEGET_APP_PATH' python3 -s" <<'PY'
+          import os, pathlib
+          app = pathlib.Path(os.environ["APP_PATH"])
+          env_file = app / ".env.production"
+          if not env_file.exists():
+              raise SystemExit("ENV_FILE_MISSING")
+
+          def parse_env(path):
+              out = {}
+              for raw in path.read_text(encoding="utf-8").splitlines():
+                  line = raw.strip()
+                  if not line or line.startswith("#") or "=" not in line:
+                      continue
+                  k, v = line.split("=", 1)
+                  v = v.strip()
+                  if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":
+                      v = v[1:-1]
+                  out[k.strip()] = v
+              return out
+
+          env = parse_env(env_file)
+          required = [
+              "SMTP_HOST","SMTP_PORT","SMTP_SECURE","SMTP_USER","SMTP_PASSWORD",
+              "SMTP_FROM","SMTP_ENVELOPE_FROM","QUOTE_RECIPIENT"
+          ]
+          missing = [k for k in required if not env.get(k)]
+          print("MAIL_CONFIG_MISSING:", ",".join(missing) if missing else "none")
+          print("SMTP_HOST:", env.get("SMTP_HOST",""))
+          print("SMTP_PORT:", env.get("SMTP_PORT",""))
+          print("SMTP_SECURE:", env.get("SMTP_SECURE",""))
+          print("SMTP_USER:", env.get("SMTP_USER",""))
+          print("SMTP_FROM:", env.get("SMTP_FROM",""))
+          print("SMTP_ENVELOPE_FROM:", env.get("SMTP_ENVELOPE_FROM",""))
+          print("QUOTE_RECIPIENT:", env.get("QUOTE_RECIPIENT",""))
+          print("IMAP_HOST:", env.get("IMAP_HOST",""))
+          print("IMAP_PORT:", env.get("IMAP_PORT",""))
+          print("IMAP_SECURE:", env.get("IMAP_SECURE",""))
+          print("IMAP_USER:", env.get("IMAP_USER",""))
+          print("IMAP_PASSWORD_SOURCE:", "IMAP_PASSWORD" if env.get("IMAP_PASSWORD") else ("SMTP_PASSWORD" if env.get("SMTP_PASSWORD") else "missing"))
+          if missing:
+              raise SystemExit(2)
+          PY
+
+      - name: Submit synthetic quote through production form API
+        id: submit
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          BODY="$(mktemp)"
+          HEADERS="$(mktemp)"
+          HTTP_CODE="$(
+            curl -sS               -D "$HEADERS"               -o "$BODY"               -w '%{http_code}'               -H 'Origin: https://www.steelprodukt.ru'               -H 'Referer: https://www.steelprodukt.ru/contacts'               -H 'User-Agent: SteelProdukt-Mail-Audit/1.0'               -F 'name=ТЕСТ SMTP'               -F 'company=Сталь Продукт — служебная проверка'               -F 'email=info@steelprodukt.ru'               -F "message=[ТЕСТ] Проверка доставки заявки после изменения почтовых настроек. Время: $NOW. Не обрабатывать как клиентскую заявку."               -F 'personalDataConsent=yes'               -F "consentTimestamp=$NOW"               -F 'pageUrl=https://www.steelprodukt.ru/contacts'               https://www.steelprodukt.ru/api/quote
+          )"
+
+          echo "HTTP_STATUS: $HTTP_CODE"
+          cat "$BODY"
+          echo
+
+          node - "$BODY" "$HTTP_CODE" <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require("fs");
+          const bodyPath = process.argv[2];
+          const status = Number(process.argv[3]);
+          const body = JSON.parse(fs.readFileSync(bodyPath, "utf8"));
+          if (![200,202].includes(status)) {
+            throw new Error("Quote API returned HTTP " + status + ": " + JSON.stringify(body));
+          }
+          if (!body.requestId) throw new Error("Quote API did not return requestId");
+          console.log("request_id=" + body.requestId);
+          console.log("api_code=" + (body.code || ""));
+          console.log("http_status=" + status);
+          NODE
+
+      - name: Verify stored delivery state and receipt in mailbox
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+          REQUEST_ID: ${{ steps.submit.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "REQUEST_ID: $REQUEST_ID"
+
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST"             "APP_PATH='$BEGET_APP_PATH' REQUEST_ID='$REQUEST_ID' python3 -s" <<'PY'
+          import email
+          import email.header
+          import imaplib
+          import json
+          import os
+          import pathlib
+          import time
+
+          app = pathlib.Path(os.environ["APP_PATH"])
+          request_id = os.environ["REQUEST_ID"]
+
+          def parse_env(path):
+              out = {}
+              for raw in path.read_text(encoding="utf-8").splitlines():
+                  line = raw.strip()
+                  if not line or line.startswith("#") or "=" not in line:
+                      continue
+                  k, v = line.split("=", 1)
+                  v = v.strip()
+                  if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":
+                      v = v[1:-1]
+                  out[k.strip()] = v
+              return out
+
+          env = parse_env(app / ".env.production")
+          storage = pathlib.Path(env.get("QUOTE_STORAGE_PATH", "/var/lib/steelprodukt/quote-leads"))
+          record_path = storage / f"{request_id}.json"
+          if not record_path.exists():
+              raise SystemExit("STORED_RECORD_NOT_FOUND")
+
+          record = json.loads(record_path.read_text(encoding="utf-8"))
+          print("RECORD_FOUND: yes")
+          print("RECORD_DELIVERY:", record.get("delivery"))
+          print("CONSENT_AUDIT:", record.get("consentAudit"))
+          print("RECORD_CREATED_AT:", record.get("createdAt"))
+          print("RECORD_SOURCE:", record.get("source"))
+
+          host = env.get("IMAP_HOST")
+          port = int(env.get("IMAP_PORT", "993"))
+          user = env.get("IMAP_USER") or env.get("SMTP_USER")
+          password = env.get("IMAP_PASSWORD") or env.get("SMTP_PASSWORD")
+          secure = env.get("IMAP_SECURE", "true").lower() == "true"
+          if not host or not user or not password:
+              raise SystemExit("IMAP_CONFIGURATION_INCOMPLETE")
+
+          if secure:
+              box = imaplib.IMAP4_SSL(host, port)
+          else:
+              box = imaplib.IMAP4(host, port)
+          try:
+              box.login(user, password)
+              status, _ = box.select("INBOX", readonly=True)
+              if status != "OK":
+                  raise SystemExit("IMAP_INBOX_OPEN_FAILED")
+
+              found = []
+              for attempt in range(8):
+                  status, data = box.search(None, "SUBJECT", f'"{request_id}"')
+                  if status == "OK" and data and data[0]:
+                      found = data[0].split()
+                      if found:
+                          break
+                  time.sleep(3)
+
+              print("IMAP_MATCH_COUNT:", len(found))
+              if not found:
+                  raise SystemExit("IMAP_MESSAGE_NOT_FOUND")
+
+              msg_id = found[-1]
+              status, data = box.fetch(msg_id, "(BODY.PEEK[HEADER.FIELDS (SUBJECT FROM TO DATE MESSAGE-ID)])")
+              if status != "OK":
+                  raise SystemExit("IMAP_HEADER_FETCH_FAILED")
+
+              raw = b""
+              for item in data:
+                  if isinstance(item, tuple):
+                      raw += item[1]
+              msg = email.message_from_bytes(raw)
+
+              def decode_header_value(value):
+                  parts = []
+                  for chunk, enc in email.header.decode_header(value or ""):
+                      if isinstance(chunk, bytes):
+                          parts.append(chunk.decode(enc or "utf-8", errors="replace"))
+                      else:
+                          parts.append(chunk)
+                  return "".join(parts)
+
+              print("IMAP_SUBJECT:", decode_header_value(msg.get("Subject")))
+              print("IMAP_FROM:", decode_header_value(msg.get("From")))
+              print("IMAP_TO:", decode_header_value(msg.get("To")))
+              print("IMAP_DATE:", msg.get("Date",""))
+          finally:
+              try:
+                  box.logout()
+              except Exception:
+                  pass
+
+          if record.get("delivery") != "email":
+              raise SystemExit("RECORD_DELIVERY_IS_NOT_EMAIL")
+          print("VERIFIED: quote accepted, stored with delivery=email, and matching message is present in INBOX.")
+          PY
