@@ -108,7 +108,7 @@ export function setPartQuantity(
   quantity: number,
   now = new Date(),
 ): InstantQuoteProject {
-  const safeQuantity = Math.max(1, Math.floor(quantity || 1));
+  const safeQuantity = Math.min(100_000, Math.max(1, Math.floor(Number.isFinite(quantity) ? quantity : 1)));
   const iso = now.toISOString();
   return {
     ...project,
