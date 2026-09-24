@@ -25,8 +25,8 @@ a { color: inherit; text-decoration: none; }
 .legal-document code { border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.2); padding: .12rem .3rem; color: rgba(255,255,255,.84); font-size: .86em; }
 .legal-document th, .legal-document td { line-height: 1.45; }
 .legal-document__date { color: rgba(255,255,255,.46); font-size: .75rem; }
-.header-nav { min-width: 0; flex: 1 1 auto; justify-content: center; }
-.header-nav-link { position: relative; display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: 5px; padding: 0 clamp(7px, .72vw, 13px); border: 0; background: transparent; color: rgba(255,255,255,.72); font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: .005em; line-height: 1; text-align: center; text-transform: uppercase; white-space: nowrap; transition: color .22s ease, background-color .22s ease; }
+.header-nav { min-width: 0; flex: 1 1 auto; justify-content: center; gap: clamp(2px, .22vw, 4px); }
+.header-nav-link { position: relative; display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: 5px; padding: 0 clamp(10px, .92vw, 17px); border: 0; background: transparent; color: rgba(255,255,255,.72); font-family: inherit; font-size: 11.75px; font-weight: 600; letter-spacing: .012em; line-height: 1; text-align: center; text-transform: uppercase; white-space: nowrap; transition: color .22s ease, background-color .22s ease; }
 .header-nav-link:not(:last-child)::before { content: ""; position: absolute; right: 0; top: 30px; height: 16px; width: 1px; background: rgba(255,255,255,.06); }
 .header-nav-link::after { content: ""; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: var(--orange); box-shadow: 0 0 12px rgba(234,91,12,.65); transform: translateX(-50%); transition: width .22s ease; }
 .header-nav-link:hover, .header-nav-link-active { color: #fff; background: rgba(255,255,255,.025); }
@@ -38,6 +38,8 @@ a { color: inherit; text-decoration: none; }
 .header-mobile-nav > a:last-child { border-bottom: 0; padding: .8rem 1rem; }
 @media (min-width: 1280px) and (max-width: 1399px) {
   .header-brand img { max-width: 150px; }
+  .header-nav { gap: 1px; }
+  .header-nav-link { padding-left: 8px; padding-right: 8px; font-size: 11.5px; }
   .header-actions .clip-corner { padding-left: 12px; padding-right: 12px; font-size: 9px; }
 }
 .hero-surface { background: linear-gradient(90deg, #101112 0%, rgba(16,17,18,.84) 38%, rgba(16,17,18,.18) 100%), radial-gradient(ellipse at 82% 55%, rgba(234,91,12,.23), transparent 22%), linear-gradient(138deg, #1c242b 0%, #101112 43%, #29353d 100%); background-position: center; background-repeat: no-repeat; background-size: cover; }
