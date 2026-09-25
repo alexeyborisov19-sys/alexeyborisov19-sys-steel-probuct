@@ -84,6 +84,15 @@ const nextConfig: NextConfig = {
         destination: "https://www.steelprodukt.ru/:path*",
         permanent: true,
       },
+      {
+        // Beget's technical preview hostname must never compete with the public
+        // domain in search results. Preserve the path and permanently redirect
+        // every request to the canonical production host.
+        source: "/:path*",
+        has: [{ type: "host", value: "saquapequoke.beget.app" }],
+        destination: "https://www.steelprodukt.ru/:path*",
+        permanent: true,
+      },
     ];
   },
   async headers() {
