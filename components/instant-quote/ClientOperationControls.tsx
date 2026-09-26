@@ -2,6 +2,7 @@
 
 import type { ClientCountersinkFeature } from "@/lib/instant-quote/client-cad-preview-types";
 import type { ManufacturingOperation, OperationInputs } from "@/lib/instant-quote/domain";
+import { operationTableDefaultInputPatch } from "@/lib/instant-quote/operation-table-defaults";
 
 const OPERATION_OPTIONS: ReadonlyArray<{ id: ManufacturingOperation; label: string }> = [
   { id: "bending", label: "Гибка" },
@@ -34,7 +35,13 @@ const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
   note?: string;
 }>> = {
   bending: { field: "bendCount", label: "Гибов на деталь", step: 1, max: 500 },
-  countersink: { field: "countersinkCount", label: "Зенковок на деталь", step: 1, max: 100_000, note: "Каждая обработанная сторона отверстия считается отдельно. Проверьте диаметр, угол и глубину по чертежу." },
+  countersink: {
+    field: "countersinkCount",
+    label: "Зенковок на деталь",
+    step: 1,
+    max: 100_000,
+    note: "Если STEP не дал количество, подставляется табличное значение 4 зенковки на деталь. Исправьте его по модели или чертежу. Каждая обработанная сторона отверстия считается отдельно.",
+  },
   welding: {
     field: "weldLengthM",
     label: "Длина шва, м",
@@ -47,7 +54,7 @@ const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
     label: "Сборка, мин на деталь",
     step: 1,
     max: 10_000,
-    note: "Ваша оценка. Норму сборки определит технолог при проверке.",
+    note: "Ваша оценка: по умолчанию подставляется табличная норма 10 минут на деталь. Значение можно изменить. Норму сборки определит технолог при проверке.",
   },
 };
 
@@ -99,7 +106,17 @@ export function ClientOperationControls({
               <button
                 type="button"
                 aria-pressed={enabled}
-                onClick={() => onToggle(option.id)}
+                onClick={() => {
+                  if (!enabled) {
+                    const patch = operationTableDefaultInputPatch(
+                      option.id,
+                      operationInputs,
+                      detectedCountersinkCount,
+                    );
+                    if (Object.keys(patch).length > 0) onQuantityChange(patch);
+                  }
+                  onToggle(option.id);
+                }}
                 className={`flex w-full items-center justify-between border px-4 py-3 text-left text-sm ${enabled ? "border-steel-orange/45 bg-steel-orange/[.06]" : "border-white/10"}`}
               >
                 <span>{option.label}</span>
