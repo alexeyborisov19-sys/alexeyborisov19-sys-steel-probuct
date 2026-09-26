@@ -13,6 +13,9 @@ export const MANUAL_SHEET_WARNING = 'Расчёт по вручную задан
 export function manualHoleGroups(input: ManualSheetInput): ManualHoleGroup[] {
   return 'holeGroups' in input ? input.holeGroups : input.holes ? [{count:input.holeCount,diameterMm:input.holeDiameterMm}] : [];
 }
+export function manualHoleCount(input: ManualSheetInput): number {
+  return manualHoleGroups(input).reduce((total, group) => total + group.count, 0);
+}
 export function validateManualSheet(value: unknown): ManualSheetInput {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CadReadError('Некорректные параметры ручной заготовки.');
   const v = value as Record<string, unknown>;
@@ -40,7 +43,7 @@ export function validateManualSheet(value: unknown): ManualSheetInput {
 }
 export function manualSheetGeometry(input: ManualSheetInput): PartGeometrySummary {
   const groups=manualHoleGroups(input),area=input.lengthMm*input.widthMm;
-  const count=groups.reduce((n,g)=>n+g.count,0);
+  const count=manualHoleCount(input);
   const removedArea=groups.reduce((n,g)=>n+g.count*Math.PI*(g.diameterMm/2)**2,0);
   const holeLength=groups.reduce((n,g)=>n+g.count*Math.PI*g.diameterMm,0);
   return {widthMm:input.lengthMm,heightMm:input.widthMm,blankAreaMm2:area,areaMm2:area-removedArea,cutLengthMm:2*(input.lengthMm+input.widthMm)+holeLength,contourCount:1+count,pierceCount:1+count,holeCount:count};

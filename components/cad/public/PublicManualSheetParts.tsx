@@ -1,6 +1,7 @@
 "use client";
 import {useLayoutEffect,useRef,useState} from 'react';
-import {createManualSheetDxf, manualHoleGroups, type ManualSheetInput, MANUAL_SHEET_WARNING, MANUAL_HOLE_NOTE} from '@/lib/instant-quote/manual-sheet';
+import {createManualSheetDxf, manualHoleCount, manualHoleGroups, type ManualSheetInput, MANUAL_SHEET_WARNING, MANUAL_HOLE_NOTE} from '@/lib/instant-quote/manual-sheet';
+import {reconcileManualOperationInputs} from '@/lib/instant-quote/operation-table-defaults';
 const MAX_PROJECT_PARTS=5;
 import type {PartConfiguration} from '@/lib/instant-quote/domain';
 const field='min-h-11 w-full rounded-md border border-white/20 bg-[#0e1720] px-2 py-1.5 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 disabled:opacity-30 disabled:cursor-not-allowed';
@@ -27,13 +28,21 @@ export function PublicManualSheetParts({count,onAdd,initial}:{count:number;onAdd
      const t=Number(row.thickness),q=Number(row.quantity);
      if(!Number.isFinite(t)||t<=0||t>100)throw new Error('Толщина металла — больше нуля и не более 100 мм.');
      if(!Number.isSafeInteger(q)||q<1||q>100000)throw new Error('Количество изделий — целое число от 1 до 100000.');
-     const content=createManualSheetDxf({lengthMm:Number(row.length),widthMm:Number(row.width),holes:row.holes,holeGroups:row.holes?row.holeGroups.map(h=>({count:Number(h.count),diameterMm:Number(h.diameter)})):[]});
-     return{file:new File([content],`${row.name.trim()} — по габаритам.dxf`,{type:'application/dxf'}),configuration:{materialId:row.material,thicknessMm:t,quantity:q,operations:initial?.configuration.operations??['laser-cutting'],operationInputs:initial?.configuration.operationInputs??{}} as PartConfiguration};
+     const input:ManualSheetInput={lengthMm:Number(row.length),widthMm:Number(row.width),holes:row.holes,holeGroups:row.holes?row.holeGroups.map(h=>({count:Number(h.count),diameterMm:Number(h.diameter)})):[]};
+     const content=createManualSheetDxf(input);
+     const operations=initial?.configuration.operations??['laser-cutting'];
+     const operationInputs=reconcileManualOperationInputs(
+      operations,
+      initial?.configuration.operationInputs??{},
+      initial?manualHoleCount(initial.input):null,
+      manualHoleCount(input),
+     );
+     return{file:new File([content],`${row.name.trim()} — по габаритам.dxf`,{type:'application/dxf'}),configuration:{materialId:row.material,thicknessMm:t,quantity:q,operations,operationInputs} as PartConfiguration};
     }catch(e){throw new Error(`Изделие ${index+1}: ${e instanceof Error?e.message:'проверьте параметры.'}`);}
    });
    setBusy(true);
    await onAdd(prepared.map(p=>p.file),prepared.map(p=>p.configuration));
-   setMessage(`Добавлено в общую спецификацию: ${prepared.length}. Выберите обработку и нажмите «Рассчитать проект».`);
+   setMessage(`Добавлено в общую спецификацию: ${prepared.length}. Количество заданных отверстий будет использовано для зенковки. Выберите обработку и нажмите «Рассчитать проект».`);
    setRows([blankRow(sequence.current++)]);
   }catch(e){setError(true);setMessage(e instanceof Error?e.message:'Не удалось добавить изделия.');}
   finally{setBusy(false);}
@@ -70,7 +79,7 @@ export function PublicManualSheetParts({count,onAdd,initial}:{count:number;onAdd
    </fieldset>)}
    <div className="flex flex-wrap items-center gap-2 pt-1"><button type="button" className={button} disabled={count+rows.length>=MAX_PROJECT_PARTS} onClick={()=>append()}>+ Изделие</button><button type="button" disabled={count+rows.length>MAX_PROJECT_PARTS} onClick={()=>void add()} className="min-h-9 rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-black disabled:opacity-40">{busy?'Сохраняем…':initial?'Сохранить размеры':'Добавить изделия в расчёт'}</button></div>
   </fieldset>
-  <p className="text-xs leading-5 text-slate-400">Отверстия задаются условным диаметром и количеством на одну деталь — для оценки длины реза и массы, без задания формы и расположения.</p>
+  <p className="text-xs leading-5 text-slate-400">Отверстия задаются условным диаметром и количеством на одну деталь — для оценки длины реза и массы. При выборе зенковки это количество переносится в расчёт и остаётся редактируемым.</p>
   <details className="text-xs leading-5 text-slate-400"><summary className="cursor-pointer">Как считается заготовка</summary><div className="mt-2 space-y-2"><p>{MANUAL_SHEET_WARNING}</p><p>{MANUAL_HOLE_NOTE}</p><p>Площадь отверстий вычитается из массы детали; длина реза и число врезок добавляются. Металл оплачивается по полному прямоугольнику.</p></div></details>
   {message&&<p role={error?'alert':'status'} className={`rounded-lg border p-3 text-sm ${error?'border-red-400/40 text-red-200':'border-orange-400/30 text-orange-100'}`}>{message}</p>}
  </section>;
