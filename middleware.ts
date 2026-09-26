@@ -36,6 +36,17 @@ const legacyRedirects = new Map([
 ]);
 
 export function middleware(request: NextRequest) {
+  const requestHost = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
+    .split(":")[0]
+    .toLowerCase();
+
+  // Never serve an indexable duplicate from Beget's technical preview host.
+  // Redirect before all route-specific handling and preserve path/query.
+  if (requestHost === "saquapequoke.beget.app") {
+    const canonicalUrl = new URL(request.nextUrl.pathname + request.nextUrl.search, "https://www.steelprodukt.ru");
+    return NextResponse.redirect(canonicalUrl, 301);
+  }
+
   if (
     request.nextUrl.pathname === "/internal/personal-data"
     || request.nextUrl.pathname.startsWith("/internal/personal-data/")
@@ -118,7 +129,10 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Run for all application routes so host-level canonicalization also covers
+  // valid public pages. Static Next assets are excluded to avoid needless work.
   matcher: [
+    "/((?!_next/static|_next/image|favicon.ico).*)",
     "/address",
     "/control",
     "/forma-v-bloke",
