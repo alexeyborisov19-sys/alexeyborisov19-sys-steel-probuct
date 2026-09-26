@@ -30,6 +30,7 @@ const rateBook: FactualRateBook = {
   }],
   bendRubEach: rate(10),
   weldRubPerM: rate(1000),
+  countersinkRubEach: rate(35),
   powderRubPerM2: rate(200),
   assemblyRubPerHour: rate(1500),
   surfacePreparationRubPerM2: rate(120),
@@ -56,11 +57,12 @@ const geometry = {
   contourCount: 4,
 };
 
-/** The six operations the public configurator offers, plus the base route. */
+/** Every operation offered by the public configurator, plus the base route. */
 const PUBLIC_OPERATIONS: ManufacturingOperation[] = [
   "laser-cutting",
   "bending",
   "welding",
+  "countersink",
   "assembly",
   "surface-preparation",
   "powder-coating",
@@ -89,10 +91,11 @@ function project(operations: ManufacturingOperation[]): InstantQuoteProject {
 }
 
 function priceWith(operations: ManufacturingOperation[]) {
-  // Side counts flow through the resolver exactly as the public handler sends them.
+  // Side counts and editable operation quantities flow through the resolver in
+  // exactly the same shape as the public handler sends them.
   const resolved = resolveEffectiveFactualInputs(
     project(operations),
-    { "part-1": { bendCount: 2, weldLengthM: 1.5, assemblyMinutes: 30 } },
+    { "part-1": { bendCount: 2, weldLengthM: 1.5, countersinkCount: 4, assemblyMinutes: 30 } },
     { "part-1": 2 },
     {},
     { "part-1": 2 },
@@ -125,6 +128,7 @@ test("every operation the configurator offers can actually be priced", () => {
     "laser-piercing",
     "bending",
     "welding",
+    "countersink",
     "assembly",
     "surface-preparation",
     "powder-coating",
@@ -182,4 +186,13 @@ test("quantities only a technologist knows are labelled as the customer's own es
 
   // The bend count is different: it is read off the model, not estimated.
   assert.match(controls, /Определено по 3D-модели/);
+});
+
+test("manual entry carries its hole count into the countersink input", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const manualEditor = await readFile(new URL("../components/cad/public/PublicManualSheetParts.tsx", import.meta.url), "utf8");
+
+  assert.match(manualEditor, /manualHoleCount/);
+  assert.match(manualEditor, /reconcileManualOperationInputs/);
+  assert.match(manualEditor, /количество переносится в расчёт/);
 });
