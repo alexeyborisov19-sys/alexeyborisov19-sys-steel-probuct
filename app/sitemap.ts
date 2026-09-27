@@ -39,7 +39,7 @@ const staticModifiedAt: Record<string, Date> = {
   "/projects": discoveryHubsModifiedAt,
   "/projects/solovinaya-roshcha": new Date("2026-09-12T00:00:00.000Z"),
   "/products": discoveryHubsModifiedAt,
-  "/articles": new Date("2026-09-12T00:00:00.000Z"),
+  "/articles": new Date("2026-09-27T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
   "/articles/ploshchad-fasada-raskhod-metalla-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/uzly-fasada-metallokassety": new Date("2026-09-12T00:00:00.000Z"),

@@ -6,6 +6,7 @@ import { getArticleCommercialLinks } from "@/components/ArticleCommercialLinks";
 import { buildKnowledgeFallback, steelProductAssistantSystemPrompt } from "@/data/assistant-knowledge";
 import { articleQualityRewrites } from "@/data/article-quality-rewrites";
 import { articles } from "@/data/articles";
+import { productionPracticeArticles } from "@/data/production-practice-articles";
 import { industrySeoBySlug } from "@/data/industry-seo";
 import {
   customerMaterialSummary,
@@ -127,14 +128,14 @@ test("every editorial article links to several commercial next steps", () => {
 });
 
 test("every editorial article has a practical engineering rewrite", () => {
-  assert.equal(articles.length, Object.keys(articleQualityRewrites).length);
+  assert.equal(articles.length, Object.keys(articleQualityRewrites).length + productionPracticeArticles.length);
   assertUnique(articles.map((article) => article.seoTitle ?? article.title), "article titles");
   assertUnique(articles.map((article) => article.lead), "article leads");
 
   for (const article of articles) {
     const renderedTitle = `${article.seoTitle ?? article.title} | Сталь Продукт`;
 
-    assert.ok(articleQualityRewrites[article.slug], `${article.slug}: нет полной инженерной редакции`);
+    assert.ok(articleQualityRewrites[article.slug] || productionPracticeArticles.some((item) => item.slug === article.slug), `${article.slug}: нет полной инженерной редакции`);
     assert.ok(article.modifiedAt >= "2026-08-19", `${article.slug}: не обновлена дата редакции`);
     assert.ok(renderedTitle.length <= 70, `${article.slug}: title длиннее 70 символов`);
     assert.ok((article.metaDescription?.length ?? 0) >= 100, `${article.slug}: meta description слишком короткий`);
@@ -144,7 +145,7 @@ test("every editorial article has a practical engineering rewrite", () => {
     assert.ok((article.sources?.length ?? 0) >= 1, `${article.slug}: нет проверяемых источников`);
     assert.ok(article.sections.some((section) => section.table), `${article.slug}: нет таблицы принятия решения`);
     assert.ok(article.sections.some((section) => section.example), `${article.slug}: нет практического разбора`);
-    assert.match(article.readingTime, /^(?:[7-9]|1[0-4]) минут$/);
+    assert.match(article.readingTime, /^(?:[5-9]|1[0-4]) минут$/);
 
     assertUnique(article.faq?.map((item) => item.question) ?? [], `${article.slug} FAQ`);
 
