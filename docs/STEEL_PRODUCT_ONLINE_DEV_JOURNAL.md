@@ -1,3 +1,10 @@
+## Live checkpoint — whole-site audit, 27 September 2026
+
+Base 9eb7dc2, previous release deployment verified. Live public CAD suite passed again; owner-specific launch failure not reproduced yet, clarification requested. Rendered all 89 sitemap URLs: 200, distinct titles/descriptions, self-canonicals, one H1. Reproduced homepage hydration error only with prefers-reduced-motion: reduce.
+DONE: reduced-motion mismatch confirmed in dev stack and fixed using identical markup/CSS media classes. Production browser regression passes both preferences and CAD navigation. 89-page SEO audit, 101 targets, 18 redirects/7 gone URLs, live CAD scenarios and cassette base calculation checked. Cassette AI/market review reports unavailable. Build/type/lint and 1437 tests passed. Report: docs/verification/site-audit-20260927.md.
+IN PROGRESS: exact-SHA CI and owner-authorized publication of hydration fix.
+NEXT ACTION: verify exact fix and report audit boundaries; do not change legal text or production facts.
+
 ## Live checkpoint — public audit, 27 September 2026
 
 Base 675faca, deployment verified successful for the same SHA. Reviewed intervening operation-default and SEO commits. Live manual/STEP six-calculation browser suite passed, 768 private-basis service combinations passed. Reproduced live: uploading CAD while editing manual dimensions leaves the editor targeting the newly selected CAD.
