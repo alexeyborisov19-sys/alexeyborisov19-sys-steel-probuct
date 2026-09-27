@@ -1,3 +1,10 @@
+## Live checkpoint — approved UX improvements, 27 September 2026
+
+Base b4829bb; #180 and deployment 36343428755 green. Owner authorizes audit improvements and publication, explicitly preserving the full Hero sentence and Solutions for objects. Do not edit industry pages/data or the homepage object section.
+IN PROGRESS: unambiguous calculation entry points, readable calculator controls, inline cookie notice on calculation pages without consent changes, removal of unavailable cassette review UI, concise repeated copy and accurate sitemap dates.
+DONE: build/type/lint and 1437 tests passed; browser cassette 16 combinations plus validation/network/20s timeout/retry, both cookie flows, full manual/STEP CAD suite and responsive widths passed. SEO 89 URLs and redirects green. Protected Hero and object section compared byte-for-byte. Evidence: docs/verification/site-ux-improvements-20260927.md.
+NEXT ACTION: exact-SHA CI, publish and verify the live version.
+
 ## Live checkpoint — whole-site audit, 27 September 2026
 
 Base 9eb7dc2, previous release deployment verified. Live public CAD suite passed again; owner-specific launch failure not reproduced yet, clarification requested. Rendered all 89 sitemap URLs: 200, distinct titles/descriptions, self-canonicals, one H1. Reproduced homepage hydration error only with prefers-reduced-motion: reduce.

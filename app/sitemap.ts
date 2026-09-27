@@ -29,11 +29,11 @@ const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
 const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/": new Date("2026-09-18T00:00:00.000Z"),
+  "/": new Date("2026-09-27T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
   "/company/facts": new Date("2026-09-18T00:00:00.000Z"),
-  "/contacts": new Date("2026-08-25T17:32:36.000Z"),
-  "/production": new Date("2026-08-25T21:24:08.000Z"),
+  "/contacts": new Date("2026-09-27T00:00:00.000Z"),
+  "/production": new Date("2026-09-27T00:00:00.000Z"),
   "/solutions": discoveryHubsModifiedAt,
   "/industries": discoveryHubsModifiedAt,
   "/projects": discoveryHubsModifiedAt,
@@ -44,8 +44,8 @@ const staticModifiedAt: Record<string, Date> = {
   "/articles/ploshchad-fasada-raskhod-metalla-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/uzly-fasada-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/articles/metall-dlya-goroda-proekty-stal-produkt": new Date("2026-09-12T00:00:00.000Z"),
-  "/calculator-metallokassety": new Date("2026-09-12T00:00:00.000Z"),
-  "/online-order": new Date("2026-09-15T00:00:00.000Z"),
+  "/calculator-metallokassety": new Date("2026-09-27T00:00:00.000Z"),
+  "/online-order": new Date("2026-09-27T00:00:00.000Z"),
   "/products/metallokassety": new Date("2026-09-12T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
   "/products/korziny-dlya-konditsionerov": new Date("2026-09-18T00:00:00.000Z"),

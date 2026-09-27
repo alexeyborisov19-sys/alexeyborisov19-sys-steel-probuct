@@ -10,7 +10,7 @@ const STEPS = [
   },
   {
     title: "Автоматический анализ",
-    text: "Система определит габариты, площадь, длину реза, количество врезок, толщину и гибы.",
+    text: "Считываем доступную геометрию из файла. Проверьте материал, толщину и операции перед расчётом.",
   },
   {
     title: "Получите стоимость",
@@ -43,17 +43,17 @@ export function CadCalculatorShowcase() {
               Онлайн-расчёт по CAD-файлу
             </p>
             <h2 id="cad-calculator-title" className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">
-              Загрузите модель — система сама определит геометрию
+              Рассчитайте деталь по CAD или размерам
             </h2>
-            <p className="mt-3 text-[13px] leading-relaxed text-white/55">
-              Система считывает параметры детали напрямую из чертежа и формирует предварительный расчёт стоимости.
+            <p className="mt-3 text-base leading-relaxed text-white/75">
+              Загрузите DXF или STEP либо введите размеры вручную. До пяти изделий в одном расчёте. Неоднозначную геометрию проверит инженер.
             </p>
           </div>
           <Link
             href="/online-order"
             className="clip-corner inline-block whitespace-nowrap bg-steel-orange-deep px-6 py-4 text-[13px] font-bold uppercase transition hover:bg-steel-orange-deeper"
           >
-            Открыть онлайн-расчёт&nbsp; →
+            Рассчитать онлайн&nbsp; →
           </Link>
         </div>
 
@@ -77,17 +77,17 @@ export function CadCalculatorShowcase() {
                 {String(index + 1).padStart(2, "0")}
               </span>
               <h3 className="mt-4 text-sm font-semibold uppercase leading-snug">{step.title}</h3>
-              <p className="mt-3 text-[13px] leading-relaxed text-white/55">{step.text}</p>
+              <p className="mt-3 text-base leading-relaxed text-white/75">{step.text}</p>
             </motion.li>
           ))}
         </ol>
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[.12em] text-white/35">
+        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[.12em] text-white/70">
           <span>Форматы</span>
           {FORMATS.map((format) => (
-            <span key={format} className="border border-white/12 px-2.5 py-1 text-white/55">{format}</span>
+            <span key={format} className="border border-white/12 px-2.5 py-1 text-white/75">{format}</span>
           ))}
-          <span className="text-white/30">DWG — после проверки инженером</span>
+          <span className="text-white/70">DWG — после проверки инженером</span>
         </div>
       </div>
     </section>

@@ -98,7 +98,7 @@ export function ClientOperationControls({
 }: ClientOperationControlsProps) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-[.13em] text-white/35">Операции</p>
+      <p className="text-xs font-bold uppercase tracking-[.13em] text-white/70">Операции</p>
       <div className="mt-2 grid gap-2">
         {OPERATION_OPTIONS.map((option) => {
           const enabled = operations.includes(option.id);
@@ -132,7 +132,7 @@ export function ClientOperationControls({
 
               {enabled && quantity && (
                 <label className="mt-1 flex items-center gap-3 border border-white/10 bg-[#090c0e] px-4 py-2">
-                  <span className="grow text-[10px] uppercase tracking-[.1em] text-white/40">{quantity.label}</span>
+                  <span className="grow text-xs uppercase tracking-[.1em] text-white/70">{quantity.label}</span>
                   <input
                     type="number"
                     min={option.id === "countersink" ? detectedCountersinkCount ?? 0 : 0}
@@ -171,11 +171,11 @@ export function ClientOperationControls({
                 </button>
               )}
               {enabled && quantity?.note && (
-                <p className="mt-1 px-4 text-[10px] leading-relaxed text-white/40">{quantity.note}</p>
+                <p className="mt-1 px-4 text-xs leading-relaxed text-white/70">{quantity.note}</p>
               )}
 
               {enabled && option.id === "bending" && detectedBendCount != null && detectedBendCount > 0 && (
-                <p className="mt-1 px-4 text-[10px] leading-relaxed text-steel-orange">
+                <p className="mt-1 px-4 text-xs leading-relaxed text-steel-orange">
                   Определено по 3D-модели: {detectedBendCount}. Изменение значения требует проверки инженером.
                 </p>
               )}
@@ -203,7 +203,7 @@ export function ClientOperationControls({
               {enabled && sides && (
                 <>
                   <div className="mt-1 flex items-center gap-3 border border-white/10 bg-[#090c0e] px-4 py-2">
-                    <span className="grow text-[10px] uppercase tracking-[.1em] text-white/40">{sides.label}</span>
+                    <span className="grow text-xs uppercase tracking-[.1em] text-white/70">{sides.label}</span>
                     <div className="flex gap-1">
                       {([1, 2] as const).map((count) => (
                         <button
@@ -225,7 +225,7 @@ export function ClientOperationControls({
                   >
                     Не знаю — уточнит инженер
                   </button>
-                  <p className="mt-1 px-4 text-[10px] leading-relaxed text-white/40">{sides.note}</p>
+                  <p className="mt-1 px-4 text-xs leading-relaxed text-white/70">{sides.note}</p>
                 </>
               )}
             </div>

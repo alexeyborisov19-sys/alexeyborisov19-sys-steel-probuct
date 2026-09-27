@@ -157,7 +157,7 @@ export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void
             href="/contacts#contact-form"
             className="clip-corner whitespace-nowrap bg-steel-orange-deep px-8 py-4 text-sm font-bold"
           >
-            Получить расчёт&nbsp; →
+            Отправить чертёж инженеру&nbsp; →
           </Link>
         </div>
       </section>

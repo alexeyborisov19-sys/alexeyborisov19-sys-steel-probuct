@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { legalLinks } from "@/lib/legal";
 
@@ -70,10 +72,22 @@ export function CookieSettingsButton({ className = "" }: { className?: string })
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
   const bannerRef = useRef<HTMLElement>(null);
+  const pathname = usePathname();
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById("calculator-cookie-slot"));
+  }, [pathname]);
 
   useEffect(() => {
     setVisible(readChoice() === null);
-    const openSettings = () => setVisible(true);
+    const openSettings = () => {
+      setVisible(true);
+      window.requestAnimationFrame(() => {
+        bannerRef.current?.scrollIntoView({ block: "center" });
+        bannerRef.current?.focus({ preventScroll: true });
+      });
+    };
     window.addEventListener(settingsEvent, openSettings);
     return () => window.removeEventListener(settingsEvent, openSettings);
   }, []);
@@ -87,7 +101,7 @@ export function CookieConsent() {
     const root = document.documentElement;
     const clear = () => root.style.removeProperty("--cookie-consent-space");
 
-    if (!visible) {
+    if (!visible || portalTarget) {
       clear();
       return;
     }
@@ -108,7 +122,7 @@ export function CookieConsent() {
       window.removeEventListener("resize", publish);
       clear();
     };
-  }, [visible]);
+  }, [visible, portalTarget]);
 
   function choose(analytics: boolean) {
     const analyticsWasAllowed = hasAnalyticsConsent();
@@ -125,14 +139,17 @@ export function CookieConsent() {
 
   if (!visible) return null;
 
-  return <aside ref={bannerRef} className="cookie-consent-bar fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5" aria-label="Настройки cookies">
+  const banner = <aside ref={bannerRef} tabIndex={-1} className={portalTarget
+    ? "cookie-consent-bar my-5 rounded-xl border border-white/20 bg-[#202831] p-4 sm:p-5"
+    : "cookie-consent-bar fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5"} aria-label="Настройки cookies">
     <p className="text-sm font-semibold text-white">Настройки cookies</p>
-    <p className="mt-2 text-xs leading-relaxed text-white/60">Сайт использует необходимые cookies для работы форм и настроек. До вашего выбора аналитика выключена. Яндекс Метрика и Вебвизор включаются только после отдельного разрешения. Вы можете продолжить без аналитики и в любой момент изменить выбор в подвале сайта. Подробнее — в <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.cookies}>политике cookies</Link> и <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
+    <p className="mt-2 text-sm leading-relaxed text-white/80">Сайт использует необходимые cookies для работы форм и настроек. До вашего выбора аналитика выключена. Яндекс Метрика и Вебвизор включаются только после отдельного разрешения. Вы можете продолжить без аналитики и в любой момент изменить выбор в подвале сайта. Подробнее — в <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.cookies}>политике cookies</Link> и <Link prefetch={false} className="text-steel-orange underline-offset-2 hover:underline" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={() => choose(false)} className="border border-white/25 px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white/80 transition hover:border-steel-orange hover:text-steel-orange">Продолжить без аналитики</button>
       <button type="button" onClick={() => choose(true)} className="clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper">Разрешить аналитику</button>
     </div>
   </aside>;
+  return portalTarget ? createPortal(banner, portalTarget) : banner;
 }
 
 export { consentEvent, consentKey, hasAnalyticsConsent };
