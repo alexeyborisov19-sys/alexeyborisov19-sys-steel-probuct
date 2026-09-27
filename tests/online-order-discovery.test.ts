@@ -63,8 +63,10 @@ test("the calculator page links onward into production instead of being a cul-de
 test("the showcase animates without overriding a reduced-motion preference", async () => {
   const showcase = await source("components/CadCalculatorShowcase.tsx");
 
-  assert.match(showcase, /useReducedMotion/);
-  assert.match(showcase, /reduceMotion \?/);
+  assert.match(showcase, /motion-reduce:!opacity-100/);
+  assert.match(showcase, /motion-reduce:!transform-none/);
+  assert.match(showcase, /motion-reduce:hidden/);
+  assert.doesNotMatch(showcase, /useReducedMotion|!reduceMotion &&/);
   // Decorative motion must be hidden from assistive technology.
   assert.match(showcase, /aria-hidden="true"/);
   assert.match(showcase, /aria-labelledby="cad-calculator-title"/);

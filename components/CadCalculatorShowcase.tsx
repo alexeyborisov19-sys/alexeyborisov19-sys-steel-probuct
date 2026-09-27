@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 
 const STEPS = [
@@ -26,11 +26,10 @@ const FORMATS = ["DXF", "STEP", "STP"] as const;
  * is meant to be noticed on the way past, not to interrupt.
  */
 export function CadCalculatorShowcase() {
-  const reduceMotion = useReducedMotion();
-
+  // Keep server/client markup identical; CSS applies reduced motion before hydration.
   const appear = (index: number) => ({
-    initial: reduceMotion ? undefined : { opacity: 0, y: 14 },
-    whileInView: reduceMotion ? undefined : { opacity: 1, y: 0 },
+    initial: { opacity: 0, y: 14 },
+    whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, amount: 0.4 },
     transition: { duration: 0.45, delay: index * 0.09, ease: [0.22, 1, 0.36, 1] as const },
   });
@@ -63,19 +62,17 @@ export function CadCalculatorShowcase() {
             <motion.li
               key={step.title}
               {...appear(index)}
-              className="group relative overflow-hidden border border-white/10 bg-[#111519] p-5 transition-colors hover:border-steel-orange/45"
+              className="motion-reduce:!opacity-100 motion-reduce:!transform-none group relative overflow-hidden border border-white/10 bg-[#111519] p-5 transition-colors hover:border-steel-orange/45"
             >
               {/* A single quiet line that sweeps once, like a part passing the head. */}
-              {!reduceMotion && (
-                <motion.span
+              <motion.span
                   aria-hidden="true"
                   initial={{ x: "-100%" }}
                   whileInView={{ x: "100%" }}
                   viewport={{ once: true, amount: 0.4 }}
                   transition={{ duration: 1.1, delay: 0.25 + index * 0.09, ease: "easeInOut" }}
-                  className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-steel-orange/10 to-transparent"
-                />
-              )}
+                  className="motion-reduce:hidden pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-steel-orange/10 to-transparent"
+              />
               <span className="font-mono text-xs font-bold text-steel-orange">
                 {String(index + 1).padStart(2, "0")}
               </span>
