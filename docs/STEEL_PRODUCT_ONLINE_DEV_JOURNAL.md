@@ -1,3 +1,10 @@
+## Live checkpoint — public audit, 27 September 2026
+
+Base 675faca, deployment verified successful for the same SHA. Reviewed intervening operation-default and SEO commits. Live manual/STEP six-calculation browser suite passed, 768 private-basis service combinations passed. Reproduced live: uploading CAD while editing manual dimensions leaves the editor targeting the newly selected CAD.
+DONE: CAD upload/drop closes manual editor; reproduced against live old code and verified fixed in local production build. 1437 tests passed (TMPDIR=/private/tmp, concurrency 2 avoids macOS symlink and short worker timeout harness issues); build/type and lint passed. Live DXF/partial-service/partial-project/STEP/mobile checks passed.
+IN PROGRESS: exact-SHA CI and release. Owner-authorized fixes/publication continue; no CRM test messages or leads.
+NEXT ACTION: verify fix locally, current-SHA CI and live deployment.
+
 ## Live checkpoint — public manual calculator verification
 
 DONE: manual dimensions, 5 positions / 5 hole groups, edit-in-place, private averaged laser tiers. 1399 tests including 2304 synthetic variants passed; 768 isolated private-basis variants passed. Browser manual/legacy CAD checks and build/lint passed. Fixed fast-entry focus regression discovered by browser.

@@ -66,7 +66,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
 
         <div className={hasParts ? "grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]" : manualEditor ? "hidden" : ""}>
           <div className="min-w-0">
-            <div className={`relative overflow-hidden rounded-xl border ${isDraggingFiles ? "border-steel-orange" : "border-white/15"}`} onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
+            <div className={`relative overflow-hidden rounded-xl border ${isDraggingFiles ? "border-steel-orange" : "border-white/15"}`} onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(event) => { setManualEditor(null); onDrop(event); }}>
               {hasParts && <div className="flex min-h-14 flex-wrap items-center justify-between gap-2 bg-[#172028] px-4 py-3">
                 <p className="min-w-0 flex-1 truncate text-sm font-medium">{activePart?.fileName}</p>
                 <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
       </section>
       {hasParts && <div className="mobile-quote-bar fixed inset-x-0 z-[80] flex items-center gap-3 border-t border-white/20 bg-[#141b21]/95 px-4 py-3 backdrop-blur-sm lg:hidden"><div className="min-w-0 grow"><p className="text-xs leading-4 text-white/70" title={CALCULATION_DISCLAIMER}>{priceSummary.unpricedParts > 0 ? `Рассчитанные позиции · без цены: ${priceSummary.unpricedParts}` : hasEstimate ? "Ориентировочно · проверит инженер" : CALCULATION_DISCLAIMER_SHORT}</p>{calculation?.parts.some(part => part.price.unpricedOperations?.length) && <p className="text-xs leading-4 text-amber-200">Не включено: {operationLabels([...new Set(calculation.parts.flatMap(part => part.price.unpricedOperations ?? []))]).join(", ")}</p>}<p className="truncate text-lg font-semibold text-steel-orange">{visibleTotalRub != null ? `${fmt(visibleTotalRub!)} ₽` : needsReview ? "Нужна проверка" : "—"}</p></div>{visibleTotalRub != null || needsReview ? <Link href={handoffHref} className={`${actionClass} shrink-0`}>{needsReview ? "Инженеру" : "Отправить"}</Link> : <button type="button" onClick={() => void calculateProject()} disabled={!canCalculate} className={`${actionClass} shrink-0`}>{calculateLabelShort}</button>}</div>}
       {calculation && <ClientQuotePrintout calculation={calculation} totalRub={displayedTotalRub} preparedAt={calculatedAt ?? new Date()} />}
-      <input ref={inputRef} type="file" accept={accepted} multiple onChange={onChange} className="hidden" aria-label="Загрузить CAD-файлы" />
+      <input ref={inputRef} type="file" accept={accepted} multiple onChange={(event) => { if (event.target.files?.length) setManualEditor(null); onChange(event); }} className="hidden" aria-label="Загрузить CAD-файлы" />
     </div>
   );
 }
