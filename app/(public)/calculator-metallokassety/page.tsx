@@ -89,6 +89,7 @@ export default function MetalCassetteCalculatorPage() {
         faqSchema(faqItems),
       ]} />
       <PageLayout
+        compactHero
         path={path}
         breadcrumbs={[
           { name: "Главная", path: "/" },
@@ -102,6 +103,7 @@ export default function MetalCassetteCalculatorPage() {
       >
         <section className="bg-[#0c1013] pb-16 pt-1 sm:pb-20">
           <div className="container">
+            <div id="calculator-cookie-slot" />
             <MetalCassetteCalculator />
 
             <div className="mt-14 grid gap-4 lg:grid-cols-3">

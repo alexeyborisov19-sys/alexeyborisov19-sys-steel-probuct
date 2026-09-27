@@ -21,7 +21,7 @@ try {
       assert.deepEqual(style, { opacity: '1', transform: 'none' });
       assert.equal(await section.locator('span[aria-hidden="true"]').first().evaluate(element => getComputedStyle(element).display), 'none');
     }
-    await section.getByRole('link', { name: /Открыть онлайн-расчёт/ }).click();
+    await section.getByRole('link', { name: /Рассчитать онлайн/ }).click();
     await page.getByRole('region', { name: 'CAD-калькулятор' }).waitFor();
     assert.deepEqual(errors, [], 'Navigation to calculator');
     console.log(`PASS ${reducedMotion}: no hydration error; CAD navigation works`);

@@ -54,7 +54,7 @@ test("homepage search copy leaves laser envelope details to the production landi
 test("the homepage benefits use the approved evidence-led wording", () => {
   const homepageText = collectPublicStrings(Home()).join(" ");
 
-  assert.match(homepageText, /Весь цикл — в одном производственном контуре/);
+  assert.match(homepageText, /Полный цикл изготовления/);
   assert.match(homepageText, /Инженерия до запуска в цех/);
   assert.match(homepageText, /Согласованный образец — основа серии/);
   assert.match(homepageText, /Срок рассчитываем по заказу/);

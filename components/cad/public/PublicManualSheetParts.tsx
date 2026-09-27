@@ -52,18 +52,18 @@ export function PublicManualSheetParts({count,onAdd,initial}:{count:number;onAdd
   setRows(current=>{const last=current[current.length-1];return [...current,copy?{...copy,id,holeGroups:copy.holeGroups.map(h=>({...h}))}:{...blankRow(id),material:last.material,thickness:last.thickness}];});
   setFocusId(id);
  }
- const numeric=(label:string,short:string,value:string,set:(value:string)=>void,disabled=false,integer=false)=><label className="block min-w-0 text-[11px] text-slate-400">{short}<input aria-label={label} className={`${field} mt-1`} type="number" min={integer?1:0} step={integer?1:'any'} value={value} onChange={e=>set(e.target.value)} disabled={disabled}/></label>;
+ const numeric=(label:string,short:string,value:string,set:(value:string)=>void,disabled=false,integer=false)=><label className="block min-w-0 text-xs text-slate-400">{short}<input aria-label={label} className={`${field} mt-1`} type="number" min={integer?1:0} step={integer?1:'any'} value={value} onChange={e=>set(e.target.value)} disabled={disabled}/></label>;
  return <section className="space-y-3" aria-label="Ручной ввод изделий">
   <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-xl font-semibold">Расчёт без чертежа</h2><p className="mt-1 text-xs leading-5 text-slate-400">Размеры плоской заготовки до гибки, мм. Расчёт по внешнему прямоугольнику, без учёта формы контура. До 5 изделий, до 5 типов отверстий на каждое. Обработку добавьте после ввода.</p></div><span className="text-xs text-slate-400">В проекте: {count} / {MAX_PROJECT_PARTS} · К добавлению: {rows.length}</span></div>
   <fieldset disabled={busy} className="space-y-2">
    {rows.map((row,index)=><fieldset key={row.id} aria-label={`Изделие ${index+1}`} className="rounded-lg border border-white/15 bg-[#131e28] px-3 py-2">
     <div className="grid items-end gap-2 grid-cols-2 sm:grid-cols-4 xl:grid-cols-[24px_minmax(160px,2fr)_minmax(80px,1fr)_minmax(80px,1fr)_minmax(75px,.8fr)_minmax(130px,1.3fr)_minmax(75px,.8fr)_auto]">
      <span className="hidden pb-2 text-xs text-slate-400 xl:block">{index+1}.</span>
-     <label className="col-span-2 block min-w-0 text-[11px] text-slate-400 xl:col-span-1">Название изделия<input id={`manual-name-${row.id}`} aria-label="Название изделия" className={`${field} mt-1`} maxLength={120} value={row.name} onChange={e=>change(row.id,{name:e.target.value})} placeholder="Пластина П-001"/></label>
+     <label className="col-span-2 block min-w-0 text-xs text-slate-400 xl:col-span-1">Название изделия<input id={`manual-name-${row.id}`} aria-label="Название изделия" className={`${field} mt-1`} maxLength={120} value={row.name} onChange={e=>change(row.id,{name:e.target.value})} placeholder="Пластина П-001"/></label>
      {numeric('Длина заготовки, мм','Длина, мм',row.length,value=>change(row.id,{length:value}))}
      {numeric('Ширина заготовки, мм','Ширина, мм',row.width,value=>change(row.id,{width:value}))}
      {numeric('Толщина металла, мм','Толщина, мм',row.thickness,value=>change(row.id,{thickness:value}))}
-     <label className="block min-w-0 text-[11px] text-slate-400">Материал<select aria-label="Материал заготовки" className={`${field} mt-1`} value={row.material} onChange={e=>change(row.id,{material:e.target.value})}><option value="cold">Сталь х/к</option><option value="hot">Сталь г/к</option><option value="zinc">Оцинкованная</option></select></label>
+     <label className="block min-w-0 text-xs text-slate-400">Материал<select aria-label="Материал заготовки" className={`${field} mt-1`} value={row.material} onChange={e=>change(row.id,{material:e.target.value})}><option value="cold">Сталь х/к</option><option value="hot">Сталь г/к</option><option value="zinc">Оцинкованная</option></select></label>
      {numeric('Количество изделий, шт.','Кол-во, шт.',row.quantity,value=>change(row.id,{quantity:value}),false,true)}
      <div className="flex gap-1"><button type="button" className={button} disabled={!!initial||count+rows.length>=MAX_PROJECT_PARTS} aria-label={`Копировать изделие ${index+1}`} title="Копировать изделие" onClick={()=>append(row)}>Копия</button><button type="button" disabled={rows.length===1} aria-label={`Удалить изделие ${index+1}`} title="Удалить изделие" className={button} onClick={()=>setRows(current=>current.filter(r=>r.id!==row.id))}>×</button></div>
     </div>

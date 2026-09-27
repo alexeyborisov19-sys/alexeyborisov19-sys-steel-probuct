@@ -40,24 +40,20 @@ const cycle = [
 ] as const;
 const benefits = [
   [
-    "Весь цикл — в одном производственном контуре",
-    "Инженерная подготовка, раскрой, гибка, сварка, сборка, очистка, окраска, контроль, комплектация и упаковка связаны в единый маршрут",
-  ],
-  [
     "Инженерия до запуска в цех",
-    "Проверяем КД и технологичность конструкции, уточняем критичные параметры и только после этого передаём изделие в производство",
+    "Проверяем чертежи, технологичность и критичные размеры до передачи заказа в цех",
   ],
   [
     "Согласованный образец — основа серии",
-    "Отрабатываем конструкцию на первом изделии, фиксируем согласованное исполнение и используем его как основу для последующих партий",
+    "Согласовываем первое изделие и фиксируем его исполнение для повторных партий",
   ],
   [
     "Срок рассчитываем по заказу",
-    "Учитываем КД, материал, объём партии и состав операций. Срок изготовления подтверждаем после инженерной проверки исходных данных",
+    "Подтверждаем срок после проверки чертежей, материала и объёма партии",
   ],
   [
     "Работаем с материалом заказчика",
-    "Принимаем давальческое сырьё, проводим входной контроль и подтверждаем пригодность материала до запуска в производство",
+    "Проводим входной контроль и подтверждаем пригодность металла до запуска заказа",
   ],
 ];
 const projects = [
@@ -131,7 +127,7 @@ export default function Home() {
                     <h3 className="mt-3 text-sm font-bold uppercase leading-tight">
                       {solution.shortTitle}
                     </h3>
-                    <p className="mt-3 text-[13px] leading-relaxed text-white/55">
+                    <p className="mt-3 text-base leading-relaxed text-white/75">
                       {solution.text}
                     </p>
                     <span className="mt-5 block text-xs font-bold uppercase text-steel-orange">
@@ -161,7 +157,7 @@ export default function Home() {
             <h2 className="text-center text-2xl font-semibold uppercase">
               Почему выбирают «Сталь Продукт»
             </h2>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {benefits.map(([title, text], index) => (
                 <article
                   key={title}
@@ -225,40 +221,10 @@ export default function Home() {
             </div>
           </div>
         </section>
-        <section className="bg-[#17191a] py-9">
-          <div className="container grid gap-7 lg:grid-cols-[1.35fr_repeat(6,1fr)] lg:items-center">
-            <div>
-              <h2 className="text-2xl font-semibold uppercase leading-tight">
-                Готовы обсудить
-                <br />
-                ваш проект?
-              </h2>
-              <p className="mt-3 text-[13px] text-white/55">
-                Передайте чертёж и параметры партии. Проверим технологичность,
-                уточним маршрут, срок и стоимость.
-              </p>
-              <Link
-                className="mt-5 inline-block bg-steel-orange-deep px-5 py-3 text-[13px] font-bold uppercase"
-                href="/contacts#contact-form"
-              >
-                Получить расчёт&nbsp; →
-              </Link>
-            </div>
-            {[
-              ["2000+", "м² производственных площадей"],
-              ["70+", "опытных специалистов"],
-              [`${productionEquipment.laserComplexes}`, "лазерных комплекса"],
-              [`${productionEquipment.pressBrakes}`, "листогибочных комплекса"],
-              [`${productionEquipment.weldingStations}`, "сварочных поста"],
-              [`${productionEquipment.powderCoatingBooths}`, "камеры порошковой окраски"],
-            ].map(([value, label]) => (
-              <div key={label} className="border-l border-white/10 pl-5">
-                <b className="text-3xl text-steel-orange">{value}</b>
-                <p className="mt-1 text-xs uppercase leading-relaxed text-white/50">
-                  {label}
-                </p>
-              </div>
-            ))}
+        <section className="border-t border-white/10 bg-[#17191a] py-12">
+          <div className="container flex flex-wrap items-center justify-between gap-8">
+            <div className="max-w-xl"><h2 className="text-2xl font-semibold">От чертежа к расчёту</h2><p className="mt-3 text-base leading-7 text-white/75">Получите предварительную стоимость онлайн или передайте проект инженеру для проверки и коммерческого предложения.</p></div>
+            <div className="flex flex-wrap gap-3"><Link href="/online-order" className="clip-corner bg-steel-orange-deep px-6 py-4 text-sm font-semibold">Рассчитать онлайн →</Link><Link href="/contacts#contact-form" className="border border-white/30 px-6 py-4 text-sm font-semibold">Отправить чертёж инженеру →</Link></div>
           </div>
         </section>
         <FaqSection items={homeFaq} title="Вопросы о производстве на заказ" />

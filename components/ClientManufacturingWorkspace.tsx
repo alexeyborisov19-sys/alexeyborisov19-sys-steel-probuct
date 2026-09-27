@@ -18,7 +18,7 @@ import {readManualSheetDxf,type ManualSheetInput} from '@/lib/instant-quote/manu
 const accepted = ".dxf,.dwg,.step,.stp";
 const materials = (["hot", "cold", "zinc"] as const).map((id) => ({ id: id as MaterialId, label: MATERIAL_LABELS[id] }));
 const fmt = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
-const fieldClass = "mt-2 min-h-12 w-full rounded-lg border border-white/20 bg-[#0b1014] px-3 py-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-orange";
+const fieldClass = "mt-2 min-h-12 w-full rounded-lg border border-white/20 bg-[#101820] px-3 py-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-orange";
 const actionClass = "inline-flex min-h-12 items-center justify-center rounded-lg bg-steel-orange px-5 py-3 text-sm font-semibold text-black transition hover:bg-orange-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-steel-orange disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50";
 
 import {summarizeClientPrices} from '@/lib/instant-quote/client-price-summary';
@@ -44,16 +44,16 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
 
 
   return (
-    <div className="cad-workspace bg-[#0c1115] pb-28 text-white lg:pb-12">
+    <div className="cad-workspace bg-[#15202a] pb-28 text-white lg:pb-12">
       <section className="mx-auto max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10" aria-label="CAD-калькулятор">
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
           <CalculatorLogo className="w-40 sm:w-48" />
           <ol className="flex flex-wrap gap-x-5 gap-y-2 text-xs sm:text-sm" aria-label="Порядок расчёта">
-            {["CAD или размеры", "Материал и обработка", "Получить стоимость"].map((label, index) => <li key={label} className={(index === 0 && !hasParts) || (index === 1 && hasParts && !calculation) || (index === 2 && calculation) ? "text-white" : "text-white/55"}><span className="mr-2 font-mono text-steel-orange">0{index + 1}</span>{label}</li>)}
+            {["CAD или размеры", "Материал и обработка", "Получить стоимость"].map((label, index) => <li key={label} className={(index === 0 && !hasParts) || (index === 1 && hasParts && !calculation) || (index === 2 && calculation) ? "text-white" : "text-white/75"}><span className="mr-2 font-mono text-steel-orange">0{index + 1}</span>{label}</li>)}
           </ol>
         </header>
 
-        <div className="mb-5 flex flex-wrap items-center gap-3" aria-label="Способ добавления изделия"><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>inputRef.current?.click()} className="min-h-12 rounded-lg border border-white/25 px-4 py-3 text-sm disabled:opacity-40">Загрузить CAD</button><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>setManualEditor('add')} className={actionClass}>Ввести размеры вручную</button><span className="text-sm text-white/65">{project.parts.length} / 5 изделий</span></div>
+        <div className="mb-5 flex flex-wrap items-center gap-3" aria-label="Способ добавления изделия"><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>inputRef.current?.click()} className="min-h-12 rounded-lg border border-white/25 px-4 py-3 text-sm disabled:opacity-40">Загрузить CAD</button><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>setManualEditor('add')} className={actionClass}>Ввести размеры вручную</button><span className="text-sm text-white/75">{project.parts.length} / 5 изделий</span></div>
         {manualEditor&&<div className="mb-6 rounded-xl border border-steel-orange/50 bg-[#141b21] p-4 sm:p-6"><div className="mb-3 flex justify-end"><button type="button" onClick={()=>setManualEditor(null)} className="min-h-11 px-3 text-sm underline underline-offset-4">Закрыть ввод размеров</button></div><PublicManualSheetParts key={manualEditor==='edit'?activePart?.id:'add'} count={project.parts.length-(manualEditor==='edit'?1:0)} initial={manualEditor==='edit'&&activePart&&activeManual?{name:activePart.fileName,input:activeManual,configuration:activePart.configuration}:undefined} onAdd={async(files,configurations)=>{await ingestFiles(files,configurations,manualEditor==='edit'?activePart?.id:undefined);setManualEditor(null);}}/></div>}
         {projectCalculationMessage&&!hasParts&&<p role="status" className="mb-4 text-amber-200">{projectCalculationMessage}</p>}
         {hasParts && <nav className="mb-4 flex min-w-0 flex-wrap items-start gap-3" aria-label="Детали проекта">
@@ -81,7 +81,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
                   <h2 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">Деталь по чертежу<br />или вашим размерам.</h2>
                   <p className="mt-4 max-w-lg text-base leading-7 text-white/70">До 5 изделий: загрузите DXF или STEP либо укажите внешние размеры и отверстия. До 50 МБ на файл и 100 МБ на проект. Выберите материал и количество. Посмотрите деталь и получите предварительный расчёт без регистрации.</p>
                   <button type="button" onClick={() => inputRef.current?.click()} className={`${actionClass} mt-7`}>Выбрать файлы <span aria-hidden="true" className="ml-5">↑</span></button>
-                  <p className="mt-3 text-sm text-white/60">Или перетащите файлы в эту область</p>
+                  <p className="mt-3 text-sm text-white/75">Или перетащите файлы в эту область</p>
                   <Link href="/contacts?source=online-order#contact-form" className="mt-6 inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4">Нужна помощь с деталью — обратиться к инженеру</Link>
                 </div>
                 <div className="rounded-xl border border-white/15 bg-[#0c1115] p-6">

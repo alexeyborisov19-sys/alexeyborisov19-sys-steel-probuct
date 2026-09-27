@@ -50,7 +50,7 @@ test("full-cycle production positioning keeps confirmed production chain", async
 
   assert.match(company, /Производство полного цикла/);
   assert.match(home, /Производство полного цикла/);
-  assert.match(home, /Весь цикл — в одном производственном контуре/);
+  assert.match(home, /Полный цикл изготовления/);
   assert.match(home, /Согласованный образец — основа серии/);
   assert.match(company, /Инженерно-конструкторский центр/);
   assert.match(production, /Инженерно-конструкторский центр/);
