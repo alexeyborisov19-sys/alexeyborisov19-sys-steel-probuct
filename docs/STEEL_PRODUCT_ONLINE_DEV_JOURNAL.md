@@ -1,3 +1,9 @@
+## Live checkpoint — three production journal guides, 27 September 2026
+
+Owner explicitly requests publication of three useful manufacturing articles. Base 636a00b (PR #181 deployment 36344824222 verified). Content-only scope: nesting economics, coating masking, first-part inspection; existing welding topic deliberately not duplicated. Primary sources TRUMPF, EPSI, PCI, NIST and Autodesk checked. Hypothetical examples labelled; no invented company capabilities, tolerances or prices.
+DONE: three complete articles, journal integration and sitemap date; SEO quality assertions retained for both rewritten and directly authored content. Build/type/lint and 1437 tests passed. Browser 390/1440: all three pages, images, FAQ, canonical/schema, journal links and sitemap passed; no JS errors.
+NEXT ACTION: exact-head CI, authorized publication and live article checks.
+
 ## Live checkpoint — approved UX improvements, 27 September 2026
 
 Base b4829bb; #180 and deployment 36343428755 green. Owner authorizes audit improvements and publication, explicitly preserving the full Hero sentence and Solutions for objects. Do not edit industry pages/data or the homepage object section.
