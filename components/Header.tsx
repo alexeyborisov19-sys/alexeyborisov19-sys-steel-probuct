@@ -91,7 +91,7 @@ export function Header() {
     ) : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
       <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
-      <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch xl:flex">
+      <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch 2xl:flex">
         <Link className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></Link>
         <Link
           ref={solutionsButtonRef}
@@ -116,23 +116,23 @@ export function Header() {
           return <Link key={item.href} className={navClass(active)} href={item.href} aria-current={active ? "page" : undefined}><span>{item.label}</span></Link>;
         })}
       </nav>
-      <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 xl:flex">
-        <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold min-[1600px]:block">{siteConfig.telephoneDisplay}</a>
-        <Link href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="clip-corner hidden whitespace-nowrap border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black min-[1800px]:block">Рассчитать онлайн</Link>
+      <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 2xl:flex">
+        <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold min-[1800px]:block">{siteConfig.telephoneDisplay}</a>
+        <Link href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="clip-corner hidden whitespace-nowrap border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black min-[1920px]:block">Рассчитать онлайн</Link>
         <Link href="/contacts#contact-form" className="clip-corner whitespace-nowrap bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Расчёт инженером</Link>
       </div>
       <button
         ref={mobileMenuButtonRef}
         type="button"
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="ml-auto grid h-11 w-11 shrink-0 place-items-center border border-white/30 xl:hidden"
+        className="ml-auto grid h-11 w-11 shrink-0 place-items-center border border-white/30 2xl:hidden"
         aria-label={mobileOpen ? "Закрыть меню" : "Открыть меню"}
         aria-expanded={mobileOpen}
         aria-controls="mobile-navigation"
       ><span className="text-xl" aria-hidden="true">{mobileOpen ? "×" : "☰"}</span></button>
     </div>
     <MegaMenu open={solutionsOpen} onClose={() => setSolutionsOpen(false)} />
-    {mobileOpen && <nav id="mobile-navigation" aria-label="Мобильная навигация" className="header-mobile-nav container flex flex-col border-t border-white/15 py-4 xl:hidden">
+    {mobileOpen && <nav id="mobile-navigation" aria-label="Мобильная навигация" className="header-mobile-nav container flex flex-col border-t border-white/15 py-4 2xl:hidden">
       <Link href="/solutions" aria-current={pathname.startsWith("/solutions") ? "page" : undefined}>Решения</Link>
       {navigation.map((item) => {
         const active = isActive(item.href);
