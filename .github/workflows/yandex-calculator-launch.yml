@@ -1,0 +1,63 @@
+name: Launch free calculator advertising
+on:
+  push:
+    branches: [audit/yandex-search-20260928]
+    paths: [.github/workflows/yandex-calculator-launch.yml]
+permissions:
+  contents: read
+concurrency:
+  group: calculator-ad-launch
+  cancel-in-progress: false
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Add calculator group within existing budget and submit for moderation
+        shell: bash
+        run: |
+          cat > /tmp/launch.mjs <<'NODE'
+          const campaignId=714391927;
+          const groupName='Онлайн-калькулятор | Бесплатный расчёт | ЦФО';
+          let token=String(process.env.YD_TOKEN||'').trim().replace(/^(OAuth|Bearer)\s+/i,'');
+          const match=token.match(/(?:^|[#?&])access_token=([^&#\s]+)/i);if(match)token=decodeURIComponent(match[1]);
+          if(!token)throw Error('Direct credential missing');
+          async function api(service,method,params){
+           const headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json','Accept-Language':'ru'};
+           if(process.env.YD_CLIENT_LOGIN?.trim())headers['Client-Login']=process.env.YD_CLIENT_LOGIN.trim();
+           const response=await fetch('https://api.direct.yandex.com/json/v501/'+service,{method:'POST',headers,body:JSON.stringify({method,params}),signal:AbortSignal.timeout(30000)});
+           const body=await response.json();if(!response.ok||body.error)throw Error(JSON.stringify(body.error||{status:response.status}));
+           const result=body.result;for(const [key,value]of Object.entries(result||{}))if(key.endsWith('Results'))for(const item of value)if(item.Errors?.length)throw Error(JSON.stringify({service,method,item}));
+           return result;
+          }
+          async function guard(){
+           const {Campaigns}=await api('campaigns','get',{SelectionCriteria:{Ids:[campaignId]},FieldNames:['Id','State','StatusPayment'],UnifiedCampaignFieldNames:['BiddingStrategy','CounterIds']});
+           const c=Campaigns[0],s=c?.UnifiedCampaign?.BiddingStrategy;
+           if(c?.State!=='ON'||c.StatusPayment!=='ALLOWED'||s?.Search?.WbMaximumClicks?.WeeklySpendLimit!==3000000000||s?.Network?.BiddingStrategyType!=='SERVING_OFF'||!c.UnifiedCampaign.CounterIds.Items.includes(112542227))throw Error('Campaign configuration changed; stop for review');
+           return s;
+          }
+          await guard();
+          const landing=await fetch('https://www.steelprodukt.ru/online-order',{signal:AbortSignal.timeout(30000)});
+          if(!landing.ok||!(await landing.text()).includes('Ввести размеры вручную'))throw Error('Landing unavailable');
+          const groups=(await api('adgroups','get',{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:['Id','Name'],Page:{Limit:1000,Offset:0}})).AdGroups;
+          let group=groups.find(x=>x.Name===groupName);
+          if(!group){const r=await api('adgroups','add',{AdGroups:[{CampaignId:campaignId,Name:groupName,RegionIds:[3],UnifiedAdGroup:{OfferRetargeting:'NO'},NegativeKeywords:{Items:['вакансии','работа','реферат','курсовая','диплом','скачать программу','кряк','торрент','дерево','фанера','пластик']}}]});group={Id:r.AddResults[0].Id,Name:groupName};}
+          console.log('GROUP',JSON.stringify(group));
+          const desired=['расчет стоимости изделия из металла онлайн','калькулятор изготовления деталей из металла','лазерная резка металла расчет онлайн','расчет детали по dxf','расчет стоимости детали step','гибка металла калькулятор стоимости','изготовление деталей по чертежам расчет','---autotargeting'];
+          const existing=(await api('keywords','get',{SelectionCriteria:{AdGroupIds:[group.Id]},FieldNames:['Id','Keyword'],Page:{Limit:1000,Offset:0}})).Keywords;
+          const missing=desired.filter(k=>!existing.some(x=>x.Keyword===k));
+          if(missing.length)console.log('KEYWORDS',JSON.stringify(await api('keywords','add',{Keywords:missing.map(Keyword=>({Keyword,AdGroupId:group.Id,...(Keyword==='---autotargeting'?{AutotargetingSettings:{Categories:{Exact:'YES',Narrow:'YES',Alternative:'NO',Accessory:'NO',Broader:'NO'},BrandOptions:{WithoutBrands:'YES',WithAdvertiserBrand:'YES',WithCompetitorsBrand:'NO'}}}:{})}))})));
+          const adParams={Titles:['Бесплатный онлайн-расчёт изделия из металла','Расчёт детали по DXF, STEP или размерам'],Texts:['Загрузите DXF/STEP или введите размеры. Предварительная цена изготовления онлайн.','Расчёт бесплатно, без регистрации. Выберите металл, количество и обработку.'],Href:'https://www.steelprodukt.ru/online-order?utm_source=yandex&utm_medium=cpc&utm_campaign=free_calculator&utm_content={ad_id}&utm_term={keyword}',DisplayUrlPath:'онлайн-расчёт'};
+          let ads=(await api('ads','get',{SelectionCriteria:{AdGroupIds:[group.Id]},FieldNames:['Id','Status','State'],ResponsiveAdFieldNames:['Href','Titles','Texts']})).Ads;
+          let ad=ads.find(x=>x.ResponsiveAd?.Href===adParams.Href);
+          if(!ad){const added=await api('ads','add',{Ads:[{AdGroupId:group.Id,ResponsiveAd:adParams}]});ad={Id:added.AddResults[0].Id,Status:'DRAFT'};}
+          console.log('AD',JSON.stringify(ad));
+          await guard();
+          if(ad.Status==='DRAFT')console.log('MODERATION',JSON.stringify(await api('ads','moderate',{SelectionCriteria:{Ids:[ad.Id]}})));
+          console.log('FINAL_AD',JSON.stringify(await api('ads','get',{SelectionCriteria:{Ids:[ad.Id]},FieldNames:['Id','AdGroupId','Status','State','StatusClarification'],ResponsiveAdFieldNames:['Href','Titles','Texts']})));
+          console.log('BUDGET_UNCHANGED',JSON.stringify(await guard()));
+          NODE
+          node /tmp/launch.mjs
