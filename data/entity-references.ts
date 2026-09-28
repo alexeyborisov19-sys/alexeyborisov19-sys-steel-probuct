@@ -1,5 +1,11 @@
 export const brandOfficialProfiles = [
   {
+    name: "Яндекс Карты",
+    url: "https://yandex.ru/maps/org/stal_produkt/167948059010/",
+    verifiedOn: "2026-09-28",
+    scope: "brand-official",
+  },
+  {
     name: "Avito",
     url: "https://m.avito.ru/brands/i221455062/all?sellerId=4aeb5aa7821314bb4d85d50311963002",
     verifiedOn: "2026-09-12",
