@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { legalLinks } from "@/lib/legal";
 
@@ -69,28 +68,31 @@ export function CookieSettingsButton({ className = "" }: { className?: string })
   </button>;
 }
 
-export function CookieConsent() {
-  const [visible, setVisible] = useState(false);
+export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
+  const [visible, setVisible] = useState(inline);
   const bannerRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setPortalTarget(document.getElementById("calculator-cookie-slot"));
-  }, [pathname]);
+  const calculatorPage = pathname === "/online-order" || pathname === "/calculator-metallokassety";
+  const showHere = inline || !calculatorPage;
 
   useEffect(() => {
     setVisible(readChoice() === null);
     const openSettings = () => {
+      if (inline) document.getElementById("calculator-cookie-slot")?.removeAttribute("data-cookie-stored");
       setVisible(true);
       window.requestAnimationFrame(() => {
         bannerRef.current?.scrollIntoView({ block: "center" });
         bannerRef.current?.focus({ preventScroll: true });
       });
     };
+    const syncChoice = () => setVisible(readChoice() === null);
     window.addEventListener(settingsEvent, openSettings);
-    return () => window.removeEventListener(settingsEvent, openSettings);
-  }, []);
+    window.addEventListener(consentEvent, syncChoice);
+    return () => {
+      window.removeEventListener(settingsEvent, openSettings);
+      window.removeEventListener(consentEvent, syncChoice);
+    };
+  }, [inline]);
 
   // The banner is how analytics consent is collected, so it has to stay visible and
   // clickable and must never be covered. So that the sticky quote bar does not end up
@@ -101,7 +103,7 @@ export function CookieConsent() {
     const root = document.documentElement;
     const clear = () => root.style.removeProperty("--cookie-consent-space");
 
-    if (!visible || portalTarget) {
+    if (!visible || inline || !showHere) {
       clear();
       return;
     }
@@ -122,7 +124,7 @@ export function CookieConsent() {
       window.removeEventListener("resize", publish);
       clear();
     };
-  }, [visible, portalTarget]);
+  }, [visible, inline, showHere]);
 
   function choose(analytics: boolean) {
     const analyticsWasAllowed = hasAnalyticsConsent();
@@ -137,9 +139,9 @@ export function CookieConsent() {
     }
   }
 
-  if (!visible) return null;
+  if (!visible || !showHere) return null;
 
-  const banner = <aside ref={bannerRef} tabIndex={-1} className={portalTarget
+  const banner = <aside ref={bannerRef} tabIndex={-1} className={inline
     ? "cookie-consent-bar my-5 rounded-xl border border-white/20 bg-[#202831] p-4 sm:p-5"
     : "cookie-consent-bar fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5"} aria-label="Настройки cookies">
     <p className="text-sm font-semibold text-white">Настройки cookies</p>
@@ -149,7 +151,7 @@ export function CookieConsent() {
       <button type="button" onClick={() => choose(true)} className="clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper">Разрешить аналитику</button>
     </div>
   </aside>;
-  return portalTarget ? createPortal(banner, portalTarget) : banner;
+  return banner;
 }
 
 export { consentEvent, consentKey, hasAnalyticsConsent };

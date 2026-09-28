@@ -1,3 +1,4 @@
+import { CalculatorCookieSlot } from "@/components/CalculatorCookieSlot";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
@@ -103,7 +104,7 @@ export default function MetalCassetteCalculatorPage() {
       >
         <section className="bg-[#0c1013] pb-16 pt-1 sm:pb-20">
           <div className="container">
-            <div id="calculator-cookie-slot" />
+            <CalculatorCookieSlot />
             <MetalCassetteCalculator />
 
             <div className="mt-14 grid gap-4 lg:grid-cols-3">

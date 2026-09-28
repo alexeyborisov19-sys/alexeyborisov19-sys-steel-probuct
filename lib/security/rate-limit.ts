@@ -47,6 +47,10 @@ export class InMemoryRateLimitStore implements RateLimitStore {
     };
   }
 
+  release(key: string, ruleId: string) {
+    this.counters.delete(`${ruleId}:${key}`);
+  }
+
   clear() {
     this.counters.clear();
     this.operations = 0;
@@ -125,4 +129,9 @@ export function isDuplicateSubmission(fingerprint: string, route: "lead" | "quot
     limit: 1,
     windowMs: 10 * 60_000,
   }).allowed;
+}
+
+/** Release only the reservation owned by an unsuccessful quote attempt. */
+export function releaseQuoteSubmission(fingerprint: string) {
+  rateLimitStore.release(fingerprint, "quote-duplicate");
 }

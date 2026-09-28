@@ -7,7 +7,7 @@ import { deliverQuoteEmail } from "@/lib/quote/mailer";
 import { createQuoteRecord, QuoteStorageError, updateQuoteRecord } from "@/lib/quote/storage";
 import type { QuoteErrorCode, QuoteRecord } from "@/lib/quote/types";
 import { clientKey } from "@/lib/security/client-ip";
-import { consumeRules, isDuplicateSubmission, quoteRateRules } from "@/lib/security/rate-limit";
+import { consumeRules, isDuplicateSubmission, quoteRateRules, releaseQuoteSubmission } from "@/lib/security/rate-limit";
 import { PayloadTooLargeError, readMultipartForm } from "@/lib/security/request-body";
 import { safeSecurityLog } from "@/lib/security/safe-log";
 import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
@@ -126,6 +126,8 @@ export function createQuoteHandler(overrides: Partial<QuoteHandlerDependencies> 
       );
     }
 
+    let reservedFingerprint: string | null = null;
+    let quoteStored = false;
     try {
       const formData = await readMultipartForm(request, uploadLimits.maximumMultipartBytes);
       const name = value(formData, "name", 120);
@@ -181,11 +183,12 @@ export function createQuoteHandler(overrides: Partial<QuoteHandlerDependencies> 
           429,
           requestId,
           "DUPLICATE_REQUEST",
-          "Такая заявка уже принята. Повторная отправка не требуется.",
+          "Такая заявка уже отправлена или обрабатывается. Дождитесь результата; повторная отправка сейчас не требуется.",
           { "Retry-After": "600" },
         );
       }
 
+      reservedFingerprint = fingerprint;
       let quarantinedFiles;
       try {
         quarantinedFiles = await dependencies.quarantineUploads(requestId, inspected);
@@ -240,6 +243,7 @@ export function createQuoteHandler(overrides: Partial<QuoteHandlerDependencies> 
       };
 
       await dependencies.createQuoteRecord(record);
+      quoteStored = true;
 
       try {
         await dependencies.recordConsentAudit({
@@ -336,6 +340,8 @@ export function createQuoteHandler(overrides: Partial<QuoteHandlerDependencies> 
         "INTERNAL_ERROR",
         "Не удалось принять заявку. Попробуйте ещё раз или позвоните +7 910 780 37 23.",
       );
+    } finally {
+      if (reservedFingerprint && !quoteStored) releaseQuoteSubmission(reservedFingerprint);
     }
   };
 }

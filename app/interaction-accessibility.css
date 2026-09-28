@@ -49,3 +49,6 @@
 :where(a[href], button:not(:disabled)):active {
   opacity: 0.82;
 }
+
+/* The consent decision remains in CookieConsent; this is only first-paint layout. */
+#calculator-cookie-slot[data-cookie-stored] .cookie-consent-bar { display: none; }

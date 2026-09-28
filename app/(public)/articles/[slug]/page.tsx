@@ -177,7 +177,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                     ) : null}
 
                     {section.table ? (
-                      <div className="mt-7 overflow-x-auto border border-white/12 bg-[#111519]">
+                      <div className="mt-7">
+                        <p className="mb-2 text-sm leading-6 text-white/75 sm:hidden">Таблицу можно прокрутить вправо, чтобы увидеть все столбцы.</p>
+                        <div role="region" aria-label={section.table.caption} tabIndex={0} className="overflow-x-auto rounded-lg border border-white/20 bg-[#111519] focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange">
                         <table className="w-full min-w-[680px] border-collapse text-left text-sm">
                           <caption className="border-b border-white/12 px-5 py-4 text-left font-semibold text-white">
                             {section.table.caption}
@@ -208,6 +210,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                             {section.table.note}
                           </p>
                         ) : null}
+                        </div>
                       </div>
                     ) : null}
 

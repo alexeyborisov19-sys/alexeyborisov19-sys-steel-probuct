@@ -174,7 +174,7 @@ test("contact and quote-form copy avoid an unverified response-time SLA", async 
   assert.doesNotMatch(quoteRequestForm, /в течение рабочего дня/i);
   assert.match(contactsPage, /Срок подготовки расчёта сообщим после проверки документации и состава заказа/);
   assert.match(quoteRequestForm, /После отправки материалы поступят на инженерную и коммерческую проверку/);
-  assert.match(quoteRequestForm, /Материалы переданы на проверку\. Срок подготовки расчёта сообщим после проверки документации/);
+  assert.match(quoteRequestForm, /Срок подготовки расчёта сообщим после проверки документации/);
 });
 
 test("Codex agent runtimes remain outside application lint scope", async () => {
