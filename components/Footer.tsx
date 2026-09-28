@@ -53,7 +53,7 @@ const legalDocuments = [
 export function Footer({ workspace = false }: { workspace?: boolean } = {}) {
   return <footer className="border-t border-white/10 bg-black py-10">
     <div className="container">
-      <div className={workspace ? "grid gap-9 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[1.35fr_repeat(4,1fr)_1.1fr]" : "grid gap-9 lg:grid-cols-[1.35fr_repeat(4,1fr)_1.1fr]"}>
+      <div className={workspace ? "grid gap-9 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[1.35fr_repeat(4,1fr)_1.1fr]" : "grid gap-9 sm:grid-cols-2 lg:grid-cols-3 min-[1800px]:grid-cols-[1.35fr_repeat(4,1fr)_1.1fr]"}>
         <div>
           <Brand />
         </div>
