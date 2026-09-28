@@ -1,3 +1,4 @@
+import CustomerReviews from "@/components/CustomerReviews";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -221,6 +222,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        <CustomerReviews />
         <section className="border-t border-white/10 bg-[#17191a] py-12">
           <div className="container flex flex-wrap items-center justify-between gap-8">
             <div className="max-w-xl"><h2 className="text-2xl font-semibold">От чертежа к расчёту</h2><p className="mt-3 text-base leading-7 text-white/75">Получите предварительную стоимость онлайн или передайте проект инженеру для проверки и коммерческого предложения.</p></div>
