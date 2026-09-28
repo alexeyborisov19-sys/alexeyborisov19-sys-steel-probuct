@@ -1,3 +1,16 @@
+## Live checkpoint — cassette RAL selection, 28 September 2026
+
+Base d1acd97 (#187). Owner authorizes individual/group/block RAL colouring and publication.
+DONE: keyboard/click multiselection; whole-block painting/reset; stable row/column colour identities; approximate preview presets and custom RAL; per-instance IFC finish properties and surface styles; individually tagged CSV rows and UI colour totals. Initial local lint/type/build, 1449 tests and browser 390/1440 passed. Independent IFC4 EXPRESS and OpenCascade geometry/style validation passed.
+LIMIT: all 48 reference DXFs remain iCloud dataless placeholders (zero allocated blocks); corner/open/closed source geometry cannot yet be verified. RFA 2022 still pending an available Revit engine. Do not represent existing simplified straight-return models as verified manufacturing models.
+NEXT ACTION: final exact-head CI and authorized publication of colouring; live browser export verification. Hydrate source drawings before completing accurate cassette library.
+
+## Live checkpoint — cassette drawings and corner elements, 28 September 2026
+
+Base published main d1acd97 (#187): deployment 36422349149 succeeded; live IFC/CSV browser exports and SEO 93 URLs passed. Owner requests a full drawing block including corner, open and closed cassette variants based on supplied CAD. Revit 2022 native-family requirement remains pending; do not present flat outlines as verified folded geometry.
+IN PROGRESS: complete source inventory, DXF entity/units/dimension audit and SolidWorks preview extraction. Verify geometry rather than infer dimensions from filenames. Preserve existing calculator/pricing/privacy and approved site sections.
+NEXT ACTION: build the drawing library from verified source evidence, test controls/downloads and dimensional consistency, publish only after exact-head checks.
+
 ## Live checkpoint — free calculator promotion and BIM library, 28 September 2026
 
 Base main 8efbce6 (#186), prior publication 36404222443 succeeded. Owner authorizes advertisements, free-calculation SEO, BIM page and publication. Revit 2022 selected explicitly; no Windows/Revit environment available.
