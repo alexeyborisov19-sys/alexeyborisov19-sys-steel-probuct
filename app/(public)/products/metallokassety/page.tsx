@@ -132,7 +132,7 @@ export default function MetalCassetteCollectionPage() {
                 <p className="eyebrow">Открытый или закрытый тип</p>
                 <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Две разные конструкции, а не один профиль крепежа</h2>
               </div>
-              <div className="mt-6 overflow-x-auto border border-white/12">
+              <div role="region" aria-label="Технические параметры металлокассет" tabIndex={0} className="mt-6 overflow-x-auto border border-white/12 focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange">
                 <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                   <thead className="bg-[#111519] text-xs uppercase tracking-[.08em] text-white/55">
                     <tr><th className="p-4">Параметр</th><th className="p-4 text-steel-orange">Открытая ОТ</th><th className="p-4 text-steel-orange">Закрытая ЗТ</th></tr>
