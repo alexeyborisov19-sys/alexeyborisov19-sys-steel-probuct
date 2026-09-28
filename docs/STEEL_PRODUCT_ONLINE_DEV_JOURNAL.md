@@ -1,3 +1,9 @@
+## Live checkpoint — remove per-part surcharges, 28 September 2026
+
+Base published b6b6a874 (#192), deploy 36463011132 and exact-head CI succeeded. Owner explicitly requests disabling 1000 RUB per part and 16.5% final surcharge. Shared commercial policy currently loads fixed/final charges from private environment.
+DONE: both disabled in active loader regardless of legacy environment. Other coefficients and historical formula retained. Build/lint/type and 1452 tests passed; regression covers 1/5/100 quantities, missing old env and hand-computed 1420→170 example. Live pre-change DXF 100x60 gives 24.3/121.5/1215 RUB for 1/5/50, so no fixed 1000 uplift reproduced in that live scenario. Publication authorized.
+NEXT ACTION: exact-head CI, deploy and live DXF verification.
+
 ## Live checkpoint — calculator discovery clarity, 28 September 2026
 
 Base published main d42cc4f (#191); exact-head checks, deploy 36461132102 and IndexNow 36461688643 succeeded. Owner authorizes further evidence-based visibility fixes and publication. Public search returns branded site and CAD page, but CAD snippet still reflects older content; not a measurement of ChatGPT citations or ranking.

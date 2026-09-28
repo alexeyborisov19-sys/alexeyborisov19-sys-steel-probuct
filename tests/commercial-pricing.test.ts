@@ -93,7 +93,32 @@ test("the policy loader still fails closed when the required env vars are absent
     "STEEL_PRODUCT_FIXED_ADD_RUB", "STEEL_PRODUCT_FIXED_ADD_ENABLED", "STEEL_PRODUCT_ROUND_STEP_RUB",
   ]) delete process.env[key];
 
-  assert.throws(() => loadCommercialPricingPolicy(), /STEEL_PRODUCT_FIXED_ADD_ENABLED is not configured/);
+  assert.throws(() => loadCommercialPricingPolicy(), /STEEL_PRODUCT_METAL_MULTIPLIER is not configured/);
 
   process.env = saved;
+});
+
+
+test("active policy ignores legacy 1000 RUB and 16.5 percent surcharges for every quantity", () => {
+  const saved = { ...process.env };
+  try {
+    Object.assign(process.env, {
+      STEEL_PRODUCT_METAL_MULTIPLIER: "1.1", STEEL_PRODUCT_DRAW_PCT: "5",
+      STEEL_PRODUCT_FINAL_PCT: "16.5", STEEL_PRODUCT_FIXED_ADD_RUB: "1000",
+      STEEL_PRODUCT_FIXED_ADD_ENABLED: "true", STEEL_PRODUCT_ROUND_STEP_RUB: "10",
+    });
+    const active = loadCommercialPricingPolicy();
+    assert.equal(active.finalPercent, 0);
+    assert.equal(active.fixedAddEnabled, false);
+    assert.equal(active.fixedAddRubEach, 0);
+    // Material 100*1.1 + works 50*1.05 = 162.5 -> 170 after unchanged rounding.
+    // Old: (110 + 1050*1.05)*1.165 = 1412.5625 -> 1420 per part.
+    const lines = [{ code: "material", amountRubEach: 100 }, { code: "welding", amountRubEach: 50 }];
+    assert.equal(approvedSalePriceRubFromLines(lines, 1, { ...active, finalPercent: 16.5, fixedAddRubEach: 1000, fixedAddEnabled: true }), 1420);
+    for (const qty of [1, 5, 100]) assert.equal(approvedSalePriceRubFromLines(lines, qty, active), 170 * qty);
+    delete process.env.STEEL_PRODUCT_FINAL_PCT;
+    delete process.env.STEEL_PRODUCT_FIXED_ADD_RUB;
+    delete process.env.STEEL_PRODUCT_FIXED_ADD_ENABLED;
+    assert.deepEqual(loadCommercialPricingPolicy(), active);
+  } finally { process.env = saved; }
 });

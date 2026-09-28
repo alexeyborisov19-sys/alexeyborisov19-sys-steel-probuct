@@ -7,8 +7,9 @@
  * natural-language pipeline in `lib/quote-engine/` — can apply the exact
  * same owner-approved rule to a part it priced from stated dimensions
  * instead of a CAD file. Nothing about the formula, its rounding, or its
- * environment variables changed in this move; `run-confidential-calculation.ts`
- * now calls the functions here instead of defining its own copies.
+ * environment variables changed in the original extraction. The active loader
+ * now disables fixed/final surcharges per the owner decision of 2026-09-28;
+ * the pure formula retains explicit-policy support for historical comparisons.
  */
 export type CommercialPricingPolicy = {
   metalMultiplier: number;
@@ -34,16 +35,14 @@ function privateNonNegativeEnv(name: string) {
 }
 
 export function loadCommercialPricingPolicy(): CommercialPricingPolicy {
-  const fixedRaw = process.env.STEEL_PRODUCT_FIXED_ADD_ENABLED?.trim();
-  if (fixedRaw !== "true" && fixedRaw !== "false") {
-    throw new Error("STEEL_PRODUCT_FIXED_ADD_ENABLED is not configured");
-  }
   return {
     metalMultiplier: privatePositiveEnv("STEEL_PRODUCT_METAL_MULTIPLIER"),
     drawingPercentOfWorks: privateNonNegativeEnv("STEEL_PRODUCT_DRAW_PCT"),
-    finalPercent: privateNonNegativeEnv("STEEL_PRODUCT_FINAL_PCT"),
-    fixedAddRubEach: privateNonNegativeEnv("STEEL_PRODUCT_FIXED_ADD_RUB"),
-    fixedAddEnabled: fixedRaw === "true",
+    // Owner disabled the per-part fixed charge and final percentage on 2026-09-28.
+    // Ignore legacy environment values so a deployment cannot reactivate them.
+    finalPercent: 0,
+    fixedAddRubEach: 0,
+    fixedAddEnabled: false,
     roundStepRub: privatePositiveEnv("STEEL_PRODUCT_ROUND_STEP_RUB"),
   };
 }
