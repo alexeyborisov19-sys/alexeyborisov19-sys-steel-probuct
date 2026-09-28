@@ -50,8 +50,10 @@ jobs:
           const existing=(await api('keywords','get',{SelectionCriteria:{AdGroupIds:[group.Id]},FieldNames:['Id','Keyword'],Page:{Limit:1000,Offset:0}})).Keywords;
           const missing=desired.filter(k=>!existing.some(x=>x.Keyword===k));
           if(missing.length)console.log('KEYWORDS',JSON.stringify(await api('keywords','add',{Keywords:missing.map(Keyword=>({Keyword,AdGroupId:group.Id,...(Keyword==='---autotargeting'?{AutotargetingSettings:{Categories:{Exact:'YES',Narrow:'YES',Alternative:'NO',Accessory:'NO',Broader:'NO'},BrandOptions:{WithoutBrands:'YES',WithAdvertiserBrand:'YES',WithCompetitorsBrand:'NO'}}}:{})}))})));
+          const auto=existing.find(x=>x.Keyword==='---autotargeting');
+          if(auto)console.log('AUTOTARGETING',JSON.stringify(await api('keywords','update',{Keywords:[{Id:auto.Id,AutotargetingSettings:{Categories:{Exact:'YES',Narrow:'YES',Alternative:'NO',Accessory:'NO',Broader:'NO'},BrandOptions:{WithoutBrands:'YES',WithAdvertiserBrand:'YES',WithCompetitorsBrand:'NO'}}}]})));
           const adParams={Titles:['Бесплатный онлайн-расчёт изделия из металла','Расчёт детали по DXF, STEP или размерам'],Texts:['Загрузите DXF/STEP или введите размеры. Предварительная цена изготовления онлайн.','Расчёт бесплатно, без регистрации. Выберите металл, количество и обработку.'],Href:'https://www.steelprodukt.ru/online-order?utm_source=yandex&utm_medium=cpc&utm_campaign=free_calculator&utm_content={ad_id}&utm_term={keyword}',DisplayUrlPath:'онлайн-расчёт'};
-          let ads=(await api('ads','get',{SelectionCriteria:{AdGroupIds:[group.Id]},FieldNames:['Id','Status','State'],ResponsiveAdFieldNames:['Href','Titles','Texts']})).Ads;
+          let ads=(await api('ads','get',{SelectionCriteria:{AdGroupIds:[group.Id]},FieldNames:['Id','Status','State'],ResponsiveAdFieldNames:['Href','Titles','Texts']})).Ads ?? [];
           let ad=ads.find(x=>x.ResponsiveAd?.Href===adParams.Href);
           if(!ad){const added=await api('ads','add',{Ads:[{AdGroupId:group.Id,ResponsiveAd:adParams}]});ad={Id:added.AddResults[0].Id,Status:'DRAFT'};}
           console.log('AD',JSON.stringify(ad));
