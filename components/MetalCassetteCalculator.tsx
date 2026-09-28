@@ -85,14 +85,17 @@ export function MetalCassetteCalculator() {
     }, 140);
     return () => { disposed = true; window.clearTimeout(timer); clearTimeout(deadline); controller.abort(); };
   }, [payload, requestKey, retry]);
-  const specialistHref = result && result.netAreaM2 > 0
-    ? {
-        pathname: "/contacts",
-        query: { source: "calculator-metallokassety", mode, type, thickness,
-          area: String(result.netAreaM2), quantity: String(result.quantity) },
-        hash: "contact-form",
-      }
-    : "/contacts#contact-form";
+  const specialistHref = {
+    pathname: "/contacts",
+    query: {
+      source: "calculator-metallokassety", mode, type, thickness,
+      ...(mode === "wall"
+        ? { wallWidth: String(payload.wallWidthMm), wallHeight: String(payload.wallHeightMm), openings: String(payload.openingsM2) }
+        : { inputArea: String(payload.areaM2) }),
+      ...(result ? { area: String(result.netAreaM2), quantity: String(result.quantity) } : {}),
+    },
+    hash: "contact-form",
+  };
   const typeName = type === "open" ? "Открытая" : "Закрытая";
   const baseRate = defaultRate(type, thickness);
   const isCustomPrice = numeric(pricePerM2) !== baseRate;

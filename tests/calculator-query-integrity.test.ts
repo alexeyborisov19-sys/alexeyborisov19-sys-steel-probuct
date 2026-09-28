@@ -15,5 +15,8 @@ test("calculator handoff cannot reintroduce an unverified price through the URL"
   assert.doesNotMatch(calculator, /estimate\s*:/);
   assert.doesNotMatch(quoteForm, /params\.get\("estimate"\)/);
   assert.doesNotMatch(quoteForm, /Ориентировочная стоимость по калькулятору/);
-  assert.match(quoteForm, /Ориентировочное количество по калькулятору/);
+  assert.match(quoteForm, /cassetteHandoffSummary\(params\)/);
+  const handoff = await readFile(new URL("../lib/quote/cassette-handoff.ts", import.meta.url), "utf8");
+  assert.match(handoff, /Ориентировочное количество по калькулятору/);
+  assert.doesNotMatch(handoff, /params\.get\("(?:estimate|rate|total)"\)/);
 });

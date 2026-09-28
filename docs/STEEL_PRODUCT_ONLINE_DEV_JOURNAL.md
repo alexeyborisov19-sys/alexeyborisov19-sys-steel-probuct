@@ -1,3 +1,9 @@
+## Live checkpoint — seven expert customer scenarios, 28 September 2026
+
+Base main 46fd1a3 (#183); previous journal checkpoint reconciled with the published customer-journey release. Owner authorizes expert scenarios, corrections and publication. This is not research with recruited users. No real leads or CRM messages; quote POSTs intercepted. Protected Hero sentence, logo and object solutions unchanged.
+DONE: seven expert scenarios recorded in docs/verification/expert-customer-scenarios-20260928.md. Live cassette handoff loss reproduced; type/mode/wall/openings and pending-result inputs now retained. No URL-supplied money accepted. Build/type/lint, 1443 tests, local corrected handoff and existing browser recovery suites passed; live manual/STEP/service scenarios passed. Calculation/pricing logic unchanged.
+NEXT ACTION: regressions, browser verification, exact-head CI, authorized publication and live verification.
+
 ## Live checkpoint — customer journey reliability, 28 September 2026
 
 Owner authorizes further website quality fixes/publication. Base 54f2a9a (#182). Hero protected sentence, logo and object solutions excluded. Relevant site-director, technical writer, website-development, UI/UX, accessibility/performance/security and quality gate applied.
