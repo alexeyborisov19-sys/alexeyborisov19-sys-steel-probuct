@@ -1,3 +1,9 @@
+## Live checkpoint — BIM workspace redesign, 28 September 2026
+
+Base ae8c8cad (#188); exact-head CI and publication 36427077927 succeeded; live 390/1440 colour/export checks passed. Owner requests clearer layout and colour workflow, more RAL choices, publication remains authorized.
+DONE: light branded workspace, compact dimensions, numbered selection; 76 approximate RAL swatches with global code/name search and family filters; explicit whole-block/selection application, row/column selection, undo and organised export. Existing IFC geometry unchanged. Build/lint/type, 1451 tests and browser checks at 320/390/768/1440 passed, including 400 panels. Final polish sets native light controls and wider narrow-mobile palette targets. No pricing/privacy/header changes.
+NEXT ACTION: functional/browser accessibility checks at mobile/tablet/desktop, exact-head CI and live release verification.
+
 ## Live checkpoint — cassette RAL selection, 28 September 2026
 
 Base d1acd97 (#187). Owner authorizes individual/group/block RAL colouring and publication.
