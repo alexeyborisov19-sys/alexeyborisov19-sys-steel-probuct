@@ -1,7 +1,11 @@
+import { hasAnalyticsConsent } from "@/components/CookieConsent";
+
 type EventParams = Record<string, string | number | boolean | undefined>;
+type PendingGoal = { counterId: number; target: string; params: EventParams };
 
 type AnalyticsWindow = Window & {
   ym?: (counterId: number, command: "reachGoal", target: string, params?: EventParams) => void;
+  steelPendingGoals?: PendingGoal[];
 };
 
 export const CANONICAL_YANDEX_COUNTER_ID = 112542227;
@@ -68,13 +72,38 @@ export function yandexCounterIds() {
 export function trackLeadEvent(eventName: string, params: EventParams = {}) {
   if (typeof window === "undefined") return;
   const analyticsWindow = window as AnalyticsWindow;
+  if (!hasAnalyticsConsent()) {
+    analyticsWindow.steelPendingGoals = [];
+    return;
+  }
 
   const yandexGoals = yandexGoalByEvent[eventName];
   if (!yandexGoals) return;
   const safeParams = sanitizeAnalyticsParams(params);
   for (const goal of yandexGoals) {
     for (const counterId of yandexCounterIds()) {
-      analyticsWindow.ym?.(counterId, "reachGoal", goal, safeParams);
+      if (analyticsWindow.ym) analyticsWindow.ym(counterId, "reachGoal", goal, safeParams);
+      else {
+        // Retain only consented events while the dynamically loaded runtime starts.
+        // Nothing is persisted or replayed from before the visitor's permission.
+        const pending = analyticsWindow.steelPendingGoals ??= [];
+        if (pending.length < 50) pending.push({ counterId, target: goal, params: safeParams });
+      }
     }
+  }
+}
+
+export function flushPendingAnalyticsGoals() {
+  if (typeof window === "undefined") return;
+  const analyticsWindow = window as AnalyticsWindow;
+  if (!hasAnalyticsConsent()) {
+    analyticsWindow.steelPendingGoals = [];
+    return;
+  }
+  if (!analyticsWindow.ym) return;
+  const pending = analyticsWindow.steelPendingGoals ?? [];
+  analyticsWindow.steelPendingGoals = [];
+  for (const goal of pending) {
+    analyticsWindow.ym(goal.counterId, "reachGoal", goal.target, goal.params);
   }
 }

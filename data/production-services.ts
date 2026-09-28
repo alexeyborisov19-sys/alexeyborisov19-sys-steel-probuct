@@ -135,7 +135,7 @@ export const productionServices: ProductionService[] = [
   {
     slug: "lazernaya-rezka-metalla",
     title: "Лазерная резка листового металла",
-    seoTitle: "Лазерная резка металла по DXF и чертежам",
+    seoTitle: "Лазерная резка металла в Смоленске по DXF",
     shortTitle: "Лазерная резка",
     eyebrow: "Высокоточный раскрой",
     description:
@@ -284,7 +284,7 @@ export const productionServices: ProductionService[] = [
   {
     slug: "gibka-listovogo-metalla",
     title: "Гибка листового металла на ЧПУ",
-    seoTitle: "Гибка листового металла на ЧПУ по чертежам",
+    seoTitle: "Гибка листового металла в Смоленске на ЧПУ",
     shortTitle: "Гибка",
     eyebrow: "Формообразование деталей",
     description:

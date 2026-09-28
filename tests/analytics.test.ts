@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   CANONICAL_YANDEX_COUNTER_ID,
   createResettableOnce,
+  flushPendingAnalyticsGoals,
   sanitizeAnalyticsParams,
   trackLeadEvent,
   yandexCounterIds,
@@ -20,6 +21,7 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
     configurable: true,
     value: {
       ym: (...args: GoalCall) => calls.push(args),
+      localStorage: { getItem: () => JSON.stringify({ version: 2, necessary: true, analytics: true }) },
     },
   });
   process.env.NEXT_PUBLIC_YM_COUNTER_ID = String(CANONICAL_YANDEX_COUNTER_ID);
@@ -60,6 +62,30 @@ test("sends every quote funnel goal to the canonical analytics counter", () => {
         `goal ${goal} must reach the canonical analytics counter exactly once`,
       );
     }
+  });
+});
+
+test("consented goals survive lazy runtime startup exactly once", () => {
+  withAnalyticsWindow((calls) => {
+    const analyticsWindow = window as unknown as { ym?: (...args: GoalCall[]) => void };
+    const runtime = analyticsWindow.ym;
+    delete analyticsWindow.ym;
+    trackLeadEvent("quote_request_success", { files_count: 1, email: "private@example.ru" });
+    assert.equal(calls.length, 0);
+    analyticsWindow.ym = runtime;
+    flushPendingAnalyticsGoals();
+    flushPendingAnalyticsGoals();
+    assert.deepEqual(calls.map(call => call[2]), ["ym-submit-leadform", "quote_request_success"]);
+    assert.ok(calls.every(call => !JSON.stringify(call).includes("private@example.ru")));
+  });
+});
+
+test("refused analytics does not send goals even if runtime is already loaded", () => {
+  withAnalyticsWindow((calls) => {
+    window.localStorage.getItem = () => JSON.stringify({ version: 2, necessary: true, analytics: false });
+    trackLeadEvent("quote_request_success");
+    flushPendingAnalyticsGoals();
+    assert.equal(calls.length, 0);
   });
 });
 

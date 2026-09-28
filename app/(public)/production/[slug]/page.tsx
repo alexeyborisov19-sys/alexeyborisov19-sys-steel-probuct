@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
+import { AttributionLink } from "@/components/AttributionLink";
+import { productionLeadTimeSummary } from "@/data/manufacturing-facts";
 import {
   productionServiceBySlug,
   productionServices,
@@ -120,17 +122,43 @@ export default async function ProductionServicePage({
                   </li>
                 ))}
               </ul>
-              <Link
+              <AttributionLink
                 href="/contacts#contact-form"
                 className="clip-corner mt-7 inline-flex bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase"
               >
                 Передать документацию&nbsp; →
-              </Link>
+              </AttributionLink>
               <p className="mt-4 text-xs leading-5 text-white/42">
                 Материалы передаются на инженерную проверку. Срок подготовки расчёта
                 сообщим после проверки документации.
               </p>
             </aside>
+          </div>
+        </section>
+
+        <section className="border-y border-white/10 bg-[#15191c] py-12 sm:py-16" aria-labelledby="order-conditions">
+          <div className="container">
+            <p className="eyebrow">Заказ напрямую у производителя</p>
+            <h2 id="order-conditions" className="mt-3 text-3xl font-semibold sm:text-4xl">От исходных данных до согласованной партии</h2>
+            <p className="mt-5 max-w-3xl text-base leading-7 text-white/75">Производство в Смоленске. Перед расчётом согласуем материал, количество, требования к изделию и состав операций. Условия поставки по России определяем для конкретного заказа.</p>
+            <div className="mt-8 grid gap-5 md:grid-cols-3">
+              <div className="border-t-2 border-steel-orange pt-5">
+                <h3 className="text-xl font-semibold">Из чего складывается цена</h3>
+                <p className="mt-3 text-sm leading-7 text-white/75">Материал и расход заготовки, сложность геометрии, подготовка производства, операции и объём партии. Сравнивать предложения корректно при одинаковых чертежах и комплектации.</p>
+              </div>
+              <div className="border-t-2 border-steel-orange pt-5">
+                <h3 className="text-xl font-semibold">Когда будет готово</h3>
+                <p className="mt-3 text-sm leading-7 text-white/75">{productionLeadTimeSummary}</p>
+              </div>
+              <div className="border-t-2 border-steel-orange pt-5">
+                <h3 className="text-xl font-semibold">Если чертёж ещё не готов</h3>
+                <p className="mt-3 text-sm leading-7 text-white/75">Передайте эскиз, образец или описание задачи. Инженерно-конструкторский центр определит, какие данные и подготовка нужны для изготовления.</p>
+              </div>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <AttributionLink href="/contacts#contact-form" className="clip-corner inline-flex items-center bg-steel-orange-deep px-6 py-4 text-sm font-bold">Обсудить заказ с инженером →</AttributionLink>
+              <Link href="/company/facts" className="inline-flex items-center border border-white/35 px-6 py-4 text-sm font-semibold">Посмотреть производственные возможности →</Link>
+            </div>
           </div>
         </section>
 
