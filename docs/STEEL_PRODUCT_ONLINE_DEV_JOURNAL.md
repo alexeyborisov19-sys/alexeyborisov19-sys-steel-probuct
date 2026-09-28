@@ -1,3 +1,10 @@
+## Live checkpoint — browser quality gate, 28 September 2026
+
+Base 4c3e668 (#196): candidate hero warmup deployed successfully (36477260192), all 12 encodes ran on origin before promotion and public AVIF response returned image-cache HIT. Prior #195 reduced speculative JS; no universal field-LCP improvement claimed.
+DONE: Playwright/axe browser gate for six representative public routes at 390/1440, contrast fixes, keyboard-focusable product table and visibly underlined consent links. Consent wording/behavior, rates, calculator internals, protected header/hero/industry sections unchanged. Lint/build/type/1452 tests passed. Gate also checks homepage JS budget, overflow, runtime errors, keyboard skip and navigation to manual calculation.
+Security follow-up: patched Next.js 15.5.24, Sharp 0.35.5, Nodemailer 9.1.1 and js-yaml; full npm audit zero, rebuild and 1452 tests passed.
+NEXT ACTION: exact-head browser + full CI, authorized publish, live browser/SEO verification. Automated axe does not constitute complete WCAG certification; field INP/SEO rankings remain unmeasured.
+
 ## Live checkpoint — public loading performance, 28 September 2026
 
 Base main b435300a (#194), published via successful deploy 36470988095. Since the prior journal entry, surcharge fix #193 was published and verified, and #194 added verified reviews. Owner requests faster loading. Scope: marketing showcase and navigation only; no calculation or consent changes.

@@ -80,7 +80,7 @@ export function Footer({ workspace = false }: { workspace?: boolean } = {}) {
               {profile.name} — официальный профиль ↗
             </a>
           ))}
-          <p className="mt-4 text-sm leading-relaxed text-white/65"><span className="font-medium text-white/45">Производство:</span><br />{siteConfig.productionAddress.line1},<br />{siteConfig.productionAddress.line2}</p>
+          <p className="mt-4 text-sm leading-relaxed text-white/65"><span className="font-medium text-white/60">Производство:</span><br />{siteConfig.productionAddress.line1},<br />{siteConfig.productionAddress.line2}</p>
         </div>
       </div>
       <div className="mt-9 border-t border-white/10 pt-5">

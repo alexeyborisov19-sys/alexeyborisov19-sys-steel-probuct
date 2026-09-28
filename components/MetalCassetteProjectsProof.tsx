@@ -46,14 +46,14 @@ export function MetalCassetteProjectsProof() {
                 <p className="mt-4 text-sm leading-6 text-white/58">{project.supply.join(" · ")}</p>
                 <div className="mt-auto flex flex-wrap gap-4 pt-5">
                   {project.href ? <Link href={project.href} className="text-xs font-bold uppercase text-steel-orange">Кейс&nbsp; →</Link> : <Link href="/projects" className="text-xs font-bold uppercase text-steel-orange">В портфолио&nbsp; →</Link>}
-                  {project.imageSourceUrl ? <a href={project.imageSourceUrl} target="_blank" rel="noreferrer" className="text-[10px] font-bold uppercase text-white/40 hover:text-white">Реальное фото у источника&nbsp; ↗</a> : null}
+                  {project.imageSourceUrl ? <a href={project.imageSourceUrl} target="_blank" rel="noreferrer" className="text-[10px] font-bold uppercase text-white/60 hover:text-white">Реальное фото у источника&nbsp; ↗</a> : null}
                 </div>
               </div>
             </article>
           ))}
         </div>
 
-        <p className="mt-5 text-xs leading-6 text-white/40">Карточки показывают подтверждённые объекты и состав поставки. Где объект снят нами, стоит собственная фотография; где съёмки нет — отраслевая иллюстрация с подписью «не фото объекта». Каждая фотография несёт указание правообладателя и ссылку на первоисточник. Монтаж на объектах не выполняем.</p>
+        <p className="mt-5 text-xs leading-6 text-white/60">Карточки показывают подтверждённые объекты и состав поставки. Где объект снят нами, стоит собственная фотография; где съёмки нет — отраслевая иллюстрация с подписью «не фото объекта». Каждая фотография несёт указание правообладателя и ссылку на первоисточник. Монтаж на объектах не выполняем.</p>
       </div>
     </section>
   );

@@ -35,31 +35,34 @@
     "predev": "node scripts/build-step-worker.mjs",
     "pretest": "node scripts/build-step-worker.mjs",
     "mail:readonly": "python3 scripts/mail-readonly.py",
-    "pd:reset-admin-password": "node --import tsx scripts/pd-reset-admin-password.ts"
+    "pd:reset-admin-password": "node --import tsx scripts/pd-reset-admin-password.ts",
+    "browser:audit": "node scripts/audit-browser.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.43.0",
-    "next": "^15.5.22",
-    "nodemailer": "^9.0.3",
+    "next": "^15.5.24",
+    "nodemailer": "^9.1.1",
     "occt-wasm": "5.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "sharp": "0.35.3"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/eslintrc": "3.3.3",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.1",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.5.4",
+    "esbuild": "^0.28.1",
     "eslint": "9.39.2",
-    "eslint-config-next": "15.5.22",
+    "eslint-config-next": "^15.5.24",
     "postcss": "^8.5.25",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.1",
-    "typescript": "^5.9.3",
-    "esbuild": "^0.28.1"
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "next": {

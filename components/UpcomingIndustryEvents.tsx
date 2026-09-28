@@ -52,7 +52,7 @@ export function UpcomingIndustryEvents() {
               </div>
               <h4 className="mt-4 text-lg font-semibold uppercase leading-tight">{event.shortName}</h4>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[.06em] text-white/42">{event.city} · {event.venue}</p>
-              <p className="mt-4 text-xs font-bold uppercase tracking-[.08em] text-steel-orange/90">{event.direction}</p>
+              <p className="mt-4 text-xs font-bold uppercase tracking-[.08em] text-steel-orange">{event.direction}</p>
               <p className="mt-2 text-sm leading-6 text-white/56">{event.why}</p>
               <span className="mt-auto pt-5 text-xs font-bold uppercase text-steel-orange">Официальный сайт&nbsp; ↗</span>
             </a>
