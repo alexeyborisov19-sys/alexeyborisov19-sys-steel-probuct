@@ -1,0 +1,7 @@
+# Public cache and connection latency
+
+Baseline main 6341757 (#195). Five serial compressed HTTPS homepage requests from the available client showed nginx MISS followed by four HITs. On warm DNS, TLS completed at 459–527 ms and first byte at 620–756 ms. These are client-path observations, not origin CPU times: remote TTFB alone cannot identify server execution latency. HTML gzip transfer ~30 KB. Do not promise a universal LCP improvement from these samples.
+
+Release inspection found that every candidate arrives without .next/cache; nginx cache is also intentionally purged on promotion. This prevents stale release HTML but also means image optimization starts cold. Added bounded sequential image warmup on the private candidate before promotion, for each configured device width and both negotiated AVIF/WebP formats. Candidate cache moves with the build; no old cache is copied, preventing stable filenames from serving stale photographs. Warmup failure is nonfatal, with normal on-demand behavior preserved. Private API/auth/consent/cache rules unchanged.
+
+Local repeated warmup returned image content and HITs (mostly 2–7 ms) after cold encodes (29–145 ms in observed requests). No claim that these local milliseconds represent production speed. Shell syntax, lint and full tests checked; published candidate run logs will verify execution on origin. Public behavior unchanged; deployment only.

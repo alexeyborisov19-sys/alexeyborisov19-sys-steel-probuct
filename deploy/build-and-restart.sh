@@ -163,6 +163,12 @@ if [ "$audit_ready" != true ]; then
 fi
 
 SEO_AUDIT_BASE_URL="http://127.0.0.1:$AUDIT_PORT" npm run seo:audit
+# Encode the hero while the old release is still serving. The candidate cache
+# moves with the build, so the first visitor does not pay cold AVIF/WebP costs.
+# Never copy old image caches: stable source filenames can change between releases.
+if ! IMAGE_WARMUP_BASE_URL="http://127.0.0.1:$AUDIT_PORT" node scripts/warm-public-images.mjs; then
+  echo "Image warmup incomplete; normal on-demand optimization remains available."
+fi
 cleanup_audit_server
 AUDIT_PID=""
 trap - EXIT
