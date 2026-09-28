@@ -1,4 +1,4 @@
-# Audit trigger: 2026-09-28 search visibility
+# Audit trigger: 2026-09-26
 name: Yandex read-only audit
 
 on:
@@ -25,9 +25,6 @@ jobs:
         shell: bash
         run: |
           cat > /tmp/audit.mjs <<'NODE'
-          const counterId = 112542227;
-          const canonicalCounter = String(counterId);
-
           function normToken(raw = "") {
             let v = String(raw).trim().replace(/^OAuth\s+/i, "").replace(/^Bearer\s+/i, "");
             const m = v.match(/(?:^|[#?&])access_token=([^&#\s]+)/i);
@@ -75,74 +72,17 @@ jobs:
             return {status: res.status, ok: res.ok, body: parsed, headers: Object.fromEntries(res.headers.entries())};
           }
 
-          console.log("=== YANDEX READ-ONLY AUDIT ===");
-          console.log("Timestamp:", new Date().toISOString());
-
-          // WEBMASTER
-          console.log("\n=== WEBMASTER ===");
-          const yw = normToken(process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || process.env.YD_TOKEN || process.env.YM_TOKEN || "");
-          if (!yw) {
-            console.log("WEBMASTER_TOKEN: MISSING");
-          } else {
-            const user = await request("https://api.webmaster.yandex.net/v4/user", yw);
-            console.log("USER_HTTP:", user.status);
-            if (!user.ok) {
-              console.log("USER_ERROR:", safe(user.body));
-            } else {
-              const uid = user.body?.user_id;
-              console.log("USER_ID_PRESENT:", Boolean(uid));
-              const hosts = await request(`https://api.webmaster.yandex.net/v4/user/${uid}/hosts`, yw);
-              console.log("HOSTS_HTTP:", hosts.status);
-              if (!hosts.ok) {
-                console.log("HOSTS_ERROR:", safe(hosts.body));
-              } else {
-                const list = hosts.body?.hosts || [];
-                const host = list.find(h => /(^|\.)steelprodukt\.ru\/?$/i.test(new URL(h.unicode_host_url || h.ascii_host_url).hostname))
-                  || list.find(h => String(h.unicode_host_url || h.ascii_host_url).includes("steelprodukt.ru"));
-                console.log("HOST_FOUND:", Boolean(host));
-                if (host) {
-                  console.log("HOST:", safe({
-                    host_id: host.host_id,
-                    url: host.unicode_host_url || host.ascii_host_url,
-                    verified: host.verified,
-                    host_data_status: host.host_data_status,
-                    main_mirror: host.main_mirror?.unicode_host_url || host.main_mirror?.ascii_host_url || null
-                  }));
-                  const hid = encodeURIComponent(host.host_id);
-                  for (const [label, suffix] of [
-                    ["SUMMARY","summary"],
-                    
-                    ["POPULAR_QUERIES","search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&limit=500"],
-                    ["POPULAR_QUERIES_NEXT","search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&limit=500&offset=500"],
-                    ["DIAGNOSTICS","diagnostics"],
-                    ["VERIFICATION","verification"],
-                    ["SITEMAPS","sitemaps?limit=100"],
-                  ]) {
-                    const rr = await request(`https://api.webmaster.yandex.net/v4/user/${uid}/hosts/${hid}/${suffix}`, yw);
-                    console.log(`${label}_HTTP:`, rr.status);
-                    if (rr.ok) {
-                      let out = rr.body;
-                      if (label === "DIAGNOSTICS") {
-                        const p = rr.body?.problems || {};
-                        out = Object.fromEntries(Object.entries(p).filter(([,v]) => v?.state === "PRESENT" || v?.state === "UNDEFINED"));
-                      }
-                      if (label === "SITEMAPS") {
-                        out = (rr.body?.sitemaps || []).map(s => ({
-                          url: s.sitemap_url,
-                          errors_count: s.errors_count,
-                          urls_count: s.urls_count,
-                          last_access_date: s.last_access_date,
-                          source: s.source || s.sources,
-                          type: s.sitemap_type
-                        }));
-                      }
-                      console.log(`${label}:`, safe(out));
-                    } else console.log(`${label}_ERROR:`, safe(rr.body));
-                  }
-                }
-              }
-            }
+          const token = normToken(process.env.YD_TOKEN || "");
+          const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
+          if (!token) throw new Error("Direct token missing");
+          for (const [service, params] of [
+            ["campaigns", {SelectionCriteria:{Ids:[714391927]}, FieldNames:["Id","Name","Type","Status","State","StatusPayment"], UnifiedCampaignFieldNames:["BiddingStrategy","CounterIds"]}],
+            ["adgroups", {SelectionCriteria:{CampaignIds:[714391927]}, FieldNames:["Id","Name","RegionIds","Status","Type"]}],
+            ["ads", {SelectionCriteria:{CampaignIds:[714391927]}, FieldNames:["Id","AdGroupId","Type","State","Status"], TextAdFieldNames:["Title","Title2","Text","Href"], ResponsiveAdFieldNames:["Href"],Page:{Limit:100,Offset:0}}]
+          ]) {
+            const result = await requestDirect("https://api.direct.yandex.com/json/v501/"+service, token, {method:"get",params},login);
+            console.log(service, safe(result.body));
+            if (!result.ok || result.body.error) process.exitCode=1;
           }
-
           NODE
           node /tmp/audit.mjs
