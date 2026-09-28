@@ -20,6 +20,13 @@ Disallow: /api/
 Disallow: /internal/
 Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&fbclid&msclkid&gad_source&gbraid&wbraid&_openstat&_ym_status-check
 
+# Yandex Alice AI source eligibility (official Yandex robots tokens).
+User-agent: YandexAdditional
+User-agent: YandexAdditionalBot
+Allow: /
+Disallow: /api/
+Disallow: /internal/
+
 # AI search and user-requested retrieval.
 User-agent: OAI-SearchBot
 User-agent: ChatGPT-User

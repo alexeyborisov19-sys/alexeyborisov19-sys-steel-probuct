@@ -72,6 +72,8 @@ jobs:
               grep -Fq 'User-agent: OAI-SearchBot' "$tmpdir/robots.txt" || checks_ok=false
               grep -Fq 'User-agent: Google-Extended' "$tmpdir/robots.txt" || checks_ok=false
               grep -Fq 'User-agent: YandexBot' "$tmpdir/robots.txt" || checks_ok=false
+              grep -Fq 'User-agent: YandexAdditional' "$tmpdir/robots.txt" || checks_ok=false
+              grep -Fq 'User-agent: YandexAdditionalBot' "$tmpdir/robots.txt" || checks_ok=false
               grep -Fq 'Disallow: /api/' "$tmpdir/robots.txt" || checks_ok=false
               grep -Fq '# Сталь Продукт' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq 'бренд/товарный знак, не юридическое лицо' "$tmpdir/llms.txt" || checks_ok=false

@@ -43,6 +43,8 @@ test("robots explicitly permits major search and AI crawlers without opening pri
   for (const crawler of [
     "bingbot",
     "YandexBot",
+    "YandexAdditional",
+    "YandexAdditionalBot",
     "OAI-SearchBot",
     "ChatGPT-User",
     "PerplexityBot",
