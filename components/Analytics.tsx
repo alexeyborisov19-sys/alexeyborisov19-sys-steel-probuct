@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useState } from "react";
-import { yandexCounterIds } from "@/lib/analytics";
+import { flushPendingAnalyticsGoals, yandexCounterIds } from "@/lib/analytics";
 import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
 const counterIds = yandexCounterIds();
@@ -37,7 +37,7 @@ export function Analytics() {
   if (!analyticsAllowed) return null;
 
   return <>
-    {counterIds.length ? <Script id="yandex-metrica" strategy="afterInteractive">{`
+    {counterIds.length ? <Script id="yandex-metrica" strategy="afterInteractive" onReady={flushPendingAnalyticsGoals}>{`
       window.dataLayer = window.dataLayer || [];
       var metrikaTagUrl = 'https://mc.yandex.ru/metrika/tag.js?id=${counterIds[0]}';
       (function(m,e,t,r,i,k,a){

@@ -18,7 +18,7 @@ const legalModifiedAt: Record<string, Date> = {
   "/legal/services": new Date(`${legalDocumentVersions.services}T00:00:00.000Z`),
   "/legal/terms": new Date(`${legalDocumentVersions.terms}T00:00:00.000Z`),
 };
-const productionServicesModifiedAt = new Date("2026-08-25T20:45:11.000Z");
+const productionServicesModifiedAt = new Date("2026-09-28T00:00:00.000Z");
 const solutionDetailsModifiedAt = new Date("2026-08-25T14:09:18.000Z");
 const industryPagesModifiedAt = new Date("2026-08-25T15:10:21.000Z");
 const productPagesModifiedAt = new Date("2026-08-25T15:03:23.000Z");
@@ -29,7 +29,7 @@ const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
 const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/": new Date("2026-09-27T00:00:00.000Z"),
+  "/": new Date("2026-09-28T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
   "/company/facts": new Date("2026-09-18T00:00:00.000Z"),
   "/contacts": new Date("2026-09-28T00:00:00.000Z"),

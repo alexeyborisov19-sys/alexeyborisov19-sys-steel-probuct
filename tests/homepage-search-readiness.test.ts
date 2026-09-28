@@ -44,7 +44,7 @@ test("the homepage hero restores equipment proof instead of laser envelope figur
 test("homepage search copy leaves laser envelope details to the production landing", () => {
   const homepageSearchText = collectPublicStrings([homeMetadata, Home()]).join(" ");
 
-  assert.match(String(homeMetadata.title ?? ""), /Производство изделий из листового металла/i);
+  assert.match(String(homeMetadata.title ?? ""), /изделия из листового металла в Смоленске/i);
 
   assert.doesNotMatch(homepageSearchText, /0,5[–-]40 мм/);
   assert.doesNotMatch(homepageSearchText, /1500\s*[×x]\s*3000 мм/);

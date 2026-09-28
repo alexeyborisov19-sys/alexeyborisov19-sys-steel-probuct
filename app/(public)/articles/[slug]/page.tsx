@@ -368,8 +368,14 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 href="/contacts#contact-form"
                 className="clip-corner mt-7 block bg-steel-orange-deep px-5 py-4 text-center text-xs font-bold uppercase transition hover:bg-steel-orange-deeper"
               >
-                Получить расчёт&nbsp; →
+                Передать задачу инженеру&nbsp; →
               </Link>
+              <div className="mt-5 border-t border-white/15 pt-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-white/70">По теме статьи</p>
+                <Link href={article.related.href} className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold leading-6 text-steel-orange hover:underline">
+                  {article.related.label}&nbsp; →
+                </Link>
+              </div>
             </aside>
           </div>
         </article>
