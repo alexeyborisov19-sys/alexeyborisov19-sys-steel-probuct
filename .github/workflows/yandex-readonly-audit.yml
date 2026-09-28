@@ -111,8 +111,9 @@ jobs:
                   const hid = encodeURIComponent(host.host_id);
                   for (const [label, suffix] of [
                     ["SUMMARY","summary"],
-                    ["SQI_HISTORY","sqi-history"],
-                    ["POPULAR_QUERIES","search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&limit=100"],
+                    
+                    ["POPULAR_QUERIES","search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&limit=500"],
+                    ["POPULAR_QUERIES_NEXT","search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&limit=500&offset=500"],
                     ["DIAGNOSTICS","diagnostics"],
                     ["VERIFICATION","verification"],
                     ["SITEMAPS","sitemaps?limit=100"],
