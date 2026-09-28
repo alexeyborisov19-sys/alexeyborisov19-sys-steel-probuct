@@ -1,3 +1,10 @@
+## Live checkpoint — measurable calculator acquisition, 28 September 2026
+
+Base b9ca18c (#197): exact-head checks, deploy 36479862704, live 12 browser scenarios and 93 SEO URLs passed. Previous NEXT ACTION completed.
+DONE: public calculator funnel via existing consented analytics; distinguish complete/partial/no-price results from transport errors and lead success. No prices, consent policy, protected content or advertising budgets changed.
+Validation: lint/type/build and 1453 tests passed. macOS temporary-directory alias caused three unrelated initial path assertions; rerun with canonical TMPDIR passed all.
+NEXT ACTION: browser verification, exact-head CI, publish and verify goal sync.
+
 ## Live checkpoint — browser quality gate, 28 September 2026
 
 Base 4c3e668 (#196): candidate hero warmup deployed successfully (36477260192), all 12 encodes ran on origin before promotion and public AVIF response returned image-cache HIT. Prior #195 reduced speculative JS; no universal field-LCP improvement claimed.

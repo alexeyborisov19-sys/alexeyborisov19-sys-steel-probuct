@@ -1,4 +1,5 @@
 "use client";
+import { trackLeadEvent } from "@/lib/analytics";
 import type { ChangeEvent, DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bendConfigurationConflict } from "@/lib/instant-quote/cad-configuration-conflicts";
@@ -21,7 +22,7 @@ function materialIdOf(value: string | null): MaterialId {
 function hasDraggedFiles(event: DragEvent<HTMLDivElement>) { return Array.from(event.dataTransfer.types).includes("Files"); }
 
 /** Shared CAD state and server transport; no production arithmetic runs in the browser. */
-export function useCadProject() {
+export function useCadProject(trackPublicFunnel = false) {
   const ingestLock=useRef(false);
   const [isIngesting,setIsIngesting]=useState(false);
   const analysisControllers = useRef(new Map<string, AbortController>());
@@ -177,6 +178,7 @@ export function useCadProject() {
       }
     });
 
+    if (trackPublicFunnel && jobs.length) trackLeadEvent("calculator_parts_added", { parts_count: jobs.length, input_method: configurations ? "manual" : "cad" });
     setProject(nextProject);
     if(configurations)setMaterialConfirmed(current=>({...current,...Object.fromEntries(jobs.map(job=>[job.partId,true]))}));
     // A new position makes the project total stale, so the sentences the
@@ -343,6 +345,7 @@ export function useCadProject() {
 
   const calculateProject = async () => {
     if (!canCalculate) return;
+    if (trackPublicFunnel) trackLeadEvent("calculator_calculation_started", { parts_count: project.parts.length });
     // Pressing the button twice used to leave every position showing the price
     // from the previous run while the total read «—» and, if the second run
     // failed, beside an error saying there was no result.
@@ -373,6 +376,11 @@ export function useCadProject() {
 
       if (epoch !== calculationEpoch.current) return;
       const calculationResult = payload.calculation;
+      if (trackPublicFunnel) {
+        const pricedCount = calculationResult.parts.filter(part => ["approved", "estimate"].includes(part.price.status) && part.price.totalRub != null).length;
+        const event = pricedCount === project.parts.length && pricedCount > 0 ? "calculator_price_received" : pricedCount > 0 ? "calculator_partial_price" : "calculator_review_required";
+        trackLeadEvent(event, { parts_count: project.parts.length, priced_count: pricedCount });
+      }
       setCalculatedAt(new Date());
       setCalculation(calculationResult);
       setStatusByPartId((current) => {
@@ -392,6 +400,7 @@ export function useCadProject() {
       );
     } catch (error) {
       if (epoch !== calculationEpoch.current) return;
+      if (trackPublicFunnel) trackLeadEvent("calculator_calculation_error", { parts_count: project.parts.length });
       setCalculation(null);
       // The attempt is over, so the positions must stop saying it is running.
       // The reason itself goes in the project message below rather than being

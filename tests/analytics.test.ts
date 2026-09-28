@@ -185,3 +185,12 @@ test("cookie consent keeps an in-memory choice when localStorage is unavailable"
   assert.match(consent, /transientChoice = choice/);
   assert.match(consent, /return transientChoice/);
 });
+
+test("calculator stages never count as an accepted lead", () => {
+  withAnalyticsWindow((calls) => {
+    const events = ["calculator_parts_added", "calculator_calculation_started", "calculator_price_received", "calculator_partial_price", "calculator_review_required", "calculator_calculation_error", "calculator_quote_click"];
+    for (const event of events) trackLeadEvent(event, { parts_count: 2 });
+    assert.deepEqual(calls.map(call => call[2]), events);
+    assert.ok(calls.every(call => call[2] !== "ym-submit-leadform"));
+  });
+});
