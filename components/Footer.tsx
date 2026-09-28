@@ -60,7 +60,7 @@ export function Footer({ workspace = false }: { workspace?: boolean } = {}) {
         {columns.map(([title, links]) => <div key={title}>
           <p className="text-xs font-bold uppercase text-white">{title}</p>
           <ul className="mt-4 space-y-2">
-            {links.map((label) => <li key={label}><Link href={footerLinks[label]} className="text-xs text-white/60 transition hover:text-steel-orange">{label}</Link></li>)}
+            {links.map((label) => <li key={label}><Link prefetch={false} href={footerLinks[label]} className="text-xs text-white/60 transition hover:text-steel-orange">{label}</Link></li>)}
           </ul>
         </div>)}
         <div>
@@ -86,7 +86,7 @@ export function Footer({ workspace = false }: { workspace?: boolean } = {}) {
       <div className="mt-9 border-t border-white/10 pt-5">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-white/60">Ключевые направления</p>
         <nav className="mt-3 flex flex-wrap gap-x-5 gap-y-2" aria-label="Ключевые направления продукции">
-          {keyCommercialLinks.map(([label, href]) => <Link key={href} href={href} className="text-xs text-white/60 transition hover:text-steel-orange">{label}</Link>)}
+          {keyCommercialLinks.map(([label, href]) => <Link prefetch={false} key={href} href={href} className="text-xs text-white/60 transition hover:text-steel-orange">{label}</Link>)}
         </nav>
       </div>
       <div className="mt-5 border-t border-white/10 pt-5">

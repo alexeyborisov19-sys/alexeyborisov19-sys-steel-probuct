@@ -1,3 +1,9 @@
+## Live checkpoint — public loading performance, 28 September 2026
+
+Base main b435300a (#194), published via successful deploy 36470988095. Since the prior journal entry, surcharge fix #193 was published and verified, and #194 added verified reviews. Owner requests faster loading. Scope: marketing showcase and navigation only; no calculation or consent changes.
+DONE: disabled automatic route prefetch in Header, Footer, Hero and CAD entry; showcase now server-rendered with existing CSS hover treatment, no Framer dependency or hidden pre-hydration cards. Brand, preloader, consent and calculation logic unchanged. Build/lint/type, 1452 tests, SEO 93 URLs and browser 390/1440 navigation/manual-input checks passed. Local initial bytes 274 KB vs baseline live 430 KB; not a same-server timing claim.
+NEXT ACTION: exact-head CI, authorized deploy and repeated live performance comparison.
+
 ## Live checkpoint — remove per-part surcharges, 28 September 2026
 
 Base published b6b6a874 (#192), deploy 36463011132 and exact-head CI succeeded. Owner explicitly requests disabling 1000 RUB per part and 16.5% final surcharge. Shared commercial policy currently loads fixed/final charges from private environment.

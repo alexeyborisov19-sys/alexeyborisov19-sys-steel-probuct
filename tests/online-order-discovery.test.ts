@@ -61,14 +61,10 @@ test("the calculator page links onward into production instead of being a cul-de
   }
 });
 
-test("the showcase animates without overriding a reduced-motion preference", async () => {
+test("the showcase remains accessible without animation or hydration", async () => {
   const showcase = await source("components/CadCalculatorShowcase.tsx");
-
-  assert.match(showcase, /motion-reduce:!opacity-100/);
-  assert.match(showcase, /motion-reduce:!transform-none/);
-  assert.match(showcase, /motion-reduce:hidden/);
-  assert.doesNotMatch(showcase, /useReducedMotion|!reduceMotion &&/);
-  // Decorative motion must be hidden from assistive technology.
-  assert.match(showcase, /aria-hidden="true"/);
+  assert.doesNotMatch(showcase, /framer-motion|use client|initial=|whileInView/);
   assert.match(showcase, /aria-labelledby="cad-calculator-title"/);
+  assert.match(showcase, /<ol/);
+  assert.match(showcase, /<li/);
 });
