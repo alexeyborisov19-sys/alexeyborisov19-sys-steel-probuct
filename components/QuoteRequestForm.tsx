@@ -5,6 +5,7 @@ import { ChangeEvent, DragEvent, FormEvent, useEffect, useRef, useState } from "
 import { createResettableOnce, trackLeadEvent } from "@/lib/analytics";
 import { legalLinks } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
+import { cassetteHandoffSummary } from "@/lib/quote/cassette-handoff";
 
 const MAX_FILES = 10;
 const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
@@ -87,18 +88,7 @@ export function QuoteRequestForm() {
 
     if (params.get("source") !== "calculator-metallokassety") return;
 
-    const area = params.get("area");
-    const thickness = params.get("thickness");
-    const quantity = Number(params.get("quantity") ?? "");
-
-    const summary = [
-      "Прошу выполнить точный расчёт металлокассет по приложенным исходным данным.",
-      area ? `Площадь фасада: ${area.replace(".", ",")} м².` : "",
-      "Размер кассеты: 1170×545 мм. Руст: 20×20 мм.",
-      thickness ? `Выбранная толщина металла: ${thickness} мм.` : "",
-      Number.isFinite(quantity) && quantity > 0 ? `Ориентировочное количество по калькулятору: ≈ ${formatNumber(quantity)} шт.` : "",
-      "Необходима проверка специалистом и итоговое коммерческое предложение.",
-    ].filter(Boolean).join("\n");
+    const summary = cassetteHandoffSummary(params);
 
     setMessage((current) => current || summary);
   }, []);
