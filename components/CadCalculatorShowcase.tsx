@@ -40,13 +40,13 @@ export function CadCalculatorShowcase() {
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="max-w-2xl">
             <p className="text-[11px] font-bold uppercase tracking-[.16em] text-steel-orange">
-              Онлайн-расчёт по CAD-файлу
+              Бесплатный онлайн-расчёт
             </p>
             <h2 id="cad-calculator-title" className="mt-3 text-2xl font-semibold uppercase leading-tight sm:text-3xl">
               Рассчитайте деталь по CAD или размерам
             </h2>
             <p className="mt-3 text-base leading-relaxed text-white/75">
-              Загрузите DXF или STEP либо введите размеры вручную. До пяти изделий в одном расчёте. Неоднозначную геометрию проверит инженер.
+              Загрузите DXF или STEP либо введите размеры вручную. До пяти изделий в одном расчёте, бесплатно и без регистрации. Стоимость предварительная; неоднозначную геометрию проверит инженер.
             </p>
           </div>
           <Link

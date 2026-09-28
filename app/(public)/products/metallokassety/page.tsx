@@ -94,6 +94,7 @@ export default function MetalCassetteCollectionPage() {
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link href="#calculator-metallokasset" className="clip-corner bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase">Рассчитать цену&nbsp; ↓</Link>
                   <AttributionLink href="/contacts#contact-form" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase transition hover:border-steel-orange hover:text-steel-orange">Отправить проект&nbsp; →</AttributionLink>
+                  <Link href="/products/metallokassety/bim" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase hover:text-steel-orange">BIM-модель IFC →</Link>
                   <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="border border-steel-orange/45 px-5 py-3 text-xs font-bold uppercase text-steel-orange">Каталог PDF&nbsp; ↗</a>
                 </div>
               </div>
