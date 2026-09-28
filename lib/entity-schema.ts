@@ -73,7 +73,7 @@ export function companyFactsAboutPageSchema(): JsonLd {
     name: `Факты о производстве «${siteConfig.name}»`,
     description: "Проверенные сведения о бренде, юридическом операторе, производственной площадке, оборудовании и границах работ.",
     inLanguage: siteConfig.language,
-    dateModified: "2026-09-18",
+    dateModified: "2026-09-28",
     isPartOf: { "@id": `${siteConfig.url}/#website` },
     about: [
       { "@id": `${siteConfig.url}/#brand` },

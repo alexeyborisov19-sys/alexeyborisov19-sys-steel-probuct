@@ -1,3 +1,4 @@
+import { publicTools, publicToolsFaq } from "@/data/public-tools";
 import Link from "next/link";
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
@@ -34,6 +35,7 @@ const equipmentRows = [
 ] as const;
 
 const factsFaq = [
+  ...publicToolsFaq,
   {
     question: "«Сталь Продукт» — это юридическое лицо?",
     answer: `Нет. «Сталь Продукт» — бренд/товарный знак, а не наименование юридического лица. Юридический оператор, указанный на сайте, — ${legalOperator.shortName}.`,
@@ -67,6 +69,20 @@ export default function CompanyFactsPage() {
         title="Факты о производстве «Сталь Продукт»"
         description="Краткая справочная страница с подтверждёнными данными о бренде, юридическом операторе, производственной площадке, оборудовании и границах работ."
       >
+        <section aria-labelledby="public-tools-title" className="border-b border-white/10 py-12 sm:py-16">
+          <div className="container">
+            <h2 id="public-tools-title" className="text-2xl font-semibold sm:text-3xl">Что можно рассчитать и скачать на сайте</h2>
+            <div className="mt-6 grid gap-5 lg:grid-cols-3">
+              {publicTools.map((tool) => (
+                <article key={tool.path} className="rounded-xl border border-white/15 bg-white/5 p-6">
+                  <h3 className="text-lg font-semibold"><Link className="text-steel-orange underline underline-offset-4" href={tool.path}>{tool.name}</Link></h3>
+                  <p className="mt-4 text-sm leading-6 text-white/80">{tool.description}</p>
+                  <p className="mt-4 text-sm leading-6 text-white/65">{tool.limitation}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
         <section className="border-b border-white/10 bg-[#0c1013] py-12 sm:py-16">
           <div className="container grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,.9fr)]">
             <div>
@@ -80,7 +96,7 @@ export default function CompanyFactsPage() {
                 Производственная площадка: {legalOperator.productionAddress}. Поставки выполняются по России. {installationScopeSummary}
               </p>
               <p className="mt-5 text-xs uppercase tracking-[.12em] text-white/45">
-                Актуализировано: <time dateTime="2026-09-12">12 сентября 2026 года</time>
+                Актуализировано: <time dateTime="2026-09-28">28 сентября 2026 года</time>
               </p>
             </div>
 
