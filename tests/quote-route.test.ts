@@ -465,7 +465,7 @@ test("keeps server-owned consent versions", async () => {
 test("failed persistence does not mark an unsaved quote as an accepted duplicate", async () => {
   const environment = await setupEnvironment();
   try {
-    const failed = handler({ createQuoteRecord: async () => { throw new QuoteStorageError("synthetic outage"); } });
+    const failed = handler({ createQuoteRecord: async () => { throw new QuoteStorageError(); } });
     const first = await failed(request(validForm({ message: "retry after failed persistence" })));
     assert.equal(first.status, 500);
     const retried = await handler()(request(validForm({ message: "retry after failed persistence" })));
