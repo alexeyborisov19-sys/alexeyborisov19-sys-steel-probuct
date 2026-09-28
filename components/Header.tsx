@@ -90,10 +90,10 @@ export function Header() {
       </div>
     ) : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
-      <Link href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
+      <Link prefetch={false} href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
       <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch min-[1440px]:flex">
-        <Link className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></Link>
-        <Link
+        <Link prefetch={false} className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></Link>
+        <Link prefetch={false}
           ref={solutionsButtonRef}
           href="/solutions"
           className={navClass(pathname.startsWith("/solutions") || solutionsOpen)}
@@ -113,13 +113,13 @@ export function Header() {
         ><span>Решения</span><b aria-hidden="true">{solutionsOpen ? "⌃" : "⌄"}</b></Link>
         {navigation.slice(1).map((item) => {
           const active = isActive(item.href);
-          return <Link key={item.href} className={navClass(active)} href={item.href} aria-current={active ? "page" : undefined}><span>{item.label}</span></Link>;
+          return <Link prefetch={false} key={item.href} className={navClass(active)} href={item.href} aria-current={active ? "page" : undefined}><span>{item.label}</span></Link>;
         })}
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 min-[1440px]:flex">
         <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold min-[1800px]:block">{siteConfig.telephoneDisplay}</a>
-        <Link href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="header-quote-action header-online-action clip-corner border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black">Рассчитать онлайн</Link>
-        <Link href="/contacts#contact-form" className="header-quote-action clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Расчёт инженером</Link>
+        <Link prefetch={false} href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="header-quote-action header-online-action clip-corner border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black">Рассчитать онлайн</Link>
+        <Link prefetch={false} href="/contacts#contact-form" className="header-quote-action clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Расчёт инженером</Link>
       </div>
       <button
         ref={mobileMenuButtonRef}
@@ -133,14 +133,14 @@ export function Header() {
     </div>
     <MegaMenu open={solutionsOpen} onClose={() => setSolutionsOpen(false)} />
     {mobileOpen && <nav id="mobile-navigation" aria-label="Мобильная навигация" className="header-mobile-nav container flex flex-col border-t border-white/15 py-4 min-[1440px]:hidden">
-      <Link href="/solutions" aria-current={pathname.startsWith("/solutions") ? "page" : undefined}>Решения</Link>
+      <Link prefetch={false} href="/solutions" aria-current={pathname.startsWith("/solutions") ? "page" : undefined}>Решения</Link>
       {navigation.map((item) => {
         const active = isActive(item.href);
-        return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
+        return <Link prefetch={false} key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
       })}
       <a href={`tel:${siteConfig.telephone}`} className="text-steel-orange">{siteConfig.telephoneDisplay}</a>
-      <Link href="/online-order" className="mt-2 border border-steel-orange px-4 py-3 text-center text-xs font-bold uppercase text-steel-orange">Рассчитать онлайн</Link>
-      <Link href="/contacts#contact-form" className="mt-2 bg-steel-orange-deep px-4 py-3 text-center text-xs font-bold uppercase">Расчёт инженером</Link>
+      <Link prefetch={false} href="/online-order" className="mt-2 border border-steel-orange px-4 py-3 text-center text-xs font-bold uppercase text-steel-orange">Рассчитать онлайн</Link>
+      <Link prefetch={false} href="/contacts#contact-form" className="mt-2 bg-steel-orange-deep px-4 py-3 text-center text-xs font-bold uppercase">Расчёт инженером</Link>
     </nav>}
   </header>;
 }
