@@ -28,8 +28,8 @@ jobs:
           async function api(service,method,params){
            const headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json','Accept-Language':'ru'};
            if(process.env.YD_CLIENT_LOGIN?.trim())headers['Client-Login']=process.env.YD_CLIENT_LOGIN.trim();
-           const response=await fetch('https://api.direct.yandex.com/json/v501/'+service,{method:'POST',headers,body:JSON.stringify({method,params}),signal:AbortSignal.timeout(30000)});
-           const body=await response.json();if(!response.ok||body.error)throw Error(JSON.stringify(body.error||{status:response.status}));
+           const response=await fetch('https://api.direct.yandex.com/json/v501/'+service,{method:'POST',headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,'$1'),signal:AbortSignal.timeout(30000)});
+           const body=JSON.parse((await response.text()).replace(/("Id"\s*:\s*)(\d{16,})(?=\s*[,}])/g,'$1"$2"'));if(!response.ok||body.error)throw Error(JSON.stringify(body.error||{status:response.status}));
            const result=body.result;for(const [key,value]of Object.entries(result||{}))if(key.endsWith('Results'))for(const item of value)if(item.Errors?.length)throw Error(JSON.stringify({service,method,item}));
            return result;
           }
@@ -59,6 +59,7 @@ jobs:
           console.log('AD',JSON.stringify(ad));
           await guard();
           if(ad.Status==='DRAFT')console.log('MODERATION',JSON.stringify(await api('ads','moderate',{SelectionCriteria:{Ids:[ad.Id]}})));
+          console.log('RESUME',JSON.stringify(await api('ads','resume',{SelectionCriteria:{Ids:[ad.Id]}})));
           console.log('FINAL_AD',JSON.stringify(await api('ads','get',{SelectionCriteria:{Ids:[ad.Id]},FieldNames:['Id','AdGroupId','Status','State','StatusClarification'],ResponsiveAdFieldNames:['Href','Titles','Texts']})));
           console.log('BUDGET_UNCHANGED',JSON.stringify(await guard()));
           NODE
