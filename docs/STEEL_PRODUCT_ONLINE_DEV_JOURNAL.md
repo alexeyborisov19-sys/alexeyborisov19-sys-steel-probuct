@@ -1,3 +1,9 @@
+## Live checkpoint — Alice search access, 28 September 2026
+
+Base published main 4c5fbda (#190); CI 36458580792/36458581281 and deploy 36459149004 succeeded, live Chromium/text endpoints passed. Owner requests Yandex Alice availability.
+DONE: explicit YandexAdditional / YandexAdditionalBot public-content rules with existing private exclusions. Build/lint/type and 1451 tests passed. Local emitted rules and 12 live baseline responses passed for YandexBot/Additional/AdditionalBot. Post-deploy workflow checks both Alice tokens. Official guidance: https://yandex.ru/support/webmaster/ru/adding-site/indexing-prohibition. Public content was already permitted through wildcard; do not describe this as removing a pre-existing block. No claim of actual Alice citations.
+NEXT ACTION: exact-head CI, publish and verify live explicit rules and responses. Preserve calculators, legal controls and content.
+
 ## Live checkpoint — ChatGPT search readiness, 28 September 2026
 
 Base published main 3fbbc870 (#189); exact-head checks and deployment 36430240448 succeeded. Owner authorizes search readiness improvements and publication. Existing OAI-SearchBot access is already enabled. Preserve privacy, pricing, header and protected content.
