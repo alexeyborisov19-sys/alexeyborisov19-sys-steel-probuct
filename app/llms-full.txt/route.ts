@@ -1,3 +1,4 @@
+import { publicTools } from "@/data/public-tools";
 import { brandOfficialProfiles, legalOperatorExternalReferences } from "@/data/entity-references";
 import { products } from "@/data/products";
 import { solutionDetails } from "@/data/solution-details";
@@ -52,6 +53,10 @@ export function GET() {
     .map((reference) => `- ${reference.name}: ${reference.url}`)
     .join("\n");
 
+  const tools = publicTools.map((tool) =>
+    `### ${tool.name}\n\n${tool.description}\n${tool.limitation}\nURL: ${siteConfig.url}${tool.path}`,
+  ).join("\n\n");
+
   const content = `# Сталь Продукт — расширенная справка
 
 ## Бренд и оператор
@@ -75,6 +80,10 @@ ${officialBrandProfiles}
 
 Следующие внешние страницы идентифицируют ${legalOperator.shortName} по ИНН ${legalOperator.inn} и ОГРН ${legalOperator.ogrn}. Они относятся к юридическому оператору и не объявляются официальными страницами бренда «${siteConfig.name}».
 ${externalEntityReferences}
+
+## Инструменты для расчёта и проектирования
+
+${tools}
 
 ## Производственные возможности
 

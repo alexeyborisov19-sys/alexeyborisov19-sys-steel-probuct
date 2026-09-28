@@ -1,3 +1,4 @@
+import { publicTools } from "@/data/public-tools";
 import { brandOfficialProfiles } from "@/data/entity-references";
 import {
   installationScopeSummary,
@@ -13,6 +14,10 @@ export function GET() {
   const officialProfiles = brandOfficialProfiles
     .map((profile) => `${profile.name}: ${profile.url}`)
     .join("; ");
+
+  const tools = publicTools.map((tool) =>
+    `### ${tool.name}\n\n${tool.description}\n${tool.limitation}\nURL: ${siteConfig.url}${tool.path}`,
+  ).join("\n\n");
 
   const content = `# ${siteConfig.name}
 
@@ -36,6 +41,10 @@ export function GET() {
 - Лазерная резка, гибка, сварка, сборка и порошковая окраска.
 - Производство по PDF, DXF, DWG, STEP, 3D-моделям, эскизам и техническим заданиям.
 
+## Инструменты для расчёта и проектирования
+
+${tools}
+
 ## Ключевые страницы
 
 - [Главная](${siteConfig.url}/)
@@ -46,7 +55,7 @@ export function GET() {
 - [Производство](${siteConfig.url}/production)
 - [Реальные проекты](${siteConfig.url}/projects)
 - [Инженерный журнал](${siteConfig.url}/articles)
-- [Онлайн-расчёт по CAD-файлу](${siteConfig.url}/online-order)
+- [Бесплатный расчёт по CAD или габаритам](${siteConfig.url}/online-order)
 - [Калькулятор металлокассет](${siteConfig.url}/calculator-metallokassety)
 - [Контакты и отправка проекта](${siteConfig.url}/contacts)
 

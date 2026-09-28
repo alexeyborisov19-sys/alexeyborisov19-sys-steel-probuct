@@ -1,3 +1,9 @@
+## Live checkpoint — ChatGPT search readiness, 28 September 2026
+
+Base published main 3fbbc870 (#189); exact-head checks and deployment 36430240448 succeeded. Owner authorizes search readiness improvements and publication. Existing OAI-SearchBot access is already enabled. Preserve privacy, pricing, header and protected content.
+DONE: shared public tool facts for human-readable company facts and optional AI discovery documents; synchronized dates. Build/lint/type, 1451 tests, SEO 93 URLs and Chromium 390/1440 passed; production bot-UA HTTP checks returned 200. No claim of guaranteed ChatGPT inclusion. Native RFA and source-based open/closed/corner BIM work remain incomplete, in a separate checkout.
+NEXT ACTION: exact-head CI, authorized publication and live verification. Evidence: docs/verification/chatgpt-search-20260928.md.
+
 ## Live checkpoint — BIM workspace redesign, 28 September 2026
 
 Base ae8c8cad (#188); exact-head CI and publication 36427077927 succeeded; live 390/1440 colour/export checks passed. Owner requests clearer layout and colour workflow, more RAL choices, publication remains authorized.
