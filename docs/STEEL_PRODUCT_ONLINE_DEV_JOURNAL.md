@@ -1,3 +1,9 @@
+## Live checkpoint — calculator discovery clarity, 28 September 2026
+
+Base published main d42cc4f (#191); exact-head checks, deploy 36461132102 and IndexNow 36461688643 succeeded. Owner authorizes further evidence-based visibility fixes and publication. Public search returns branded site and CAD page, but CAD snippet still reflects older content; not a measurement of ChatGPT citations or ranking.
+DONE: context links from laser/bending services; visible DXF/STEP/manual comparison; qualified STEP claims. Build/lint/type and 1451 tests passed; Chromium 390/1440 links/schema and SEO 93 URLs passed. Existing metadata already describes free manual/CAD calculation; do not repeatedly rewrite it to chase stale snapshots.
+NEXT ACTION: exact-head CI, publish and verify live. Evidence: docs/verification/discovery-clarity-20260928.md.
+
 ## Live checkpoint — Alice search access, 28 September 2026
 
 Base published main 4c5fbda (#190); CI 36458580792/36458581281 and deploy 36459149004 succeeded, live Chromium/text endpoints passed. Owner requests Yandex Alice availability.
