@@ -1,5 +1,5 @@
 // Verified against the public Yandex listing on 2026-09-28.
-// The listing belongs to ООО «ЭНЕРГОАЛЬЯНС» / laser67.ru (INN 6732110789).
+// The listing belongs to ООО «ЭНЕРГОАЛЬЯНС» (INN 6732110789).
 // Short excerpts total 23 words; links expose the full, unfiltered source.
 export const customerReviewSource = "https://yandex.ru/maps/org/energoalyans/65961408187/reviews/";
 export const customerReviews = [

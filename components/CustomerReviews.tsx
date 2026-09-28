@@ -8,7 +8,7 @@ export default function CustomerReviews() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#80502b]">Обратная связь</p>
           <h2 id="reviews-heading" className="mt-3 text-2xl font-semibold sm:text-3xl">Заказчики о нашей работе</h2>
-          <p className="mt-4 max-w-lg leading-7 text-[#50595e]">Выдержки из отзывов о нашем производстве в Яндекс Картах — карточка «Энергоальянс / laser67.ru». ООО «ЭНЕРГОАЛЬЯНС» — компания, работающая под брендом «Сталь Продукт».</p>
+          <p className="mt-4 max-w-lg leading-7 text-[#50595e]">Выдержки из отзывов о нашем производстве в Яндекс Картах — карточка «Энергоальянс». ООО «ЭНЕРГОАЛЬЯНС» — компания, работающая под брендом «Сталь Продукт».</p>
         </div>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {customerReviews.map((review) => (
