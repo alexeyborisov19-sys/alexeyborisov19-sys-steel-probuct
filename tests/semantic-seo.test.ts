@@ -205,7 +205,9 @@ test("static page titles stay inside what a search result shows", () => {
   assert.ok(titles.length >= 20, `ожидались заголовки страниц, найдено ${titles.length}`);
 
   for (const { title, file } of titles) {
-    const rendered = `${title}${suffix}`;
+    // Next's layout title template applies to descendants, not the page at
+    // that layout's own segment. Verified against the rendered home title.
+    const rendered = file === "app/(public)/page.tsx" ? title : `${title}${suffix}`;
     assert.ok(
       rendered.length <= 60,
       `${file}: title ${rendered.length} символов — «${rendered}»`,
