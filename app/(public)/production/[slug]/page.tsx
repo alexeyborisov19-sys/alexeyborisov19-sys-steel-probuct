@@ -122,6 +122,13 @@ export default async function ProductionServicePage({
                   </li>
                 ))}
               </ul>
+              {["lazernaya-rezka-metalla", "gibka-listovogo-metalla"].includes(service.slug) && (
+                <div className="mt-7 border-t border-white/15 pt-5">
+                  <h3 className="text-lg font-semibold">Нужна предварительная стоимость?</h3>
+                  <p className="mt-3 text-sm leading-6 text-white/75">Загрузите DXF или STEP либо задайте габариты без чертежа. Выберите материал, количество и операции. Расчёт бесплатный, без регистрации; окончательную цену подтверждает инженер.</p>
+                  <Link href="/online-order" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-steel-orange underline underline-offset-4">Рассчитать изделие онлайн →</Link>
+                </div>
+              )}
               <AttributionLink
                 href="/contacts#contact-form"
                 className="clip-corner mt-7 inline-flex bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase"

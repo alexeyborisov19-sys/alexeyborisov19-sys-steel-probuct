@@ -15,6 +15,7 @@ test("the calculator is reachable from the pages that lead to it", async () => {
     ["components/ArticleCommercialLinks.tsx", /href:\s*"\/online-order"/],
     ["components/ProductPricingFactors.tsx", /href="\/online-order"/],
     ["app/llms.txt/route.ts", /\/online-order/],
+    ["app/(public)/production/[slug]/page.tsx", /href="\/online-order"/],
     ["app/sitemap.ts", /"\/online-order"/],
   ];
 
