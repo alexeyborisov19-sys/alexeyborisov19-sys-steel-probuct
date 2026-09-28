@@ -2,6 +2,8 @@
 export type CassetteBimInput = {
   widthMm: number; heightMm: number; depthMm: number; thicknessMm: number;
   jointMm: number; columns: number; rows: number; mark: string; finish: string;
+  /** Stable row:column keys (zero based). */
+  panelColours?: Record<string, { ral: string; hex: string }>;
 };
 export const bimScope = "Координационная модель. Прямые борта упрощены; крепёж, замки, радиусы гиба и подсистема не моделируются. Не для изготовления или расчёта нагрузок.";
 export function validateCassetteBim(p: CassetteBimInput): string[] {
@@ -14,6 +16,9 @@ export function validateCassetteBim(p: CassetteBimInput): string[] {
   for (const key of ["columns", "rows"] as const) if (!Number.isInteger(p[key]) || p[key] < 1 || p[key] > 20) errors.push("Число рядов и колонок: целое от 1 до 20.");
   if (!p.mark.trim() || p.mark.length > 80) errors.push("Марка: от 1 до 80 символов.");
   if (p.finish.length > 120) errors.push("Описание покрытия: не более 120 символов.");
+  for (const colour of Object.values(p.panelColours || {})) {
+    if (!/^RAL [0-9]{4}$/.test(colour.ral) || !/^#[0-9a-f]{6}$/i.test(colour.hex)) errors.push("Укажите RAL в формате RAL 7016 и экранный цвет.");
+  }
   return errors;
 }
 export function cassetteBimSummary(p: CassetteBimInput) {
@@ -60,16 +65,31 @@ export function createCassetteIfc(p: CassetteBimInput): string {
     return add(`IFCEXTRUDEDAREASOLID(${profile},${pos},${z},${num(c)})`);
   }
   // Five non-overlapping prisms: face plus four simplified straight returns.
+  function makeShape(hex?: string) {
   const solids = [box(w,h,t,0,0,0), box(t,h,d-t,0,0,t), box(t,h,d-t,w-t,0,t), box(w-2*t,t,d-t,t,0,t), box(w-2*t,t,d-t,t,h-t,t)];
+  if (hex) {
+    const rgb = [1,3,5].map(i => num(parseInt(hex.slice(i,i+2),16)/255));
+    const colour = add(`IFCCOLOURRGB($,${rgb.join(",")})`);
+    const shading = add(`IFCSURFACESTYLESHADING(${colour},0.)`);
+    const style = add(`IFCSURFACESTYLE($,.BOTH.,(${shading}))`);
+    for (const solid of solids) add(`IFCSTYLEDITEM(${solid},(${style}),$)`);
+  }
   const representation = add(`IFCSHAPEREPRESENTATION(${context},'Body','SweptSolid',(${solids.join(",")}))`);
-  const shape = add(`IFCPRODUCTDEFINITIONSHAPE($,$,(${representation}))`);
+  return add(`IFCPRODUCTDEFINITIONSHAPE($,$,(${representation}))`);
+  }
+  const shapes = new Map<string,string>();
+  function shapeFor(hex?: string) {
+    const key = hex || "default";
+    if (!shapes.has(key)) shapes.set(key,makeShape(hex));
+    return shapes.get(key)!;
+  }
   const properties: string[] = [];
   function property(name: string, value: string, type = "IFCLABEL") { properties.push(add(`IFCPROPERTYSINGLEVALUE(${str(name)},$,${type}(${type === "IFCLENGTHMEASURE" ? value : str(value)}),$)`)); }
   property("Manufacturer", "Сталь Продукт"); property("ModelScope", bimScope, "IFCTEXT");
   property("Width", num(w), "IFCLENGTHMEASURE"); property("Height", num(h), "IFCLENGTHMEASURE");
   property("Depth", num(d), "IFCLENGTHMEASURE"); property("Thickness", num(t), "IFCLENGTHMEASURE");
   property("Joint", num(p.jointMm), "IFCLENGTHMEASURE"); property("Mark", p.mark);
-  property("Finish", p.finish || "По проекту"); property("Source", "https://www.steelprodukt.ru/products/metallokassety/bim"); property("Revision", "1.0");
+  property("DefaultFinish", p.finish || "По проекту"); property("Source", "https://www.steelprodukt.ru/products/metallokassety/bim"); property("Revision", "1.0");
   const pset = add(`IFCPROPERTYSET(${guid()},$,'SP_CassetteCoordination',$,(${properties.join(",")}))`);
   const type = add(`IFCPLATETYPE(${guid()},$,${str(p.mark)},${str(bimScope)},$,(${pset}),$,$,$,.CURTAIN_PANEL.)`);
   const material = add(`IFCMATERIAL(${str("Оцинкованная сталь")},$,${str("Сталь")})`);
@@ -79,8 +99,16 @@ export function createCassetteIfc(p: CassetteBimInput): string {
     const pa = add(`IFCAXIS2PLACEMENT3D(${point(col*(w+p.jointMm),0,row*(h+p.jointMm))},${outward},${x})`);
     const pl = add(`IFCLOCALPLACEMENT(${placement},${pa})`);
     const tag = `${p.mark}-${String(panels.length+1).padStart(3,"0")}`;
+    const colour = p.panelColours?.[`${row}:${col}`];
+    const shape = shapeFor(colour?.hex);
     const panel = add(`IFCPLATE(${guid()},$,${str(tag)},${str(bimScope)},$,${pl},${shape},${str(tag)},.CURTAIN_PANEL.)`);
     panels.push(panel);
+    {
+      const finish = add(`IFCPROPERTYSINGLEVALUE('Finish',$,IFCLABEL(${str(colour?.ral || p.finish || "По проекту")}),$)`);
+      const swatch = add(`IFCPROPERTYSINGLEVALUE('PreviewColour',$,IFCLABEL(${str(colour?.hex || "Not assigned")}),$)`);
+      const colourSet = add(`IFCPROPERTYSET(${guid()},$,'SP_CassetteFinish',$,(${finish},${swatch}))`);
+      add(`IFCRELDEFINESBYPROPERTIES(${guid()},$,$,$,(${panel}),${colourSet})`);
+    }
     const area = add(`IFCQUANTITYAREA('FaceArea',${str("Площадь лицевой поверхности без швов")},$,${num(w*h/1e6)},$)`);
     const quantities = add(`IFCELEMENTQUANTITY(${guid()},$,'SP_CassetteQuantities',$,$,(${area}))`);
     add(`IFCRELDEFINESBYPROPERTIES(${guid()},$,$,$,(${panel}),${quantities})`);
@@ -93,6 +121,10 @@ export function createCassetteIfc(p: CassetteBimInput): string {
 export function createCassetteCsv(p: CassetteBimInput) {
   const errors = validateCassetteBim(p); if (errors.length) throw new Error(errors.join(" "));
   const safe = (s: string) => `"${(/^[\s]*[=+\-@]|^[\t\r\n]/.test(s) ? "'"+s : s).replaceAll('"','""')}"`;
-  const rows = [["Марка","Ширина, мм","Высота, мм","Глубина, мм","Толщина, мм","Покрытие","Количество","Площадь лица всего, м²","Статус"], [p.mark,String(p.widthMm),String(p.heightMm),String(p.depthMm),String(p.thicknessMm),p.finish||"По проекту",String(p.columns*p.rows),String(cassetteBimSummary(p).faceAreaM2),bimScope]];
+  const rows = [["Марка","Ширина, мм","Высота, мм","Глубина, мм","Толщина, мм","Покрытие","Количество","Площадь лица всего, м²","Статус"]];
+  for (let row=0; row<p.rows; row++) for (let col=0; col<p.columns; col++) {
+    const tag = `${p.mark}-${String(row*p.columns+col+1).padStart(3,"0")}`;
+    rows.push([tag,String(p.widthMm),String(p.heightMm),String(p.depthMm),String(p.thicknessMm),p.panelColours?.[`${row}:${col}`]?.ral || p.finish || "По проекту","1",String(p.widthMm*p.heightMm/1e6),bimScope]);
+  }
   return "\uFEFF"+rows.map(row=>row.map(safe).join(";")).join("\r\n");
 }
