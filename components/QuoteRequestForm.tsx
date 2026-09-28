@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { createResettableOnce, trackLeadEvent } from "@/lib/analytics";
 import { legalLinks } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
@@ -17,7 +17,7 @@ const acceptedExtensions = [
 
 const acceptedFiles = acceptedExtensions.map((extension) => `.${extension}`).join(",");
 
-type Feedback = { type: "error" | "success"; message: string } | null;
+type Feedback = { type: "error" | "success"; message: string; requestId?: string } | null;
 type QuoteRequestFailure = Error & { code?: string };
 
 function extensionOf(name: string) {
@@ -38,7 +38,15 @@ export function QuoteRequestForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isSending, setIsSending] = useState(false);
+  const sendingRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragDepth = useRef(0);
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (feedback?.type === "success") feedbackRef.current?.focus();
+  }, [feedback]);
   const [message, setMessage] = useState("");
+  const [cadHandoff, setCadHandoff] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const formStartTracker = useRef<ReturnType<typeof createResettableOnce> | null>(null);
   if (!formStartTracker.current) {
@@ -54,6 +62,7 @@ export function QuoteRequestForm() {
     const formatNumber = (value: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
 
     if (params.get("source") === "online-order") {
+      setCadHandoff(true);
       // Handoff from the CAD calculator. Only the customer's own project scope
       // travels here; the calculation basis stays on the server.
       const parts = Number(params.get("parts") ?? "");
@@ -68,7 +77,7 @@ export function QuoteRequestForm() {
         Number.isFinite(total) && total > 0
           ? `Предварительная оценка калькулятора: ≈ ${formatNumber(total)} ₽ с НДС.`
           : "",
-        "CAD-файлы прикладываю к заявке.",
+        "Исходные CAD-файлы необходимо приложить к заявке отдельно.",
         "Необходима проверка инженером и итоговое коммерческое предложение.",
       ].filter(Boolean).join("\n");
 
@@ -97,7 +106,11 @@ export function QuoteRequestForm() {
   function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (!incoming.length) return;
+    addFiles(incoming);
+  }
+
+  function addFiles(incoming: File[]) {
+    if (sendingRef.current || !incoming.length) return;
 
     const wrongFiles = incoming.filter((file) => !acceptedExtensions.includes(extensionOf(file.name)));
     const validFiles = incoming.filter((file) => acceptedExtensions.includes(extensionOf(file.name)));
@@ -123,6 +136,13 @@ export function QuoteRequestForm() {
     if (validFiles.length) trackLeadEvent("quote_file_attached", { files_added: validFiles.length, total_files: combined.length });
   }
 
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    dragDepth.current = 0;
+    setIsDragging(false);
+    addFiles(Array.from(event.dataTransfer.files));
+  }
+
   function markFormStarted() {
     formStartTracker.current?.fire();
   }
@@ -134,6 +154,7 @@ export function QuoteRequestForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (sendingRef.current) return;
     setFeedback(null);
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -185,25 +206,36 @@ export function QuoteRequestForm() {
       });
     }
 
+    sendingRef.current = true;
     setIsSending(true);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 60_000);
     trackLeadEvent("quote_request_submit", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
     try {
-      const response = await fetch("/api/quote", { method: "POST", body: formData });
-      const payload = await response.json() as { message?: string; requestId?: string; code?: string };
+      const response = await fetch("/api/quote", { method: "POST", body: formData, signal: controller.signal });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; message?: string; requestId?: string; code?: string } | null;
+      if (!payload || typeof payload.message !== "string") {
+        throw new Error("Сервер не подтвердил приём заявки. Данные сохранены в форме; свяжитесь с нами или повторите отправку позже.");
+      }
       if (!response.ok) {
         const failure = new Error(payload.message ?? "Не удалось отправить заявку.") as QuoteRequestFailure;
         failure.code = payload.code;
         throw failure;
       }
 
+      if (payload.ok !== true || !/^SP-\d{8}-[A-F0-9]{8}$/.test(payload.requestId ?? "")) {
+        throw new Error("Не получено подтверждение с номером заявки. Данные остались в форме; уточните получение у специалиста.");
+      }
       form.reset();
       setFiles([]);
       formStartTracker.current?.reset();
       setMessage("");
+      setCadHandoff(false);
       trackLeadEvent("quote_request_success", { form_location: "contacts", has_files: files.length > 0, files_count: files.length });
       setFeedback({
         type: "success",
-        message: `${payload.message || "Заявка принята."}${payload.requestId ? ` Номер заявки: ${payload.requestId}.` : ""} Материалы переданы на проверку. Срок подготовки расчёта сообщим после проверки документации.`,
+        message: payload.message,
+        requestId: payload.requestId,
       });
     } catch (error) {
       trackLeadEvent("quote_request_error", {
@@ -214,14 +246,23 @@ export function QuoteRequestForm() {
       });
       setFeedback({
         type: "error",
-        message: error instanceof Error ? error.message : "Не удалось отправить заявку. Попробуйте ещё раз.",
+        message: controller.signal.aborted
+          ? "Не удалось дождаться подтверждения. Заявка могла поступить на сервер. Данные остались в форме — уточните получение у специалиста перед повторной отправкой."
+          : error instanceof TypeError
+            ? "Соединение прервалось, подтверждение не получено. Данные остались в форме. Проверьте связь и уточните получение заявки перед повторной отправкой."
+            : error instanceof Error ? error.message : "Не удалось отправить заявку. Данные остались в форме.",
       });
     } finally {
+      window.clearTimeout(timeout);
+      sendingRef.current = false;
       setIsSending(false);
     }
   }
 
-  return <form id="quote-request-form" name="quote-request-form" data-ym-form="quote-request" onSubmit={handleSubmit} onFocus={markFormStarted} className="ym-hide-content ym-disable-submit grid gap-6" noValidate>
+  return <form id="quote-request-form" name="quote-request-form" data-ym-form="quote-request" onSubmit={handleSubmit} onFocus={markFormStarted} className="ym-hide-content ym-disable-submit grid gap-6" aria-busy={isSending} noValidate>
+    <fieldset disabled={isSending} className="grid min-w-0 gap-6 border-0 p-0">
+    <legend className="sr-only">Данные заявки</legend>
+    {cadHandoff && <div className="rounded-lg border border-steel-orange/40 bg-steel-orange/10 p-4 text-sm leading-6 text-white/85"><strong className="block text-white">Продолжение расчёта CAD</strong>Данные расчёта перенесены в поле «Задача». Исходные файлы автоматически не прикрепляются — добавьте их ниже, чтобы инженер мог проверить геометрию.</div>}
     <label className="sr-only" aria-hidden="true">Не заполняйте это поле<input name="website" tabIndex={-1} autoComplete="off" /></label>
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="text-sm font-semibold text-white">Имя *
@@ -253,19 +294,19 @@ export function QuoteRequestForm() {
       <textarea name="message" value={message} onChange={(event) => setMessage(event.target.value)} className="mt-2 min-h-36 w-full resize-y border border-white/35 bg-black/20 p-4 text-sm font-normal outline-none transition placeholder:text-white/48 focus:border-steel-orange" placeholder="Что необходимо изготовить, в каком объёме и в какие сроки?" />
     </label>
 
-    <div className="border border-white/15 bg-black/20 p-4 sm:p-5">
+    <div onDragEnter={(event) => { event.preventDefault(); dragDepth.current += 1; setIsDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { event.preventDefault(); dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setIsDragging(false); }} onDrop={handleDrop} className={`rounded-lg border p-4 sm:p-5 ${isDragging ? "border-steel-orange bg-steel-orange/10" : "border-white/20 bg-black/20"}`} aria-label="Вложения к заявке">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-white">Чертежи и техническая документация</p>
-          <p className="mt-1 text-xs leading-relaxed text-white/50">До 10 файлов, суммарно до 10 МБ; каждый — до 7 МБ. Можно приложить чертежи, спецификации, визуализации и фотографии.</p>
+          <p className="mt-1 text-xs leading-relaxed text-white/70">До 10 файлов, суммарно до 10 МБ; каждый — до 7 МБ. Можно приложить чертежи, спецификации, визуализации и фотографии.</p>
         </div>
         <a href={`mailto:${siteConfig.email}`} className="shrink-0 text-xs font-bold text-steel-orange transition hover:text-orange-400">{siteConfig.email}&nbsp; ↗</a>
       </div>
 
-      <label className="mt-5 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/25 bg-[#111519] px-5 py-8 text-center transition hover:border-steel-orange hover:bg-[#15191c]">
+      <label className="mt-5 flex cursor-pointer flex-col items-center justify-center border border-dashed border-white/25 bg-[#111519] px-5 py-8 text-center transition hover:border-steel-orange hover:bg-[#15191c] focus-within:outline focus-within:outline-2 focus-within:outline-steel-orange">
         <span className="grid h-10 w-10 place-items-center border border-steel-orange/60 text-xl text-steel-orange">＋</span>
-        <span className="mt-3 text-sm font-semibold text-white">Выбрать файлы</span>
-        <span className="mt-1 text-[13px] leading-relaxed text-white/45">PDF, DXF, DWG, STEP, изображения, Office-документы и архивы</span>
+        <span className="mt-3 text-sm font-semibold text-white">{isDragging ? "Отпустите файлы здесь" : "Выбрать файлы или перетащить сюда"}</span>
+        <span className="mt-1 text-[13px] leading-relaxed text-white/70">PDF, DXF, DWG, STEP, изображения, Office-документы и архивы</span>
         <input ref={fileInput} onChange={handleFiles} accept={acceptedFiles} className="sr-only" type="file" multiple />
       </label>
 
@@ -277,15 +318,15 @@ export function QuoteRequestForm() {
         <ul className="mt-3 space-y-2">
           {files.map((file, index) => <li key={`${file.name}-${file.lastModified}`} className="flex items-center gap-3 border border-white/10 bg-[#15191c] px-3 py-2 text-xs">
             <span className="truncate text-white/75">{file.name}</span>
-            <span className="ml-auto shrink-0 text-white/40">{formatSize(file.size)}</span>
-            <button type="button" onClick={() => removeFile(index)} className="shrink-0 text-lg leading-none text-white/45 transition hover:text-steel-orange" aria-label={`Удалить ${file.name}`}>×</button>
+            <span className="ml-auto shrink-0 text-white/65">{formatSize(file.size)}</span>
+            <button type="button" onClick={() => removeFile(index)} className="grid min-h-11 min-w-11 shrink-0 place-items-center text-xl text-white/75 transition hover:text-steel-orange" aria-label={`Удалить ${file.name}`}>×</button>
           </li>)}
         </ul>
         <p className="mt-3 text-[13px] text-white/40">Общий размер: {formatSize(totalSize)} из 10 МБ</p>
       </div> : null}
     </div>
 
-    {feedback ? <p role={feedback.type === "error" ? "alert" : "status"} className={`border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"}`}>{feedback.message}</p> : null}
+    {feedback ? <div ref={feedbackRef} tabIndex={-1} role={feedback.type === "error" ? "alert" : "status"} className={`border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-steel-orange/50 bg-steel-orange/10 text-orange-100"}`}><p className="font-semibold">{feedback.message}</p>{feedback.requestId ? <><p className="mt-3">Номер заявки: <strong className="break-all font-mono">{feedback.requestId}</strong></p><p className="mt-2 leading-relaxed">Сохраните номер для обращения к специалисту. Срок подготовки расчёта сообщим после проверки документации.</p></> : <p className="mt-3"><a className="underline underline-offset-4" href={`tel:${siteConfig.telephone}`}>Позвонить {siteConfig.telephoneDisplay}</a><span className="mx-2">·</span><a className="underline underline-offset-4" href={`mailto:${siteConfig.email}`}>Написать на почту</a></p>}</div> : null}
 
     <div className="border-t border-white/10 pt-6">
       <label className="flex cursor-pointer items-start gap-3 text-[13px] leading-relaxed text-white/62">
@@ -307,5 +348,6 @@ export function QuoteRequestForm() {
       <button disabled={isSending} type="submit" className="clip-corner shrink-0 bg-steel-orange-deep px-8 py-4 text-xs font-bold uppercase transition hover:bg-steel-orange-deeper disabled:cursor-wait disabled:opacity-65">{isSending ? "Отправляем…" : "Отправить заявку →"}</button>
       </div>
     </div>
+    </fieldset>
   </form>;
 }

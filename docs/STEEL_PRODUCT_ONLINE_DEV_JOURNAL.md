@@ -1,3 +1,10 @@
+## Live checkpoint — customer journey reliability, 28 September 2026
+
+Owner authorizes further website quality fixes/publication. Base 54f2a9a (#182). Hero protected sentence, logo and object solutions excluded. Relevant site-director, technical writer, website-development, UI/UX, accessibility/performance/security and quality gate applied.
+DONE: reproduced failed-storage retry returning false duplicate (429); reservation released only for owner attempt before durable quote storage. Concurrent duplicate protection retained. Mobile lab baseline (150 ms / 1.6 Mbps / CPU x4): home LCP 3.756 s / CLS 0; CAD LCP 2.376 s / CLS 0.268; contacts LCP 2.172 s / CLS 0. No real leads submitted.
+IN PROGRESS: quote drag/drop, submission timeout and receipt validation, durable error recovery, compact contacts, server-rendered inline consent with pre-paint saved-choice presentation, keyboard-accessible article tables. Consent decisions/text/storage unchanged; presentation script does not authorize analytics or write storage.
+VERIFIED: final build/type/lint and 1439 tests passed. Browser fault injection and normal/deferred receipt passed, including choice persistence across client navigation. CAD/STEP, cassette 16 variants and SEO 92 URLs passed. Local CAD CLS 0 (baseline live 0.268); production comparison pending. Evidence: docs/verification/customer-journey-20260928.md. NEXT ACTION: exact-head CI, authorized publication and live checks. No promise of literal 10/10 or real recipient receipt without evidence.
+
 ## Live checkpoint — three production journal guides, 27 September 2026
 
 Owner explicitly requests publication of three useful manufacturing articles. Base 636a00b (PR #181 deployment 36344824222 verified). Content-only scope: nesting economics, coating masking, first-part inspection; existing welding topic deliberately not duplicated. Primary sources TRUMPF, EPSI, PCI, NIST and Autodesk checked. Hypothetical examples labelled; no invented company capabilities, tolerances or prices.

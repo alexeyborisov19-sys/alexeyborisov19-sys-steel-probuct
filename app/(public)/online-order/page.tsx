@@ -1,3 +1,4 @@
+import { CalculatorCookieSlot } from "@/components/CalculatorCookieSlot";
 import type { Metadata } from "next";
 import { ClientManufacturingWorkspace } from "@/components/ClientManufacturingWorkspace";
 import { JsonLd } from "@/components/JsonLd";
@@ -101,7 +102,7 @@ export default function OnlineOrderPage() {
         image="/images/web/hero-main.webp"
         imageAlt="Иллюстративный визуал: фасад промышленного здания из тёмных металлокассет с перфорированным экраном"
       >
-        <div id="calculator-cookie-slot" className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-10" />
+        <CalculatorCookieSlot className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-10" />
         <ClientManufacturingWorkspace />
 
         <section aria-labelledby="how-it-works" className="border-t border-white/10 bg-[#0c1115] py-10 sm:py-14">

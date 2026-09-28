@@ -29,8 +29,8 @@ const contactFaq = [
 ];
 
 export default function ContactsPage() {
-  return <><JsonLd data={faqSchema(contactFaq)} /><PageLayout path="/contacts" eyebrow="Получить расчёт" title="Передайте задачу на инженерную проверку" description="Приложите чертёж, 3D-модель, спецификацию или опишите изделие. Проверим исходные данные, уточним технологический маршрут и подготовим расчёт.">
-    <section id="contact-form" className="bg-[#101112] py-14 sm:py-20">
+  return <><JsonLd data={faqSchema(contactFaq)} /><PageLayout compactHero path="/contacts" eyebrow="Получить расчёт" title="Передайте задачу на инженерную проверку" description="Приложите чертёж, 3D-модель, спецификацию или опишите изделие. Проверим исходные данные, уточним технологический маршрут и подготовим расчёт.">
+    <section id="contact-form" className="bg-[#101112] py-8 sm:py-12">
       <div className="container grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
         <div className="border border-white/15 bg-[#151719] p-5 sm:p-8">
           <p className="eyebrow">Заявка на расчёт</p>

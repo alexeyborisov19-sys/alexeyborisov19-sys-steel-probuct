@@ -461,3 +461,34 @@ test("keeps server-owned consent versions", async () => {
     await environment.cleanup();
   }
 });
+
+test("failed persistence does not mark an unsaved quote as an accepted duplicate", async () => {
+  const environment = await setupEnvironment();
+  try {
+    const failed = handler({ createQuoteRecord: async () => { throw new QuoteStorageError(); } });
+    const first = await failed(request(validForm({ message: "retry after failed persistence" })));
+    assert.equal(first.status, 500);
+    const retried = await handler()(request(validForm({ message: "retry after failed persistence" })));
+    assert.equal(retried.status, 200);
+    assert.equal((await readdir(environment.quotes)).length, 1);
+  } finally { await environment.cleanup(); }
+});
+
+test("an in-flight quote remains reserved while another identical request is rejected", async () => {
+  const environment = await setupEnvironment();
+  let release!: () => void;
+  let started!: () => void;
+  const waiting = new Promise<void>(resolve => { started = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  try {
+    const post = handler({ createQuoteRecord: async () => { started(); await gate; } });
+    const first = post(request(validForm({ message: "simultaneous request" })));
+    await waiting;
+    const second = await post(request(validForm({ message: "simultaneous request" })));
+    const third = await post(request(validForm({ message: "simultaneous request" })));
+    assert.equal(second.status, 429);
+    assert.equal(third.status, 429);
+    release();
+    assert.ok((await first).status < 300);
+  } finally { release?.(); await environment.cleanup(); }
+});
