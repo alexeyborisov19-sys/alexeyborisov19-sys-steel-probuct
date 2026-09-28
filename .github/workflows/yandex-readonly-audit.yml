@@ -1,4 +1,4 @@
-# Audit trigger: 2026-09-26
+# Audit trigger: 2026-09-28 search visibility
 name: Yandex read-only audit
 
 on:
@@ -78,125 +78,6 @@ jobs:
           console.log("=== YANDEX READ-ONLY AUDIT ===");
           console.log("Timestamp:", new Date().toISOString());
 
-          // METRIKA
-          const ym = normToken(process.env.YM_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "");
-          console.log("\n=== METRIKA ===");
-          if (!ym) {
-            console.log("METRIKA_TOKEN: MISSING");
-          } else {
-            const counter = await request(
-              `https://api-metrika.yandex.net/management/v1/counter/${counterId}?field=counter_flags`,
-              ym
-            );
-            console.log("COUNTER_HTTP:", counter.status);
-            if (counter.ok) {
-              const c = counter.body?.counter || {};
-              console.log("COUNTER:", safe({
-                id: c.id,
-                name: c.name,
-                site: c.site,
-                status: c.status,
-                permission: c.permission,
-                counter_flags: c.counter_flags
-              }));
-            } else {
-              console.log("COUNTER_ERROR:", safe(counter.body));
-            }
-
-            const goals = await request(
-              `https://api-metrika.yandex.net/management/v1/counter/${counterId}/goals`,
-              ym
-            );
-            console.log("GOALS_HTTP:", goals.status);
-            let primaryGoalId = null;
-            if (goals.ok) {
-              const list = goals.body?.goals || [];
-              const simplified = list.map(g => ({
-                id: g.id,
-                name: g.name,
-                type: g.type,
-                status: g.status,
-                target: (g.conditions || []).find(x => x.type === "exact")?.url || null
-              }));
-              const primary = simplified.find(g => g.target === "quote_request_success" || g.name === "Форма заявки — успешно отправлена");
-              primaryGoalId = primary?.id || null;
-              console.log("GOALS_COUNT:", simplified.length);
-              console.log("PRIMARY_GOAL:", safe(primary || null));
-              console.log("REQUIRED_TARGETS_PRESENT:", safe([
-                "quote_form_started","quote_file_attached","quote_request_submit","quote_request_success",
-                "catalog_download","email_click","assistant_opened","assistant_lead_success"
-              ].reduce((a,t)=>{a[t]=simplified.some(g=>g.target===t);return a;},{})));
-            } else {
-              console.log("GOALS_ERROR:", safe(goals.body));
-            }
-
-            async function metrikaReport(label, date1, date2, extraMetrics = []) {
-              const metrics = ["ym:s:visits","ym:s:users","ym:s:pageviews","ym:s:bounceRate","ym:s:pageDepth","ym:s:avgVisitDurationSeconds", ...extraMetrics].join(",");
-              const u = new URL("https://api-metrika.yandex.net/stat/v1/data");
-              u.searchParams.set("ids", canonicalCounter);
-              u.searchParams.set("date1", date1);
-              u.searchParams.set("date2", date2);
-              u.searchParams.set("metrics", metrics);
-              u.searchParams.set("accuracy", "full");
-              u.searchParams.set("lang", "ru");
-              const r = await request(u.toString(), ym);
-              console.log(`${label}_HTTP:`, r.status);
-              if (r.ok) console.log(`${label}:`, safe({
-                totals: r.body?.totals,
-                sample_share: r.body?.sample_share,
-                sampled: r.body?.sampled,
-                data_lag: r.body?.data_lag
-              }));
-              else console.log(`${label}_ERROR:`, safe(r.body));
-            }
-
-            const goalMetrics = primaryGoalId ? [
-              `ym:s:goal${primaryGoalId}reaches`,
-              `ym:s:goal${primaryGoalId}visits`,
-              `ym:s:goal${primaryGoalId}conversionRate`
-            ] : [];
-            await metrikaReport("LAST_7_DAYS","7daysAgo","today",goalMetrics);
-            await metrikaReport("LAST_30_DAYS","30daysAgo","today",goalMetrics);
-
-            const src = new URL("https://api-metrika.yandex.net/stat/v1/data");
-            src.searchParams.set("ids", canonicalCounter);
-            src.searchParams.set("date1","30daysAgo");
-            src.searchParams.set("date2","today");
-            src.searchParams.set("dimensions","ym:s:trafficSource");
-            src.searchParams.set("metrics","ym:s:visits,ym:s:users");
-            src.searchParams.set("accuracy","full");
-            src.searchParams.set("lang","ru");
-            src.searchParams.set("limit","20");
-            const traffic = await request(src.toString(), ym);
-            console.log("TRAFFIC_SOURCES_HTTP:", traffic.status);
-            if (traffic.ok) {
-              console.log("TRAFFIC_SOURCES:", safe((traffic.body?.data || []).map(row => ({
-                source: row.dimensions?.[0]?.name || row.dimensions?.[0]?.id,
-                visits: row.metrics?.[0],
-                users: row.metrics?.[1]
-              }))));
-            } else console.log("TRAFFIC_SOURCES_ERROR:", safe(traffic.body));
-          }
-
-          const daily = new URL("https://api-metrika.yandex.net/stat/v1/data");
-          daily.searchParams.set("ids", canonicalCounter);
-          daily.searchParams.set("date1","7daysAgo");
-          daily.searchParams.set("date2","today");
-          daily.searchParams.set("dimensions","ym:s:date,ym:s:trafficSource");
-          daily.searchParams.set("metrics","ym:s:visits");
-          daily.searchParams.set("accuracy","full");
-          daily.searchParams.set("lang","ru");
-          daily.searchParams.set("limit","100");
-          const dailyTraffic = await request(daily.toString(), ym);
-          console.log("DAILY_TRAFFIC_HTTP:", dailyTraffic.status);
-          if (dailyTraffic.ok) {
-            console.log("DAILY_TRAFFIC:", safe((dailyTraffic.body?.data || []).map(row => ({
-              date: row.dimensions?.[0]?.name || row.dimensions?.[0]?.id,
-              source: row.dimensions?.[1]?.name || row.dimensions?.[1]?.id,
-              visits: row.metrics?.[0]
-            }))));
-          } else console.log("DAILY_TRAFFIC_ERROR:", safe(dailyTraffic.body));
-
           // WEBMASTER
           console.log("\n=== WEBMASTER ===");
           const yw = normToken(process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || process.env.YD_TOKEN || process.env.YM_TOKEN || "");
@@ -230,6 +111,8 @@ jobs:
                   const hid = encodeURIComponent(host.host_id);
                   for (const [label, suffix] of [
                     ["SUMMARY","summary"],
+                    ["SQI_HISTORY","sqi-history"],
+                    ["POPULAR_QUERIES","search-queries/popular?order_by=TOTAL_SHOWS&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&limit=100"],
                     ["DIAGNOSTICS","diagnostics"],
                     ["VERIFICATION","verification"],
                     ["SITEMAPS","sitemaps?limit=100"],
@@ -260,127 +143,5 @@ jobs:
             }
           }
 
-          // DIRECT
-          console.log("\n=== DIRECT ===");
-          const yd = normToken(process.env.YD_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "");
-          const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
-          if (!yd) {
-            console.log("DIRECT_TOKEN: MISSING");
-          } else {
-            const payload = {
-              method: "get",
-              params: {
-                SelectionCriteria: {},
-                FieldNames: ["Id","Name","StartDate","Type","Status","State","StatusPayment","StatusClarification","Statistics","Currency","DailyBudget"],
-                TextCampaignFieldNames: ["CounterIds","AttributionModel","PriorityGoals","Settings"],
-                UnifiedCampaignFieldNames: ["CounterIds","AttributionModel","PriorityGoals","TrackingParams","Settings","BiddingStrategy"],
-                CpmBannerCampaignFieldNames: ["CounterIds","Settings"],
-                Page: {Limit: 1000, Offset: 0}
-              }
-            };
-            const camps = await requestDirect("https://api.direct.yandex.com/json/v501/campaigns", yd, payload, login);
-            console.log("CAMPAIGNS_HTTP:", camps.status);
-            if (camps.ok && camps.body?.result?.Campaigns) {
-              const list = camps.body.result.Campaigns;
-              console.log("CAMPAIGNS_COUNT:", list.length);
-              const simplified = list.map(c => {
-                const specific = c.TextCampaign || c.UnifiedCampaign || c.CpmBannerCampaign || {};
-                return {
-                  id: c.Id,
-                  name: c.Name,
-                  startDate: c.StartDate,
-                  currency: c.Currency,
-                  type: c.Type,
-                  status: c.Status,
-                  state: c.State,
-                  statusPayment: c.StatusPayment,
-                  statusClarification: c.StatusClarification,
-                  impressions: c.Statistics?.Impressions,
-                  clicks: c.Statistics?.Clicks,
-                  dailyBudget: c.DailyBudget,
-                  counterIds: Array.isArray(specific.CounterIds) ? specific.CounterIds : (specific.CounterIds?.Items || []),
-                  attributionModel: specific.AttributionModel || null,
-                  priorityGoals: specific.PriorityGoals?.Items || specific.PriorityGoals || null,
-                  trackingParams: specific.TrackingParams || null,
-                  biddingStrategy: specific.BiddingStrategy || null
-                };
-              });
-              console.log("CAMPAIGNS:", safe(simplified));
-              const target = simplified.find(c => String(c.id) === "714391927");
-              console.log("CAMPAIGN_714391927:", safe(target || null));
-              console.log("COUNTER_112542227_LINKED:", safe(simplified.map(c => ({
-                id:c.id,
-                name:c.name,
-                linked:(c.counterIds || []).map(String).includes(canonicalCounter)
-              }))));
-            } else {
-              console.log("CAMPAIGNS_ERROR:", safe(camps.body));
-            }
-
-            const adsPayload = {
-              method: "get",
-              params: {
-                SelectionCriteria: {CampaignIds: [714391927]},
-                FieldNames: ["Id","CampaignId","AdGroupId","Status","State","StatusClarification","Type"],
-                TextAdFieldNames: ["Href"],
-                ResponsiveAdFieldNames: ["Href","DisplayDomain"],
-                TextImageAdFieldNames: ["Href"],
-                TextAdBuilderAdFieldNames: ["Href"],
-                CpcVideoAdBuilderAdFieldNames: ["Href"],
-                Page: {Limit: 1000, Offset: 0}
-              }
-            };
-            const ads = await requestDirect("https://api.direct.yandex.com/json/v501/ads", yd, adsPayload, login);
-            console.log("ADS_HTTP:", ads.status);
-            if (ads.ok && ads.body?.result?.Ads) {
-              console.log("ADS_DESTINATIONS:", safe(ads.body.result.Ads.map(a => ({
-                id: a.Id,
-                type: a.Type,
-                status: a.Status,
-                state: a.State,
-                href: a.ResponsiveAd?.Href || a.TextAd?.Href || a.TextImageAd?.Href || a.TextAdBuilderAd?.Href || a.CpcVideoAdBuilderAd?.Href || null
-              }))));
-            } else console.log("ADS_ERROR:", safe(ads.body));
-
-            // Recent performance report. This is a read-only POST to Reports.
-            const d2 = new Date();
-            const d1 = new Date(d2.getTime() - 6*86400000);
-            const fmt = d => d.toISOString().slice(0,10);
-            const reportSpec = {
-              params: {
-                SelectionCriteria: {DateFrom: fmt(d1), DateTo: fmt(d2), Filter: []},
-                FieldNames: ["Date","CampaignId","CampaignName","Impressions","Clicks","Cost","Conversions","CostPerConversion"],
-                ReportName: "SteelProdukt readonly audit",
-                ReportType: "CAMPAIGN_PERFORMANCE_REPORT",
-                DateRangeType: "CUSTOM_DATE",
-                Format: "TSV",
-                IncludeVAT: "NO",
-                IncludeDiscount: "NO"
-              }
-            };
-            const headers = {
-              Authorization: `Bearer ${yd}`,
-              Accept: "text/tab-separated-values",
-              "Content-Type": "application/json",
-              "Accept-Language": "ru",
-              "processingMode": "auto",
-              "returnMoneyInMicros": "false"
-            };
-            if (login) headers["Client-Login"] = login;
-            const rep = await fetch("https://api.direct.yandex.com/json/v501/reports", {
-              method:"POST", headers, body:JSON.stringify(reportSpec), signal:AbortSignal.timeout(30000)
-            });
-            const repText = await rep.text();
-            console.log("REPORT_HTTP:", rep.status);
-            console.log("REPORT_REQUEST_ID:", rep.headers.get("requestId") || "");
-            console.log("REPORT_RETRY_IN:", rep.headers.get("retryIn") || "");
-            if (rep.status === 200) {
-              console.log("REPORT_TSV:\n" + repText.slice(0,20000));
-            } else {
-              console.log("REPORT_BODY:", repText.slice(0,4000));
-            }
-          }
           NODE
           node /tmp/audit.mjs
-
-# Audit refresh marker: 2026-09-26
