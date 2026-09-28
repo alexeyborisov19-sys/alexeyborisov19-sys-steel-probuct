@@ -68,12 +68,14 @@ function expectedSchemaTypes(path) {
   const expected = ["Organization", "LocalBusiness", "WebSite", "WebPage"];
   if (path !== "/") expected.push("BreadcrumbList");
   if (["/production", "/industries", "/products"].includes(path)) expected.push("ItemList");
+  if (path === "/products/metallokassety/bim") expected.push("WebApplication", "FAQPage");
   if (path === "/products/metallokassety") expected.push("ProductGroup");
   if (path.startsWith("/production/")) expected.push("Service", "FAQPage");
   if (path.startsWith("/solutions/")) expected.push("Service");
   if (path.startsWith("/industries/")) expected.push("Service", "ItemList", "FAQPage");
   if (
     path.startsWith("/products/")
+    && path !== "/products/metallokassety/bim"
     && path !== "/products/metallokassety"
     && path !== "/products/dobornye-elementy"
   ) expected.push("Product", "FAQPage");

@@ -1,3 +1,9 @@
+## Live checkpoint — free calculator promotion and BIM library, 28 September 2026
+
+Base main 8efbce6 (#186), prior publication 36404222443 succeeded. Owner authorizes advertisements, free-calculation SEO, BIM page and publication. Revit 2022 selected explicitly; no Windows/Revit environment available.
+DONE: 3 additional Direct ads submitted to moderation within existing budget; 3 Business ads persisted with use-in-advertising checked. Free-calculation copy and visible/schema FAQ. IFC4 coordination generator, parameter passport, CSV quantities, mobile UI and product link. Independent IFC schema/geometry/property checks passed for 1/6/400 panels. Local browser 390/1440 passed; 1448 tests passed. Native RFA remains unfinished and is not offered for download. See docs/bim/COMPETITOR-REVIEW.md and VERIFICATION.md.
+NEXT ACTION: final build/SEO/browser validation, exact-head CI, authorized publication and live checks. No claim of Revit readiness until actual Revit 2022 verification. Protected Hero/logo/object solutions/calculation rules/privacy unchanged.
+
 ## Live checkpoint — seven expert customer scenarios, 28 September 2026
 
 Base main 46fd1a3 (#183); previous journal checkpoint reconciled with the published customer-journey release. Owner authorizes expert scenarios, corrections and publication. This is not research with recruited users. No real leads or CRM messages; quote POSTs intercepted. Protected Hero sentence, logo and object solutions unchanged.
