@@ -1,3 +1,11 @@
+## Live checkpoint — STEP-based BIM geometry, 29 September 2026
+
+Base c83242918, branch fix/bim-cassette-geometry-20260929. DONE: four owner STEP meshes imported with native bends/holes, shared preview/IFC geometry, proportional non-overlapping diagram, source-specific profiles. v6 and 48-DXF audit recovered; older uploaded HTML formulas disagree with verified OT allowance, so unfolding is not used as folded geometry. Independent IFC checks passed native/adapted profiles; 1461 tests passed before final colour-area correction. Corner remains explicitly simplified from drawing. DONE: final colour-area correction, build/lint, 1461 tests and Chrome390/1440 regression. IN PROGRESS: independent exported IFC and publication gate. NEXT ACTION: publish after exact-head CI, then verify live page and downloads.
+
+## BIM geometry correction — 29 September 2026
+
+Owner reports overlapping/unrealistic cassettes. Base c83242918 deployed. Source PDFs inspected privately in Bitrix24:25-3022 closed545x545x0.7, depth20, side returns10, bottom15, top28/hook11.5 at35deg;25-2581 open700x590x1, depth20, single-fold sides;25-1351 corner290/330x380x1, depth20. Existing generator only generic5-prism tray; UI clamps proportions and constantgap unrelated to dimensions. NEXT ACTION: reproduce array behaviour, add source-based profile geometry/shared preview/export, test real IFC geometry and clearances. Never publish customer source files or claim fabrication-ready/RFA.
+
 ## Funnel completion — 29 September 2026
 
 Base cfbcf7c (#205) deployed36616027013, live owner DXF attribution verified. Mail read-only36617332802 confirms all12 saved IDs in INBOX;2 explicitly test-marked. Owner forbids duplicate resends and Bitrix integration. Runtime check390/1440:tag HTTP200 and collection attempted only after consent; test collector requests blocked to avoid pollution. DONE: prior NEXT ACTION complete. DONE: BIM export goal and duplicate form-start focus regression fixed. Lint/build and all1457 tests passed. Browser390/1440 verified IFC/CSV downloads and consent; intercepted quote submit counts one form start. Read-only history36617780897: counter created13Sep, no visits14–20Sep,72 visits21–28Sep. Temporary audit workflows removed from final diff. NEXT ACTION: exact-head CI, publish and goal sync; historical loss remains partly unexplained.

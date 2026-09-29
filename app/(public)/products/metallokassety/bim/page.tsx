@@ -10,7 +10,7 @@ export const metadata = createPageMetadata({ title: "BIM-модель метал
 const faq = [
   {question: "Можно скачать модель бесплатно?", answer: "Да. Генерация IFC и спецификации CSV бесплатна и не требует регистрации. Изготовление кассет рассчитывается отдельно."},
   {question: "Можно менять параметры после загрузки в Revit?", answer: "Размеры этой IFC-модели задаются в генераторе до скачивания. Она не является редактируемым семейством RFA. Семейства для Revit 2022 будут доступны после отдельной проверки."},
-  {question: "Подходит ли модель для заказа в производство?", answer: "Нет. Она предназначена для архитектурной компоновки и подсчёта элементов. Точные борта, крепления, замки и развёртки согласуются по рабочей документации."},
+  {question: "Подходит ли модель для заказа в производство?", answer: "Нет. Она предназначена для архитектурной компоновки и подсчёта элементов. Открытый и закрытый типы воспроизводят исходные STEP с точностью сетки 0,1 мм; изменённые размеры и узлы стыковки согласуются по рабочей документации."},
 ];
 export default function CassetteBimPage() {
   return <PageLayout compactHero breadcrumbs={[{name:"Главная",path:"/"},{name:"Продукция",path:"/products"},{name:"Металлокассеты",path:"/products/metallokassety"},{name:"BIM-модель",path:"/products/metallokassety/bim"}]} path="/products/metallokassety/bim" eyebrow="Инструменты проектировщика" title="BIM-модель металлокассет" description="Задайте размеры, выберите кассеты и назначьте RAL. Скачайте IFC и спецификацию — бесплатно, без регистрации.">
@@ -29,11 +29,11 @@ export default function CassetteBimPage() {
           </div>
           <details className="mt-6 border-t border-slate-200 py-4"><summary className="cursor-pointer font-semibold">Паспорт параметров и геометрия</summary><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">Паспорт IFC-модели металлокассет</caption><tbody>{[
             ["Элементы", "IfcPlate / IfcPlateType. Каждая кассета имеет отдельный номер."],
-            ["Размеры", "Width, Height, Depth, Thickness, Joint — миллиметры. Внешний шов по краям не добавляется."],
+            ["Размеры", "Width, Height — лицевые габариты; Depth, Thickness, Joint — миллиметры. Монтажные полки могут выходить за лицевой габарит. ReturnWidth — второе крыло угловой кассеты. Внешний шов по краям не добавляется."],
             ["Материал и RAL", "Оцинкованная сталь. Finish — покрытие каждого элемента; DefaultFinish — описание по умолчанию. Экранный оттенок приблизительный."],
             ["Площадь", "FaceArea — лицевая поверхность в м² без швов. Не расход металла и не площадь окраски с бортами."],
             ["Координаты", "Ширина по X, высота по Z, глубина по −Y. Начало у нижнего левого края блока."],
-            ["Ограничения", "Лицевая поверхность и четыре прямых борта. Замки, монтажные полки, отверстия, радиусы гиба и подсистема не моделируются. Открытое и скрытое крепление не различаются."],
+            ["Ограничения", "ОТ и ЗТ толщиной 0,7/1 мм — по исходным STEP: борта, полки, отверстия и гибы. Угловая 90° — упрощённая по чертежу, без отверстий и радиусов. Размеры меняются через центральную часть, а не масштабирование металла. Крепёж и подсистема не входят."],
           ].map(([name,value])=><tr key={name} className="border-b border-slate-200"><th scope="row" className="p-3 align-top font-medium">{name}</th><td className="p-3 text-slate-600">{value}</td></tr>)}</tbody></table></div></details>
           <h3 className="mt-3 font-semibold">Вопросы о BIM-модели</h3>
           {faq.map(item=><details key={item.question} className="border-b border-slate-200 py-4"><summary className="cursor-pointer text-sm font-medium">{item.question}</summary><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{item.answer}</p></details>)}
