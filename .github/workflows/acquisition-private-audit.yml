@@ -1,0 +1,60 @@
+name: Acquisition delivery read-only audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/acquisition-evidence-20260929]
+    paths: [.github/workflows/acquisition-private-audit.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Read aggregate delivery state without customer data
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" 'python3 -' <<'PY'
+          import json,pathlib,collections
+          for label,path in [('quote','/var/lib/steelprodukt/quote-leads'),('assistant','/var/lib/steelprodukt/assistant-leads')]:
+              counts=collections.Counter(); dates=collections.Counter(); invalid=0
+              for p in pathlib.Path(path).glob('*.json'):
+                  try:
+                      r=json.loads(p.read_text()); date=str(r.get('createdAt',''))[:10]
+                      if '2026-08-30' <= date <= '2026-09-29':
+                          counts[str(r.get('delivery','unknown'))]+=1; dates[date]+=1
+                  except Exception: invalid+=1
+              print(json.dumps({'source':label,'exists':pathlib.Path(path).exists(),'delivery':dict(counts),'days':dict(dates),'unreadable':invalid}))
+          PY
+      - name: Read CRM website source totals and current group settings
+        env:
+          BITRIX_WEBHOOK_URL: ${{ secrets.BITRIX_WEBHOOK_URL }}
+          YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+          YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request
+          base=os.environ.get('BITRIX_WEBHOOK_URL','').rstrip('/')+'/'
+          if base != '/':
+              for entity in ['lead','deal']:
+                  payload={'filter':{'>=DATE_CREATE':'2026-08-30','SOURCE_ID':'WEB'},'select':['ID'],'start':0}
+                  try:
+                      req=urllib.request.Request(base+'crm.'+entity+'.list.json',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
+                      with urllib.request.urlopen(req,timeout=30) as r: data=json.load(r)
+                      print(json.dumps({'entity':entity,'websiteSourceTotal':data.get('total'),'error':data.get('error')}))
+                  except Exception as e: print(entity,type(e).__name__)
+          token=os.environ.get('YD_TOKEN','').removeprefix('OAuth ').removeprefix('Bearer ').strip()
+          headers={'Authorization':'Bearer '+token,'Content-Type':'application/json','Client-Login':os.environ.get('YD_CLIENT_LOGIN','')}
+          payload={'method':'get','params':{'SelectionCriteria':{'CampaignIds':[714391927]},'FieldNames':['Id','Name','CampaignId','NegativeKeywords','Status','Type'],'Page':{'Limit':1000,'Offset':0}}}
+          req=urllib.request.Request('https://api.direct.yandex.com/json/v501/adgroups',data=json.dumps(payload).encode(),headers=headers)
+          with urllib.request.urlopen(req,timeout=30) as r: data=json.load(r)
+          print('GROUPS',json.dumps(data,ensure_ascii=False))
+          PY
