@@ -52,6 +52,7 @@ export const METRIKA_GOAL_METADATA: Record<string, GoalMetadata> = {
   calculator_review_required: { name: "Калькулятор — без цены, требуется инженер" },
   calculator_calculation_error: { name: "Калькулятор — ошибка расчёта" },
   calculator_quote_click: { name: "Калькулятор — переход к заявке" },
+  free_service_open: { name: "Бесплатные сервисы — выбор инструмента" },
   catalog_download: { name: "Каталог — скачивание" },
   quote_files_cta_click: { name: "Заявка с файлами — CTA" },
   "ym-show-contacts": { name: "Контакты — показ/переход (Яндекс)" },

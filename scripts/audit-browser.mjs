@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 const base = process.env.BROWSER_AUDIT_BASE_URL || 'http://127.0.0.1:3011';
-const paths = ['/', '/products/metallokassety', '/online-order', '/contacts', '/products/metallokassety/bim', '/articles'];
+const paths = ['/', '/products/metallokassety', '/online-order', '/contacts', '/products/metallokassety/bim', '/articles', '/tools'];
 const browser = await chromium.launch({ ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
 const results = [];
 try {

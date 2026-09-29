@@ -98,6 +98,13 @@ export default function Home() {
       <Header />
       <main id="main-content" tabIndex={-1}>
         <Hero />
+        <CadCalculatorShowcase />
+        <section aria-label="Бесплатные сервисы" className="border-b border-white/10 bg-[#111519] py-6">
+          <div className="container flex flex-wrap items-center justify-between gap-4">
+            <p className="max-w-xl text-base text-white/75">Нет чертежа? Нужны металлокассеты или IFC-модель? Выберите инструмент под свою задачу.</p>
+            <Link prefetch={false} href="/tools" className="inline-flex min-h-12 items-center rounded-lg border border-steel-orange/50 px-5 py-3 font-semibold text-steel-orange hover:bg-white/5">Все бесплатные сервисы →</Link>
+          </div>
+        </section>
         <section id="solutions" className="bg-[#0c1013] py-14">
           <div className="container">
             <h2 className="text-center text-2xl font-semibold uppercase tracking-wide sm:text-3xl">
@@ -176,7 +183,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-        <CadCalculatorShowcase />
         <section
           id="projects"
           className="border-y border-white/10 bg-[#101112] py-12"

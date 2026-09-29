@@ -54,6 +54,7 @@ ${tools}
 - [Фасадные металлокассеты](${siteConfig.url}/products/metallokassety)
 - [Производство](${siteConfig.url}/production)
 - [Реальные проекты](${siteConfig.url}/projects)
+- [Бесплатные сервисы: CAD, размеры, металлокассеты и BIM](${siteConfig.url}/tools)
 - [Инженерный журнал](${siteConfig.url}/articles)
 - [Бесплатный расчёт по CAD или габаритам](${siteConfig.url}/online-order)
 - [Калькулятор металлокассет](${siteConfig.url}/calculator-metallokassety)
