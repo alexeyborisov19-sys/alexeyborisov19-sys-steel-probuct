@@ -122,7 +122,9 @@ export function runVerifiedLaserDfm(
 /** Owner allows cost estimates for measured manufacturing constraints, never
  * production approval. Invalid/unread geometry is not a manufacturing waiver. */
 export function isEstimateOnlyManufacturingConstraint(check:DfmResult,features:VerifiedFlatFeatures|undefined):boolean {
-  if(check.severity!=='error' || features?.invalidGeometry) return false;
+  if(check.severity!=='error') return false;
+  if(check.code==='feature-rules' && features?.measuredOpenPaths) return true;
+  if(features?.invalidGeometry) return false;
   if(check.code==='table'||check.code==='thickness') return true;
   return check.code==='feature-rules' && features?.supported===true;
 }

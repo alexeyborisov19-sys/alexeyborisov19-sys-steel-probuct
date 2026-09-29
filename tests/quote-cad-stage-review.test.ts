@@ -262,3 +262,17 @@ test('manual rectangular blank always remains an estimate with its geometry warn
  const output=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{preliminaryGeometrySource:'manual-rectangular-blank',reviewReasons:[warning]}},f.policy,{requireAiReview:false,caller:null});
  assert.ok(output.signals[0].estimatedSalePriceRub!>0);assert.equal(output.signals[0].approvedSalePriceRub,null);assert.ok(output.signals[0].manufacturingWarnings?.includes(warning));
 });
+
+test("open DXF paths can receive a warned estimate without claiming exact area or production approval", async () => {
+  const f = fixture();
+  delete f.part.geometry!.areaMm2;
+  delete f.part.geometry!.pierceCount;
+  f.part.geometry!.contourCount = 12;
+  const warning = "Открытые участки: предварительный расчёт всех линий, проверка технолога обязательна.";
+  const flatFeatures = {supported:false,invalidGeometry:true as const,measuredOpenPaths:true as const,reasons:[warning],holeCount:0,minHoleDiameterMm:null,minLigamentMm:null,minPartSideMm:null};
+  f.calculation.parts[0].dfmBlockingReasons = [warning];
+  const output = await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{flatFeatures}},f.policy,{requireAiReview:false,caller:null});
+  assert.ok(output.signals[0].estimatedSalePriceRub! > 0);
+  assert.equal(output.signals[0].approvedSalePriceRub,null);
+  assert.match(output.signals[0].manufacturingWarnings!.join(" "), /Открытые участки/);
+});

@@ -1,3 +1,8 @@
+## Live checkpoint — owner DXF failure, 29 September 2026
+
+Base 422e48f (#202) published, consent browser checks passed. Intervening #200 IndexNow, #201 compact reviews and #202 analytics do not alter CAD. Owner supplies /Users/alex/Downloads/1.dxf and requests both calculators fixed; earlier authorization permits preliminary prices with explicit manufacturing warnings. File remains private, do not commit original.
+Reproduced live: 132 shapes (71 lines, 61 circles), 2938.19 x 700.89 mm, 16.2815 m total paths. Parser succeeds but flat-feature reconstruction flags branched/open paths, factual pricing blocks, client hides cause. Investigate measured-path estimate without repairing/approving production topology; preserve unsupported/nonfinite/self-intersection protections. NEXT ACTION: focused regression, both client/internal pricing verification, publish and update installed application.
+
 ## Live checkpoint — free-services publication verified, 29 September 2026
 
 Base 973420f (#199) deployed (36529147768), goal sync succeeded. Live /tools mobile/desktop accessibility, attribution, manual entry and brief download passed. SEO 94 URLs / 18 redirects / 7 retired URLs and 1453 tests passed. Yandex Business BIM/services post persisted and is on moderation.

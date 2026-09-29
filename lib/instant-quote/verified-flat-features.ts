@@ -7,6 +7,8 @@ export type VerifiedFlatFeatures = {
   topologyVerified?: true;
   /** A known invalid contour must not receive even a preliminary price. */
   invalidGeometry?: true;
+  /** Open/branched LINE paths can be costed, never approved for manufacturing. */
+  measuredOpenPaths?: true;
   reasons: string[];
   holeCount: number;
   minHoleDiameterMm: number | null;
@@ -58,7 +60,17 @@ export function measureVerifiedFlatFeatures(input: Pick<ParsedDxf, 'shapes' | 'u
     }
     const bounds=contourBounds(outer);
     return {supported:true,reasons:[],holeCount:holes.length,minHoleDiameterMm:holes.length?diameter:null,minLigamentMm:holes.length?ligament:null,minPartSideMm:Math.min(bounds.width,bounds.height)};
-  }catch(error){return unsupported(error instanceof Error?error.message:'Геометрия требует проверки технологом.', error instanceof FlatContourError&&error.invalidGeometry ? {invalidGeometry:true}:{});}
+  }catch(error){
+    const result = unsupported(error instanceof Error?error.message:'Геометрия требует проверки технологом.', error instanceof FlatContourError&&error.invalidGeometry ? {invalidGeometry:true}:{});
+    // Only the connected-path reconstruction failure is eligible. Nonfinite,
+    // degenerate, intersecting and unread entities retain their hard blockers.
+    if (error instanceof FlatContourError && error.message === 'Разрыв, ветвление или дублирование контура: требуется восстановление.'
+      && input.shapes.length > 0 && input.shapes.every(shape => shape.kind === 'line' || shape.kind === 'circle')) {
+      result.measuredOpenPaths = true;
+      result.reasons = ['Предварительная оценка по всем линиям и окружностям DXF, включая открытые участки. Металл — по общему прямоугольному габариту файла; врезки — по числу элементов с запасом. Чистая площадь, отверстия и перемычки не подтверждены. Если в файле несколько деталей, они считаются одним комплектом. Перед производством технолог должен проверить контуры и удалить вспомогательные линии.'];
+    }
+    return result;
+  }
 }
 
 /** Missing or inapplicable owner-approved norms never imply permission to manufacture. */

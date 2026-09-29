@@ -57,3 +57,11 @@ test('actual DXF parser output retains millimetres and supported feature values'
  const result=measureVerifiedFlatFeatures(parseAsciiDxf(pairs.join('\n')+'\n'));
  assert.equal(result.supported,true);assert.equal(result.minHoleDiameterMm,6);assert.equal(result.minLigamentMm,7);
 });
+
+test('open line paths retain invalid-production status but allow an explicit cost estimate', () => {
+  const measured = measureVerifiedFlatFeatures({units:'мм',unsupportedEntities:[],shapes:[{kind:'line',a:{x:0,y:0},b:{x:100,y:0}},{kind:'circle',c:{x:50,y:50},r:10}]});
+  assert.equal(measured.invalidGeometry,true);
+  assert.equal(measured.supported,false);
+  assert.equal(measured.measuredOpenPaths,true);
+  assert.match(measured.reasons.join(' '),/предварительная|Предварительная/);
+});
