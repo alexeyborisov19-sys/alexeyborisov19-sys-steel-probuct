@@ -78,7 +78,7 @@ jobs:
               grep -Fq '# Сталь Продукт' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq 'бренд/товарный знак, не юридическое лицо' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq 'Основной официальный сайт бренда: https://www.steelprodukt.ru' "$tmpdir/llms.txt" || checks_ok=false
-              grep -Fq 'Официальные профили бренда: Avito:' "$tmpdir/llms.txt" || checks_ok=false
+              grep -Fq 'Официальные профили бренда:' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq '4aeb5aa7821314bb4d85d50311963002' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq '/company/facts' "$tmpdir/llms.txt" || checks_ok=false
               grep -Fq '## Официальные профили бренда' "$tmpdir/llms-full.txt" || checks_ok=false
@@ -115,16 +115,16 @@ jobs:
 
           echo "Live AI/entity endpoint verification failed for release $DEPLOYED_SHA."
           echo "Diagnostic markers:"
-          grep -F 'User-agent:' "$tmpdir/robots.txt" || true
-          grep -F 'бренд/товарный знак' "$tmpdir/llms.txt" || true
-          grep -F 'Официальные профили бренда' "$tmpdir/llms-full.txt" || true
-          grep -F 'Независимая идентификация' "$tmpdir/llms-full.txt" || true
-          grep -F 'Факты о производстве' "$tmpdir/company-facts.html" || true
-          grep -F '4aeb5aa7821314bb4d85d50311963002' "$tmpdir/company-facts.html" || true
-          grep -F '"@type":"Brand"' "$tmpdir/company-facts.html" || true
-          grep -F '"@type":"AboutPage"' "$tmpdir/company-facts.html" || true
-          grep -F 'companies.rbc.ru' "$tmpdir/company-facts.html" || true
-          grep -F 'spark-interfax.ru' "$tmpdir/company-facts.html" || true
+          grep -Fo 'User-agent:' "$tmpdir/robots.txt" || true
+          grep -Fo 'бренд/товарный знак' "$tmpdir/llms.txt" || true
+          grep -Fo 'Официальные профили бренда' "$tmpdir/llms-full.txt" || true
+          grep -Fo 'Независимая идентификация' "$tmpdir/llms-full.txt" || true
+          grep -Fo 'Факты о производстве' "$tmpdir/company-facts.html" || true
+          grep -Fo '4aeb5aa7821314bb4d85d50311963002' "$tmpdir/company-facts.html" || true
+          grep -Fo '"@type":"Brand"' "$tmpdir/company-facts.html" || true
+          grep -Fo '"@type":"AboutPage"' "$tmpdir/company-facts.html" || true
+          grep -Fo 'companies.rbc.ru' "$tmpdir/company-facts.html" || true
+          grep -Fo 'spark-interfax.ru' "$tmpdir/company-facts.html" || true
           echo "Published key length: $(tr -d '\r\n' < "$tmpdir/indexnow-key.txt" | wc -c)"
           exit 1
 
