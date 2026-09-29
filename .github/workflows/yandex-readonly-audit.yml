@@ -98,6 +98,8 @@ jobs:
               const c = counter.body?.counter || {};
               console.log("COUNTER:", safe({
                 id: c.id,
+                create_time: c.create_time,
+                time_zone_name: c.time_zone_name,
                 name: c.name,
                 site: c.site,
                 status: c.status,
@@ -106,6 +108,14 @@ jobs:
               }));
             } else {
               console.log("COUNTER_ERROR:", safe(counter.body));
+            }
+
+            const counters = await request("https://api-metrika.yandex.net/management/v1/counters?per_page=100",ym);
+            console.log("SITE_COUNTER_HISTORY:",safe((counters.body?.counters || []).filter(c=>String(c.site).includes("steelprodukt.ru")).map(c=>({id:c.id,create_time:c.create_time,status:c.status,site:c.site}))));
+            for (const [from,to] of [["2026-09-14","2026-09-20"],["2026-09-21","2026-09-28"]]) {
+              const u=new URL("https://api-metrika.yandex.net/stat/v1/data");
+              Object.entries({ids:canonicalCounter,date1:from,date2:to,metrics:"ym:s:visits",dimensions:"ym:s:trafficSource",accuracy:"full"}).forEach(([k,v])=>u.searchParams.set(k,v));
+              const r=await request(u.toString(),ym);console.log("HISTORICAL_COVERAGE:",safe({from,to,status:r.status,data:r.body?.data}));
             }
 
             const goals = await request(
