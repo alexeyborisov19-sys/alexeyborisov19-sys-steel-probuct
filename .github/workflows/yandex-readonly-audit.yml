@@ -1,4 +1,4 @@
-# Audit trigger: 2026-09-26
+# Audit trigger: 2026-09-29 — visibility and acquisition review
 name: Yandex read-only audit
 
 on:
