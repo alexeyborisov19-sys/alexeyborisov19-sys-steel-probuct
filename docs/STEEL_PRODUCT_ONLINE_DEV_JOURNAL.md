@@ -1,3 +1,9 @@
+## Live checkpoint — free-services publication verified, 29 September 2026
+
+Base 973420f (#199) deployed (36529147768), goal sync succeeded. Live /tools mobile/desktop accessibility, attribution, manual entry and brief download passed. SEO 94 URLs / 18 redirects / 7 retired URLs and 1453 tests passed. Yandex Business BIM/services post persisted and is on moderation.
+FOUND: post-deploy IndexNow check expected Avito immediately after profile heading; adding official Yandex Maps earlier changed ordering. All other live checks passed. Fix marker ordering without dropping URL/profile checks; keep HTML diagnostic output bounded to matches.
+NEXT ACTION: exact-head CI and publish workflow fix; verify successful indexing submission. No ranking guarantee.
+
 ## Live checkpoint — free services and acquisition, 29 September 2026
 
 Base cd701224 (#198) deployed successfully (36483063532), 7 Metrika goals created (36483063619); live controlled failure/retry returned price and correct events. Previous NEXT ACTION complete.
