@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackLeadEvent } from "@/lib/analytics";
 import { bimScope, cassetteBimSummary, createCassetteCsv, createCassetteIfc, validateCassetteBim, type CassetteBimInput } from "@/lib/bim/cassette";
 import { filterRalPalette, ralFamilies, ralPalette } from "@/lib/bim/ral-palette";
 import styles from "./CassetteBimConfigurator.module.css";
@@ -65,6 +66,7 @@ export function CassetteBimConfigurator() {
       const url = URL.createObjectURL(new Blob([content], { type: kind === "csv" ? "text/csv;charset=utf-8" : "application/octet-stream" }));
       const a = document.createElement("a"); a.href = url; a.download = `steelprodukt-cassettes.${kind}`;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      trackLeadEvent("bim_export_prepared", { format: kind, panels_count: summary.quantity });
       setNotice(`Файл ${kind.toUpperCase()} подготовлен: ${summary.quantity} кассет с назначенными цветами.`);
     } catch { setNotice("Проверьте параметры модели и повторите скачивание."); }
   }

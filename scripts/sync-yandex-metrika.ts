@@ -54,6 +54,7 @@ export const METRIKA_GOAL_METADATA: Record<string, GoalMetadata> = {
   calculator_quote_click: { name: "Калькулятор — переход к заявке" },
   free_service_open: { name: "Бесплатные сервисы — выбор инструмента" },
   catalog_download: { name: "Каталог — скачивание" },
+  bim_export_prepared: { name: "BIM — файл IFC/CSV подготовлен к скачиванию" },
   quote_files_cta_click: { name: "Заявка с файлами — CTA" },
   "ym-show-contacts": { name: "Контакты — показ/переход (Яндекс)" },
   email_click: { name: "Контакты — e-mail" },
