@@ -649,3 +649,16 @@
     grid-template-columns:repeat(4,minmax(0,1fr));
   }
 }
+
+/* Definite grid dimensions prevent the aspect-ratio/min-height width expansion that overlapped neighbours. */
+.board { flex:none; gap:0; }
+.panel { width:100%; height:100%; min-width:0; min-height:0; overflow:hidden; }
+.panelRal { max-width:calc(100% - 10px); overflow:hidden; text-overflow:ellipsis; }
+.profileField { grid-column:span 2; }
+.shapePreview { padding:24px 28px; border-bottom:1px solid var(--line); }
+.shapePreview h3 { font-size:18px; font-weight:650; }
+.shapeSvg { display:block; width:100%; height:340px; background:#e2e8e7; border:1px solid var(--line); border-radius:10px; }
+.rotation { display:flex; gap:24px; margin-top:12px; }
+.rotation label { flex:1; }
+.rotation input { padding:0; accent-color:var(--orange); }
+@media(max-width:600px) { .shapePreview { padding:20px 16px; } .shapeSvg { height:280px; } }

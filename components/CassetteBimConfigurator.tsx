@@ -4,15 +4,22 @@ import { useState } from "react";
 import { trackLeadEvent } from "@/lib/analytics";
 import { bimScope, cassetteBimSummary, createCassetteCsv, createCassetteIfc, validateCassetteBim, type CassetteBimInput } from "@/lib/bim/cassette";
 import { filterRalPalette, ralFamilies, ralPalette } from "@/lib/bim/ral-palette";
+import { cassetteProfiles, cassetteSource, cassetteMinimumJoint, cassetteFaceWidth, type CassetteProfile } from "@/lib/bim/cassette-geometry";
+import { CassetteBimShapePreview } from "./CassetteBimShapePreview";
 import styles from "./CassetteBimConfigurator.module.css";
 
-const initial: CassetteBimInput = { widthMm: 1170, heightMm: 545, depthMm: 40, thicknessMm: 0.7, jointMm: 20, columns: 3, rows: 2, mark: "К-01", finish: "По проекту" };
+const initial: CassetteBimInput = { ...cassetteProfiles.open, profile:"open", columns:3,rows:2,mark:"К-01",finish:"По проекту" };
 const fields = [["widthMm", "Ширина лица, мм"], ["heightMm", "Высота лица, мм"], ["depthMm", "Глубина борта, мм"], ["jointMm", "Шов, мм"], ["columns", "Колонки"], ["rows", "Ряды"]] as const;
 type Colours = NonNullable<CassetteBimInput["panelColours"]>;
 const format = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 3 });
 
 export function CassetteBimConfigurator() {
   const [p, setP] = useState(initial);
+  function chooseProfile(profile:CassetteProfile,thickness=.7) {
+    const base={...p,...cassetteProfiles[profile],profile,thicknessMm:profile==='corner'?1:thickness};
+    const source=cassetteSource(base);
+    setP({...base,...(profile==='corner'?{columns:1}:{widthMm:source.width,heightMm:source.height,depthMm:source.depth}),panelColours:p.panelColours});
+  }
   const [selected, setSelected] = useState<string[]>([]);
   const [scope, setScope] = useState<"all" | "selected">("all");
   const [code, setCode] = useState("7016");
@@ -78,18 +85,22 @@ export function CassetteBimConfigurator() {
     <details className={styles.parameters} id="bim-dimensions" open>
       <summary><span>Размеры и раскладка</span><small>{valid ? `${p.columns} × ${p.rows} кассет · ${format(p.widthMm)} × ${format(p.heightMm)} мм` : "Проверьте параметры"}</small></summary>
       <div className={styles.fields}>
-        {fields.map(([key, label]) => <label key={key}>{label}<input type="number" min={key === "jointMm" ? 0 : undefined} step={key === "rows" || key === "columns" ? 1 : "any"} value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
-        <label>Толщина, мм<select value={p.thicknessMm} onChange={e => setP({ ...p, thicknessMm: Number(e.target.value) })}>{[0.7, 1, 1.2, 1.5].map(t => <option key={t} value={t}>{t}</option>)}</select></label>
+        <label className={styles.profileField}>Исполнение<select value={p.profile} onChange={e=>chooseProfile(e.target.value as CassetteProfile,p.thicknessMm)}>{Object.entries(cassetteProfiles).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
+        {p.profile==='corner' && <label>Второе крыло, мм<input type="number" value={p.returnWidthMm} onChange={e=>setP({...p,returnWidthMm:Number(e.target.value)})}/></label>}
+        {fields.map(([key, label]) => <label key={key}>{label}<input type="number" readOnly={key === "depthMm"} disabled={key === "columns" && p.profile === "corner"} min={key === "jointMm" ? 0 : undefined} step={key === "rows" || key === "columns" ? 1 : "any"} value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
+        <label>Толщина, мм<select value={p.thicknessMm} onChange={e => chooseProfile(p.profile!,Number(e.target.value))}>{(p.profile === "corner" ? [1] : [0.7, 1]).map(t => <option key={t} value={t}>{t}</option>)}</select></label>
         <label>Марка кассеты<input maxLength={80} value={p.mark} onChange={e => setP({ ...p, mark: e.target.value })} /></label>
       </div>
-      <p className={styles.hint}>Размеры — проектные. Начальная глубина 40 мм приведена для примера. До 20 рядов × 20 колонок.</p>
+      <p className={styles.hint}>Открытый и закрытый типы — по исходным STEP-моделям 0,7 и 1 мм. Угловая — по рабочему чертежу, без отверстий и радиусов. Смена типа или толщины возвращает исходные размеры. Изменение ширины и высоты адаптирует центральную часть; глубина и гибы сохраняются.</p>
+      <p className={styles.hint}>Шов задаётся между лицевыми габаритами. Для полных бортов без наложения в этой компоновке требуется не меньше {format(cassetteMinimumJoint(p))} мм. Меньший шов возможен только с отдельно проверенным узлом стыковки.</p>
       <details className={styles.extra}><summary>Описание покрытия для кассет без выбранного RAL</summary><label>Покрытие по проекту<input maxLength={120} value={p.finish} onChange={e => setP({ ...p, finish: e.target.value })} /></label></details>
     </details>
     {!valid && <ul role="alert" className={styles.errors}>{errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
+    {valid && <CassetteBimShapePreview input={p} colour={p.panelColours?.[selectedKeys[0]]?.hex} />}
     <div className={styles.editor} id="bim-colours">
       <section className={styles.canvasSection} aria-labelledby="bim-preview-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Ваш фасадный фрагмент</p><h2 id="bim-preview-title">Выберите кассеты</h2></div><span className={styles.counter}>{scope === "all" ? `Весь блок · ${activeKeys.length}` : `${selectedKeys.length} выбрано`}</span></div>
-        <p className={styles.hint}>Нажмите на одну или несколько кассет. Оранжевая рамка и галочка означают выделение.</p>
+        <p className={styles.hint}>{p.profile === "corner" ? "Схема показывает первое крыло; оба крыла окрашиваются вместе. " : ""}Нажмите на одну или несколько кассет. Оранжевая рамка и галочка означают выделение.</p>
         <div className={styles.selectionTools}>
           <button type="button" onClick={() => { setSelected(activeKeys); setScope("selected"); }} disabled={!gridValid}>Выделить все</button>
           <button type="button" onClick={() => { setSelected([]); setScope("selected"); }} disabled={!selectedKeys.length}>Снять выделение</button>
@@ -97,13 +108,13 @@ export function CassetteBimConfigurator() {
           <label className={styles.groupLabel}><span className="sr-only">Выделить колонку</span><select aria-label="Выделить колонку" value="" onChange={e => selectGroup("column", Number(e.target.value))}><option value="" disabled>Колонка целиком</option>{gridValid && Array.from({ length: p.columns }, (_, col) => <option key={col} value={col}>Колонка {col + 1}</option>)}</select></label>
         </div>
         <div className={styles.boardFrame} tabIndex={0} aria-label="Схема кассет. Большие блоки можно прокручивать">
-          {valid ? <div className={styles.board} style={{ gridTemplateColumns: `repeat(${p.columns}, minmax(64px, 1fr))` }}>
+          {valid ? <div className={styles.board} style={{ gridTemplateColumns: `repeat(${p.columns}, minmax(0, 1fr))`,gridTemplateRows:`repeat(${p.rows}, minmax(0, 1fr))`,width:`max(100%, ${summary.overallWidthMm*Math.max(100/p.widthMm,76/p.heightMm)}px)`,aspectRatio:summary.overallWidthMm/summary.overallHeightMm,columnGap:`${100*p.jointMm/summary.overallWidthMm}%`,rowGap:`${100*p.jointMm/summary.overallHeightMm}%` }}>
             {[...activeKeys].sort((a, b) => Number(b.split(":")[0]) - Number(a.split(":")[0]) || Number(a.split(":")[1]) - Number(b.split(":")[1])).map(key => {
               const [row, col] = key.split(":").map(Number);
               const number = row * p.columns + col + 1;
               const assigned = p.panelColours?.[key];
               const isSelected = selectedKeys.includes(key);
-              return <button type="button" data-panel={key} key={key} aria-pressed={isSelected} aria-label={`Кассета ${number}, ряд ${row + 1}, колонка ${col + 1}, ${assigned?.ral || p.finish || "По проекту"}`} onClick={() => toggle(key)} className={`${styles.panel} ${isSelected ? styles.panelSelected : ""}`} style={{ backgroundColor: assigned?.hex || "#dce1e3", aspectRatio: Math.min(2.5, Math.max(0.6, p.widthMm / p.heightMm)) }}>
+              return <button type="button" data-panel={key} key={key} aria-pressed={isSelected} aria-label={`Кассета ${number}, ряд ${row + 1}, колонка ${col + 1}, ${assigned?.ral || p.finish || "По проекту"}`} onClick={() => toggle(key)} className={`${styles.panel} ${isSelected ? styles.panelSelected : ""}`} style={{ backgroundColor: assigned?.hex || "#dce1e3" }}>
                 <span className={styles.panelNumber}>{number.toString().padStart(2, "0")}</span>{isSelected && <span aria-hidden="true" className={styles.check}>✓</span>}
                 <span className={styles.panelRal}>{assigned?.ral || "Без RAL"}</span>
               </button>;
@@ -112,7 +123,7 @@ export function CassetteBimConfigurator() {
         </div>
         <p className={styles.caption}>Условная схема, вид спереди. Ряды считаются снизу, колонки — слева. Геометрия IFC строится по введённым размерам.</p>
         {valid && <dl className={styles.metrics}><div><dt>Количество</dt><dd>{summary.quantity} <small>шт.</small></dd></div><div><dt>Площадь лиц</dt><dd>{format(summary.faceAreaM2)} <small>м²</small></dd></div><div><dt>Габариты блока</dt><dd className={styles.dimensions}>{format(summary.overallWidthMm)} × {format(summary.overallHeightMm)} <small>мм</small></dd></div></dl>}
-        <details className={styles.colourSchedule}><summary>Ведомость цветов <span>{colourGroups.size}</span></summary><ul aria-label="Спецификация по цветам">{[...colourGroups].map(([finish, group]) => <li key={finish}><span className={styles.smallSwatch} style={{ backgroundColor: group.hex || "#dce1e3" }} /><strong>{finish}</strong><span>{group.count} шт.</span><span>{format(group.count * p.widthMm * p.heightMm / 1e6)} м²</span></li>)}</ul><p className={styles.caption}>Площадь лицевой поверхности без швов. Не площадь окраски с бортами.</p></details>
+        <details className={styles.colourSchedule}><summary>Ведомость цветов <span>{colourGroups.size}</span></summary><ul aria-label="Спецификация по цветам">{[...colourGroups].map(([finish, group]) => <li key={finish}><span className={styles.smallSwatch} style={{ backgroundColor: group.hex || "#dce1e3" }} /><strong>{finish}</strong><span>{group.count} шт.</span><span>{format(group.count * cassetteFaceWidth(p) * p.heightMm / 1e6)} м²</span></li>)}</ul><p className={styles.caption}>Площадь лицевой поверхности без швов. Не площадь окраски с бортами.</p></details>
       </section>
       <section className={styles.paintSection} aria-labelledby="bim-paint-title">
         <p className={styles.eyebrow}>Палитра покрытия</p><h2 id="bim-paint-title">Назначьте цвет RAL</h2>

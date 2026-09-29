@@ -1,3 +1,9 @@
+# Revision 2 verification — 29 September 2026
+
+See GEOMETRY-REVISION-2.md for the four source STEP profiles, adaptation rules and explicitly simplified corner. Build/lint and 1461 tests pass. Chrome at 390/1440 verifies dense 20×20 arrays, extreme aspect ratios, all four profile downloads, painting and invalid input. Native/adapted IFCs are independently checked with IfcOpenShell. The old five-prism volume test below describes revision 1 only. Native RFA remains unavailable.
+
+## Historical revision 1
+
 # Verification — IFC coordination generator, 28 September 2026
 
 - IFC4 parsed and EXPRESS rules checked with IfcOpenShell 0.8.4.post1: no errors in three cases (1, 6 and 400 panels).
