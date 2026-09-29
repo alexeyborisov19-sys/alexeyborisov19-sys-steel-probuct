@@ -76,16 +76,13 @@ export function useCadProject(trackPublicFunnel = false) {
   // matched to the calculation an engineer already has, instead of being
   // re-quoted from scratch. It is an opaque identifier the server had already
   // published to this browser — no basis, rate or geometry rides along with it.
-  const quoteHandoffHref = {
-    pathname: "/contacts",
-    query: {
+  const quoteHandoffQuery = new URLSearchParams({
       source: "online-order",
       parts: String(project.parts.length),
       ...(calculation == null ? {} : { calc: calculation.projectId }),
       ...(approvedProjectTotalRub == null ? {} : { total: String(Math.round(approvedProjectTotalRub)) }),
-    },
-    hash: "contact-form",
-  };
+  });
+  const quoteHandoffHref = `/contacts?${quoteHandoffQuery.toString()}#contact-form`;
   const isAnalyzing = activePart ? Boolean(analyzingByPartId[activePart.id]) : false;
   const materialId = materialIdOf(activePart?.configuration.materialId ?? null);
   const thickness = activePart?.configuration.thicknessMm ?? 1;

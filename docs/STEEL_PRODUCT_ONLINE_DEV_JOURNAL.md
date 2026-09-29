@@ -1,3 +1,11 @@
+## Acquisition attribution fix — 29 September 2026
+
+DONE: live CAD→contacts lost UTM/yclid reproduced; same-origin allowlisted URL forwarding and email source fields added without persistent tracking.1457 tests passed; final focused44 tests, build/lint passed; local browser handoff and intercepted submit verified. Direct6 observed negative phrases added in4 groups; budget/state unchanged, verified readback36613939778. Matched audit36612512714 confirms1569 clicks vs31 ad visits; aggregate12 SMTP-sent records are not proof of12 commercial customers. Owner says email only, no Bitrix, no duplicate resends. NEXT ACTION: exact-head CI, publish, live CAD handoff test; actual inbox receipt and attribution gap remain unproven.
+
+## Acquisition audit — 29 September 2026
+
+Live main94d3467 (#204), CI and deploy36605296423 succeeded. Website16.5% verified on original DXF:2706.45RUB, no exposed surcharge; desktop unchanged. NEXT ACTION: matched-period Metrika/Direct and funnel audit; preserve consent and budgets. Browser session expired, use protected read-only API.
+
 ## Website final percentage — 29 September 2026
 
 Owner explicitly restores 16.5% in final website prices only, with no visible percentage or breakdown. Apply once in existing protected commercial formula; fixed1000RUB stays disabled. Desktop unchanged. Base62377d7 deployed and actual1.dxf verified. NEXT ACTION: policy tests, exact-head CI, publish and compare live quote.

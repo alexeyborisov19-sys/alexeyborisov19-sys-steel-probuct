@@ -37,7 +37,7 @@ test("the calculator hands the order over to the consent-recording contacts form
   const form = await source("components/QuoteRequestForm.tsx");
 
   // No private order endpoint of its own, and no fabricated submit target.
-  assert.match(workspace, /pathname:\s*"\/contacts"/);
+  assert.match(workspace, /quoteHandoffHref = `\/contacts\?/);
   assert.match(workspace, /source:\s*"online-order"/);
   assert.equal(workspace.includes("/api/cad-order"), false);
 
