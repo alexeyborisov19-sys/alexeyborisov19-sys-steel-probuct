@@ -1,3 +1,7 @@
+## Acquisition audit — 29 September 2026
+
+Live main94d3467 (#204), CI and deploy36605296423 succeeded. Website16.5% verified on original DXF:2706.45RUB, no exposed surcharge; desktop unchanged. NEXT ACTION: matched-period Metrika/Direct and funnel audit; preserve consent and budgets. Browser session expired, use protected read-only API.
+
 ## Website final percentage — 29 September 2026
 
 Owner explicitly restores 16.5% in final website prices only, with no visible percentage or breakdown. Apply once in existing protected commercial formula; fixed1000RUB stays disabled. Desktop unchanged. Base62377d7 deployed and actual1.dxf verified. NEXT ACTION: policy tests, exact-head CI, publish and compare live quote.

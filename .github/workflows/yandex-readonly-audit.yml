@@ -76,10 +76,12 @@ jobs:
             });
             const text = await res.text();
             let parsed;
-            try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text; }
+            try { parsed = text ? JSON.parse(text.replace(/("Id"\s*:\s*)(\d{16,})(?=\s*[,}])/g, '$1"$2"')) : {}; } catch { parsed = text; }
             return {status: res.status, ok: res.ok, body: parsed, headers: Object.fromEntries(res.headers.entries())};
           }
 
+          const auditFrom = "2026-08-30", auditTo = "2026-09-28";
+          console.log("MATCHED_PERIOD:", auditFrom, auditTo);
           console.log("=== YANDEX READ-ONLY AUDIT ===");
           console.log("Timestamp:", new Date().toISOString());
 
@@ -126,6 +128,13 @@ jobs:
               const primary = simplified.find(g => g.target === "quote_request_success" || g.name === "Форма заявки — успешно отправлена");
               primaryGoalId = primary?.id || null;
               console.log("GOALS_COUNT:", simplified.length);
+              const selectedGoals = simplified.filter(g => /^(calculator_|free_service_|catalog_download|quote_|assistant_lead_success)/.test(g.target || ""));
+              for (const g of selectedGoals) {
+                const u = new URL("https://api-metrika.yandex.net/stat/v1/data");
+                Object.entries({ids:canonicalCounter,date1:auditFrom,date2:auditTo,metrics:`ym:s:goal${g.id}reaches,ym:s:goal${g.id}visits`,accuracy:"full"}).forEach(([k,v])=>u.searchParams.set(k,v));
+                const r = await request(u.toString(),ym);
+                console.log("FUNNEL_GOAL:",safe({target:g.target,status:r.status,totals:r.body?.totals}));
+              }
               console.log("PRIMARY_GOAL:", safe(primary || null));
               console.log("REQUIRED_TARGETS_PRESENT:", safe([
                 "quote_form_started","quote_file_attached","quote_request_submit","quote_request_success",
@@ -162,6 +171,13 @@ jobs:
             ] : [];
             await metrikaReport("LAST_7_DAYS","7daysAgo","today",goalMetrics);
             await metrikaReport("LAST_30_DAYS","30daysAgo","today",goalMetrics);
+            await metrikaReport("MATCHED_TOTAL",auditFrom,auditTo,goalMetrics);
+            for (const dimensions of ["ym:s:date,ym:s:trafficSource", "ym:s:UTMSource,ym:s:UTMCampaign", "ym:s:startURLPath"]) {
+              const u = new URL("https://api-metrika.yandex.net/stat/v1/data");
+              Object.entries({ids:canonicalCounter,date1:auditFrom,date2:auditTo,dimensions,metrics:"ym:s:visits,ym:s:bounceRate",accuracy:"full",limit:"100"}).forEach(([k,v])=>u.searchParams.set(k,v));
+              const r = await request(u.toString(),ym);
+              console.log("MATCHED_SEGMENT:", safe({dimensions,status:r.status,data:r.body?.data,error:r.body?.errors}));
+            }
 
             const src = new URL("https://api-metrika.yandex.net/stat/v1/data");
             src.searchParams.set("ids", canonicalCounter);
@@ -235,6 +251,7 @@ jobs:
                   const hid = encodeURIComponent(host.host_id);
                   for (const [label, suffix] of [
                     ["SUMMARY","summary"],
+                    ["SEARCH_EVENTS","search-urls/events/samples?offset=0&limit=100"],
                     ["DIAGNOSTICS","diagnostics"],
                     ["VERIFICATION","verification"],
                     ["SITEMAPS","sitemaps?limit=100"],
@@ -348,15 +365,15 @@ jobs:
             } else console.log("ADS_ERROR:", safe(ads.body));
 
             // Recent performance report. This is a read-only POST to Reports.
-            const d2 = new Date();
-            const d1 = new Date(d2.getTime() - 6*86400000);
+            const d2 = new Date(auditTo);
+            const d1 = new Date(auditFrom);
             const fmt = d => d.toISOString().slice(0,10);
             const reportSpec = {
               params: {
                 SelectionCriteria: {DateFrom: fmt(d1), DateTo: fmt(d2), Filter: []},
-                FieldNames: ["Date","CampaignId","CampaignName","Impressions","Clicks","Cost","Conversions","CostPerConversion"],
+                FieldNames: ["Date","CampaignId","AdNetworkType","Impressions","Clicks","Cost","Conversions"],
                 ReportName: "SteelProdukt readonly audit",
-                ReportType: "CAMPAIGN_PERFORMANCE_REPORT",
+                ReportType: "CUSTOM_REPORT",
                 DateRangeType: "CUSTOM_DATE",
                 Format: "TSV",
                 IncludeVAT: "NO",
@@ -372,20 +389,23 @@ jobs:
               "returnMoneyInMicros": "false"
             };
             if (login) headers["Client-Login"] = login;
-            const rep = await fetch("https://api.direct.yandex.com/json/v501/reports", {
-              method:"POST", headers, body:JSON.stringify(reportSpec), signal:AbortSignal.timeout(30000)
-            });
-            const repText = await rep.text();
-            console.log("REPORT_HTTP:", rep.status);
-            console.log("REPORT_REQUEST_ID:", rep.headers.get("requestId") || "");
-            console.log("REPORT_RETRY_IN:", rep.headers.get("retryIn") || "");
-            if (rep.status === 200) {
-              console.log("REPORT_TSV:\n" + repText.slice(0,20000));
-            } else {
-              console.log("REPORT_BODY:", repText.slice(0,4000));
+            for (const [label, spec] of [
+              ["MATCHED_DIRECT", reportSpec],
+              ["SEARCH_QUERIES", {params:{...reportSpec.params,ReportName:"SteelProdukt query audit 20260929",ReportType:"SEARCH_QUERY_PERFORMANCE_REPORT",FieldNames:["CampaignId","AdGroupId","Query","Impressions","Clicks","Cost","Conversions"],OrderBy:[{Field:"Cost",SortOrder:"DESCENDING"}],Page:{Limit:100}}}],
+              ["PLACEMENTS", {params:{...reportSpec.params,ReportName:"SteelProdukt placement audit 20260929",ReportType:"CUSTOM_REPORT",FieldNames:["CampaignId","Placement","AdNetworkType","Impressions","Clicks","Cost","Conversions"],OrderBy:[{Field:"Cost",SortOrder:"DESCENDING"}],Page:{Limit:100}}}]
+            ]) {
+              let rep, repText;
+              for(let attempt=0;attempt<5;attempt++) {
+                rep = await fetch("https://api.direct.yandex.com/json/v501/reports", {method:"POST",headers,body:JSON.stringify(spec),signal:AbortSignal.timeout(30000)});
+                repText = await rep.text();
+                if (![201,202].includes(rep.status)) break;
+                await new Promise(resolve=>setTimeout(resolve, Math.min(30000,Math.max(1000,Number(rep.headers.get("retryIn")||5)*1000))));
+              }
+              console.log(label+"_HTTP:",rep.status);
+              console.log(label+"_DATA:\n"+repText.slice(0,50000));
             }
           }
           NODE
           node /tmp/audit.mjs
 
-# Audit refresh marker: 2026-09-26
+# Matched acquisition audit: 2026-09-29. Read-only, closed dates, no campaign mutations.
