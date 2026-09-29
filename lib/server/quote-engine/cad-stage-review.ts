@@ -157,7 +157,8 @@ async function reviewPart(
     && (part.format === "step" || part.format === "stp") && part.geometry.bodyCount === 1
     && (part.geometry.bendCount ?? 0) === 0;
   const manualBlank = cad?.preliminaryGeometrySource === "manual-rectangular-blank" && part.format === "dxf";
-  const preliminaryStep = measuredBentStep || measuredStepBlank || manualBlank;
+  const measuredOpenPaths = part.format === "dxf" && cad?.flatFeatures?.measuredOpenPaths === true;
+  const preliminaryStep = measuredBentStep || measuredStepBlank || manualBlank || measuredOpenPaths;
   const incompleteCountersinks = cad?.countersinkRecognitionIncomplete === true;
   if (incompleteCountersinks || knownScopeOnly || manufacturingConstraints.length || preliminaryStep || cost.staleMaterialPriceUsed || cost.estimatedRateUsed || result.dfmReviewReasons.length || (cad?.reviewReasons?.length ?? 0) > 0) {
     const held = hold(issue("geometry", "inconsistent-geometry"));
@@ -171,15 +172,15 @@ async function reviewPart(
         || (check.code === "material-thickness-review" && ["hot", "cold", "zinc"].includes(cost.materialId)))
       && result.dfmReviewReasons.every(reason => manual.some(check => check.title === reason) || (preliminaryStep && cad?.reviewReasons?.includes(reason)))
       && !dfm.some(check => check.severity === "error" && !isEstimateOnlyManufacturingConstraint(check,cad?.flatFeatures)) && (preliminaryStep || !(cad?.reviewReasons?.length));
-    const completeGeometry = [g.widthMm, g.heightMm, g.areaMm2, g.blankAreaMm2, g.cutLengthMm].every(value => typeof value === "number" && Number.isFinite(value) && value > 0)
-      && Number.isSafeInteger(g.pierceCount) && g.pierceCount! > 0;
+    const completeGeometry = [g.widthMm, g.heightMm, measuredOpenPaths ? g.blankAreaMm2 : g.areaMm2, g.blankAreaMm2, g.cutLengthMm].every(value => typeof value === "number" && Number.isFinite(value) && value > 0)
+      && Number.isSafeInteger(measuredOpenPaths ? (g.pierceCount ?? g.contourCount) : g.pierceCount) && (measuredOpenPaths ? (g.pierceCount ?? g.contourCount ?? 0) : (g.pierceCount ?? 0)) > 0;
     const articlesBatch = cost.lines.reduce((sum, line) => sum + line.amountRubBatch, 0);
     const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
     const arithmeticConfirmed = Math.abs(articlesBatch - cost.confirmedDirectCostRubBatch) <= 0.005
       && cost.lines.every(line => [line.rateRub, line.quantity, line.amountRubBatch].every(value => Number.isFinite(value) && value >= 0)
         && Math.abs(line.amountRubEach - roundMoney(line.rateRub * line.quantity)) <= 0.005
         && Math.abs(line.amountRubBatch - roundMoney(line.rateRub * line.quantity * cost.quantity)) <= 0.005);
-    const topologyConfirmed = !cad?.flatFeatures || (!cad.flatFeatures.invalidGeometry
+    const topologyConfirmed = measuredOpenPaths || !cad?.flatFeatures || (!cad.flatFeatures.invalidGeometry
       && (cad.flatFeatures.supported || cad.flatFeatures.topologyVerified === true));
     if (onlyManufacturingReview && completeGeometry && arithmeticConfirmed && topologyConfirmed) {
       if (knownScopeOnly) {
