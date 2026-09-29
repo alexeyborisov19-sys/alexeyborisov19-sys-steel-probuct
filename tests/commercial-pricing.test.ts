@@ -99,7 +99,7 @@ test("the policy loader still fails closed when the required env vars are absent
 });
 
 
-test("active policy ignores legacy 1000 RUB and 16.5 percent surcharges for every quantity", () => {
+test("website policy applies 16.5 percent once, keeps fixed charge off and desktop unchanged", () => {
   const saved = { ...process.env };
   try {
     Object.assign(process.env, {
@@ -107,18 +107,23 @@ test("active policy ignores legacy 1000 RUB and 16.5 percent surcharges for ever
       STEEL_PRODUCT_FINAL_PCT: "16.5", STEEL_PRODUCT_FIXED_ADD_RUB: "1000",
       STEEL_PRODUCT_FIXED_ADD_ENABLED: "true", STEEL_PRODUCT_ROUND_STEP_RUB: "10",
     });
+    delete process.env.STEEL_PRODUCT_LOCAL_DESKTOP;
     const active = loadCommercialPricingPolicy();
-    assert.equal(active.finalPercent, 0);
+    assert.equal(active.finalPercent, 16.5);
     assert.equal(active.fixedAddEnabled, false);
     assert.equal(active.fixedAddRubEach, 0);
-    // Material 100*1.1 + works 50*1.05 = 162.5 -> 170 after unchanged rounding.
+    // (100*1.1 + 50*1.05)*1.165 = 189.3125 -> 190 after existing rounding.
     // Old: (110 + 1050*1.05)*1.165 = 1412.5625 -> 1420 per part.
     const lines = [{ code: "material", amountRubEach: 100 }, { code: "welding", amountRubEach: 50 }];
     assert.equal(approvedSalePriceRubFromLines(lines, 1, { ...active, finalPercent: 16.5, fixedAddRubEach: 1000, fixedAddEnabled: true }), 1420);
-    for (const qty of [1, 5, 100]) assert.equal(approvedSalePriceRubFromLines(lines, qty, active), 170 * qty);
+    for (const qty of [1, 5, 100]) assert.equal(approvedSalePriceRubFromLines(lines, qty, active), 190 * qty);
     delete process.env.STEEL_PRODUCT_FINAL_PCT;
     delete process.env.STEEL_PRODUCT_FIXED_ADD_RUB;
     delete process.env.STEEL_PRODUCT_FIXED_ADD_ENABLED;
     assert.deepEqual(loadCommercialPricingPolicy(), active);
+    process.env.STEEL_PRODUCT_LOCAL_DESKTOP = "true";
+    const desktop = loadCommercialPricingPolicy();
+    assert.equal(desktop.finalPercent, 0);
+    assert.equal(approvedSalePriceRubFromLines(lines, 5, desktop), 850);
   } finally { process.env = saved; }
 });

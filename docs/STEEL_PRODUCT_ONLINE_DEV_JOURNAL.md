@@ -1,3 +1,11 @@
+## Website final percentage — 29 September 2026
+
+Owner explicitly restores 16.5% in final website prices only, with no visible percentage or breakdown. Apply once in existing protected commercial formula; fixed1000RUB stays disabled. Desktop unchanged. Base62377d7 deployed and actual1.dxf verified. NEXT ACTION: policy tests, exact-head CI, publish and compare live quote.
+
+## Verified release — owner 1.dxf, 29 September 2026
+
+DONE: PR203 exact head1173a04 passed both CI runs36600836058/36600836119; main62377d7 deployed via36603266718. Live original file returns HTTP200, estimate2323.14RUB for cold steel1mm/quantity1/laser only, with explicit open-path and stale-price warnings. Mac staged packaged app tested through isolated authenticated session: estimate3041.65RUB using local tariffs, then installed and launched; desktop health OK, source commit32005c1. Neither result is production approval; original file remains private. Tests1455 passed. NEXT ACTION: owner can re-upload original or recalculate; investigate supplier fallback freshness separately. This documentation update is not a new functional release.
+
 ## Live checkpoint — owner DXF failure, 29 September 2026
 
 Base 422e48f (#202) published, consent browser checks passed. Intervening #200 IndexNow, #201 compact reviews and #202 analytics do not alter CAD. Owner supplies /Users/alex/Downloads/1.dxf and requests both calculators fixed; earlier authorization permits preliminary prices with explicit manufacturing warnings. File remains private, do not commit original.

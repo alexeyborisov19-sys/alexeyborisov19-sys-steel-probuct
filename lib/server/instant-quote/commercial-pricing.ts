@@ -8,7 +8,7 @@
  * same owner-approved rule to a part it priced from stated dimensions
  * instead of a CAD file. Nothing about the formula, its rounding, or its
  * environment variables changed in the original extraction. The active loader
- * now disables fixed/final surcharges per the owner decision of 2026-09-28;
+ * keeps the fixed charge disabled and applies the owner-approved website percentage;
  * the pure formula retains explicit-policy support for historical comparisons.
  */
 export type CommercialPricingPolicy = {
@@ -38,9 +38,9 @@ export function loadCommercialPricingPolicy(): CommercialPricingPolicy {
   return {
     metalMultiplier: privatePositiveEnv("STEEL_PRODUCT_METAL_MULTIPLIER"),
     drawingPercentOfWorks: privateNonNegativeEnv("STEEL_PRODUCT_DRAW_PCT"),
-    // Owner disabled the per-part fixed charge and final percentage on 2026-09-28.
-    // Ignore legacy environment values so a deployment cannot reactivate them.
-    finalPercent: 0,
+    // Owner restored 16.5% for the website on 2026-09-29. Desktop stays unchanged.
+    // Never restore the removed fixed per-part charge from legacy environment.
+    finalPercent: process.env.STEEL_PRODUCT_LOCAL_DESKTOP === "true" ? 0 : 16.5,
     fixedAddRubEach: 0,
     fixedAddEnabled: false,
     roundStepRub: privatePositiveEnv("STEEL_PRODUCT_ROUND_STEP_RUB"),
