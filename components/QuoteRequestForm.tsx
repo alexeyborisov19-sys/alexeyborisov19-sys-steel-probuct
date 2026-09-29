@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, DragEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, FocusEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { createResettableOnce, trackLeadEvent } from "@/lib/analytics";
 import { legalLinks } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
@@ -133,7 +133,10 @@ export function QuoteRequestForm() {
     addFiles(Array.from(event.dataTransfer.files));
   }
 
-  function markFormStarted() {
+  function markFormStarted(event: FocusEvent<HTMLFormElement>) {
+    // Re-enabling the submit button can restore focus after a successful send.
+    // Count a new form start only when the visitor focuses an editable field.
+    if (sendingRef.current || !(event.target instanceof HTMLElement) || !event.target.matches("input:not([name=website]), textarea, select")) return;
     formStartTracker.current?.fire();
   }
 
