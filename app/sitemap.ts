@@ -29,7 +29,8 @@ const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
 const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/": new Date("2026-09-28T00:00:00.000Z"),
+  "/tools": new Date("2026-09-29T00:00:00.000Z"),
+  "/": new Date("2026-09-29T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
   "/company/facts": new Date("2026-09-28T00:00:00.000Z"),
   "/contacts": new Date("2026-09-28T00:00:00.000Z"),
@@ -82,6 +83,7 @@ const commercialHubs = new Set([
 
 function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
   if (path === "/") return 1;
+  if (path === "/tools") return 0.9;
   if (path === "/company" || path === "/company/facts") return 0.9;
   if (commercialHubs.has(path)) return 0.9;
   if (path === "/calculator-metallokassety" || path === "/online-order" || path === "/contacts") return 0.9;
@@ -96,7 +98,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
-    "/", "/company", "/company/facts", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety", "/online-order",
+    "/", "/tools", "/company", "/company/facts", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety", "/online-order",
     "/products/metallokassety", "/products/metallokassety/bim", "/products/dobornye-elementy",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];

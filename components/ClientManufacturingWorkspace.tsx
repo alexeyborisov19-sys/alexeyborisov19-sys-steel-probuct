@@ -28,6 +28,9 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
   const { ingestFiles, filesByPartId, isIngesting, inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict } = useCadProject(mode === "public");
   const [preferredView, setPreferredView] = useState<"2d" | "3d">("3d");
   const [manualEditor,setManualEditor]=useState<'add'|'edit'|null>(null);
+  useEffect(() => {
+    if (mode === "public" && new URLSearchParams(window.location.search).get("input") === "manual") setManualEditor("add");
+  }, [mode]);
   const [activeManual,setActiveManual]=useState<ManualSheetInput|null>(null);
   const activeFile=activePart?filesByPartId[activePart.id]:undefined;
   useEffect(()=>{let cancelled=false;setActiveManual(null);if(activeFile&&/\.dxf$/i.test(activeFile.name))void activeFile.slice(0,128).text().then(async header=>{if(cancelled||!header.startsWith('999\nSTEEL_PRODUCT_MANUAL_BLANK_'))return;try{const input=readManualSheetDxf(await activeFile.text());if(!cancelled)setActiveManual(input);}catch{}});return()=>{cancelled=true;};},[activeFile]);

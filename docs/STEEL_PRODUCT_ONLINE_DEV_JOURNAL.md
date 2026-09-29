@@ -1,3 +1,10 @@
+## Live checkpoint — free services and acquisition, 29 September 2026
+
+Base cd701224 (#198) deployed successfully (36483063532), 7 Metrika goals created (36483063619); live controlled failure/retry returned price and correct events. Previous NEXT ACTION complete.
+DONE: free-services hub, earlier homepage calculator entry, manual-input deep link, downloadable manufacturing brief, Yandex promotion within current budgets. Preserve hero/header/industry content, calculation formulas and consent.
+Validation: initial build/lint/type/1453 tests, mobile/desktop tools-page axe, attribution and manual deep-link checks passed.
+NEXT ACTION: final browser/SEO checks, exact-head CI, publication and live verification; publish Yandex materials without increasing spend.
+
 ## Live checkpoint — measurable calculator acquisition, 28 September 2026
 
 Base b9ca18c (#197): exact-head checks, deploy 36479862704, live 12 browser scenarios and 93 SEO URLs passed. Previous NEXT ACTION completed.
