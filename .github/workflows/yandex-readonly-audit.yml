@@ -40,6 +40,7 @@ jobs:
             return JSON.stringify(obj, null, 2);
           }
           async function request(url, token, opts = {}) {
+            try {
             const res = await fetch(url, {
               ...opts,
               headers: {
@@ -54,6 +55,10 @@ jobs:
             let body;
             try { body = text ? JSON.parse(text) : {}; } catch { body = text; }
             return {status: res.status, ok: res.ok, body, headers: Object.fromEntries(res.headers.entries())};
+            } catch (error) {
+              // A network outage in one API must not hide the other reports.
+              return {status: 0, ok: false, body: {error: "NETWORK_ERROR", code: error?.cause?.code || error?.name || "UNKNOWN"}, headers: {}};
+            }
           }
           async function requestDirect(url, token, body, clientLogin = "") {
             const headers = {
