@@ -1,7 +1,8 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { flushPendingAnalyticsGoals, yandexCounterIds } from "@/lib/analytics";
 import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
@@ -17,6 +18,27 @@ const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
  */
 export function Analytics() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+  const [runtimeReady, setRuntimeReady] = useState(false);
+  const pathname = usePathname();
+  const lastPath = useRef<string | null>(null);
+
+  // Init records the current document. Next client navigation does not reload
+  // that document, so record subsequent paths only while consent remains valid.
+  useEffect(() => {
+    if (!runtimeReady || !analyticsAllowed || !hasAnalyticsConsent() || !pathname) return;
+    if (lastPath.current === pathname) return;
+    const previousPath = lastPath.current;
+    lastPath.current = pathname;
+    if (!previousPath) return;
+    const runtime = window as Window & { ym?: (id: number, command: string, path: string, options: { referer: string }) => void };
+    for (const id of counterIds) runtime.ym?.(id, "hit", pathname, { referer: previousPath });
+  }, [pathname, runtimeReady, analyticsAllowed]);
+
+  function analyticsReady() {
+    lastPath.current = window.location.pathname;
+    setRuntimeReady(true);
+    flushPendingAnalyticsGoals();
+  }
 
   useEffect(() => {
     function syncConsent() {
@@ -37,7 +59,7 @@ export function Analytics() {
   if (!analyticsAllowed) return null;
 
   return <>
-    {counterIds.length ? <Script id="yandex-metrica" strategy="afterInteractive" onReady={flushPendingAnalyticsGoals}>{`
+    {counterIds.length ? <Script id="yandex-metrica" strategy="afterInteractive" onReady={analyticsReady}>{`
       window.dataLayer = window.dataLayer || [];
       var metrikaTagUrl = 'https://mc.yandex.ru/metrika/tag.js?id=${counterIds[0]}';
       (function(m,e,t,r,i,k,a){
