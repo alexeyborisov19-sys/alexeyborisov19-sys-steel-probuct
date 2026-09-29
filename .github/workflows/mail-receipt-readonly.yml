@@ -1,0 +1,55 @@
+name: Verify quote receipts in mailbox read-only
+on:
+  push:
+    branches: [audit/remaining-acquisition-20260929]
+    paths: [.github/workflows/mail-receipt-readonly.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Match saved quote IDs with inbox, without marking mail read
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' python3 -" <<'PY'
+          import json,pathlib,os,sys,importlib.util,re,collections
+          app=pathlib.Path(os.environ['APP_PATH'])
+          spec=importlib.util.spec_from_file_location('mail_readonly',app/'scripts/mail-readonly.py')
+          m=importlib.util.module_from_spec(spec);sys.modules[spec.name]=m;spec.loader.exec_module(m)
+          values=m.read_env(str(app/'.env.production'))
+          print('CONFIG',json.dumps({k:bool(values.get(k)) for k in ['IMAP_HOST','IMAP_USER','IMAP_PASSWORD','IMAP_READ_ONLY','IMAP_SECURE','QUOTE_RECIPIENT']}))
+          print('RECIPIENT_MATCHES_IMAP', values.get('QUOTE_RECIPIENT','').strip().casefold()==values.get('IMAP_USER','').strip().casefold())
+          rows=[]
+          for p in pathlib.Path('/var/lib/steelprodukt/quote-leads').glob('*.json'):
+              r=json.loads(p.read_text())
+              if '2026-08-30' <= str(r.get('createdAt',''))[:10] <= '2026-09-29': rows.append(r)
+          print('SAVED_COUNT',len(rows))
+          try:
+              config=m.ImapConfig.from_env(values)
+              with m.ReadOnlyMailbox(config) as box:
+                  results=[]
+                  for r in rows:
+                      rid=r.get('requestId','')
+                      if not re.fullmatch(r'SP-\d{8}-[A-F0-9]{8}',rid): continue
+                      typ,data=box._client().uid('search',None,'HEADER','Subject',rid)
+                      if typ!='OK': raise RuntimeError('Search failed')
+                      count=len(data[0].split()) if data and data[0] else 0
+                      test=bool(re.search(r'\b(test|qa|smoke|e2e)\b|тест|контрольная проверка', ' '.join(str(r.get(k,'')) for k in ['name','company','message','email']),re.I))
+                      results.append({'date':str(r.get('createdAt',''))[:10],'delivery':r.get('delivery'),'inbox_matches':count,'test_marker':test})
+                  print('RECEIPT_RESULTS',json.dumps(results,ensure_ascii=False))
+                  print('SUMMARY',json.dumps({'matched':sum(x['inbox_matches']>0 for x in results),'missing':sum(x['inbox_matches']==0 for x in results),'test_marked':sum(x['test_marker'] for x in results)}))
+          except Exception as e:
+              print('MAILBOX_CHECK_FAILED',type(e).__name__)
+              sys.exit(1)
+          PY
