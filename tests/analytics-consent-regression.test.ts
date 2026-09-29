@@ -87,7 +87,9 @@ test("advertising attribution is preserved without pre-consent persistent storag
   const form = readFileSync(new URL("../components/QuoteRequestForm.tsx", import.meta.url), "utf8");
   const product = readFileSync(new URL("../app/(public)/products/metallokassety/page.tsx", import.meta.url), "utf8");
 
-  assert.match(link, /yclid/);
+  const helper = readFileSync(new URL("../lib/attribution-link.ts", import.meta.url), "utf8");
+  assert.match(helper, /yclid/);
+  assert.doesNotMatch(helper, /localStorage|sessionStorage|document\.cookie/);
   assert.doesNotMatch(link, /localStorage|sessionStorage|document\.cookie/);
   assert.match(product, /AttributionLink href="\/contacts#contact-form"/);
   assert.match(form, /formData\.get\("personalDataConsent"\) !== "yes"/);

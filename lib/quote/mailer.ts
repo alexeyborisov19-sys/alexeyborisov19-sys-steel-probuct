@@ -42,6 +42,8 @@ export async function deliverQuoteEmail(record: QuoteRecord, uploads: UploadInsp
       `E-mail: ${record.email || "не указан"}`,
       `Компания: ${record.company || "не указана"}`,
       `Задача: ${record.message || "не описана"}`,
+      `Страница заявки: ${record.pageUrl || "не указана"}`,
+      ...["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].flatMap(key => record.attribution[key] ? [`${key}: ${record.attribution[key]}`] : []),
       `Вложений: ${record.files.length}`,
       "Вложения первично сохранены в закрытом карантине. Файлы с пометкой НЕПРОВЕРЕНО требуют проверки перед открытием.",
     ].join("\n"),
