@@ -78,41 +78,62 @@ export function yandexCounterIds() {
     : [];
 }
 
+/** Analytics is optional: a vendor exception must never interrupt a form,
+ * calculator or success/error feedback. A failed call is not retried because
+ * the vendor could have sent it before throwing, which would duplicate goals. */
+function dispatchGoal(analyticsWindow: AnalyticsWindow, goal: PendingGoal) {
+  try {
+    if (typeof analyticsWindow.ym === "function") {
+      analyticsWindow.ym(goal.counterId, "reachGoal", goal.target, goal.params);
+    } else {
+      // Retain only consented events while the dynamically loaded runtime starts.
+      // Nothing is persisted or replayed from before the visitor's permission.
+      const pending = analyticsWindow.steelPendingGoals ??= [];
+      if (pending.length < 50) pending.push(goal);
+    }
+  } catch {
+    // Do not log parameters or report this through the same failing vendor.
+  }
+}
+
 export function trackLeadEvent(eventName: string, params: EventParams = {}) {
   if (typeof window === "undefined") return;
-  const analyticsWindow = window as AnalyticsWindow;
-  if (!hasAnalyticsConsent()) {
-    analyticsWindow.steelPendingGoals = [];
-    return;
-  }
+  try {
+    const analyticsWindow = window as AnalyticsWindow;
+    if (!hasAnalyticsConsent()) {
+      analyticsWindow.steelPendingGoals = [];
+      return;
+    }
 
-  const yandexGoals = yandexGoalByEvent[eventName];
-  if (!yandexGoals) return;
-  const safeParams = sanitizeAnalyticsParams(params);
-  for (const goal of yandexGoals) {
-    for (const counterId of yandexCounterIds()) {
-      if (analyticsWindow.ym) analyticsWindow.ym(counterId, "reachGoal", goal, safeParams);
-      else {
-        // Retain only consented events while the dynamically loaded runtime starts.
-        // Nothing is persisted or replayed from before the visitor's permission.
-        const pending = analyticsWindow.steelPendingGoals ??= [];
-        if (pending.length < 50) pending.push({ counterId, target: goal, params: safeParams });
+    const yandexGoals = yandexGoalByEvent[eventName];
+    if (!yandexGoals) return;
+    const safeParams = sanitizeAnalyticsParams(params);
+    for (const goal of yandexGoals) {
+      for (const counterId of yandexCounterIds()) {
+        dispatchGoal(analyticsWindow, { counterId, target: goal, params: safeParams });
       }
     }
+  } catch {
+    // Browser privacy tools may also make window properties inaccessible.
+    // The enquiry remains independent of analytics in this case as well.
   }
 }
 
 export function flushPendingAnalyticsGoals() {
   if (typeof window === "undefined") return;
-  const analyticsWindow = window as AnalyticsWindow;
-  if (!hasAnalyticsConsent()) {
+  try {
+    const analyticsWindow = window as AnalyticsWindow;
+    if (!hasAnalyticsConsent()) {
+      analyticsWindow.steelPendingGoals = [];
+      return;
+    }
+    if (typeof analyticsWindow.ym !== "function") return;
+    const pending = analyticsWindow.steelPendingGoals ?? [];
     analyticsWindow.steelPendingGoals = [];
-    return;
-  }
-  if (!analyticsWindow.ym) return;
-  const pending = analyticsWindow.steelPendingGoals ?? [];
-  analyticsWindow.steelPendingGoals = [];
-  for (const goal of pending) {
-    analyticsWindow.ym(goal.counterId, "reachGoal", goal.target, goal.params);
+    for (const goal of pending) {
+      dispatchGoal(analyticsWindow, goal);
+    }
+  } catch {
+    // An optional analytics runtime must not break hydration or navigation.
   }
 }
