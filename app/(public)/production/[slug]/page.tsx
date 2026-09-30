@@ -89,9 +89,9 @@ export default async function ProductionServicePage({
                       <dd className="mt-3 text-xl font-semibold text-steel-orange">
                         {specification.value}
                       </dd>
-                      <p className="mt-3 text-xs leading-5 text-white/55">
+                      <dd className="mt-3 text-xs leading-5 text-white/55">
                         {specification.note}
-                      </p>
+                      </dd>
                     </div>
                   ))}
                 </dl>
