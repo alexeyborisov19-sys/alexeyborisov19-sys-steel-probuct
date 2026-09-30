@@ -85,7 +85,7 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
     return { secondaryHref: "/projects", secondaryLabel: "Проекты" };
   }
   if (path.startsWith("/industries/")) {
-    return { secondaryHref: "/projects", secondaryLabel: "Все отрасли" };
+    return { secondaryHref: "/industries", secondaryLabel: "Все отрасли" };
   }
   if (path === "/articles") {
     return { secondaryHref: "/production", secondaryLabel: "Производство" };
