@@ -51,25 +51,35 @@ jobs:
           echo '--- CAD ROUTE FILE ---'
           ls -l .next/server/app/api/online-order/cad/analyze/route.js 2>/dev/null || true
           echo '--- PM2 PROCESS INFO ---'
-          pm2 jlist | node - <<'NODE'
-          let input='';
-          process.stdin.on('data', c => input += c);
-          process.stdin.on('end', () => {
-            for (const p of JSON.parse(input)) {
-              if (p.name !== 'steelprodukt') continue;
+          # The service belongs to nodejs. Keep stdin for JSON, not source code.
+          sudo -iu nodejs pm2 jlist | node -e '
+          let input = "";
+          process.stdin.setEncoding("utf8");
+          process.stdin.on("data", chunk => input += chunk);
+          process.stdin.on("end", () => {
+            try {
+              const processes = JSON.parse(input);
+              if (!Array.isArray(processes)) throw new Error("invalid snapshot");
+              const p = processes.find(entry => entry?.name === "steelprodukt");
+              if (!p) throw new Error("service missing");
+              const env = p.pm2_env ?? {};
               console.log(JSON.stringify({
                 name: p.name,
-                pid: p.pid,
-                status: p.pm2_env?.status,
-                cwd: p.pm2_env?.pm_cwd,
-                exec: p.pm2_env?.pm_exec_path,
-                args: p.pm2_env?.args,
-                node: p.pm2_env?.node_version,
-                restart_time: p.pm2_env?.restart_time,
+                pid: p.pid ?? null,
+                status: env.status ?? null,
+                node: env.node_version ?? null,
+                rssBytes: p.monit?.memory ?? null,
+                cpuPercent: p.monit?.cpu ?? null,
+                restartCount: env.restart_time ?? null,
+                memoryRestartLimitBytes: env.max_memory_restart ?? null,
+                startedAtEpochMs: env.pm_uptime ?? null,
               }, null, 2));
+            } catch {
+              console.error("PM2_SNAPSHOT_UNAVAILABLE");
+              process.exitCode = 1;
             }
           });
-          NODE
+          '
           echo '--- LOCAL ROUTE HEADERS ---'
           curl -sS -I http://127.0.0.1:3000/api/online-order/cad/analyze || true
           REMOTE
