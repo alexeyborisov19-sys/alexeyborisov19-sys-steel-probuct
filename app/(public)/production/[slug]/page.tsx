@@ -89,15 +89,15 @@ export default async function ProductionServicePage({
                       <dd className="mt-3 text-xl font-semibold text-steel-orange">
                         {specification.value}
                       </dd>
-                      <p className="mt-3 text-xs leading-5 text-white/55">
+                      <dd className="mt-3 text-xs leading-5 text-white/55">
                         {specification.note}
-                      </p>
+                      </dd>
                     </div>
                   ))}
                 </dl>
               )}
               <div className="mt-8 border-l-2 border-steel-orange bg-[#111519] p-6 sm:p-7">
-                <p className="text-xs font-bold uppercase tracking-[.14em] text-steel-orange">
+                <p className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">
                   Что получает заказчик
                 </p>
                 <p className="mt-3 text-base leading-7 text-white/82">
@@ -210,7 +210,7 @@ export default async function ProductionServicePage({
               {service.controls.map((control, index) => (
                 <article
                   key={control}
-                  className="border border-white/12 bg-[#111519] p-6 transition hover:border-steel-orange/60"
+                  className="border border-white/12 bg-[#111519] p-6 transition hover:border-steel-orange"
                 >
                   <span className="font-mono text-sm font-bold text-steel-orange">
                     К{String(index + 1).padStart(2, "0")}
