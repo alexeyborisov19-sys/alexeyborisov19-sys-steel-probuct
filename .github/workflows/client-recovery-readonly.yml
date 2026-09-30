@@ -1,0 +1,102 @@
+name: Client recovery evidence read-only
+on:
+  push:
+    branches: [audit/client-recovery-20260930]
+    paths: [.github/workflows/client-recovery-readonly.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YW_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+      YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read acquisition evidence, no customer data or campaign writes
+        shell: bash
+        run: |
+          cat > /tmp/recovery.mjs <<'NODE'
+          const out=(label,value)=>console.log(label+' '+JSON.stringify(value));
+          const norm=(v='')=>String(v).trim().replace(/^(OAuth|Bearer)\s+/i,'');
+          const ym=norm(process.env.YM_TOKEN||process.env.YANDEX_OAUTH_TOKEN);
+          const yd=norm(process.env.YD_TOKEN||process.env.YANDEX_OAUTH_TOKEN);
+          const yw=norm(process.env.YW_TOKEN||process.env.YANDEX_OAUTH_TOKEN);
+          const campaign=714391927, counter=112542227;
+          const from='2026-09-16', to='2026-09-29';
+          const printText=(v)=>String(v??'').replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/ig,'[email]').replace(/(?:\+?\d[\s()-]*){10,}/g,'[number]').slice(0,240);
+          async function json(url,token,options={}) {
+            const res=await fetch(url,{...options,headers:{Authorization:`OAuth ${token}`,'Content-Type':'application/json',...(options.headers||{})},signal:AbortSignal.timeout(30000)});
+            const body=await res.json();
+            if(!res.ok||body.error||body.errors) throw new Error('API '+res.status+' '+JSON.stringify(body.error||body.errors||{}).slice(0,350));
+            return body;
+          }
+          async function direct(service,params) {
+            if(!yd) throw new Error('DIRECT_TOKEN_MISSING');
+            return json('https://api.direct.yandex.com/json/v501/'+service,yd,{method:'POST',headers:{Authorization:`Bearer ${yd}`,'Accept-Language':'ru',...(process.env.YD_CLIENT_LOGIN?{'Client-Login':process.env.YD_CLIENT_LOGIN}:{})},body:JSON.stringify({method:'get',params})});
+          }
+          async function metrika(label,dimensions,metrics,date1=from,date2=to,extra={}) {
+            if(!ym) throw new Error('METRIKA_TOKEN_MISSING');
+            const u=new URL('https://api-metrika.yandex.net/stat/v1/data');
+            Object.entries({ids:String(counter),date1,date2,metrics,accuracy:'full',limit:'100',lang:'ru',...(dimensions?{dimensions}:{}),...extra}).forEach(([k,v])=>u.searchParams.set(k,v));
+            const body=await json(u.toString(),ym);
+            out(label,{from:date1,to:date2,dimensions,totals:body.totals,totalRows:body.total_rows,sampled:body.sampled,data:body.data});
+          }
+          async function report(label,dimensions,date1=from,date2=to,type='CUSTOM_REPORT') {
+            const headers={Authorization:`Bearer ${yd}`,'Content-Type':'application/json','Accept-Language':'ru',processingMode:'auto',returnMoneyInMicros:'false',skipReportHeader:'true',skipReportSummary:'true',...(process.env.YD_CLIENT_LOGIN?{'Client-Login':process.env.YD_CLIENT_LOGIN}:{})};
+            const params={SelectionCriteria:{DateFrom:date1,DateTo:date2,Filter:[{Field:'CampaignId',Operator:'EQUALS',Values:[String(campaign)]}]},FieldNames:[...dimensions,'Impressions','Clicks','Cost'],ReportName:'Recovery '+label+' '+date1+' '+date2,ReportType:type,DateRangeType:'CUSTOM_DATE',Format:'TSV',IncludeVAT:'NO',IncludeDiscount:'NO',Page:{Limit:1000},OrderBy:[{Field:'Cost',SortOrder:'DESCENDING'}]};
+            let res,text;
+            for(let i=0;i<6;i++) {
+              res=await fetch('https://api.direct.yandex.com/json/v501/reports',{method:'POST',headers,body:JSON.stringify({params}),signal:AbortSignal.timeout(30000)});text=await res.text();
+              if(![201,202].includes(res.status)) break;
+              await new Promise(r=>setTimeout(r,Math.max(1000,Math.min(30000,Number(res.headers.get('retryIn')||5)*1000))));
+            }
+            if(res.status!==200) throw new Error('REPORT '+res.status+' '+text.slice(0,350));
+            const lines=text.trim().split(/\r?\n/), columns=lines.shift().split('\t');
+            const rows=lines.filter(Boolean).map(line=>Object.fromEntries(line.split('\t').map((v,i)=>[columns[i],['Impressions','Clicks','Cost'].includes(columns[i])?Number(v):columns[i]==='Query'?printText(v):v])));
+            out(label,{from:date1,to:date2,vat:'excluded',retrievedRows:rows.length,possiblyTruncated:rows.length>=1000,totalsInRetrievedRows:rows.reduce((s,r)=>({Impressions:s.Impressions+r.Impressions,Clicks:s.Clicks+r.Clicks,Cost:Math.round((s.Cost+r.Cost)*100)/100}),{Impressions:0,Clicks:0,Cost:0}),rows:rows.slice(0,label==='QUERIES'?60:100)});
+          }
+          async function safely(label,fn){try{await fn();}catch(e){out(label+'_ERROR',{message:e.message});}}
+          out('AUDIT',{checkedAt:new Date().toISOString(),campaign,counter,from,to,mode:'read-only',campaignWrites:0});
+          await safely('CONFIG',async()=>{
+            const c=await direct('campaigns',{SelectionCriteria:{Ids:[campaign]},FieldNames:['Id','Name','State','Status','StatusPayment','StatusClarification'],UnifiedCampaignFieldNames:['CounterIds','PriorityGoals','BiddingStrategy','AttributionModel']});
+            out('CAMPAIGN',c.result?.Campaigns);
+            const g=await direct('adgroups',{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:['Id','Name','RegionIds','NegativeKeywords'],Page:{Limit:1000,Offset:0}});
+            out('ADGROUPS',g.result?.AdGroups);
+            const a=await direct('ads',{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:['Id','AdGroupId','State','Status'],TextAdFieldNames:['Title','Title2','Text','Href'],ResponsiveAdFieldNames:['Href'],Page:{Limit:1000,Offset:0}});
+            out('ADS',(a.result?.Ads||[]).map(x=>({id:x.Id,group:x.AdGroupId,state:x.State,status:x.Status,ad:x.TextAd||x.ResponsiveAd})));
+          });
+          await safely('PREVIOUS_WEEK',()=>report('PREVIOUS_WEEK',['Date'],'2026-09-16','2026-09-22'));
+          await safely('RECENT_WEEK',()=>report('RECENT_WEEK',['Date'],'2026-09-23','2026-09-29'));
+          await safely('GROUPS',()=>report('GROUPS',['AdGroupId','AdGroupName']));
+          await safely('QUERIES',()=>report('QUERIES',['AdGroupId','Query'],from,to,'SEARCH_QUERY_PERFORMANCE_REPORT'));
+          await safely('DEVICES',()=>report('DEVICES',['Device','AdNetworkType']));
+          await safely('REGIONS',()=>report('REGIONS',['LocationOfPresenceName']));
+          await safely('PLACEMENTS',()=>report('PLACEMENTS',['Placement','AdNetworkType']));
+          await safely('FUNNEL',async()=>{
+            const c=await json(`https://api-metrika.yandex.net/management/v1/counter/${counter}`,ym);
+            out('COUNTER_AGE',{id:c.counter?.id,create_time:c.counter?.create_time,status:c.counter?.status});
+            const body=await json(`https://api-metrika.yandex.net/management/v1/counter/${counter}/goals`,ym);
+            const goals=(body.goals||[]).map(g=>({id:g.id,target:(g.conditions||[]).find(c=>c.type==='exact')?.url})).filter(g=>/^(quote_|calculator_|assistant_lead_success|email_click|phone_click|catalog_download)/.test(g.target||''));
+            for(const g of goals) await safely(g.target,()=>metrika('GOAL_'+g.target,'',`ym:s:goal${g.id}reaches,ym:s:goal${g.id}visits`));
+          });
+          await safely('METRIKA_PREVIOUS',()=>metrika('METRIKA_PREVIOUS','ym:s:trafficSource','ym:s:visits,ym:s:users','2026-09-16','2026-09-22'));
+          await safely('METRIKA_RECENT',()=>metrika('METRIKA_RECENT','ym:s:trafficSource','ym:s:visits,ym:s:users','2026-09-23','2026-09-29'));
+          await safely('LANDINGS',()=>metrika('LANDINGS','ym:s:startURLPath,ym:s:trafficSource','ym:s:visits,ym:s:bounceRate,ym:s:avgVisitDurationSeconds'));
+          await safely('WEBMASTER',async()=>{
+            if(!yw) throw new Error('WEBMASTER_TOKEN_MISSING');
+            const user=await json('https://api.webmaster.yandex.net/v4/user',yw);
+            const hosts=await json(`https://api.webmaster.yandex.net/v4/user/${user.user_id}/hosts`,yw);
+            const host=hosts.hosts.find(h=>new URL(h.ascii_host_url).hostname==='www.steelprodukt.ru');
+            if(!host) throw new Error('CANONICAL_HOST_NOT_FOUND');
+            const root=`https://api.webmaster.yandex.net/v4/user/${user.user_id}/hosts/${host.host_id}`;
+            const url=new URL(root+'/search-queries/all/history');
+            url.searchParams.set('date_from',from+'T00:00:00+03:00');url.searchParams.set('date_to',to+'T23:59:59+03:00');
+            for(const i of ['TOTAL_SHOWS','TOTAL_CLICKS']) url.searchParams.append('query_indicator',i);
+            out('SEARCH_HISTORY',await json(url.toString(),yw));
+          });
+          NODE
+          node /tmp/recovery.mjs
