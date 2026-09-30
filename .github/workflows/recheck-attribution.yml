@@ -1,0 +1,83 @@
+name: Verify remaining conversion paths
+on:
+  push:
+    branches: [audit/recheck-seo-links-20260930]
+    paths: [.github/workflows/recheck-attribution.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Real navigation with synthetic form responses only
+        run: |
+          mkdir -p output
+          cat > .github/check-attribution.mjs <<'JS'
+          import {chromium,expect} from '@playwright/test';
+          import {writeFile} from 'node:fs/promises';
+          const base='https://www.steelprodukt.ru',cases=[];
+          const browser=await chromium.launch();
+          try{
+            for(const scenario of ['hero-control','header-contacts','production-calculator-engineer']){
+              const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+              let captured=null,blockedWrites=0;
+              await context.route('**/*',async route=>{
+                const r=route.request();
+                if(r.method()==='POST'&&new URL(r.url()).pathname==='/api/quote'){
+                  const body=r.postData()||'';
+                  captured={hasUtmSource:/name="utm_source"/.test(body),hasUtmCampaign:/name="utm_campaign"/.test(body),hasExpectedCampaign:body.includes('repeat_chain_check'),hasAttachment:/filename="[^"]+"/.test(body)};
+                  return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,code:'ACCEPTED',requestId:'SP-20260930-BBBBBBBB',message:'Проверка интерфейса: запрос перехвачен, письмо не отправлено.'})});
+                }
+                if(!['GET','HEAD','OPTIONS'].includes(r.method())){blockedWrites++;return route.abort();}
+                return route.continue();
+              });
+              const page=await context.newPage(),row={scenario,steps:[],realQuotePosts:0};
+              try{
+                const path=scenario==='production-calculator-engineer'?'/production/lazernaya-rezka-metalla':'/products/metallokassety';
+                await page.goto(base+path+'?utm_source=owner_test&utm_campaign=repeat_chain_check',{waitUntil:'networkidle',timeout:60000});
+                const decline=page.getByRole('button',{name:'Продолжить без аналитики',exact:true});if(await decline.isVisible())await decline.click();
+                row.steps.push(page.url());
+                if(scenario==='hero-control')await page.getByRole('link',{name:'Получить расчёт инженера',exact:true}).click();
+                if(scenario==='header-contacts')await page.getByRole('link',{name:'Контакты',exact:true}).first().click();
+                if(scenario==='production-calculator-engineer'){
+                  const online=page.getByRole('link',{name:'Рассчитать изделие онлайн →',exact:true});
+                  row.calculatorLinkHref=await online.getAttribute('href');
+                  await online.click();await page.waitForURL('**/online-order*',{timeout:20000});
+                  await page.waitForTimeout(700);row.steps.push(page.url());
+                  let next=null;
+                  for(const a of await page.locator('a[href*="/contacts"]').all())if(await a.isVisible()&&/Расчёт инженером|Отправить чертёж|Получить расчёт/.test(await a.innerText())){next=a;break;}
+                  if(!next)throw new Error('No visible engineer link found');
+                  row.engineerLinkHref=await next.getAttribute('href');await next.click();
+                }
+                await page.waitForURL('**/contacts*',{timeout:20000});await page.waitForTimeout(500);row.steps.push(page.url());
+                row.documentReferrer=await page.evaluate(()=>document.referrer);
+                const form=page.locator('#quote-request-form');
+                await form.locator('[name="name"]').fill('ТЕСТ ИНТЕРФЕЙСА БЕЗ ОТПРАВКИ');
+                await form.locator('[name="email"]').fill('audit@example.invalid');
+                await form.locator('[name="personalDataConsent"]').check();
+                await form.getByRole('button',{name:'Отправить заявку',exact:false}).click();
+                await expect(form.getByRole('status')).toContainText('запрос перехвачен');
+                row.captured=captured;row.blockedOtherWrites=blockedWrites;
+              }catch(e){row.error=String(e);row.captured=captured;}
+              cases.push(row);console.log('ATTRIBUTION_PATH',JSON.stringify(row));await context.close();
+            }
+          }finally{await browser.close();}
+          await writeFile('output/attribution-paths.json',JSON.stringify({checkedAt:new Date().toISOString(),sourceCommit:'53b1ec7f8c2dc775e84f030dc012edbe9236bc68',cases},null,2));
+          JS
+          node .github/check-attribution.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: repeat-attribution-evidence
+          path: output/
+          retention-days: 14
