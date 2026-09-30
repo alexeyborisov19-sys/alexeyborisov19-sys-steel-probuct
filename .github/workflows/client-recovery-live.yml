@@ -1,0 +1,89 @@
+name: Client recovery production verification
+on:
+  push:
+    branches: [audit/client-recovery-live-20260930]
+    paths: [.github/workflows/client-recovery-live.yml]
+permissions:
+  contents: read
+concurrency:
+  group: client-recovery-live-20260930
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SEO_AUDIT_BASE_URL: https://www.steelprodukt.ru
+      BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Require the reviewed PR and its successful production deployment
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request
+          root='https://api.github.com/repos/alexeyborisov19-sys/alexeyborisov19-sys-steel-probuct'
+          def read(path):
+              req=urllib.request.Request(root+path,headers={'Accept':'application/vnd.github+json','User-Agent':'SteelProdukt-client-recovery-verification'})
+              with urllib.request.urlopen(req,timeout=20) as response: return json.load(response)
+          for attempt in range(35):
+              pr=read('/pulls/210')
+              if pr['head']['sha']!='fa5f86cbad646ba8f5f873ee7b1269e0f4518c53':
+                  raise RuntimeError('PR head changed; review the new source before verifying')
+              if pr.get('merged'):
+                  sha=pr['merge_commit_sha']
+                  runs=read('/actions/runs?head_sha='+sha+'&event=push&per_page=20')['workflow_runs']
+                  deploy=next((r for r in runs if r.get('path')=='.github/workflows/deploy-beget.yml'),None)
+                  if deploy and deploy['status']=='completed':
+                      if deploy['conclusion']!='success': raise RuntimeError('Production deployment failed')
+                      print('DEPLOYED_SOURCE',json.dumps({'sha':sha,'run':deploy['id'],'status':deploy['conclusion']}))
+                      break
+              time.sleep(15)
+          else: raise RuntimeError('Reviewed deployment not confirmed; no verification performed')
+          PY
+      - name: Verify live commercial CTA and retained campaign parameters
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium,expect} from '@playwright/test';
+          const base='https://www.steelprodukt.ru';
+          const browser=await chromium.launch();
+          try {
+            for(const width of [390,1440]) {
+              const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});
+              let quotePosts=0;
+              await context.route('**/api/quote',async route=>{
+                if(route.request().method()==='POST'){quotePosts++;await route.abort();} else await route.continue();
+              });
+              const page=await context.newPage();
+              const r=await page.goto(base+'/products/metallokassety?utm_source=technical_audit&utm_campaign=client_recovery_check',{waitUntil:'networkidle',timeout:60000});
+              assert.equal(r.status(),200);
+              const link=page.getByRole('link',{name:'Получить расчёт инженера',exact:true});
+              await expect.poll(async()=>new URL(await link.getAttribute('href'),base).searchParams.get('utm_campaign')).toBe('client_recovery_check');
+              const support=page.locator('[data-enquiry-support]');
+              await expect(support).toContainText('Можно без чертежа');
+              const position=await link.boundingBox();
+              console.log('LIVE_ENQUIRY_CTA',JSON.stringify({width,http:r.status(),campaignRetained:true,noDrawingOption:true,ctaTop:position?.y,quotePosts}));
+              await context.close();
+            }
+          } finally {await browser.close();}
+          JS
+      - name: Audit production SEO and legacy redirects
+        run: npm run seo:audit
+      - name: Audit twelve live pages and no-file form without real enquiries
+        run: npm run browser:audit
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-recovery-production-verification
+          path: output/browser-audit/
+          if-no-files-found: warn
+          retention-days: 14
