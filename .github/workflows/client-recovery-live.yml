@@ -33,9 +33,9 @@ jobs:
           def read(path):
               req=urllib.request.Request(root+path,headers={'Accept':'application/vnd.github+json','User-Agent':'SteelProdukt-client-recovery-verification'})
               with urllib.request.urlopen(req,timeout=20) as response: return json.load(response)
-          for attempt in range(35):
+          for attempt in range(40):
               pr=read('/pulls/210')
-              if pr['head']['sha']!='fa5f86cbad646ba8f5f873ee7b1269e0f4518c53':
+              if pr['head']['sha']!='1ced992933288e87fca3612a595b71499842292f':
                   raise RuntimeError('PR head changed; review the new source before verifying')
               if pr.get('merged'):
                   sha=pr['merge_commit_sha']
@@ -52,8 +52,10 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
+          import {mkdir} from 'node:fs/promises';
           import {chromium,expect} from '@playwright/test';
           const base='https://www.steelprodukt.ru';
+          await mkdir('output/browser-audit',{recursive:true});
           const browser=await chromium.launch();
           try {
             for(const width of [390,1440]) {
@@ -71,6 +73,12 @@ jobs:
               await expect(support).toContainText('Можно без чертежа');
               const position=await link.boundingBox();
               console.log('LIVE_ENQUIRY_CTA',JSON.stringify({width,http:r.status(),campaignRetained:true,noDrawingOption:true,ctaTop:position?.y,quotePosts}));
+              const decline=page.getByRole('button',{name:'Продолжить без аналитики',exact:true});
+              if(await decline.isVisible()) await decline.click();
+              await page.screenshot({path:`output/browser-audit/landing-${width}.png`});
+              await page.goto(base+'/contacts',{waitUntil:'networkidle',timeout:60000});
+              await page.screenshot({path:`output/browser-audit/contacts-${width}.png`});
+              assert.equal(quotePosts,0);
               await context.close();
             }
           } finally {await browser.close();}
