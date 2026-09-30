@@ -1,7 +1,7 @@
 "use client";
+import { AttributionLink } from "@/components/AttributionLink";
 import { CalculatorLogo } from "@/components/CalculatorLogo";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CALCULATION_DISCLAIMER } from "@/lib/instant-quote/client-labels";
 
@@ -206,7 +206,7 @@ export function MetalCassetteCalculator() {
           </dl>
           {status === "error" ? <div className="mt-4 rounded-lg border border-red-300/30 p-4"><p role="alert" className="text-sm leading-6 text-red-200">{errorMessage}</p><button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 min-h-11 rounded border border-white/30 px-4 py-2 text-sm">Повторить расчёт</button></div> : null}
           <div className="mt-auto pt-7">
-            <Link href={specialistHref} className="clip-corner flex min-h-12 items-center justify-center bg-steel-orange-deep px-6 py-4 text-center text-sm font-bold uppercase transition hover:bg-orange-600">Передать расчёт инженеру&nbsp; →</Link>
+            <AttributionLink href={`${specialistHref.pathname}?${new URLSearchParams(specialistHref.query).toString()}#${specialistHref.hash}`} className="clip-corner flex min-h-12 items-center justify-center bg-steel-orange-deep px-6 py-4 text-center text-sm font-bold uppercase transition hover:bg-orange-600">Передать расчёт инженеру&nbsp; →</AttributionLink>
             <p className="mt-3 text-center text-sm leading-6 text-white/70">На следующем шаге можно приложить PDF, DXF, DWG, STEP, Excel, изображения или архив проекта.</p>
           </div>
         </div>

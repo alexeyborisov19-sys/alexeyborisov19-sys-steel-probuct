@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AttributionLink } from "@/components/AttributionLink";
 
 const STEPS = [
   {
@@ -38,12 +38,12 @@ export function CadCalculatorShowcase() {
               Загрузите DXF или STEP либо введите размеры вручную. До пяти изделий в одном расчёте, бесплатно и без регистрации. Стоимость предварительная; неоднозначную геометрию проверит инженер.
             </p>
           </div>
-          <Link prefetch={false}
+          <AttributionLink prefetch={false}
             href="/online-order"
             className="clip-corner inline-block whitespace-nowrap bg-steel-orange-deep px-6 py-4 text-[13px] font-bold uppercase transition hover:bg-steel-orange-deeper"
           >
             Рассчитать онлайн&nbsp; →
-          </Link>
+          </AttributionLink>
         </div>
 
         <ol className="mt-8 grid gap-3 lg:grid-cols-3">

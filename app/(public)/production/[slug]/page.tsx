@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FaqSection } from "@/components/FaqSection";
@@ -126,7 +125,7 @@ export default async function ProductionServicePage({
                 <div className="mt-7 border-t border-white/15 pt-5">
                   <h3 className="text-lg font-semibold">Нужна предварительная стоимость?</h3>
                   <p className="mt-3 text-sm leading-6 text-white/75">Загрузите DXF или STEP либо задайте габариты без чертежа. Выберите материал, количество и операции. Расчёт бесплатный, без регистрации; окончательную цену подтверждает инженер.</p>
-                  <Link href="/online-order" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-steel-orange underline underline-offset-4">Рассчитать изделие онлайн →</Link>
+                  <AttributionLink href="/online-order" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-steel-orange underline underline-offset-4">Рассчитать изделие онлайн →</AttributionLink>
                 </div>
               )}
               <AttributionLink
@@ -164,7 +163,7 @@ export default async function ProductionServicePage({
             </div>
             <div className="mt-8 flex flex-wrap gap-4">
               <AttributionLink href="/contacts#contact-form" className="clip-corner inline-flex items-center bg-steel-orange-deep px-6 py-4 text-sm font-bold">Обсудить заказ с инженером →</AttributionLink>
-              <Link href="/company/facts" className="inline-flex items-center border border-white/35 px-6 py-4 text-sm font-semibold">Посмотреть производственные возможности →</Link>
+              <AttributionLink href="/company/facts" className="inline-flex items-center border border-white/35 px-6 py-4 text-sm font-semibold">Посмотреть производственные возможности →</AttributionLink>
             </div>
           </div>
         </section>
@@ -233,16 +232,16 @@ export default async function ProductionServicePage({
                   Продолжить по задаче
                 </h2>
               </div>
-              <Link
+              <AttributionLink
                 href="/production"
                 className="text-xs font-bold uppercase text-steel-orange"
               >
                 Весь производственный цикл&nbsp; →
-              </Link>
+              </AttributionLink>
             </div>
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               {service.related.map((item, index) => (
-                <Link
+                <AttributionLink
                   key={item.href}
                   href={item.href}
                   className="group border border-white/12 bg-[#111519] p-6 transition hover:border-steel-orange"
@@ -254,7 +253,7 @@ export default async function ProductionServicePage({
                     {item.label}
                   </h3>
                   <span className="mt-5 block text-xs text-white/42">Открыть раздел&nbsp; →</span>
-                </Link>
+                </AttributionLink>
               ))}
             </div>
           </div>

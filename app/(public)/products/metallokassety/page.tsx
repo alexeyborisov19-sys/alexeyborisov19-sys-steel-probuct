@@ -94,7 +94,7 @@ export default function MetalCassetteCollectionPage() {
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link href="#calculator-metallokasset" className="clip-corner bg-steel-orange-deep px-5 py-3 text-xs font-bold uppercase">Рассчитать цену&nbsp; ↓</Link>
                   <AttributionLink href="/contacts#contact-form" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase transition hover:border-steel-orange hover:text-steel-orange">Отправить проект&nbsp; →</AttributionLink>
-                  <Link href="/products/metallokassety/bim" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase hover:text-steel-orange">BIM-модель IFC →</Link>
+                  <AttributionLink href="/products/metallokassety/bim" className="border border-white/25 px-5 py-3 text-xs font-bold uppercase hover:text-steel-orange">BIM-модель IFC →</AttributionLink>
                   <a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer" className="border border-steel-orange/45 px-5 py-3 text-xs font-bold uppercase text-steel-orange">Каталог PDF&nbsp; ↗</a>
                 </div>
               </div>
@@ -149,8 +149,8 @@ export default function MetalCassetteCollectionPage() {
                 </table>
               </div>
               <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs font-bold uppercase">
-                <Link href="/products/metallokassety-standart" className="text-steel-orange">Открытые кассеты&nbsp; →</Link>
-                <Link href="/products/metallokassety-premium" className="text-steel-orange">Закрытые кассеты&nbsp; →</Link>
+                <AttributionLink href="/products/metallokassety-standart" className="text-steel-orange">Открытые кассеты&nbsp; →</AttributionLink>
+                <AttributionLink href="/products/metallokassety-premium" className="text-steel-orange">Закрытые кассеты&nbsp; →</AttributionLink>
               </div>
             </section>
 
@@ -172,18 +172,18 @@ export default function MetalCassetteCollectionPage() {
             </section>
 
             <section className="mt-16 grid gap-4 lg:grid-cols-2">
-              <Link href="/articles/ploshchad-fasada-raskhod-metalla-metallokassety" className="group border border-white/12 bg-[#111519] p-6 transition hover:border-steel-orange/60 sm:p-7">
+              <AttributionLink href="/articles/ploshchad-fasada-raskhod-metalla-metallokassety" className="group border border-white/12 bg-[#111519] p-6 transition hover:border-steel-orange/60 sm:p-7">
                 <p className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">Инженерный журнал · Расчёт</p>
                 <h2 className="mt-3 text-xl font-semibold uppercase leading-tight sm:text-2xl">Почему площадь фасада не равна площади металла</h2>
                 <p className="mt-3 text-sm leading-7 text-white/58">Разбираем русты, крайние кассеты, замки закрытого типа, проёмы и причину, по которой одинаковые 100 м² фасада могут давать разный расход.</p>
                 <span className="mt-5 inline-flex text-xs font-bold uppercase text-steel-orange">Читать материал&nbsp; →</span>
-              </Link>
-              <Link href="/articles/uzly-fasada-metallokassety" className="group border border-white/12 bg-[#111519] p-6 transition hover:border-steel-orange/60 sm:p-7">
+              </AttributionLink>
+              <AttributionLink href="/articles/uzly-fasada-metallokassety" className="group border border-white/12 bg-[#111519] p-6 transition hover:border-steel-orange/60 sm:p-7">
                 <p className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">Инженерный журнал · Узлы</p>
                 <h2 className="mt-3 text-xl font-semibold uppercase leading-tight sm:text-2xl">Узлы важнее рядовой кассеты: где фасад теряет геометрию</h2>
                 <p className="mt-3 text-sm leading-7 text-white/58">Окна, углы, парапет, цоколь, деформационные швы и водоотведение: что проверить до запуска металла в серию.</p>
                 <span className="mt-5 inline-flex text-xs font-bold uppercase text-steel-orange">Читать материал&nbsp; →</span>
-              </Link>
+              </AttributionLink>
             </section>
 
             <div className="mt-16 flex flex-col justify-between gap-5 border-b border-white/12 pb-5 sm:flex-row sm:items-end">

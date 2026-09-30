@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AttributionLink } from "@/components/AttributionLink";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { FaqSection } from "@/components/FaqSection";
@@ -55,12 +55,12 @@ export default function ProductsPage() {
       <div className="container">
         <div className="max-w-3xl border-l-2 border-steel-orange pl-5">
           <p className="text-lg font-semibold leading-relaxed">В карточках приведены назначение, исходные данные и типовые схемы изделий. Финальные размеры, материал, крепление и покрытие согласуем по фасадной раскладке и рабочим узлам объекта.</p>
-          <div className="mt-5 flex flex-wrap gap-5 text-xs font-bold uppercase text-steel-orange"><a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer">Скачать полный каталог PDF&nbsp; ↗</a><a href="/documents/katalog-fasadnyh-resheniy-kratkij-4-stranicy.pdf" target="_blank" rel="noreferrer">Краткий каталог - 4 страницы&nbsp; ↗</a><Link href="/contacts#contact-form">Отправить проект на расчёт&nbsp; →</Link></div>
+          <div className="mt-5 flex flex-wrap gap-5 text-xs font-bold uppercase text-steel-orange"><a href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf" target="_blank" rel="noreferrer">Скачать полный каталог PDF&nbsp; ↗</a><a href="/documents/katalog-fasadnyh-resheniy-kratkij-4-stranicy.pdf" target="_blank" rel="noreferrer">Краткий каталог - 4 страницы&nbsp; ↗</a><AttributionLink href="/contacts#contact-form">Отправить проект на расчёт&nbsp; →</AttributionLink></div>
         </div>
         {productGroups.map((group) => <section key={group.title} id={group.href?.startsWith("/products#") ? group.href.split("#")[1] : undefined} className="mt-16 first:mt-12">
           <div className="flex flex-col justify-between gap-4 border-b border-white/12 pb-5 sm:flex-row sm:items-end">
             <div><p className="eyebrow">Каталог продукции</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">{group.title}</h2></div>
-            <div className="max-w-xl"><p className="text-sm leading-relaxed text-white/55">{group.description}</p>{group.href && <Link href={group.href} className="mt-3 inline-block text-xs font-bold uppercase text-steel-orange">Открыть раздел&nbsp; →</Link>}</div>
+            <div className="max-w-xl"><p className="text-sm leading-relaxed text-white/55">{group.description}</p>{group.href && <AttributionLink href={group.href} className="mt-3 inline-block text-xs font-bold uppercase text-steel-orange">Открыть раздел&nbsp; →</AttributionLink>}</div>
           </div>
           <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{group.slugs.map((slug) => <ProductCard key={slug} product={productBySlug[slug]} />)}</div>
         </section>)}
@@ -69,7 +69,7 @@ export default function ProductsPage() {
     <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
       <div className="container">
         <div className="max-w-3xl"><p className="eyebrow">Другие направления производства</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Коммерческие изделия по чертежам</h2><p className="mt-4 text-sm leading-relaxed text-white/60">Отдельные посадочные страницы собраны для задач, которые не относятся к фасадному каталогу, но производятся на тех же участках раскроя, гибки, сварки и порошковой окраски.</p></div>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{commercialDirections.map((item) => <Link key={item.href} href={item.href} className="group border border-white/12 bg-[#111519] p-5 transition hover:border-steel-orange/60"><h3 className="text-sm font-semibold uppercase leading-tight transition group-hover:text-steel-orange">{item.title}</h3><p className="mt-3 text-xs leading-5 text-white/58">{item.text}</p><span className="mt-5 block text-xs font-bold uppercase text-steel-orange">Открыть страницу&nbsp; →</span></Link>)}</div>
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{commercialDirections.map((item) => <AttributionLink key={item.href} href={item.href} className="group border border-white/12 bg-[#111519] p-5 transition hover:border-steel-orange/60"><h3 className="text-sm font-semibold uppercase leading-tight transition group-hover:text-steel-orange">{item.title}</h3><p className="mt-3 text-xs leading-5 text-white/58">{item.text}</p><span className="mt-5 block text-xs font-bold uppercase text-steel-orange">Открыть страницу&nbsp; →</span></AttributionLink>)}</div>
       </div>
     </section>
     <FaqSection items={faqItems} title="Вопросы о фасадной продукции" />
