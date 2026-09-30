@@ -85,7 +85,7 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
     return { secondaryHref: "/projects", secondaryLabel: "Проекты" };
   }
   if (path.startsWith("/industries/")) {
-    return { secondaryHref: "/industries", secondaryLabel: "Все отрасли" };
+    return { secondaryHref: "/projects", secondaryLabel: "Все отрасли" };
   }
   if (path === "/articles") {
     return { secondaryHref: "/production", secondaryLabel: "Производство" };
@@ -110,6 +110,7 @@ export function PageLayout({ children, path, breadcrumbs, ownPageSchema = false,
   const name = [hero.title, hero.titleAccent].filter(Boolean).join(" ");
   const contextualAction = secondaryAction(path);
   const trail = breadcrumbs ?? (path ? pageBreadcrumbs(path, name) : null);
+  const enquirySupport = Boolean(path && ["/products", "/production", "/solutions", "/industries", "/projects"].some((section) => path === section || path.startsWith(`${section}/`)));
 
   return <>
     {path ? (
@@ -126,7 +127,7 @@ export function PageLayout({ children, path, breadcrumbs, ownPageSchema = false,
     <main id="main-content" tabIndex={-1}>
       {compactHero ? <header className="border-b border-white/10 bg-[#0d1114] px-5 pb-6 pt-28 sm:px-8">
         <div className="mx-auto max-w-[1800px]"><p className="text-sm text-steel-orange">{hero.eyebrow}</p><h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{name}</h1><p className="mt-3 max-w-3xl text-base text-white/70">{hero.description}</p></div>
-      </header> : <InnerHero {...hero} {...contextualAction} primaryLabel={path?.startsWith("/industries") ? undefined : "Отправить чертёж инженеру"} />}
+      </header> : <InnerHero {...hero} {...contextualAction} enquirySupport={enquirySupport} primaryLabel={enquirySupport ? "Получить расчёт инженера" : "Отправить чертёж инженеру"} />}
       {trail && path !== "/" ? (
         <nav aria-label="Хлебные крошки" className="border-b border-white/10 bg-[#0d1012]">
           <ol className="container flex flex-wrap items-center gap-2 py-3 text-xs text-white/62">
