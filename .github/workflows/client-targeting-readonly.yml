@@ -1,0 +1,44 @@
+name: Client targeting diagnosis read-only
+on:
+  push:
+    branches: [audit/client-recovery-20260930]
+    paths: [.github/workflows/client-targeting-readonly.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read settings and closed-period attribution only
+        run: |
+          node --input-type=module <<'JS'
+          const token=String(process.env.YD_TOKEN||'').trim().replace(/^(OAuth|Bearer)\s+/i,'');
+          if(!token) throw new Error('DIRECT_TOKEN_MISSING');
+          const headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json','Accept-Language':'ru',...(process.env.YD_CLIENT_LOGIN?{'Client-Login':process.env.YD_CLIENT_LOGIN}:{})};
+          const print=(label,data)=>console.log(label+' '+JSON.stringify(data));
+          const url='https://api.direct.yandex.com/json/v501/';
+          const params={SelectionCriteria:{CampaignIds:[714391927]},FieldNames:['Id','Keyword','AdGroupId','State','Status'],AutotargetingSettingsCategoriesFieldNames:['Exact','Narrow','Alternative','Accessory','Broader'],AutotargetingSettingsBrandOptionsFieldNames:['WithoutBrands','WithAdvertiserBrand','WithCompetitorsBrand'],Page:{Limit:10000,Offset:0}};
+          const response=await fetch(url+'keywords',{method:'POST',headers,body:JSON.stringify({method:'get',params}),signal:AbortSignal.timeout(30000)});
+          const text=await response.text();
+          const data=JSON.parse(text.replace(/("Id"\s*:\s*)(\d{16,})(?=\s*[,}])/g,'$1"$2"'));
+          if(!response.ok||data.error) throw new Error('KEYWORD_READ_FAILED '+response.status);
+          const rows=data.result?.Keywords||[];
+          print('TARGETING_CONFIG',{checkedAt:new Date().toISOString(),campaign:714391927,count:rows.length,limitedBy:data.result?.LimitedBy||null,autotargeting:rows.filter(x=>x.Keyword==='---autotargeting'),keywordCount:rows.filter(x=>x.Keyword!=='---autotargeting').length,campaignWrites:0});
+          for(const [label,fields] of [['CRITERION_TOTAL',['CriterionType']],['CRITERION_GROUP',['AdGroupId','CriterionType']]]) {
+            const body={params:{SelectionCriteria:{DateFrom:'2026-09-16',DateTo:'2026-09-29',Filter:[{Field:'CampaignId',Operator:'EQUALS',Values:['714391927']}]},FieldNames:[...fields,'Impressions','Clicks','Cost'],ReportName:'Client targeting '+label+' 20260930',ReportType:'CUSTOM_REPORT',DateRangeType:'CUSTOM_DATE',Format:'TSV',IncludeVAT:'NO',IncludeDiscount:'NO',OrderBy:[{Field:'Cost',SortOrder:'DESCENDING'}],Page:{Limit:1000}}};
+            let report,bodyText;
+            for(let attempt=0;attempt<5;attempt++) {
+              report=await fetch(url+'reports',{method:'POST',headers:{...headers,processingMode:'auto',returnMoneyInMicros:'false',skipReportHeader:'true',skipReportSummary:'true'},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+              bodyText=await report.text();
+              if(![201,202].includes(report.status)) break;
+              await new Promise(r=>setTimeout(r,Math.max(1000,Math.min(20000,Number(report.headers.get('retryIn')||5)*1000))));
+            }
+            if(report.status!==200){print(label+'_ERROR',{http:report.status});continue;}
+            const lines=bodyText.trim().split(/\r?\n/),columns=lines.shift().split('\t');
+            print(label,{from:'2026-09-16',to:'2026-09-29',vat:'excluded',rows:lines.map(l=>Object.fromEntries(l.split('\t').map((v,i)=>[columns[i],['Cost','Clicks','Impressions'].includes(columns[i])?Number(v):v])))});
+          }
+          JS
