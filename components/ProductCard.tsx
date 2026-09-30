@@ -1,5 +1,5 @@
+import { AttributionLink } from "@/components/AttributionLink";
 import Image from "next/image";
-import Link from "next/link";
 import type { Product } from "@/data/products";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: Product }) {
       <h3 className="mt-3 text-lg font-semibold uppercase leading-tight">{product.title}</h3>
       {product.badge && <p className="mt-2 text-xs text-white/48">{product.badge}</p>}
       <p className="mt-4 text-sm leading-relaxed text-white/62">{product.lead}</p>
-      <Link href={`/products/${product.slug}`} className="mt-auto pt-6 text-xs font-bold uppercase text-steel-orange">Смотреть изделие&nbsp; →</Link>
+      <AttributionLink href={`/products/${product.slug}`} className="mt-auto pt-6 text-xs font-bold uppercase text-steel-orange">Смотреть изделие&nbsp; →</AttributionLink>
     </div>
   </article>;
 }

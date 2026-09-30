@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/site";
@@ -91,10 +90,10 @@ export function Header() {
       </div>
     ) : null}
     <div className="header-shell flex h-[76px] items-center gap-3">
-      <Link prefetch={false} href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></Link>
+      <AttributionLink prefetch={false} href="/" aria-label="На главную" className="header-brand shrink-0"><Brand /></AttributionLink>
       <nav aria-label="Основная навигация" className="header-nav hidden items-stretch self-stretch min-[1440px]:flex">
-        <Link prefetch={false} className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></Link>
-        <Link prefetch={false}
+        <AttributionLink prefetch={false} className={navClass(isActive("/company"))} href="/company" aria-current={isActive("/company") ? "page" : undefined}><span>Компания</span></AttributionLink>
+        <AttributionLink prefetch={false}
           ref={solutionsButtonRef}
           href="/solutions"
           className={navClass(pathname.startsWith("/solutions") || solutionsOpen)}
@@ -111,10 +110,10 @@ export function Header() {
           aria-expanded={solutionsOpen}
           aria-haspopup="true"
           aria-controls="solutions-mega-menu"
-        ><span>Решения</span><b aria-hidden="true">{solutionsOpen ? "⌃" : "⌄"}</b></Link>
+        ><span>Решения</span><b aria-hidden="true">{solutionsOpen ? "⌃" : "⌄"}</b></AttributionLink>
         {navigation.slice(1).map((item) => {
           const active = isActive(item.href);
-          return <Link prefetch={false} key={item.href} className={navClass(active)} href={item.href} aria-current={active ? "page" : undefined}><span>{item.label}</span></Link>;
+          return <AttributionLink prefetch={false} key={item.href} className={navClass(active)} href={item.href} aria-current={active ? "page" : undefined}><span>{item.label}</span></AttributionLink>;
         })}
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 min-[1440px]:flex">
@@ -134,10 +133,10 @@ export function Header() {
     </div>
     <MegaMenu open={solutionsOpen} onClose={() => setSolutionsOpen(false)} />
     {mobileOpen && <nav id="mobile-navigation" aria-label="Мобильная навигация" className="header-mobile-nav container flex flex-col border-t border-white/15 py-4 min-[1440px]:hidden">
-      <Link prefetch={false} href="/solutions" aria-current={pathname.startsWith("/solutions") ? "page" : undefined}>Решения</Link>
+      <AttributionLink prefetch={false} href="/solutions" aria-current={pathname.startsWith("/solutions") ? "page" : undefined}>Решения</AttributionLink>
       {navigation.map((item) => {
         const active = isActive(item.href);
-        return <Link prefetch={false} key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
+        return <AttributionLink prefetch={false} key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</AttributionLink>;
       })}
       <a href={`tel:${siteConfig.telephone}`} className="text-steel-orange">{siteConfig.telephoneDisplay}</a>
       <AttributionLink prefetch={false} href="/online-order" className="mt-2 border border-steel-orange px-4 py-3 text-center text-xs font-bold uppercase text-steel-orange">Рассчитать онлайн</AttributionLink>

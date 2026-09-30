@@ -1,6 +1,6 @@
 "use client";
+import { AttributionLink } from "@/components/AttributionLink";
 
-import Link from "next/link";
 import { useState } from "react";
 import { solutions } from "@/data/solutions";
 
@@ -46,14 +46,14 @@ export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 p-5">
           <nav aria-label="Быстрые переходы" className="flex flex-wrap gap-2">
             {quickLinks.map((item) => (
-              <Link
+              <AttributionLink
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
                 className="border border-white/15 bg-black/25 px-4 py-3 text-xs font-bold uppercase text-white/75 transition hover:border-steel-orange hover:text-steel-orange"
               >
                 {item.label}&nbsp; →
-              </Link>
+              </AttributionLink>
             ))}
           </nav>
           <div className="hidden items-center gap-7 lg:flex">
@@ -97,13 +97,13 @@ export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/60">
               {active.text}
             </p>
-            <Link
+            <AttributionLink
               onClick={onClose}
               href={activeHref}
               className="mt-5 inline-block border border-steel-orange px-4 py-3 text-xs font-bold uppercase text-steel-orange"
             >
               Перейти в раздел&nbsp; →
-            </Link>
+            </AttributionLink>
             {isArchitecture && (
               <a
                 href="/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf"
@@ -127,7 +127,7 @@ export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void
                   key={item}
                   className="border-b border-white/10 text-sm text-white/85"
                 >
-                  <Link
+                  <AttributionLink
                     href={
                       isArchitecture
                         ? (productLinks[item] ?? "/products")
@@ -138,7 +138,7 @@ export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void
                   >
                     <span>{item}</span>
                     <span className="text-steel-orange" aria-hidden="true">→</span>
-                  </Link>
+                  </AttributionLink>
                 </li>
               ))}
             </ul>
@@ -152,13 +152,13 @@ export function MegaMenu({ open, onClose }: { open: boolean; onClose: () => void
               чертежам, 3D-моделям и техническому заданию.
             </p>
           </div>
-          <Link
+          <AttributionLink
             onClick={onClose}
             href="/contacts#contact-form"
             className="clip-corner whitespace-nowrap bg-steel-orange-deep px-8 py-4 text-sm font-bold"
           >
             Отправить чертёж инженеру&nbsp; →
-          </Link>
+          </AttributionLink>
         </div>
       </section>
     </div>

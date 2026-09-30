@@ -100,6 +100,7 @@ jobs:
           npm run seo:audit
           npx playwright install --with-deps chromium
           BROWSER_AUDIT_BASE_URL=http://127.0.0.1:3011 npm run browser:audit
+          BROWSER_AUDIT_BASE_URL=http://127.0.0.1:3011 npm run attribution:audit
 
       - name: Browser audit report
         if: always()

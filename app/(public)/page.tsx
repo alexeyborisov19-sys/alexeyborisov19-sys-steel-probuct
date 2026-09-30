@@ -1,6 +1,6 @@
+import { AttributionLink } from "@/components/AttributionLink";
 import CustomerReviews from "@/components/CustomerReviews";
 import Image from "next/image";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { CadCalculatorShowcase } from "@/components/CadCalculatorShowcase";
 import { Footer } from "@/components/Footer";
@@ -102,7 +102,7 @@ export default function Home() {
         <section aria-label="Бесплатные сервисы" className="border-b border-white/10 bg-[#111519] py-6">
           <div className="container flex flex-wrap items-center justify-between gap-4">
             <p className="max-w-xl text-base text-white/75">Нет чертежа? Нужны металлокассеты или IFC-модель? Выберите инструмент под свою задачу.</p>
-            <Link prefetch={false} href="/tools" className="inline-flex min-h-12 items-center rounded-lg border border-steel-orange/50 px-5 py-3 font-semibold text-steel-orange hover:bg-white/5">Все бесплатные сервисы →</Link>
+            <AttributionLink prefetch={false} href="/tools" className="inline-flex min-h-12 items-center rounded-lg border border-steel-orange/50 px-5 py-3 font-semibold text-steel-orange hover:bg-white/5">Все бесплатные сервисы →</AttributionLink>
           </div>
         </section>
         <section id="solutions" className="bg-[#0c1013] py-14">
@@ -114,7 +114,7 @@ export default function Home() {
               {solutions.map((solution) => {
                 const cardImage = solutionCardImages[solution.title];
                 return (
-                  <Link
+                  <AttributionLink
                     key={solution.title}
                     href={solution.href}
                     className="group min-h-[250px] border border-white/15 bg-[#111519] p-5 transition hover:border-steel-orange hover:bg-[#15191c]"
@@ -141,7 +141,7 @@ export default function Home() {
                     <span className="mt-5 block text-xs font-bold uppercase text-steel-orange">
                       Перейти к решениям&nbsp; →
                     </span>
-                  </Link>
+                  </AttributionLink>
                 );
               })}
             </div>
@@ -192,16 +192,16 @@ export default function Home() {
               <h2 className="text-2xl font-semibold uppercase">
                 Решения для типовых объектов
               </h2>
-              <Link
+              <AttributionLink
                 href="/projects"
                 className="text-[13px] font-bold uppercase text-steel-orange"
               >
                 Смотреть проектные сценарии&nbsp; →
-              </Link>
+              </AttributionLink>
             </div>
             <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {projects.map((project, index) => (
-                <Link
+                <AttributionLink
                   href={project.href}
                   key={project.title}
                   className="overflow-hidden border border-white/10 bg-[#111519] transition hover:border-steel-orange"
@@ -223,7 +223,7 @@ export default function Home() {
                       →
                     </span>
                   </div>
-                </Link>
+                </AttributionLink>
               ))}
             </div>
           </div>
@@ -232,7 +232,7 @@ export default function Home() {
         <section className="border-t border-white/10 bg-[#17191a] py-12">
           <div className="container flex flex-wrap items-center justify-between gap-8">
             <div className="max-w-xl"><h2 className="text-2xl font-semibold">От чертежа к расчёту</h2><p className="mt-3 text-base leading-7 text-white/75">Получите предварительную стоимость онлайн или передайте проект инженеру для проверки и коммерческого предложения.</p></div>
-            <div className="flex flex-wrap gap-3"><Link href="/online-order" className="clip-corner bg-steel-orange-deep px-6 py-4 text-sm font-semibold">Рассчитать онлайн →</Link><Link href="/contacts#contact-form" className="border border-white/30 px-6 py-4 text-sm font-semibold">Отправить чертёж инженеру →</Link></div>
+            <div className="flex flex-wrap gap-3"><AttributionLink href="/online-order" className="clip-corner bg-steel-orange-deep px-6 py-4 text-sm font-semibold">Рассчитать онлайн →</AttributionLink><AttributionLink href="/contacts#contact-form" className="border border-white/30 px-6 py-4 text-sm font-semibold">Отправить чертёж инженеру →</AttributionLink></div>
           </div>
         </section>
         <FaqSection items={homeFaq} title="Вопросы о производстве на заказ" />

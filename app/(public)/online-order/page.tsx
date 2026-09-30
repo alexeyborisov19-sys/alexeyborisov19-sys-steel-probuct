@@ -1,9 +1,9 @@
+import { AttributionLink } from "@/components/AttributionLink";
 import { CalculatorCookieSlot } from "@/components/CalculatorCookieSlot";
 import type { Metadata } from "next";
 import { ClientManufacturingWorkspace } from "@/components/ClientManufacturingWorkspace";
 import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
-import Link from "next/link";
 import { faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 import { absoluteUrl, siteConfig } from "@/lib/site";
@@ -123,7 +123,7 @@ export default function OnlineOrderPage() {
                 </article>
               ))}
             </div>
-            <p className="mt-5 text-sm leading-7 text-white/75">Есть только DWG, эскиз или нестандартная сборка? <Link href="/contacts#contact-form" className="text-steel-orange underline underline-offset-4">Передайте исходные данные инженеру</Link>. Окончательную стоимость и технологию согласуем после проверки.</p>
+            <p className="mt-5 text-sm leading-7 text-white/75">Есть только DWG, эскиз или нестандартная сборка? <AttributionLink href="/contacts#contact-form" className="text-steel-orange underline underline-offset-4">Передайте исходные данные инженеру</AttributionLink>. Окончательную стоимость и технологию согласуем после проверки.</p>
           </div>
         </section>
 
@@ -134,8 +134,8 @@ export default function OnlineOrderPage() {
               <h2 id="how-it-works" className="mt-3 text-2xl font-semibold">Как работает онлайн-расчёт</h2>
               <p className="mt-4 max-w-lg text-sm leading-7 text-white/70">Геометрия из CAD или введённые вами габариты, выбранный металл, количество и указанные операции. Цена металла поступает из актуального прайса поставщика. Неоднозначную геометрию и незаданные параметры проверяет инженер.</p>
               <p className="mt-3 max-w-lg text-sm leading-7 text-white/70">Расход листа до финальной раскладки оценивается по заготовке. Итоговые стоимость и сроки подтверждаются после проверки проекта.</p>
-              <Link href="/production" className="mt-5 inline-flex min-h-11 items-center text-sm text-steel-orange underline underline-offset-4">Возможности производства →</Link>
-              <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/70"><Link href="/production/lazernaya-rezka-metalla" className="min-h-11 py-3 underline underline-offset-4">Лазерная резка</Link><Link href="/production/gibka-listovogo-metalla" className="min-h-11 py-3 underline underline-offset-4">Гибка листа</Link><Link href="/contacts#contact-form" className="min-h-11 py-3 underline underline-offset-4">Связаться с инженером</Link></div>
+              <AttributionLink href="/production" className="mt-5 inline-flex min-h-11 items-center text-sm text-steel-orange underline underline-offset-4">Возможности производства →</AttributionLink>
+              <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/70"><AttributionLink href="/production/lazernaya-rezka-metalla" className="min-h-11 py-3 underline underline-offset-4">Лазерная резка</AttributionLink><AttributionLink href="/production/gibka-listovogo-metalla" className="min-h-11 py-3 underline underline-offset-4">Гибка листа</AttributionLink><AttributionLink href="/contacts#contact-form" className="min-h-11 py-3 underline underline-offset-4">Связаться с инженером</AttributionLink></div>
             </div>
             <div>
               <h2 className="text-lg font-semibold">Частые вопросы</h2>

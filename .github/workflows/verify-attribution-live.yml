@@ -1,0 +1,36 @@
+name: Verify live enquiry attribution
+
+on:
+  workflow_run:
+    workflows: [Publish to Beget]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-live-enquiry-attribution
+  cancel-in-progress: true
+
+jobs:
+  attribution:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      # The script intercepts quote submissions and blocks other POSTs and all
+      # external requests. It never sends a real enquiry or analytics event.
+      - run: npm run attribution:audit
+        env:
+          BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
