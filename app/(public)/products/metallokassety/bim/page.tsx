@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AttributionLink } from "@/components/AttributionLink";
 import { PageLayout } from "@/components/PageLayout";
 import { CassetteBimConfigurator } from "@/components/CassetteBimConfigurator";
 import { JsonLd } from "@/components/JsonLd";
@@ -15,8 +15,9 @@ const faq = [
 export default function CassetteBimPage() {
   return <PageLayout compactHero breadcrumbs={[{name:"Главная",path:"/"},{name:"Продукция",path:"/products"},{name:"Металлокассеты",path:"/products/metallokassety"},{name:"BIM-модель",path:"/products/metallokassety/bim"}]} path="/products/metallokassety/bim" eyebrow="Инструменты проектировщика" title="BIM-модель металлокассет" description="Задайте размеры, выберите кассеты и назначьте RAL. Скачайте IFC и спецификацию — бесплатно, без регистрации.">
     <JsonLd data={[faqSchema(faq), {"@context":"https://schema.org","@type":"WebApplication",name:"Генератор IFC-модели металлокассет",url:absoluteUrl("/products/metallokassety/bim"),applicationCategory:"DesignApplication",operatingSystem:"Современный веб-браузер",isAccessibleForFree:true,inLanguage:"ru-RU",featureList:["Настройка размеров и швов","Поэлементная окраска RAL","Экспорт IFC4","Спецификация CSV"]}]} />
-    <section className="bg-[#e9eeec] py-8 text-slate-900 sm:py-10">
+    <section aria-labelledby="bim-config-title" className="bg-[#e9eeec] py-8 text-slate-900 sm:py-10">
       <div className="container">
+        <h2 id="bim-config-title" className="sr-only">Настройка BIM-модели металлокассет</h2>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600"><p>IFC4 · поэлементная окраска RAL · спецификация CSV</p><a className="font-semibold text-orange-800 underline underline-offset-4" href="#bim-passport">О модели и ограничениях ↓</a></div>
         <CassetteBimConfigurator />
         <div id="bim-passport" className="mt-8 scroll-mt-28 rounded-xl border border-slate-300 bg-white p-5 sm:p-7">
@@ -37,7 +38,7 @@ export default function CassetteBimPage() {
           ].map(([name,value])=><tr key={name} className="border-b border-slate-200"><th scope="row" className="p-3 align-top font-medium">{name}</th><td className="p-3 text-slate-600">{value}</td></tr>)}</tbody></table></div></details>
           <h3 className="mt-3 font-semibold">Вопросы о BIM-модели</h3>
           {faq.map(item=><details key={item.question} className="border-b border-slate-200 py-4"><summary className="cursor-pointer text-sm font-medium">{item.question}</summary><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{item.answer}</p></details>)}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4"><p className="max-w-xl text-sm leading-6 text-slate-600">Для изготовления согласуйте рабочие чертежи и узлы. Модель не содержит расчёта нагрузок и производственных развёрток.</p><div className="flex flex-wrap gap-5 text-sm font-semibold text-orange-800"><Link className="underline underline-offset-4" href="/products/metallokassety#calculator-metallokasset">Рассчитать металлокассеты</Link><Link className="underline underline-offset-4" href="/contacts#contact-form">Передать инженеру</Link></div></div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4"><p className="max-w-xl text-sm leading-6 text-slate-600">Для изготовления согласуйте рабочие чертежи и узлы. Модель не содержит расчёта нагрузок и производственных развёрток.</p><div className="flex flex-wrap gap-5 text-sm font-semibold text-orange-800"><AttributionLink className="underline underline-offset-4" href="/products/metallokassety#calculator-metallokasset">Рассчитать металлокассеты</AttributionLink><AttributionLink className="underline underline-offset-4" href="/contacts#contact-form">Передать инженеру</AttributionLink></div></div>
         </div>
       </div>
     </section>
