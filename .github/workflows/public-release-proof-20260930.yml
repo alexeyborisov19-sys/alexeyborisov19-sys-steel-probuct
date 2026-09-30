@@ -8,6 +8,8 @@ permissions:
 concurrency:
   group: steelprodukt-public-proof-20260930
   cancel-in-progress: false
+# Run 36705417957 stopped before any quote POST at the hidden online CTA.
+# This run uses the corrected responsive selector; retries remain non-sending.
 jobs:
   verify:
     runs-on: ubuntu-latest
