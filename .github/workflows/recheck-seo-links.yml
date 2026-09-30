@@ -1,0 +1,197 @@
+name: Repeat public SEO and links
+on:
+  push:
+    branches: [audit/recheck-seo-links-20260930]
+    paths: [.github/workflows/recheck-seo-links.yml]
+permissions:
+  contents: read
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Inspect public pages and same-origin links only
+        run: |
+          mkdir -p output
+          cat > /tmp/check.py <<'PY'
+          import collections,concurrent.futures,datetime,json,time,urllib.request,urllib.parse,urllib.robotparser,xml.etree.ElementTree as ET
+          from html.parser import HTMLParser
+          from pathlib import Path
+          BASE='https://www.steelprodukt.ru'
+          HEADERS={'User-Agent':'SteelProdukt-Owner-Recheck/1.0','Cache-Control':'no-cache'}
+          class Page(HTMLParser):
+              def __init__(self):
+                  super().__init__();self.title='';self.h1=[];self.links=[];self.assets=[];self.ids=set();self.canonical=[];self.description=[];self.robots=[];self.jsonld=[];self._title=False;self._h1=False;self._json=False;self._buf=''
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  if a.get('id'): self.ids.add(a['id'])
+                  if tag=='title':self._title=True
+                  if tag=='h1':self._h1=True;self.h1.append('')
+                  if tag=='a' and a.get('href'):self.links.append(a['href'])
+                  if tag=='link':
+                      rel=a.get('rel','').split()
+                      if 'canonical' in rel:self.canonical.append(a.get('href'))
+                      if 'stylesheet' in rel and a.get('href'):self.assets.append(a['href'])
+                  if tag=='meta':
+                      name=a.get('name','').lower()
+                      if name=='description':self.description.append(a.get('content',''))
+                      if name in ['robots','googlebot','yandex']:self.robots.append(a.get('content',''))
+                  if tag in ['img','script'] and a.get('src'):self.assets.append(a['src'])
+                  if tag=='script' and a.get('type')=='application/ld+json':self._json=True;self._buf=''
+              def handle_endtag(self,tag):
+                  if tag=='title':self._title=False
+                  if tag=='h1':self._h1=False
+                  if tag=='script' and self._json:self.jsonld.append(self._buf);self._json=False
+              def handle_data(self,s):
+                  if self._title:self.title+=s
+                  if self._h1:self.h1[-1]+=s
+                  if self._json:self._buf+=s
+          def fetch(url,head=False):
+              start=time.monotonic()
+              req=urllib.request.Request(url,headers=HEADERS,method='HEAD' if head else 'GET')
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      body='' if head else r.read(3_000_000).decode('utf-8','replace')
+                      return {'url':url,'status':r.status,'final':r.url,'headers':{k.lower():v for k,v in r.headers.items() if k.lower() in ['date','age','cache-control','x-cache','x-nextjs-cache','x-robots-tag','content-type','etag']},'seconds':round(time.monotonic()-start,3),'body':body}
+              except urllib.error.HTTPError as e:return {'url':url,'status':e.code,'final':e.url,'headers':{},'body':''}
+              except Exception as e:return {'url':url,'status':0,'error':type(e).__name__,'headers':{},'body':''}
+          def same_origin(raw,page=BASE):
+              u=urllib.parse.urlsplit(urllib.parse.urljoin(page,raw))
+              if u.scheme not in ['http','https'] or u.netloc not in ['www.steelprodukt.ru','steelprodukt.ru']:return None
+              if u.path.startswith(('/api/','/internal/')):return None
+              return urllib.parse.urlunsplit(('https','www.steelprodukt.ru',u.path or '/',u.query,''))
+          robots=fetch(BASE+'/robots.txt');sitemap=fetch(BASE+'/sitemap.xml')
+          assert sitemap['status']==200 and robots['status']==200,'Discovery endpoints unavailable'
+          rp=urllib.robotparser.RobotFileParser();rp.parse(robots['body'].splitlines())
+          urls=[n.text for n in ET.fromstring(sitemap['body']).findall('.//{*}url/{*}loc')]
+          assert 0<len(urls)<=200,'Unexpected sitemap size'
+          pages={};errors=[];warnings=[];assets=set();linked=set();anchors=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+              for r in pool.map(fetch,urls):
+                  p=Page();p.feed(r['body']);u=r['url'];issues=[]
+                  if r['status']!=200:issues.append('HTTP_'+str(r['status']))
+                  if r.get('final')!=u:issues.append('SITEMAP_REDIRECT')
+                  if not p.title.strip():issues.append('MISSING_TITLE')
+                  if len(p.h1)!=1:issues.append('H1_COUNT_'+str(len(p.h1)))
+                  if len(p.canonical)!=1 or p.canonical[0]!=u:issues.append('CANONICAL_MISMATCH')
+                  if len(p.description)!=1 or not p.description[0].strip():issues.append('MISSING_DESCRIPTION')
+                  if 'noindex' in ','.join(p.robots).lower() or 'noindex' in r['headers'].get('x-robots-tag','').lower():issues.append('SITEMAP_NOINDEX')
+                  for bot in ['Yandex','Googlebot']:
+                      if not rp.can_fetch(bot,u):issues.append('ROBOTS_DISALLOW_'+bot)
+                  for j in p.jsonld:
+                      try:json.loads(j)
+                      except Exception:issues.append('JSON_LD_PARSE')
+                  for raw in p.links:
+                      target=same_origin(raw,u)
+                      if target:
+                          linked.add(target)
+                          fragment=urllib.parse.urlsplit(urllib.parse.urljoin(u,raw)).fragment
+                          if fragment:anchors.append((u,target,urllib.parse.unquote(fragment)))
+                  for raw in p.assets:
+                      target=same_origin(raw,u)
+                      if target:assets.add(target)
+                  pages[u]={'status':r['status'],'title':p.title.strip(),'description':p.description,'h1':p.h1,'canonical':p.canonical,'ids':sorted(p.ids),'seconds':r.get('seconds'),'issues':issues,'jsonLdBlocks':len(p.jsonld),'headers':r['headers']}
+                  for i in issues:errors.append({'url':u,'issue':i})
+          asset_links={u for u in linked if urllib.parse.urlsplit(u).path.lower().endswith(('.pdf','.dxf','.dwg','.step','.stp','.zip','.png','.jpg','.svg','.webp','.xml','.txt'))}
+          page_links=linked-set(urls)-asset_links
+          extra=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+              for r in pool.map(fetch,sorted(page_links)[:120]):
+                  p=Page();p.feed(r['body']);extra.append({k:v for k,v in r.items() if k!='body'})
+                  if r['status']>=400 or r['status']==0:errors.append({'url':r['url'],'issue':'BROKEN_INTERNAL_LINK','status':r['status']})
+                  if r['status']==200 and r['headers'].get('content-type','').startswith('text/html'):pages[r['url']]={'status':r['status'],'ids':sorted(p.ids),'title':p.title.strip()}
+          pending=sorted(assets|asset_links);asset_results=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+              for r in pool.map(lambda u:fetch(u,True),pending[:400]):
+                  asset_results.append({k:v for k,v in r.items() if k!='body'})
+                  if r['status']>=400 or r['status']==0:errors.append({'url':r['url'],'issue':'ASSET_HEAD_UNAVAILABLE','status':r['status']})
+          for source,target,anchor in sorted(set(anchors)):
+              if target in pages and anchor not in pages[target].get('ids',[]):warnings.append({'source':source,'target':target+'#'+anchor,'issue':'ANCHOR_NOT_IN_SERVER_HTML'})
+          for field in ['title']:
+              groups=collections.defaultdict(list)
+              for u,p in pages.items():
+                  if u in urls:groups[p.get(field,'')].append(u)
+              for text,group in groups.items():
+                  if text and len(group)>1:warnings.append({'issue':'DUPLICATE_'+field.upper(),'text':text,'urls':group})
+          discovery=[]
+          for path in ['/api/health','/sitemap-images.xml','/contacts?owner_check=20260930','/products/metallokassety?owner_check=20260930']:
+              r=fetch(BASE+path);r['newContactText']='Компания и вложения необязательны' in r['body'];r['newHeroText']='Можно без чертежа' in r['body']
+              if path=='/api/health':
+                  try:r['health']=json.loads(r['body'])
+                  except Exception:pass
+              r.pop('body',None);discovery.append(r)
+          for u in ['http://steelprodukt.ru/contacts','https://steelprodukt.ru/contacts','http://www.steelprodukt.ru/contacts','https://saquapequoke.beget.app/contacts?owner_check=20260930']:
+              r=fetch(u,True);discovery.append(r)
+          report={'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'sourceCommit':'53b1ec7f8c2dc775e84f030dc012edbe9236bc68','mode':'public-readonly','sitemapCount':len(urls),'extraPageLinksChecked':len(extra),'uniqueAssetsChecked':len(asset_results),'truncated':len(page_links)>120 or len(pending)>400,'errors':errors,'warnings':warnings,'pages':pages,'extraLinks':extra,'assets':asset_results,'discovery':discovery,'robots':robots['body']}
+          Path('output/http-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print('HTTP_RECHECK',json.dumps({k:report[k] for k in ['checkedAt','sitemapCount','extraPageLinksChecked','uniqueAssetsChecked','truncated','errors','warnings','discovery']},ensure_ascii=False))
+          PY
+          python3 /tmp/check.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: repeat-http-evidence
+          path: output/
+          retention-days: 14
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Narrow layouts and WebKit; never send enquiries
+        run: |
+          mkdir -p output
+          cat > .github/recheck-browsers.mjs <<'JS'
+          import {chromium,webkit} from '@playwright/test';
+          import {writeFile} from 'node:fs/promises';
+          const base='https://www.steelprodukt.ru',rows=[];
+          for(const [engine,type] of Object.entries({chromium,webkit})){
+            const browser=await type.launch();
+            try{
+              for(const width of [320,768])for(const path of ['/','/contacts','/products/metallokassety','/production/lazernaya-rezka-metalla','/online-order','/calculator-metallokassety']){
+                const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});
+                let blockedWrites=0;const errors=[];
+                await context.route('**/*',route=>{if(!['GET','HEAD','OPTIONS'].includes(route.request().method())){blockedWrites++;return route.abort();}return route.continue();});
+                const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+                const url=base+path+'?utm_source=owner_audit&utm_campaign=repeat_check';
+                try{
+                  const response=await page.goto(url,{waitUntil:'networkidle',timeout:60000});
+                  await page.waitForTimeout(500);
+                  const row={engine,width,path,http:response.status(),errors,blockedWrites,...await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth+1,h1:[...document.querySelectorAll('h1')].map(x=>x.textContent),brokenLoadedImages:[...document.images].filter(i=>i.complete&&i.currentSrc&&!i.naturalWidth).map(i=>i.currentSrc)}))};
+                  row.conversionLinks=[];
+                  for(const a of await page.locator('a[href]').all()){
+                    const href=await a.getAttribute('href');let target;try{target=new URL(href,base);}catch{continue;}
+                    if(target.origin===base&&['/contacts','/online-order','/calculator-metallokassety'].includes(target.pathname)&&await a.isVisible())row.conversionLinks.push({text:(await a.innerText()).trim(),href,retainsCampaign:target.searchParams.get('utm_campaign')==='repeat_check'});
+                  }
+                  if(path==='/contacts'&&width===320){
+                    const decline=page.getByRole('button',{name:'Продолжить без аналитики',exact:true});if(await decline.isVisible())await decline.click();
+                    const form=page.locator('#quote-request-form');
+                    row.consentUnchecked=!(await form.locator('[name="personalDataConsent"]').isChecked());
+                    row.optionalCompany=!await form.locator('[name="company"]').getAttribute('required');
+                    row.uploadInputs=await form.locator('input[type=file]').count();
+                    await page.screenshot({path:`output/${engine}-contacts-320.png`,fullPage:false});
+                  }
+                  if(path==='/products/metallokassety'&&width===320)await page.screenshot({path:`output/${engine}-landing-320.png`,fullPage:false});
+                  rows.push(row);console.log('BROWSER_RECHECK',JSON.stringify(row));
+                }catch(e){const row={engine,width,path,error:String(e),blockedWrites};rows.push(row);console.log('BROWSER_RECHECK',JSON.stringify(row));}
+                await context.close();
+              }
+            }finally{await browser.close();}
+          }
+          await writeFile('output/browser-report.json',JSON.stringify({checkedAt:new Date().toISOString(),mode:'no-writes-no-enquiries',rows},null,2));
+          JS
+          node .github/recheck-browsers.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: repeat-browser-evidence
+          path: output/
+          retention-days: 14
