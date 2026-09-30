@@ -7,6 +7,7 @@ import { siteConfig } from "@/lib/site";
 import { siteMode } from "@/data/site-mode";
 import { Brand } from "./Brand";
 import { MegaMenu } from "./MegaMenu";
+import { AttributionLink } from "./AttributionLink";
 
 const navigation = [
   { label: "Компания", href: "/company" },
@@ -118,8 +119,8 @@ export function Header() {
       </nav>
       <div className="header-actions ml-auto hidden shrink-0 items-center gap-3 min-[1440px]:flex">
         <a href={`tel:${siteConfig.telephone}`} className="header-phone hidden whitespace-nowrap font-semibold min-[1800px]:block">{siteConfig.telephoneDisplay}</a>
-        <Link prefetch={false} href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="header-quote-action header-online-action clip-corner border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black">Рассчитать онлайн</Link>
-        <Link prefetch={false} href="/contacts#contact-form" className="header-quote-action clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Расчёт инженером</Link>
+        <AttributionLink prefetch={false} href="/online-order" aria-current={isActive("/online-order") ? "page" : undefined} className="header-quote-action header-online-action clip-corner border border-steel-orange px-4 py-3 text-xs font-bold uppercase tracking-wider text-steel-orange transition hover:bg-steel-orange hover:text-black">Рассчитать онлайн</AttributionLink>
+        <AttributionLink prefetch={false} href="/contacts#contact-form" className="header-quote-action clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-wider transition hover:bg-steel-orange-deeper">Расчёт инженером</AttributionLink>
       </div>
       <button
         ref={mobileMenuButtonRef}
@@ -139,8 +140,8 @@ export function Header() {
         return <Link prefetch={false} key={item.href} href={item.href} aria-current={active ? "page" : undefined}>{item.label}</Link>;
       })}
       <a href={`tel:${siteConfig.telephone}`} className="text-steel-orange">{siteConfig.telephoneDisplay}</a>
-      <Link prefetch={false} href="/online-order" className="mt-2 border border-steel-orange px-4 py-3 text-center text-xs font-bold uppercase text-steel-orange">Рассчитать онлайн</Link>
-      <Link prefetch={false} href="/contacts#contact-form" className="mt-2 bg-steel-orange-deep px-4 py-3 text-center text-xs font-bold uppercase">Расчёт инженером</Link>
+      <AttributionLink prefetch={false} href="/online-order" className="mt-2 border border-steel-orange px-4 py-3 text-center text-xs font-bold uppercase text-steel-orange">Рассчитать онлайн</AttributionLink>
+      <AttributionLink prefetch={false} href="/contacts#contact-form" className="mt-2 bg-steel-orange-deep px-4 py-3 text-center text-xs font-bold uppercase">Расчёт инженером</AttributionLink>
     </nav>}
   </header>;
 }
