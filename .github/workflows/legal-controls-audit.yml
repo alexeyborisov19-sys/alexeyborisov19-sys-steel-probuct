@@ -55,6 +55,13 @@ jobs:
               raise
           WRAPPER
           sudo -n chmod 0700 "$wrapper"
+          sudo -n install -d -m 0755 /run/systemd/system/steelprodukt-pd-offsite-backup.service.d
+          dropin=$(sudo -n mktemp /run/systemd/system/steelprodukt-pd-offsite-backup.service.d/diagnostic-XXXXXX.conf)
+          trap 'sudo -n rm -f "$wrapper" "$dropin"; sudo -n systemctl daemon-reload' EXIT
+          printf '[Service]\nEnvironment="PD_BACKUP_FILES_HELPER=%s"\n' "$wrapper" | sudo -n tee "$dropin" >/dev/null
+          sudo -n systemctl daemon-reload
+          sudo -n systemctl start steelprodukt-pd-offsite-backup.service || true
+
           sudo -n systemd-run --quiet --wait --pipe --collect -p ProtectSystem=strict -p ProtectHome=true -p PrivateTmp=true -p NoNewPrivileges=true -p ReadWritePaths=/var/backups/steelprodukt --setenv="PD_BACKUP_FILES_HELPER=$wrapper" /usr/local/sbin/steelprodukt-pd-offsite-backup || true
           sudo -n python3 - "$APP_PATH" <<'PYTHON'
           import sys, pathlib, sqlite3, json, datetime, subprocess
@@ -97,7 +104,7 @@ jobs:
               print('SERVICE='+unit)
               log=subprocess.run(['journalctl','-u',unit,'--since','2026-10-01 19:51:00 UTC','--no-pager','-o','cat'],capture_output=True,text=True).stdout
               for line in log.splitlines():
-                  if any(word in line.lower() for word in ['failed','error','readonly','read-only','denied','retention','examined','status','traceback']):
+                  if any(word in line.lower() for word in ['failed','error','readonly','read-only','denied','retention','examined','status','traceback','backup_error','backup_trace']):
                       print(line[:600])
 
           PYTHON
