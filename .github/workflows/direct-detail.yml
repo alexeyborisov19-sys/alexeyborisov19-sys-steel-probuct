@@ -1,0 +1,57 @@
+name: Direct creative and conversion audit
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-detail.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read targeting without changing advertising
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function apiOnce(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function api(service,method,params){for(let i=0;i<4;i++){try{return await apiOnce(service,method,params);}catch(e){if(i===3||!String(e).includes('"error_code":1000'))throw e;console.log("TRANSIENT_RETRY",service,method,i+1);await new Promise(r=>setTimeout(r,3000));}}}
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          
+          const campaignId=714391927;
+          const groups=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","Name","CampaignId","RegionIds","Status","NegativeKeywords","TrackingParams"]});
+          const keywords=await all("keywords","Keywords",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","AdGroupId","CampaignId","Keyword","State","Status"],AutotargetingSettingsCategoriesFieldNames:["Exact","Narrow","Alternative","Accessory","Broader"],AutotargetingSettingsBrandOptionsFieldNames:["WithoutBrands","WithAdvertiserBrand","WithCompetitorsBrand"]});
+          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","AdGroupId","CampaignId","State","Type","Status","StatusClarification"],TextAdFieldNames:["Title","Title2","Text","Href","SitelinkSetId","AdExtensions"],ResponsiveAdFieldNames:["Href","Titles","Texts","SitelinkSetId","AdExtensions"]});
+          const campaign=await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","Type","State","DailyBudget","NegativeKeywords"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy","CounterIds","PriorityGoals","TrackingParams","AttributionModel"]});
+          console.log("BEFORE_CAMPAIGN",JSON.stringify(campaign));
+          console.log("ALL_GROUPS",JSON.stringify(groups));console.log("ALL_KEYWORDS",JSON.stringify(keywords));console.log("ALL_ADS",JSON.stringify(ads));
+          
+          console.log("SPB_READBACK",JSON.stringify({groups:groups.filter(g=>g.Name.includes("СПб")),positiveKeywords:keywords.filter(k=>/петербург|спб/i.test(k.Keyword.split(/\s+/).filter(t=>!t.startsWith("-")).join(" "))),campaign}));
+          const ym=String(process.env.YM_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          async function metric(path){const r=await fetch("https://api-metrika.yandex.net/"+path,{headers:{Authorization:"OAuth "+ym},signal:AbortSignal.timeout(30000)});return {status:r.status,data:await r.json()};}
+          const goal=await metric("management/v1/counter/112542227/goals");console.log("METRIKA_GOALS",JSON.stringify(goal));
+          for(const [label,date1,date2]of[["LATEST","2026-09-24","2026-09-30"],["PREVIOUS","2026-09-17","2026-09-23"]]){
+          const goals=(goal.data.goals||[]).filter(g=>(g.conditions||[]).some(c=>["quote_request_success","assistant_lead_success"].includes(c.url)));
+          const u=new URLSearchParams({ids:"112542227",date1,date2,dimensions:"ym:s:trafficSource",metrics:["ym:s:visits","ym:s:users","ym:s:bounceRate","ym:s:avgVisitDurationSeconds",...goals.map(g=>"ym:s:goal"+g.id+"reaches")].join(","),accuracy:"full",limit:"100"});
+          console.log("METRIKA_"+label,JSON.stringify(await metric("stat/v1/data?"+u)));
+          }
+          const urls=[...new Set(ads.filter(a=>a.State==="ON").map(a=>a.TextAd?.Href||a.ResponsiveAd?.Href).filter(Boolean).map(s=>{const u=new URL(s);u.search="";return u.href;}))];
+          for(const url of urls){try{const r=await fetch(url,{signal:AbortSignal.timeout(30000)});const html=await r.text();console.log("LANDING",JSON.stringify({url,status:r.status,finalUrl:r.url,h1:html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1]?.replace(/<[^>]*>/g,""),title:html.match(/<title>(.*?)<\/title>/)?.[1],hasQuoteForm:html.includes("quote"),noindex:/name="robots"[^>]*noindex/.test(html)}));}catch(e){console.log("LANDING_ERROR",url,e.name);}}
+          
+          const sl=[...new Set(ads.map(a=>a.TextAd?.SitelinkSetId||a.ResponsiveAd?.SitelinkSetId).filter(Boolean))];if(sl.length)console.log("SITELINKS",JSON.stringify(await all("sitelinks","SitelinkSets",{SelectionCriteria:{Ids:sl},FieldNames:["Id","Sitelinks"]})));
+          
+          NODE
+          node /tmp/direct-spb.mjs
