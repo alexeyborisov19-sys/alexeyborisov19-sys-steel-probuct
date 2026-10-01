@@ -1,0 +1,47 @@
+name: Inspect Direct Saint Petersburg targeting
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-spb.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read targeting without changing advertising
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function api(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}),signal:AbortSignal.timeout(30000)});
+           const d=await r.json();if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          const geo=(await api("dictionaries","get",{DictionaryNames:["GeoRegions"]})).GeoRegions;
+          const city=geo.find(x=>x.GeoRegionName==="Санкт-Петербург");if(!city)throw Error("City not resolved");
+          console.log("CITY",JSON.stringify(city));
+          const campaigns=await all("campaigns","Campaigns",{SelectionCriteria:{},FieldNames:["Id","Name","Type","State"],UnifiedCampaignFieldNames:["Settings"],TextCampaignFieldNames:["Settings"]});
+          console.log("CAMPAIGNS",JSON.stringify(campaigns));
+          const ids=campaigns.filter(c=>c.State!=="ARCHIVED").map(c=>c.Id);
+          const groups=ids.length?await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:ids},FieldNames:["Id","Name","CampaignId","RegionIds","Status","Type"]}):[];
+          console.log("GROUPS",JSON.stringify(groups));
+          const used=new Set(groups.flatMap(g=>g.RegionIds.map(Math.abs)));console.log("USED_GEO",JSON.stringify(geo.filter(g=>used.has(g.GeoRegionId))));
+          const keywords=groups.length?await all("keywords","Keywords",{SelectionCriteria:{AdGroupIds:groups.map(g=>g.Id)},FieldNames:["Id","AdGroupId","CampaignId","Keyword","State"]}):[];
+          console.log("SPB_KEYWORDS",JSON.stringify(keywords.filter(k=>/петербург|петербурж|спб|питер|saint.?petersburg/i.test(k.Keyword))));
+          const ads=groups.length?await all("ads","Ads",{SelectionCriteria:{AdGroupIds:groups.map(g=>g.Id)},FieldNames:["Id","AdGroupId","CampaignId","State","Type"],TextAdFieldNames:["Title","Title2","Text","Href"]}):[];
+          console.log("SPB_ADS",JSON.stringify(ads.filter(a=>/петербург|петербурж|спб|питер|saint.?petersburg/i.test(JSON.stringify(a.TextAd||{})))));
+          console.log("COUNTS",JSON.stringify({campaigns:campaigns.length,groups:groups.length,keywords:keywords.length,ads:ads.length}));
+          
+          NODE
+          node /tmp/direct-spb.mjs
