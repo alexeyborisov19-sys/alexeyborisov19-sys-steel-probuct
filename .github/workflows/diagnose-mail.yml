@@ -26,4 +26,7 @@ jobs:
           BEGET_USER: ${{ secrets.BEGET_USER }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs pm2 logs steelprodukt --err --lines 50 --nostream"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "sudo -iu nodejs pm2 logs steelprodukt --err --lines 50 --nostream" \
+            | sed -E -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[e-mail скрыт]/g' \
+                     -e 's/\+?[78][ (-]*[0-9]{3}[ )-]*[0-9]{3}[ -]*[0-9]{2}[ -]*[0-9]{2}/[телефон скрыт]/g'
+          # Contacts never leave the server: e-mail addresses and phone numbers are masked before printing.

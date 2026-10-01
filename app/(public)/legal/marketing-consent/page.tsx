@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalDocument } from "@/components/LegalDocument";
-import { legalLinks, legalOperator } from "@/lib/legal";
+import { legalDocumentDisplayDates, legalLinks, legalOperator } from "@/lib/legal";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -12,7 +12,7 @@ export const metadata: Metadata = createPageMetadata({
 
 export default function MarketingConsentPage() {
   return <LegalDocument path={legalLinks.marketingConsent} title="Согласие на получение рекламных и информационных материалов" description="Отдельное добровольное согласие на сообщения о решениях и предложениях компании.">
-    <p className="legal-document__date">Редакция от {legalOperator.policyVersion}</p>
+    <p className="legal-document__date">Редакция от {legalDocumentDisplayDates.marketingConsent}</p>
     <p>Устанавливая отдельную необязательную отметку в форме, я предварительно, свободно и однозначно соглашаюсь получать от {legalOperator.name}, ОГРН {legalOperator.ogrn}, ИНН {legalOperator.inn}, рекламные и информационные сообщения.</p>
     <h2>Что может направляться</h2>
     <p>Информация о продукции и производственных возможностях, новых инженерных решениях, статьях, выставках, мероприятиях, каталогах, специальных предложениях и условиях сотрудничества.</p>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalDocument } from "@/components/LegalDocument";
-import { legalLinks, legalOperator } from "@/lib/legal";
+import { legalDocumentDisplayDates, legalLinks, legalOperator } from "@/lib/legal";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -12,7 +12,7 @@ export const metadata: Metadata = createPageMetadata({
 
 export default function TermsPage() {
   return <LegalDocument path={legalLinks.terms} title="Пользовательское соглашение" description="Условия использования материалов и сервисов сайта.">
-    <p className="legal-document__date">Редакция от {legalOperator.policyVersion}</p>
+    <p className="legal-document__date">Редакция от {legalDocumentDisplayDates.terms}</p>
     <h2>1. Владелец и назначение сайта</h2>
     <p>Владелец сайта steelprodukt.ru и обладатель прав на брендовые материалы — {legalOperator.name}, ОГРН {legalOperator.ogrn}, ИНН {legalOperator.inn}. Сайт предоставляет информацию о продукции, инженерных решениях и производственных возможностях бренда «{legalOperator.brand}».</p>
     <p>Информация на сайте не является публичной офертой. Окончательные характеристики, комплектность, цена, сроки, применимые стандарты и условия поставки определяются индивидуальным коммерческим предложением и договором.</p>
