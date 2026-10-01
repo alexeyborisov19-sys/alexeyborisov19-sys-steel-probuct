@@ -35,5 +35,8 @@ jobs:
           const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[714391927]},FieldNames:["Id","AdGroupId","State","Status","StatusClarification"]});const counts={};for(const a of ads){const key=a.State+"/"+a.Status;counts[key]=(counts[key]||0)+1;}console.log("STATUS",JSON.stringify(counts));console.log("PENDING",JSON.stringify(ads.filter(a=>a.Status!=="ACCEPTED")));
           console.log("CAMPAIGN",JSON.stringify(await api("campaigns","get",{SelectionCriteria:{Ids:[714391927]},FieldNames:["Id","State"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy"]})));
           
+          console.log("SPB_GROUPS",JSON.stringify(await api("adgroups","get",{SelectionCriteria:{Ids:[5798460250,5798460251,5798460252,5798460253,5798460254]},FieldNames:["Id","RegionIds"]})));
+          console.log("SPB_ACTIVE_ADS",JSON.stringify(ads.filter(a=>a.AdGroupId>=5798460250&&a.AdGroupId<=5798460254&&a.State==="ON")));
+          console.log("CHECKED_AT",new Date().toISOString());
           NODE
           node /tmp/direct-spb.mjs
