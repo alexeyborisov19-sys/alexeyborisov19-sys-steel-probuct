@@ -1,4 +1,4 @@
-target legal/processors-analytics-consent @ 13f8615b904846bbe4ce8cfc022cd306956e9bb5
+target legal/processors-analytics-consent @ 00761c1a2d77cf4b05c0ab71439e3d9162706847
 == npm ci
 
 added 372 packages in 5s
@@ -20,330 +20,207 @@ added 372 packages in 5s
 # Subtest: rejects an executable renamed to PDF
 ok 1446 - rejects an executable renamed to PDF
   ---
-  duration_ms: 1.994049
+  duration_ms: 1.946816
   ...
 # Subtest: rejects a fake PNG
 ok 1447 - rejects a fake PNG
   ---
-  duration_ms: 0.344331
+  duration_ms: 0.369865
   ...
 # Subtest: rejects a browser MIME that conflicts with the extension
 ok 1448 - rejects a browser MIME that conflicts with the extension
   ---
-  duration_ms: 0.3169
+  duration_ms: 0.344083
   ...
 # Subtest: accepts a ZIP only as an unverified archive
 ok 1449 - accepts a ZIP only as an unverified archive
   ---
-  duration_ms: 1.01071
+  duration_ms: 1.07039
   ...
 # Subtest: enforces maximum size before reading file content
 ok 1450 - enforces maximum size before reading file content
   ---
-  duration_ms: 2.086457
+  duration_ms: 3.050778
   ...
 # Subtest: quarantine uses private file and directory permissions
 ok 1451 - quarantine uses private file and directory permissions
   ---
-  duration_ms: 11.312552
+  duration_ms: 9.010786
   ...
 # Subtest: unavailable antivirus fails closed and leaves the file blocked in quarantine
 ok 1452 - unavailable antivirus fails closed and leaves the file blocked in quarantine
   ---
-  duration_ms: 7.108681
+  duration_ms: 4.829839
   ...
 # Subtest: accepts the DXF headers real exporters write
 ok 1453 - accepts the DXF headers real exporters write
   ---
-  duration_ms: 1.625182
+  duration_ms: 1.341576
   ...
 # Subtest: still refuses a file that only claims to be a DXF
 ok 1454 - still refuses a file that only claims to be a DXF
   ---
-  duration_ms: 0.932154
+  duration_ms: 0.819169
   ...
 # Subtest: a binary DXF still passes the signature check so the parser can name it
 ok 1455 - a binary DXF still passes the signature check so the parser can name it
   ---
-  duration_ms: 0.584187
+  duration_ms: 0.602273
   ...
 # Subtest: header exposes a keyboard skip action and uses centralized contact data
 ok 1456 - header exposes a keyboard skip action and uses centralized contact data
   ---
-  duration_ms: 4.48687
+  duration_ms: 4.609668
   ...
 # Subtest: engineering assistant launcher stays compact on small screens
 ok 1457 - engineering assistant launcher stays compact on small screens
   ---
-  duration_ms: 1.40182
+  duration_ms: 1.267661
   ...
 # Subtest: production service pages do not promise an unverified one-day response SLA
 ok 1458 - production service pages do not promise an unverified one-day response SLA
   ---
-  duration_ms: 1.069648
+  duration_ms: 1.253558
   ...
 # Subtest: real bent STEP retains warnings but supplies estimate-only cost with all 50 bends priced
 ok 1459 - real bent STEP retains warnings but supplies estimate-only cost with all 50 bends priced
   ---
-  duration_ms: 496.06374
+  duration_ms: 564.083696
   ...
 # Subtest: bent cost source rejects unknown warnings, missing blanks, extra solids and mismatched volume
 ok 1460 - bent cost source rejects unknown warnings, missing blanks, extra solids and mismatched volume
   ---
-  duration_ms: 2526.663335
+  duration_ms: 2217.544082
   ...
 # Subtest: 100×60 rectangle with four Ø6 holes gives diameter 6, ligament 7, side 60
 ok 1461 - 100×60 rectangle with four Ø6 holes gives diameter 6, ligament 7, side 60
   ---
-  duration_ms: 6.95231
+  duration_ms: 10.836509
   ...
 # Subtest: unordered reversed LINE rectangle and hole-to-hole clearance are measured exactly
 ok 1462 - unordered reversed LINE rectangle and hole-to-hole clearance are measured exactly
   ---
-  duration_ms: 1.153102
+  duration_ms: 1.158863
   ...
 # Subtest: solid rectangle treats hole rules as not applicable, still checks part size
 ok 1463 - solid rectangle treats hole rules as not applicable, still checks part size
   ---
-  duration_ms: 0.357431
+  duration_ms: 3.424019
   ...
 # Subtest: rejects touching, overlapping, nested, exterior, open and unknown geometry
 ok 1464 - rejects touching, overlapping, nested, exterior, open and unknown geometry
   ---
-  duration_ms: 23.818234
+  duration_ms: 42.812017
   ...
 # Subtest: norm absence, wrong applicability, missing source and invalid numbers never pass
 ok 1465 - norm absence, wrong applicability, missing source and invalid numbers never pass
   ---
-  duration_ms: 0.746408
+  duration_ms: 0.588547
   ...
 # Subtest: actual DXF parser output retains millimetres and supported feature values
 ok 1466 - actual DXF parser output retains millimetres and supported feature values
   ---
-  duration_ms: 6.226001
+  duration_ms: 6.8468
   ...
 # Subtest: open line paths retain invalid-production status but allow an explicit cost estimate
 ok 1467 - open line paths retain invalid-production status but allow an explicit cost estimate
   ---
-  duration_ms: 0.435837
+  duration_ms: 0.532851
   ...
 # Subtest: measured blank only obtains the estimate marker with matching server geometry and retained warning
 ok 1468 - measured blank only obtains the estimate marker with matching server geometry and retained warning
   ---
-  duration_ms: 4.49395
+  duration_ms: 3.361773
   ...
 # Subtest: blank estimate rejects inconsistent evidence, incomplete scope and suppressed diagnostics
 ok 1469 - blank estimate rejects inconsistent evidence, incomplete scope and suppressed diagnostics
   ---
-  duration_ms: 0.637626
+  duration_ms: 0.566832
   ...
 # Subtest: exact OCC prism proof accepts real plate with holes and rejects bent sheet
 ok 1470 - exact OCC prism proof accepts real plate with holes and rejects bent sheet
   ---
-  duration_ms: 655.845298
+  duration_ms: 740.278363
   ...
 # Subtest: failed boolean and wrong volume cannot prove a prism
 ok 1471 - failed boolean and wrong volume cannot prove a prism
   ---
-  duration_ms: 1840.762189
+  duration_ms: 1745.272307
   ...
 # Subtest: automatic video previews respect reduced motion, page visibility and viewport visibility
 ok 1472 - automatic video previews respect reduced motion, page visibility and viewport visibility
   ---
-  duration_ms: 10.56395
+  duration_ms: 4.42466
   ...
 # Subtest: organization schema does not advertise videos on unrelated pages
 ok 1473 - organization schema does not advertise videos on unrelated pages
   ---
-  duration_ms: 7.597166
+  duration_ms: 1.187584
   ...
 # Subtest: page-scoped video schemas expose valid absolute video metadata
 ok 1474 - page-scoped video schemas expose valid absolute video metadata
   ---
-  duration_ms: 0.456457
+  duration_ms: 0.453858
   ...
 # Subtest: visible video components emit their own VideoObject markup
 ok 1475 - visible video components emit their own VideoObject markup
   ---
-  duration_ms: 14.770814
+  duration_ms: 14.525372
   ...
 # Subtest: public metadata keeps the canonical origin and webmaster verification tokens
 ok 1476 - public metadata keeps the canonical origin and webmaster verification tokens
   ---
-  duration_ms: 1.227583
+  duration_ms: 1.436659
   ...
 # Subtest: Yandex ecommerce is consent-gated and uses the canonical dataLayer container
 ok 1477 - Yandex ecommerce is consent-gated and uses the canonical dataLayer container
   ---
-  duration_ms: 0.778936
+  duration_ms: 0.968024
   ...
 # Subtest: B2B ecommerce reports catalog interest without inventing online sales
 ok 1478 - B2B ecommerce reports catalog interest without inventing online sales
   ---
-  duration_ms: 0.291383
+  duration_ms: 0.403591
   ...
 # Subtest: Metrika sync metadata covers every reachGoal target exactly once
 ok 1479 - Metrika sync metadata covers every reachGoal target exactly once
   ---
-  duration_ms: 1.426808
+  duration_ms: 1.053114
   ...
 # Subtest: Metrika goal display names are unique and key conversions are favorites
 ok 1480 - Metrika goal display names are unique and key conversions are favorites
   ---
-  duration_ms: 0.207178
+  duration_ms: 0.167633
   ...
 # Subtest: site emits the primary Direct optimization goal on successful quote requests
 ok 1481 - site emits the primary Direct optimization goal on successful quote requests
   ---
-  duration_ms: 0.218364
+  duration_ms: 0.114992
   ...
 # Subtest: OAuth token normalization accepts safe copied formats
 ok 1482 - OAuth token normalization accepts safe copied formats
   ---
-  duration_ms: 0.453403
+  duration_ms: 0.337356
   ...
 # Subtest: OAuth token normalization rejects empty or unrelated URLs
 ok 1483 - OAuth token normalization rejects empty or unrelated URLs
   ---
-  duration_ms: 0.498049
+  duration_ms: 0.402954
   ...
 1..1483
 # tests 1491
 # suites 0
-# pass 1489
-# fail 2
+# pass 1491
+# fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 38563.391038
-== test exit 1
+# duration_ms 39372.759296
+== test exit 0
 == failing tests
-127:not ok 16 - Metrika runtime stays dynamically imported and requires explicit opt-in
-128-  ---
-129-  duration_ms: 6.56748
-130-  location: '/home/runner/work/alexeyborisov19-sys-steel-probuct/alexeyborisov19-sys-steel-probuct/site/tests/analytics.test.ts:2:6588'
-131-  failureType: 'testCodeFailure'
-132-  error: |-
-133-    cookie-banner legal routes must not be prefetched before consent
-134-    
-135-    3 !== 2
-136-    
-137-  code: 'ERR_ASSERTION'
-138-  name: 'AssertionError'
-139-  expected: 2
-140-  actual: 3
-141-  operator: 'strictEqual'
-142-  stack: |-
-143-    TestContext.<anonymous> (/home/runner/work/alexeyborisov19-sys-steel-probuct/alexeyborisov19-sys-steel-probuct/site/tests/analytics.test.ts:179:10)
-144-    Test.runInAsyncScope (node:async_hooks:211:14)
-145-    Test.run (node:internal/test_runner/test:931:25)
-146-    Test.processPendingSubtests (node:internal/test_runner/test:629:18)
-147-    Test.postRun (node:internal/test_runner/test:1042:19)
-148-    Test.run (node:internal/test_runner/test:970:12)
-149-    async Test.processPendingSubtests (node:internal/test_runner/test:629:7)
-150-  ...
-151-# Subtest: cookie consent keeps an in-memory choice when localStorage is unavailable
-152-ok 17 - cookie consent keeps an in-memory choice when localStorage is unavailable
-153-  ---
-154-  duration_ms: 0.407155
-155-  ...
-156-# Subtest: calculator stages never count as an accepted lead
-157-ok 18 - calculator stages never count as an accepted lead
-158-  ---
-159-  duration_ms: 0.707781
-160-  ...
-161-# Subtest: a phone link tap is a contact goal, never a submitted lead, and never carries the number
-162-ok 19 - a phone link tap is a contact goal, never a submitted lead, and never carries the number
-163-  ---
-164-  duration_ms: 0.258023
-165-  ...
-166-# Subtest: the consent-gated Metrika component tracks taps on every tel: link
-167-ok 20 - the consent-gated Metrika component tracks taps on every tel: link
-168-  ---
-169-  duration_ms: 0.164124
-170-  ...
-171-# Subtest: approved equality boundaries pass: diameter = thickness and ligament = 1 mm
-172-ok 21 - approved equality boundaries pass: diameter = thickness and ligament = 1 mm
-173-  ---
-174-  duration_ms: 4.657154
-175-  ...
-176-# Subtest: a hole or ligament below its approved minimum blocks, larger values pass
-177-ok 22 - a hole or ligament below its approved minimum blocks, larger values pass
-178-  ---
-179-  duration_ms: 2.033889
-180-  ...
-181-# Subtest: no minimum part-size norm, but working field and unknown geometry remain constrained
-182-ok 23 - no minimum part-size norm, but working field and unknown geometry remain constrained
-183-  ---
-184-  duration_ms: 0.768531
-185-  ...
-186-# Subtest: brand story is returned for identity and history questions
-187-ok 24 - brand story is returned for identity and history questions
---
-6872:not ok 1339 - static page titles stay inside what a search result shows
-6873-  ---
-6874-  duration_ms: 17.42651
-6875-  location: '/home/runner/work/alexeyborisov19-sys-steel-probuct/alexeyborisov19-sys-steel-probuct/site/tests/semantic-seo.test.ts:2:14565'
-6876-  failureType: 'testCodeFailure'
-6877-  error: 'app/(public)/legal/analytics-consent/page.tsx: title 62 символов — «Согласие на обработку данных для веб-аналитики | Сталь Продукт»'
-6878-  code: 'ERR_ASSERTION'
-6879-  name: 'AssertionError'
-6880-  expected: true
-6881-  actual: false
-6882-  operator: '=='
-6883-  stack: |-
-6884-    TestContext.<anonymous> (/home/runner/work/alexeyborisov19-sys-steel-probuct/alexeyborisov19-sys-steel-probuct/site/tests/semantic-seo.test.ts:211:12)
-6885-    Test.runInAsyncScope (node:async_hooks:211:14)
-6886-    Test.run (node:internal/test_runner/test:931:25)
-6887-    Test.processPendingSubtests (node:internal/test_runner/test:629:18)
-6888-    Test.postRun (node:internal/test_runner/test:1042:19)
-6889-    Test.run (node:internal/test_runner/test:970:12)
-6890-    async Test.processPendingSubtests (node:internal/test_runner/test:629:7)
-6891-  ...
-6892-# Subtest: SEO image audit unwraps local Next Image sources but skips remote optimizer dependencies
-6893-ok 1340 - SEO image audit unwraps local Next Image sources but skips remote optimizer dependencies
-6894-  ---
-6895-  duration_ms: 0.880667
-6896-  ...
-6897-# Subtest: industry solution and metal body product own different primary intents
-6898-ok 1341 - industry solution and metal body product own different primary intents
-6899-  ---
-6900-  duration_ms: 3.781323
-6901-  ...
-6902-# Subtest: climate solution and basket product own different primary intents
-6903-ok 1342 - climate solution and basket product own different primary intents
-6904-  ---
-6905-  duration_ms: 0.516066
-6906-  ...
-6907-# Subtest: all four commercial pages keep self canonicals and stay indexable
-6908-ok 1343 - all four commercial pages keep self canonicals and stay indexable
-6909-  ---
-6910-  duration_ms: 10.285689
-6911-  ...
-6912-# Subtest: finds a conservative thickness candidate from dominant parallel sheet faces
-6913-ok 1344 - finds a conservative thickness candidate from dominant parallel sheet faces
-6914-  ---
-6915-  duration_ms: 2.406282
-6916-  ...
-6917-# Subtest: uses repeated parallel-face evidence without promoting it to a production fact
-6918-ok 1345 - uses repeated parallel-face evidence without promoting it to a production fact
-6919-  ---
-6920-  duration_ms: 0.58586
-6921-  ...
-6922-# Subtest: refuses a thick block-like offset as sheet thickness
-6923-ok 1346 - refuses a thick block-like offset as sheet thickness
-6924-  ---
-6925-  duration_ms: 0.361877
-6926-  ...
-6927-# Subtest: accepts a coaxial partial-cylinder pair as a bend candidate when topology and thickness agree
-6928-ok 1347 - accepts a coaxial partial-cylinder pair as a bend candidate when topology and thickness agree
-6929-  ---
-6930-  duration_ms: 0.534544
-6931-  ...
-6932-# Subtest: rejects a geometrically plausible cylinder pair when edge topology does not connect both bend skins
 == build
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:7240) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:7258) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
    Generating static pages (0/122) ...
    Generating static pages (30/122) 
