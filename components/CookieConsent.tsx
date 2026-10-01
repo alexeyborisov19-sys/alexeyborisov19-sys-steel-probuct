@@ -22,8 +22,13 @@ function saveChoice(analytics: boolean) {
 }
 
 function hasAnalyticsConsent() {
-  // Missing or malformed readable storage cannot restore an older permission.
   return readChoice()?.analytics === true;
+}
+
+function reloadAfterRevocation() {
+  // The consent event has already stopped the running counter. Never reload
+  // into an older persistent grant if the browser rejected the new refusal.
+  if (choiceStore.canReloadAfterRevocation(getStorage)) window.location.reload();
 }
 
 export function CookieSettingsButton({ className = "" }: { className?: string }) {
@@ -60,7 +65,7 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
       consentEvent,
       getStorage,
       store: choiceStore,
-      onRevoked: () => window.location.reload(),
+      onRevoked: reloadAfterRevocation,
     });
     window.addEventListener(settingsEvent, openSettings);
     window.addEventListener(consentEvent, syncChoice);
@@ -107,12 +112,7 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
     const analyticsWasAllowed = hasAnalyticsConsent();
     saveChoice(analytics);
     setVisible(false);
-
-    // Reload after opt-out to remove vendor JavaScript already executed in this
-    // document. The storage observer applies the same rule in other open tabs.
-    if (analyticsWasAllowed && analytics === false) {
-      window.location.reload();
-    }
+    if (analyticsWasAllowed && analytics === false) reloadAfterRevocation();
   }
 
   if (!visible || !showHere) return null;

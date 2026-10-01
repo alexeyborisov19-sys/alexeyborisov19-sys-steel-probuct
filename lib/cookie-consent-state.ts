@@ -5,7 +5,7 @@ export type CookieChoice = {
   updatedAt: string;
 };
 
-export type ConsentStorage = Pick<Storage, "getItem" | "setItem">;
+export type ConsentStorage = Pick<Storage, "getItem" | "setItem"> & Partial<Pick<Storage, "removeItem">>;
 
 export function parseCookieChoice(stored: string | null): CookieChoice | null {
   if (!stored) return null;
@@ -21,21 +21,19 @@ export function parseCookieChoice(stored: string | null): CookieChoice | null {
   }
 }
 
-/** A denied write keeps only this document's explicit choice; a missing or
- * invalid readable record is never replaced by an older in-memory permission. */
+/** Only a deliberate current-document choice survives a denied write.
+ * Readable missing/invalid records and failed reads never revive cached grants. */
 export function createCookieChoiceStore(key: string) {
   let transientChoice: CookieChoice | null = null;
   let volatileChoice = false;
 
   function read(getStorage: () => ConsentStorage): CookieChoice | null {
     if (volatileChoice) return transientChoice;
-    let stored: string | null;
     try {
-      stored = getStorage().getItem(key);
+      transientChoice = parseCookieChoice(getStorage().getItem(key));
     } catch {
-      return transientChoice;
+      transientChoice = null;
     }
-    transientChoice = parseCookieChoice(stored);
     return transientChoice;
   }
 
@@ -47,6 +45,11 @@ export function createCookieChoiceStore(key: string) {
       getStorage().setItem(key, JSON.stringify(choice));
     } catch {
       volatileChoice = true;
+      if (!analytics) {
+        // A quota error can prevent replacement while still permitting removal.
+        // Never leave an older grant behind when the browser lets us remove it.
+        try { getStorage().removeItem?.(key); } catch { /* Current document remains opted out. */ }
+      }
     }
     return choice;
   }
@@ -56,11 +59,24 @@ export function createCookieChoiceStore(key: string) {
     volatileChoice = false;
   }
 
-  return { read, write, invalidate };
+  function hasVolatileRefusal() {
+    return volatileChoice && transientChoice?.analytics === false;
+  }
+
+  function canReloadAfterRevocation(getStorage: () => ConsentStorage) {
+    try {
+      // Inspect persistent storage, not the in-memory override that a reload loses.
+      return parseCookieChoice(getStorage().getItem(key))?.analytics !== true;
+    } catch {
+      return false;
+    }
+  }
+
+  return { read, write, invalidate, hasVolatileRefusal, canReloadAfterRevocation };
 }
 
-/** Read the current value instead of event.newValue: queued storage events may
- * be stale. A reload removes vendor code that has already executed in this tab. */
+/** Read current storage instead of event.newValue: queued events can be stale.
+ * Dispatch revocation before reloading so running analytics is stopped first. */
 export function observeCookieChoiceStorage(options: {
   target: EventTarget;
   key: string;
@@ -78,8 +94,10 @@ export function observeCookieChoiceStorage(options: {
     try {
       if (change.storageArea && change.storageArea !== getStorage()) return;
     } catch {
-      // Invalidate first so blocked storage cannot resurrect an old permission.
+      // A failed read below must invalidate any cached persistent permission.
     }
+    // An unpersisted explicit refusal must not be undone by a stale stored grant.
+    if (store.hasVolatileRefusal()) return;
     const wasAllowed = previouslyAllowed;
     store.invalidate();
     previouslyAllowed = store.read(getStorage)?.analytics === true;
