@@ -1,4 +1,4 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 18:40 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 18:45 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
@@ -127,29 +127,10 @@ async function siteProbe() {
   }
 }
 
-// One-off, approved by the owner on 2026-10-01: one clearly marked test request through the
-// real contact form endpoint, to see whether the e-mail notification is delivered.
-async function testLead() {
-  const f = new FormData();
-  f.append("name", "ТЕСТ Claude — проверка формы");
-  f.append("phone", "+7 910 780 37 23");
-  f.append("company", "Сталь Продукт (тест)");
-  f.append("message", "Тестовая заявка для проверки доставки писем с формы сайта. Отвечать не нужно.");
-  f.append("pageUrl", "https://www.steelprodukt.ru/contacts?utm_source=test&utm_medium=check");
-  f.append("referrer", "");
-  f.append("personalDataConsent", "yes");
-  f.append("consentTimestamp", new Date().toISOString());
-  f.append("utm_source", "test");
-  f.append("utm_medium", "check");
-  const t0 = Date.now();
-  try {
-    const res = await fetch("https://www.steelprodukt.ru/api/quote", { method: "POST", body: f, headers: { Origin: "https://www.steelprodukt.ru", Referer: "https://www.steelprodukt.ru/contacts" }, signal: AbortSignal.timeout(60000) });
-    out.test_lead = { status: res.status, ms: Date.now() - t0, body: await res.json().catch(() => null) };
-  } catch (e) { out.test_lead = { error: e?.cause?.code || e?.name, ms: Date.now() - t0 }; }
-}
+// The one-off test request (owner-approved) was sent on 2026-10-01 18:29 MSK as SP-20261001-CF9E637F
+// and accepted with e-mail delivery; the step is removed so reruns never send another.
 
 async function main() {
-  await testLead();
   await siteProbe();
   if (!token) { out.errors.push({ step: "token", error: "missing" }); return; }
   const c = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "State", "Status"] }, "guard");
