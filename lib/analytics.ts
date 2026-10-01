@@ -32,6 +32,7 @@ export const yandexGoalByEvent: Record<string, string[]> = {
   bim_export_prepared: ["bim_export_prepared"],
   quote_files_cta_click: ["quote_files_cta_click"],
   email_click: ["ym-show-contacts", "email_click"],
+  phone_click: ["ym-show-contacts", "phone_click"],
   exhibition_official_click: ["exhibition_official_click"],
   exhibition_quote_click: ["exhibition_quote_click"],
   assistant_opened: ["assistant_opened"],
