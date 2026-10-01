@@ -22,26 +22,45 @@ jobs:
           async function api(service,method,params){
            const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
            if(login)headers["Client-Login"]=login;
-           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}),signal:AbortSignal.timeout(30000)});
-           const d=await r.json();if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
           }
           async function all(service,key,params){
            let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
           }
-          const geo=(await api("dictionaries","get",{DictionaryNames:["GeoRegions"]})).GeoRegions;
-          const city=geo.find(x=>x.GeoRegionName==="Санкт-Петербург");if(!city)throw Error("City not resolved");
-          console.log("CITY",JSON.stringify(city));
-          const campaigns=await all("campaigns","Campaigns",{SelectionCriteria:{},FieldNames:["Id","Name","Type","State"],UnifiedCampaignFieldNames:["Settings"],TextCampaignFieldNames:["Settings"]});
-          console.log("CAMPAIGNS",JSON.stringify(campaigns));
-          const ids=campaigns.filter(c=>c.State!=="ARCHIVED").map(c=>c.Id);
-          const groups=ids.length?await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:ids},FieldNames:["Id","Name","CampaignId","RegionIds","Status","Type"]}):[];
-          console.log("GROUPS",JSON.stringify(groups));
-          const used=new Set(groups.flatMap(g=>g.RegionIds.map(Math.abs)));console.log("USED_GEO",JSON.stringify(geo.filter(g=>used.has(g.GeoRegionId))));
-          const keywords=groups.length?await all("keywords","Keywords",{SelectionCriteria:{AdGroupIds:groups.map(g=>g.Id)},FieldNames:["Id","AdGroupId","CampaignId","Keyword","State"]}):[];
-          console.log("SPB_KEYWORDS",JSON.stringify(keywords.filter(k=>/петербург|петербурж|спб|питер|saint.?petersburg/i.test(k.Keyword))));
-          const ads=groups.length?await all("ads","Ads",{SelectionCriteria:{AdGroupIds:groups.map(g=>g.Id)},FieldNames:["Id","AdGroupId","CampaignId","State","Type"],TextAdFieldNames:["Title","Title2","Text","Href"]}):[];
-          console.log("SPB_ADS",JSON.stringify(ads.filter(a=>/петербург|петербурж|спб|питер|saint.?petersburg/i.test(JSON.stringify(a.TextAd||{})))));
-          console.log("COUNTS",JSON.stringify({campaigns:campaigns.length,groups:groups.length,keywords:keywords.length,ads:ads.length}));
+          
+          const campaignId=714391927;
+          const groups=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","Name","CampaignId","RegionIds","Status","NegativeKeywords","TrackingParams"]});
+          const keywords=await all("keywords","Keywords",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","AdGroupId","CampaignId","Keyword","State","Status"],AutotargetingSettingsCategoriesFieldNames:["Exact","Narrow","Alternative","Accessory","Broader"],AutotargetingSettingsBrandOptionsFieldNames:["WithoutBrands","WithAdvertiserBrand","WithCompetitorsBrand"]});
+          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","AdGroupId","CampaignId","State","Type","Status","StatusClarification"],TextAdFieldNames:["Title","Title2","Text","Href","SitelinkSetId","AdExtensionIds"],ResponsiveAdFieldNames:["Href"]});
+          const campaign=await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","Type","State","DailyBudget","NegativeKeywords"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy","CounterIds","PriorityGoals","TrackingParams","AttributionModel"]});
+          console.log("BEFORE_CAMPAIGN",JSON.stringify(campaign));
+          console.log("ALL_GROUPS",JSON.stringify(groups));console.log("ALL_KEYWORDS",JSON.stringify(keywords));console.log("ALL_ADS",JSON.stringify(ads));
+          if(campaign.length!==1||campaign[0].State!=="ON")throw Error("Campaign guard failed");
+          const spbGroups=groups.filter(g=>g.RegionIds.includes(10174));if(spbGroups.length!==5||spbGroups.some(g=>!/СПб\/ЛО/.test(g.Name)))throw Error("Geo guard failed");
+          function spb(s){return /петербург|петербурж|спб|питер|saint.?petersburg/i.test(s);}
+          const ks=keywords.filter(k=>k.State==="ON"&&spb(k.Keyword.split(/\s+/).filter(t=>!t.startsWith("-")).join(" ")));
+          const as=ads.filter(a=>a.State==="ON"&&spb(JSON.stringify(a.TextAd||{})));
+          console.log("SPB_PLAN",JSON.stringify({groupIds:spbGroups.map(g=>g.Id),keywords:ks.map(k=>({Id:k.Id,Keyword:k.Keyword})),ads:as.map(a=>a.Id),expandedGeo:"YES -> NO",rollback:"restore logged regions and keyword/ad states; restore interest setting"}));
+          function check(d){for(const r of Object.values(d).flat()){if(r.Errors?.length)throw Error(JSON.stringify(r));}return d;}
+          console.log("SPB_GEO_RESULT",JSON.stringify(check(await api("adgroups","update",{AdGroups:spbGroups.map(g=>({Id:g.Id,RegionIds:[...g.RegionIds.filter(r=>r!==-2),-2]}))}))));
+          if(ks.length)console.log("SPB_KEYWORDS_RESULT",JSON.stringify(check(await api("keywords","suspend",{SelectionCriteria:{Ids:ks.map(k=>k.Id)}}))));
+          if(as.length)console.log("SPB_ADS_RESULT",JSON.stringify(check(await api("ads","suspend",{SelectionCriteria:{Ids:as.map(a=>a.Id)}}))));
+          console.log("SPB_CAMPAIGN_RESULT",JSON.stringify(check(await api("campaigns","update",{Campaigns:[{Id:campaignId,UnifiedCampaign:{Settings:[{Option:"ENABLE_AREA_OF_INTEREST_TARGETING",Value:"NO"}]}}]}))));
+          const afterGroups=await all("adgroups","AdGroups",{SelectionCriteria:{Ids:spbGroups.map(g=>g.Id)},FieldNames:["Id","RegionIds"]});
+          const afterKeywords=ks.length?await all("keywords","Keywords",{SelectionCriteria:{Ids:ks.map(k=>k.Id)},FieldNames:["Id","State"]}):[];
+          const afterAds=as.length?await all("ads","Ads",{SelectionCriteria:{Ids:as.map(a=>a.Id)},FieldNames:["Id","State"]}):[];
+          const afterCampaign=await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","State","DailyBudget"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy"]});
+          if(afterGroups.some(g=>!g.RegionIds.includes(-2))||afterKeywords.some(k=>k.State==="ON")||afterAds.some(a=>a.State==="ON")||afterCampaign[0].UnifiedCampaign.Settings.find(s=>s.Option==="ENABLE_AREA_OF_INTEREST_TARGETING")?.Value!=="NO")throw Error("SPB readback failed");
+          console.log("SPB_VERIFIED",JSON.stringify({groups:afterGroups,keywordsSuspended:afterKeywords.length,adsSuspended:afterAds.length,campaign:afterCampaign}));
+          async function report(label,from,to,type,fields){
+          const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru",processingMode:"auto",returnMoneyInMicros:"false",skipReportHeader:"true",skipReportSummary:"true"};if(login)headers["Client-Login"]=login;
+          const body=JSON.stringify({params:{SelectionCriteria:{DateFrom:from,DateTo:to,Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:[String(campaignId)]}]},FieldNames:fields,ReportName:"steel-direct-"+label+"-20261001",ReportType:type,DateRangeType:"CUSTOM_DATE",Format:"TSV",IncludeVAT:"NO",IncludeDiscount:"NO"}});
+          for(let i=0;i<12;i++){const r=await fetch("https://api.direct.yandex.com/json/v501/reports",{method:"POST",headers,body,signal:AbortSignal.timeout(30000)});const t=await r.text();if(r.status===200){console.log("REPORT_"+label+"\n"+t);return;}if(![201,202].includes(r.status)){console.log("REPORT_ERROR_"+label,r.status,t);return;}await new Promise(ok=>setTimeout(ok,Math.min(15000,Math.max(1000,Number(r.headers.get("retryIn")||5)*1000))));}console.log("REPORT_PENDING",label);
+          }
+          await report("LATEST","2026-09-24","2026-09-30","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost","Conversions"]);
+          await report("PREVIOUS","2026-09-17","2026-09-23","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost","Conversions"]);
+          await report("QUERIES","2026-09-17","2026-09-30","SEARCH_QUERY_PERFORMANCE_REPORT",["AdGroupId","SearchQuery","Criterion","Impressions","Clicks","Cost"]);
           
           NODE
           node /tmp/direct-spb.mjs
