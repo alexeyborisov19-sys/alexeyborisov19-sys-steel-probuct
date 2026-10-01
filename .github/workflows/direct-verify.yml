@@ -1,0 +1,48 @@
+name: Verify Direct campaign corrections
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-verify.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read targeting without changing advertising
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function apiOnce(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function api(service,method,params){for(let i=0;i<4;i++){try{return await apiOnce(service,method,params);}catch(e){if(i===3||!String(e).includes('"error_code":1000'))throw e;console.log("TRANSIENT_RETRY",service,method,i+1);await new Promise(r=>setTimeout(r,3000));}}}
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          
+          
+          const campaignId=714391927;
+          const campaign=await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","State","NegativeKeywords"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy","CounterIds","PriorityGoals"]});
+          const groups=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","Name","RegionIds","NegativeKeywords"]});
+          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","State","Status","AdGroupId"],ResponsiveAdFieldNames:["Texts","Titles","Href","SitelinkSetId"],TextAdFieldNames:["Href","Text","Title"]});
+          const keywords=await all("keywords","Keywords",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","Keyword","State","AdGroupId"]});
+          const spb=groups.filter(g=>g.Name.includes("СПб"));const ids=new Set(spb.map(g=>g.Id));
+          console.log("FINAL_CAMPAIGN",JSON.stringify(campaign));console.log("FINAL_GROUPS",JSON.stringify(groups));console.log("FINAL_ADS",JSON.stringify(ads));
+          console.log("FINAL_SPB",JSON.stringify({groups:spb,enabledAds:ads.filter(a=>ids.has(a.AdGroupId)&&a.State==="ON"),enabledExplicitKeywords:keywords.filter(k=>k.State==="ON"&&/петербург|спб/i.test(k.Keyword.split(/\s+/).filter(t=>!t.startsWith("-")).join(" ")))}));
+          const sl=[...new Set(ads.map(a=>a.ResponsiveAd?.SitelinkSetId).filter(Boolean))];console.log("FINAL_SITELINKS",JSON.stringify(await all("sitelinks","SitelinksSets",{SelectionCriteria:{Ids:sl},FieldNames:["Id","Sitelinks"]})));
+          const urls=[...new Set(ads.filter(a=>a.AdGroupId>=5807078455||a.State==="ON").map(a=>a.ResponsiveAd?.Href||a.TextAd?.Href).filter(Boolean).map(s=>{const u=new URL(s);u.search="";return u.href;}))];
+          await Promise.allSettled(urls.map(async url=>{try{const r=await fetch(url,{signal:AbortSignal.timeout(30000)});const html=await r.text();console.log("FINAL_LANDING",JSON.stringify({url,status:r.status,finalUrl:r.url,title:html.match(/<title>(.*?)<\/title>/)?.[1]}));}catch(e){console.log("FINAL_LANDING_ERROR",url,e.name);}}));
+          
+          NODE
+          node /tmp/direct-spb.mjs
