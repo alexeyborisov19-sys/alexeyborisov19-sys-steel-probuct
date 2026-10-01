@@ -1,11 +1,12 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 17:00 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 17:05 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
 //  N) negative keywords from negatives-spec.json are merged into the campaign and the new groups (nothing removed);
 //  1) services sitelink set (the first try was rejected for the "×" sign) attached to every services ad;
 //  2) extra ads from extra-spec.json for groups with fewer than three ads, sent to moderation;
-//  3) one-off (2026-10-01, owner's request): the old groups run again next to the new ones, except St. Petersburg;
+//  3) done once on 2026-10-01 17:00 MSK (owner's request): 50 ads of the old groups resumed, St. Petersburg left off.
+//     The step is removed so later runs never undo a manual stop;
 //  4) read back, plus today's group statistics and search queries (read-only reports).
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -170,21 +171,6 @@ async function main() {
     const m = await api("ads", "moderate", { SelectionCriteria: { Ids: part } }, `moderate_${part.length}`);
     out.steps.moderate = m?.result?.ModerateResults ?? m?.error;
   }
-
-  // ---------- 3. one-off: old groups run again, St. Petersburg stays off ----------
-  ads = await readAds("statuses");
-  const RESUME = [/^МК (Москва\/МО|ЦФО|Россия) \| /, /^Корзины \| Кондиционеры$/, /^Доборы \| /, /^Решётки \| /, /^Корпуса \| /,
-    /^Закладные \| /, /^По КД \| /, /^Услуги \| /, /^Онлайн-калькулятор \| /];
-  const resumeIds = ads.filter((a) => {
-    const n = nameOf[a.AdGroupId] || "";
-    return RESUME.some((re) => re.test(n)) && !/СПб/.test(n) && a.State === "SUSPENDED" && a.Status === "ACCEPTED";
-  }).map((a) => a.Id);
-  RESUME_ALLOWED = new Set(resumeIds.map(String));
-  out.steps.resumed_groups = [...new Set(ads.filter((a) => resumeIds.includes(a.Id)).map((a) => nameOf[a.AdGroupId]))];
-  for (const part of chunk(resumeIds, 1000)) {
-    await api("ads", "resume", { SelectionCriteria: { Ids: part } }, `resume_old_${part.length}`);
-  }
-  out.steps.resumed_ads = resumeIds.length;
 
   // ---------- 4. read back ----------
   out.after = { groups, ads: await readAds("after") };
