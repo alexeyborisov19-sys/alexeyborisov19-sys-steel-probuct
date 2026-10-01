@@ -1,0 +1,421 @@
+target seo/kassety-korziny-landings @ de3f931de347a9c72e3202a07e2f3408eec7032d
+== npm ci
+
+added 372 packages in 8s
+== npm ci exit 0
+== typecheck
+
+> steel-product-website@0.1.3 typecheck
+> tsc --noEmit
+
+== typecheck exit 0
+== lint
+
+> steel-product-website@0.1.3 lint
+> eslint . --max-warnings=0
+
+== lint exit 0
+== test
+  ...
+# Subtest: rejects an executable renamed to PDF
+ok 1440 - rejects an executable renamed to PDF
+  ---
+  duration_ms: 3.035466
+  ...
+# Subtest: rejects a fake PNG
+ok 1441 - rejects a fake PNG
+  ---
+  duration_ms: 0.52925
+  ...
+# Subtest: rejects a browser MIME that conflicts with the extension
+ok 1442 - rejects a browser MIME that conflicts with the extension
+  ---
+  duration_ms: 0.632753
+  ...
+# Subtest: accepts a ZIP only as an unverified archive
+ok 1443 - accepts a ZIP only as an unverified archive
+  ---
+  duration_ms: 1.502981
+  ...
+# Subtest: enforces maximum size before reading file content
+ok 1444 - enforces maximum size before reading file content
+  ---
+  duration_ms: 2.474597
+  ...
+# Subtest: quarantine uses private file and directory permissions
+ok 1445 - quarantine uses private file and directory permissions
+  ---
+  duration_ms: 20.758771
+  ...
+# Subtest: unavailable antivirus fails closed and leaves the file blocked in quarantine
+ok 1446 - unavailable antivirus fails closed and leaves the file blocked in quarantine
+  ---
+  duration_ms: 7.827366
+  ...
+# Subtest: accepts the DXF headers real exporters write
+ok 1447 - accepts the DXF headers real exporters write
+  ---
+  duration_ms: 1.913127
+  ...
+# Subtest: still refuses a file that only claims to be a DXF
+ok 1448 - still refuses a file that only claims to be a DXF
+  ---
+  duration_ms: 1.138839
+  ...
+# Subtest: a binary DXF still passes the signature check so the parser can name it
+ok 1449 - a binary DXF still passes the signature check so the parser can name it
+  ---
+  duration_ms: 0.866289
+  ...
+# Subtest: header exposes a keyboard skip action and uses centralized contact data
+ok 1450 - header exposes a keyboard skip action and uses centralized contact data
+  ---
+  duration_ms: 6.278981
+  ...
+# Subtest: engineering assistant launcher stays compact on small screens
+ok 1451 - engineering assistant launcher stays compact on small screens
+  ---
+  duration_ms: 1.377787
+  ...
+# Subtest: production service pages do not promise an unverified one-day response SLA
+ok 1452 - production service pages do not promise an unverified one-day response SLA
+  ---
+  duration_ms: 1.475399
+  ...
+# Subtest: real bent STEP retains warnings but supplies estimate-only cost with all 50 bends priced
+ok 1453 - real bent STEP retains warnings but supplies estimate-only cost with all 50 bends priced
+  ---
+  duration_ms: 764.655346
+  ...
+# Subtest: bent cost source rejects unknown warnings, missing blanks, extra solids and mismatched volume
+ok 1454 - bent cost source rejects unknown warnings, missing blanks, extra solids and mismatched volume
+  ---
+  duration_ms: 2908.838067
+  ...
+# Subtest: 100×60 rectangle with four Ø6 holes gives diameter 6, ligament 7, side 60
+ok 1455 - 100×60 rectangle with four Ø6 holes gives diameter 6, ligament 7, side 60
+  ---
+  duration_ms: 9.270781
+  ...
+# Subtest: unordered reversed LINE rectangle and hole-to-hole clearance are measured exactly
+ok 1456 - unordered reversed LINE rectangle and hole-to-hole clearance are measured exactly
+  ---
+  duration_ms: 1.331981
+  ...
+# Subtest: solid rectangle treats hole rules as not applicable, still checks part size
+ok 1457 - solid rectangle treats hole rules as not applicable, still checks part size
+  ---
+  duration_ms: 0.465471
+  ...
+# Subtest: rejects touching, overlapping, nested, exterior, open and unknown geometry
+ok 1458 - rejects touching, overlapping, nested, exterior, open and unknown geometry
+  ---
+  duration_ms: 41.552506
+  ...
+# Subtest: norm absence, wrong applicability, missing source and invalid numbers never pass
+ok 1459 - norm absence, wrong applicability, missing source and invalid numbers never pass
+  ---
+  duration_ms: 0.751226
+  ...
+# Subtest: actual DXF parser output retains millimetres and supported feature values
+ok 1460 - actual DXF parser output retains millimetres and supported feature values
+  ---
+  duration_ms: 8.309708
+  ...
+# Subtest: open line paths retain invalid-production status but allow an explicit cost estimate
+ok 1461 - open line paths retain invalid-production status but allow an explicit cost estimate
+  ---
+  duration_ms: 0.594102
+  ...
+# Subtest: measured blank only obtains the estimate marker with matching server geometry and retained warning
+ok 1462 - measured blank only obtains the estimate marker with matching server geometry and retained warning
+  ---
+  duration_ms: 1.744794
+  ...
+# Subtest: blank estimate rejects inconsistent evidence, incomplete scope and suppressed diagnostics
+ok 1463 - blank estimate rejects inconsistent evidence, incomplete scope and suppressed diagnostics
+  ---
+  duration_ms: 7.924263
+  ...
+# Subtest: exact OCC prism proof accepts real plate with holes and rejects bent sheet
+ok 1464 - exact OCC prism proof accepts real plate with holes and rejects bent sheet
+  ---
+  duration_ms: 1269.489837
+  ...
+# Subtest: failed boolean and wrong volume cannot prove a prism
+ok 1465 - failed boolean and wrong volume cannot prove a prism
+  ---
+  duration_ms: 2252.48852
+  ...
+# Subtest: automatic video previews respect reduced motion, page visibility and viewport visibility
+ok 1466 - automatic video previews respect reduced motion, page visibility and viewport visibility
+  ---
+  duration_ms: 7.280829
+  ...
+# Subtest: organization schema does not advertise videos on unrelated pages
+ok 1467 - organization schema does not advertise videos on unrelated pages
+  ---
+  duration_ms: 6.742492
+  ...
+# Subtest: page-scoped video schemas expose valid absolute video metadata
+ok 1468 - page-scoped video schemas expose valid absolute video metadata
+  ---
+  duration_ms: 0.700711
+  ...
+# Subtest: visible video components emit their own VideoObject markup
+ok 1469 - visible video components emit their own VideoObject markup
+  ---
+  duration_ms: 23.162276
+  ...
+# Subtest: public metadata keeps the canonical origin and webmaster verification tokens
+ok 1470 - public metadata keeps the canonical origin and webmaster verification tokens
+  ---
+  duration_ms: 1.781252
+  ...
+# Subtest: Yandex ecommerce is consent-gated and uses the canonical dataLayer container
+ok 1471 - Yandex ecommerce is consent-gated and uses the canonical dataLayer container
+  ---
+  duration_ms: 1.214571
+  ...
+# Subtest: B2B ecommerce reports catalog interest without inventing online sales
+ok 1472 - B2B ecommerce reports catalog interest without inventing online sales
+  ---
+  duration_ms: 0.432438
+  ...
+# Subtest: Metrika sync metadata covers every reachGoal target exactly once
+ok 1473 - Metrika sync metadata covers every reachGoal target exactly once
+  ---
+  duration_ms: 1.580054
+  ...
+# Subtest: Metrika goal display names are unique and key conversions are favorites
+ok 1474 - Metrika goal display names are unique and key conversions are favorites
+  ---
+  duration_ms: 0.351187
+  ...
+# Subtest: site emits the primary Direct optimization goal on successful quote requests
+ok 1475 - site emits the primary Direct optimization goal on successful quote requests
+  ---
+  duration_ms: 0.188472
+  ...
+# Subtest: OAuth token normalization accepts safe copied formats
+ok 1476 - OAuth token normalization accepts safe copied formats
+  ---
+  duration_ms: 0.479386
+  ...
+# Subtest: OAuth token normalization rejects empty or unrelated URLs
+ok 1477 - OAuth token normalization rejects empty or unrelated URLs
+  ---
+  duration_ms: 0.489866
+  ...
+1..1477
+# tests 1485
+# suites 0
+# pass 1485
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51431.034611
+== test exit 0
+== build
+(node:7476) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7470) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+   Generating static pages (0/121) ...
+   Generating static pages (30/121) 
+   Generating static pages (60/121) 
+   Generating static pages (90/121) 
+ ✓ Generating static pages (121/121)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                                       Size  First Load JS
+┌ ○ /                                                                            276 B         120 kB
+├ ○ /_not-found                                                                  312 B         103 kB
+├ ƒ /api/assistant                                                               312 B         103 kB
+├ ƒ /api/assistant/lead                                                          312 B         103 kB
+├ ƒ /api/assistant/quote                                                         312 B         103 kB
+├ ƒ /api/assistant/tts                                                           312 B         103 kB
+├ ƒ /api/calc-metallokassety                                                     312 B         103 kB
+├ ƒ /api/health                                                                  312 B         103 kB
+├ ƒ /api/internal/online-order/production-calculations/[fileName]/recalculate    312 B         103 kB
+├ ƒ /api/internal/online-order/refresh-prices                                    312 B         103 kB
+├ ƒ /api/internal/personal-data/access-events                                    312 B         103 kB
+├ ƒ /api/internal/personal-data/access-events/verify                             312 B         103 kB
+├ ƒ /api/internal/personal-data/auth/change-password                             312 B         103 kB
+├ ƒ /api/internal/personal-data/auth/login                                       312 B         103 kB
+├ ƒ /api/internal/personal-data/auth/logout                                      312 B         103 kB
+├ ƒ /api/internal/personal-data/auth/sessions                                    312 B         103 kB
+├ ƒ /api/internal/personal-data/auth/step-up                                     312 B         103 kB
+├ ƒ /api/internal/personal-data/authority-requests                               312 B         103 kB
+├ ƒ /api/internal/personal-data/authority-requests/[id]                          312 B         103 kB
+├ ƒ /api/internal/personal-data/backups                                          312 B         103 kB
+├ ƒ /api/internal/personal-data/backups/[id]                                     312 B         103 kB
+├ ƒ /api/internal/personal-data/consents                                         312 B         103 kB
+├ ƒ /api/internal/personal-data/consents/[auditId]                               312 B         103 kB
+├ ƒ /api/internal/personal-data/deletions                                        312 B         103 kB
+├ ƒ /api/internal/personal-data/deletions/[id]                                   312 B         103 kB
+├ ƒ /api/internal/personal-data/exports                                          312 B         103 kB
+├ ƒ /api/internal/personal-data/exports/[id]                                     312 B         103 kB
+├ ƒ /api/internal/personal-data/exports/[id]/download                            312 B         103 kB
+├ ƒ /api/internal/personal-data/incidents                                        312 B         103 kB
+├ ƒ /api/internal/personal-data/incidents/[id]                                   312 B         103 kB
+├ ƒ /api/internal/personal-data/integrity                                        312 B         103 kB
+├ ƒ /api/internal/personal-data/leads                                            312 B         103 kB
+├ ƒ /api/internal/personal-data/leads/[requestId]                                312 B         103 kB
+├ ƒ /api/internal/personal-data/leads/[requestId]/assign                         312 B         103 kB
+├ ƒ /api/internal/personal-data/leads/[requestId]/attachments/[storageId]        312 B         103 kB
+├ ƒ /api/internal/personal-data/leads/[requestId]/comments                       312 B         103 kB
+├ ƒ /api/internal/personal-data/leads/[requestId]/retention                      312 B         103 kB
+├ ƒ /api/internal/personal-data/leads/[requestId]/reveal                         312 B         103 kB
+├ ƒ /api/internal/personal-data/leads/[requestId]/workflow                       312 B         103 kB
+├ ƒ /api/internal/personal-data/legal-documents                                  312 B         103 kB
+├ ƒ /api/internal/personal-data/legal-holds                                      312 B         103 kB
+├ ƒ /api/internal/personal-data/legal-holds/[id]                                 312 B         103 kB
+├ ƒ /api/internal/personal-data/profile                                          312 B         103 kB
+├ ƒ /api/internal/personal-data/profile/sessions                                 312 B         103 kB
+├ ƒ /api/internal/personal-data/retention                                        312 B         103 kB
+├ ƒ /api/internal/personal-data/search/contact                                   312 B         103 kB
+├ ƒ /api/internal/personal-data/search/text                                      312 B         103 kB
+├ ƒ /api/internal/personal-data/subject-requests                                 312 B         103 kB
+├ ƒ /api/internal/personal-data/subject-requests/[id]                            312 B         103 kB
+├ ƒ /api/internal/personal-data/systems                                          312 B         103 kB
+├ ƒ /api/internal/personal-data/systems/[id]                                     312 B         103 kB
+├ ƒ /api/internal/personal-data/users                                            312 B         103 kB
+├ ƒ /api/internal/personal-data/users/[id]                                       312 B         103 kB
+├ ƒ /api/internal/production-order/bitrix                                        312 B         103 kB
+├ ƒ /api/internal/production-order/package                                       312 B         103 kB
+├ ƒ /api/internal/production-order/storage-settings                              312 B         103 kB
+├ ƒ /api/internal/production-order/storage-settings/browse                       312 B         103 kB
+├ ƒ /api/online-order/cad/analyze                                                312 B         103 kB
+├ ƒ /api/online-order/calculate                                                  312 B         103 kB
+├ ƒ /api/quote                                                                   312 B         103 kB
+├ ○ /apple-icon.png                                                                0 B            0 B
+├ ○ /articles                                                                    197 B         120 kB
+├ ● /articles/[slug]                                                             276 B         120 kB
+├   ├ /articles/nesting-raskladka-lista-kak-schitat-ekonomiyu
+├   ├ /articles/maskirovanie-pered-poroshkovoy-okraskoy
+├   ├ /articles/kontrol-pervoy-detali-pered-seriey
+├   └ [+22 more paths]
+├ ○ /articles/china-tech                                                         276 B         120 kB
+├ ƒ /articles/ezhednevnaya-svodka-metalloobrabotka-proizvodstvo-28-07-2026       312 B         103 kB
+├ ƒ /articles/ezhednevnaya-svodka-rossiya-politika-promyshlennost-28-07-2026     312 B         103 kB
+├ ○ /articles/metall-dlya-goroda-proekty-stal-produkt                            276 B         120 kB
+├ ○ /articles/ploshchad-fasada-raskhod-metalla-metallokassety                    276 B         120 kB
+├ ○ /articles/uzly-fasada-metallokassety                                         276 B         120 kB
+├ ○ /articles/vystavki-fasady-arhitektura-2026                                 1.27 kB         121 kB
+├ ○ /articles/vystavki-metalloobrabotka-kitay-2026                               276 B         120 kB
+├ ○ /calculator-metallokassety                                                   206 B         125 kB
+├ ○ /company                                                                   3.14 kB         123 kB
+├ ○ /company/facts                                                               276 B         120 kB
+├ ○ /contacts                                                                  8.78 kB         128 kB
+├ ƒ /dekorattivnie                                                               312 B         103 kB
+├ ○ /feed.xml                                                                    312 B         103 kB
+├ ○ /icon.svg                                                                      0 B            0 B
+├ ○ /indexnow-key.txt                                                            312 B         103 kB
+├ ○ /industries                                                                  276 B         120 kB
+├ ● /industries/[slug]                                                           276 B         120 kB
+├   ├ /industries/zhilye-kompleksy
+├   ├ /industries/biznes-centry
+├   ├ /industries/torgovye-centry
+├   └ [+13 more paths]
+├ ƒ /internal/personal-data                                                      657 B         107 kB
+├ ƒ /internal/personal-data/[module]                                             657 B         107 kB
+├ ƒ /internal/personal-data/access-log                                           187 B         110 kB
+├ ƒ /internal/personal-data/authority-requests                                   657 B         107 kB
+├ ƒ /internal/personal-data/authority-requests/[id]                            1.85 kB         108 kB
+├ ƒ /internal/personal-data/authority-requests/new                             1.85 kB         108 kB
+├ ƒ /internal/personal-data/backups                                            1.85 kB         108 kB
+├ ƒ /internal/personal-data/change-password                                    1.36 kB         107 kB
+├ ƒ /internal/personal-data/consents                                             657 B         107 kB
+├ ƒ /internal/personal-data/consents/[auditId]                                   657 B         107 kB
+├ ƒ /internal/personal-data/deletions                                          1.67 kB         112 kB
+├ ƒ /internal/personal-data/deletions/[id]                                     1.67 kB         112 kB
+├ ƒ /internal/personal-data/exports                                              186 B         110 kB
+├ ƒ /internal/personal-data/exports/[id]                                       1.67 kB         112 kB
+├ ƒ /internal/personal-data/exports/new                                        1.85 kB         108 kB
+├ ƒ /internal/personal-data/incidents                                            657 B         107 kB
+├ ƒ /internal/personal-data/incidents/[id]                                     1.85 kB         108 kB
+├ ƒ /internal/personal-data/incidents/new                                      1.85 kB         108 kB
+├ ƒ /internal/personal-data/integrity                                            187 B         110 kB
+├ ƒ /internal/personal-data/leads                                                185 B         110 kB
+├ ƒ /internal/personal-data/leads/[requestId]                                    185 B         110 kB
+├ ƒ /internal/personal-data/legal-documents                                    1.85 kB         108 kB
+├ ƒ /internal/personal-data/legal-holds                                        1.67 kB         112 kB
+├ ƒ /internal/personal-data/legal-holds/[id]                                   1.85 kB         108 kB
+├ ƒ /internal/personal-data/login                                               1.2 kB         104 kB
+├ ƒ /internal/personal-data/mail                                                 657 B         107 kB
+├ ƒ /internal/personal-data/mail/[uid]                                           657 B         107 kB
+├ ƒ /internal/personal-data/profile                                              184 B         110 kB
+├ ƒ /internal/personal-data/retention                                            657 B         107 kB
+├ ƒ /internal/personal-data/subject-requests                                     657 B         107 kB
+├ ƒ /internal/personal-data/subject-requests/[id]                              1.85 kB         108 kB
+├ ƒ /internal/personal-data/subject-requests/new                               1.85 kB         108 kB
+├ ƒ /internal/personal-data/systems                                            1.85 kB         108 kB
+├ ƒ /internal/personal-data/users                                              1.79 kB         112 kB
+├ ƒ /internal/personal-data/users/[id]                                         1.79 kB         112 kB
+├ ƒ /internal/production-calculations                                            657 B         107 kB
+├ ƒ /internal/production-calculations/[fileName]                               2.81 kB         109 kB
+├ ƒ /internal/production-order                                                   657 B         107 kB
+├ ƒ /internal/production-order/from-calculation/[fileName]                     8.77 kB         115 kB
+├ ƒ /internal/production-order/settings                                        3.04 kB         109 kB
+├ ƒ /kronhtein                                                                   312 B         103 kB
+├ ƒ /krovla                                                                      312 B         103 kB
+├ ○ /legal/cookies                                                               276 B         120 kB
+├ ○ /legal/marketing-consent                                                     276 B         120 kB
+├ ○ /legal/personal-data-consent                                                 276 B         120 kB
+├ ○ /legal/privacy                                                               276 B         120 kB
+├ ○ /legal/requisites                                                            276 B         120 kB
+├ ○ /legal/services                                                              276 B         120 kB
+├ ○ /legal/terms                                                                 276 B         120 kB
+├ ○ /llms-full.txt                                                               312 B         103 kB
+├ ○ /llms.txt                                                                    312 B         103 kB
+├ ƒ /lomedii                                                                     312 B         103 kB
+├ ○ /manifest.webmanifest                                                        312 B         103 kB
+├ ○ /online-order                                                              66.1 kB         185 kB
+├ ƒ /otdekrf                                                                     312 B         103 kB
+├ ○ /production                                                                2.84 kB         122 kB
+├ ● /production/[slug]                                                           276 B         120 kB
+├   ├ /production/proektirovanie-metalloizdeliy
+├   ├ /production/lazernaya-rezka-metalla
+├   ├ /production/gibka-listovogo-metalla
+├   └ [+3 more paths]
+├ ○ /products                                                                    276 B         120 kB
+├ ● /products/[slug]                                                             276 B         120 kB
+├   ├ /products/metallokassety-standart
+├   ├ /products/metallokassety-premium
+├   ├ /products/metallokassety-azhur
+├   └ [+6 more paths]
+├ ○ /products/dobornye-elementy                                                  276 B         120 kB
+├ ○ /products/korziny-dlya-konditsionerov                                        276 B         120 kB
+├ ○ /products/metallicheskie-korpusa                                             276 B         120 kB
+├ ○ /products/metallokassety                                                     204 B         125 kB
+├ ○ /products/metallokassety/bim                                               84.3 kB         204 kB
+├ ○ /products/ventilyacionnye-reshetki                                           276 B         120 kB
+├ ○ /products/zakladnye-detali                                                   276 B         120 kB
+├ ○ /projects                                                                    276 B         120 kB
+├ ○ /projects/solovinaya-roshcha                                                 276 B         120 kB
+├ ○ /robots.txt                                                                  312 B         103 kB
+├ ○ /sitemap-images.xml                                                          312 B         103 kB
+├ ○ /sitemap.xml                                                                 312 B         103 kB
+├ ○ /solutions                                                                   276 B         120 kB
+├ ● /solutions/[slug]                                                            276 B         120 kB
+├   ├ /solutions/climate
+├   ├ /solutions/industry
+├   ├ /solutions/engineering
+├   └ /solutions/custom
+└ ○ /tools                                                                     1.39 kB         121 kB
++ First Load JS shared by all                                                   103 kB
+  ├ chunks/1255-fc6c00ab2f765339.js                                            46.4 kB
+  ├ chunks/4bd1b696-f785427dddbba9fb.js                                        54.2 kB
+  └ other shared chunks (total)                                                2.05 kB
+
+
+ƒ Middleware                                                                   36.1 kB
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+== build exit 0
