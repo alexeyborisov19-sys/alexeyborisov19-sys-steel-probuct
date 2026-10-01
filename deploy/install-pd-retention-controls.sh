@@ -15,3 +15,7 @@ if ! systemctl start steelprodukt-pd-retention-check.service; then
 fi
 systemctl start steelprodukt-pd-export-expiry.service
 systemctl is-active steelprodukt-pd-retention-check.timer steelprodukt-pd-export-expiry.timer
+# Verify the replacement backup code through the existing protected service.
+# Its local rotation runs only after successful restore verification.
+systemctl start steelprodukt-pd-offsite-backup.service
+systemctl show steelprodukt-pd-offsite-backup.service --property=Result --property=ExecMainStatus

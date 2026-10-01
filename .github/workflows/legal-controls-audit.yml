@@ -5,12 +5,17 @@ on:
     paths:
       - '.github/workflows/legal-controls-audit.yml'
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Publish to Beget"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   diagnose:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Configure secure server access
@@ -67,6 +72,11 @@ jobs:
           files=[f for f in root.glob('steelprodukt-pd-*.tar.gz.enc') if f.is_file() and not f.is_symlink()]
           print('LOCAL_BACKUP='+json.dumps({'count':len(files),'older_than_30d':sum(now.timestamp()-f.stat().st_mtime>30*86400 for f in files),'latest_age_hours':round((now.timestamp()-max(f.stat().st_mtime for f in files))/3600,1) if files else None}))
           result=subprocess.run(['systemctl','is-active','steelprodukt-pd-offsite-backup.timer'],capture_output=True,text=True)
+          for unit in ['steelprodukt-pd-retention-check.timer','steelprodukt-pd-export-expiry.timer']:
+              print(unit+'='+subprocess.run(['systemctl','is-active',unit],capture_output=True,text=True).stdout.strip())
+          report=dbpath.parent/'retention-monitor.json'
+          if report.is_file():
+              value=json.loads(report.read_text()); print('RETENTION_CHECK='+json.dumps({key:value.get(key) for key in ['checkedAt','examined','indexed','expired','status','deletionPerformed','findings']}))
           print('BACKUP_TIMER='+result.stdout.strip())
           PYTHON
           REMOTE
