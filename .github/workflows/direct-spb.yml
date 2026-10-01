@@ -32,7 +32,7 @@ jobs:
           const campaignId=714391927;
           const groups=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","Name","CampaignId","RegionIds","Status","NegativeKeywords","TrackingParams"]});
           const keywords=await all("keywords","Keywords",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","AdGroupId","CampaignId","Keyword","State","Status"],AutotargetingSettingsCategoriesFieldNames:["Exact","Narrow","Alternative","Accessory","Broader"],AutotargetingSettingsBrandOptionsFieldNames:["WithoutBrands","WithAdvertiserBrand","WithCompetitorsBrand"]});
-          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","AdGroupId","CampaignId","State","Type","Status","StatusClarification"],TextAdFieldNames:["Title","Title2","Text","Href","SitelinkSetId","AdExtensionIds"],ResponsiveAdFieldNames:["Href"]});
+          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","AdGroupId","CampaignId","State","Type","Status","StatusClarification"],TextAdFieldNames:["Title","Title2","Text","Href","SitelinkSetId","AdExtensions"],ResponsiveAdFieldNames:["Href"]});
           const campaign=await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","Type","State","DailyBudget","NegativeKeywords"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy","CounterIds","PriorityGoals","TrackingParams","AttributionModel"]});
           console.log("BEFORE_CAMPAIGN",JSON.stringify(campaign));
           console.log("ALL_GROUPS",JSON.stringify(groups));console.log("ALL_KEYWORDS",JSON.stringify(keywords));console.log("ALL_ADS",JSON.stringify(ads));
