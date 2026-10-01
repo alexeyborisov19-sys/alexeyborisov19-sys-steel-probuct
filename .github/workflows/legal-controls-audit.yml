@@ -78,5 +78,12 @@ jobs:
           if report.is_file():
               value=json.loads(report.read_text()); print('RETENTION_CHECK='+json.dumps({key:value.get(key) for key in ['checkedAt','examined','indexed','expired','status','deletionPerformed','findings']}))
           print('BACKUP_TIMER='+result.stdout.strip())
+          for unit in ['steelprodukt-pd-retention-check.service','steelprodukt-pd-export-expiry.service','steelprodukt-pd-offsite-backup.service']:
+              print('SERVICE='+unit)
+              log=subprocess.run(['journalctl','-u',unit,'--since','2026-10-01 19:51:00 UTC','--no-pager','-o','cat'],capture_output=True,text=True).stdout
+              for line in log.splitlines():
+                  if any(word in line.lower() for word in ['failed','error','readonly','read-only','denied','retention','examined','status','traceback']):
+                      print(line[:600])
+
           PYTHON
           REMOTE
