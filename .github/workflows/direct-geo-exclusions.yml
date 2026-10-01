@@ -1,0 +1,42 @@
+name: Direct explicit city exclusions
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-geo-exclusions.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Exclude Saint Petersburg in every group
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function apiOnce(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function api(service,method,params){for(let i=0;i<4;i++){try{return await apiOnce(service,method,params);}catch(e){if(i===3||!String(e).includes('"error_code":1000'))throw e;console.log("TRANSIENT_RETRY",service,method,i+1);await new Promise(r=>setTimeout(r,3000));}}}
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          
+          
+          const groups=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[714391927]},FieldNames:["Id","Name","RegionIds"]});console.log("GEO_GROUPS_BEFORE",JSON.stringify(groups));
+          const updates=groups.filter(g=>!g.RegionIds.includes(-2)).map(g=>({Id:g.Id,RegionIds:[...g.RegionIds.filter(r=>r!==2),-2]}));
+          for(let i=0;i<updates.length;i+=10){const r=await api("adgroups","update",{AdGroups:updates.slice(i,i+10)});console.log("GEO_UPDATE",JSON.stringify(r));if(r.UpdateResults.some(x=>x.Errors?.length))throw Error("Group update errors");}
+          const after=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[714391927]},FieldNames:["Id","Name","RegionIds"]});console.log("GEO_GROUPS_AFTER",JSON.stringify(after));if(after.some(g=>!g.RegionIds.includes(-2)))throw Error("Missing SPB exclusion");console.log("ALL_GROUPS_SPB_EXCLUDED",after.length);
+          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[714391927]},FieldNames:["Id","AdGroupId","State","Status"]});const counts={};for(const a of ads){const key=a.State+"/"+a.Status;counts[key]=(counts[key]||0)+1;}console.log("AD_STATUS_COUNTS",JSON.stringify(counts));console.log("SPB_ACTIVE_ADS",JSON.stringify(ads.filter(a=>a.AdGroupId>=5798460250&&a.AdGroupId<=5798460254&&a.State==="ON")));
+          
+          NODE
+          node /tmp/direct-spb.mjs
