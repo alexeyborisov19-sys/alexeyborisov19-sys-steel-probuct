@@ -1,4 +1,4 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 19:00 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 19:05 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
@@ -144,10 +144,9 @@ async function keyGoals() {
   out.key_goals.before = { counters: uc.CounterIds, items };
   const have = new Set(items.map((i) => i.GoalId));
   const value = Math.max(0, ...items.map((i) => i.Value || 0)) || 1000000000;
-  const add = want.filter(([, id]) => id && !have.has(id)).map(([, id]) => ({ GoalId: id, Value: value, IsMetrikaSourceOfValue: "NO" }));
+  const add = want.filter(([, id]) => id && !have.has(id)).map(([, id]) => ({ GoalId: id, Value: value, Operation: "SET" }));
   if (add.length) {
-    const merged = [...items.map((i) => ({ GoalId: i.GoalId, Value: i.Value, IsMetrikaSourceOfValue: i.IsMetrikaSourceOfValue || "NO" })), ...add];
-    await api("campaigns", "update", { Campaigns: [{ Id: CAMPAIGN_ID, UnifiedCampaign: { PriorityGoals: { Items: merged, Operation: "SET" } } }] }, "key_goals");
+    await api("campaigns", "update", { Campaigns: [{ Id: CAMPAIGN_ID, UnifiedCampaign: { PriorityGoals: { Items: add } } }] }, "key_goals");
   }
   const c2 = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id"], UnifiedCampaignFieldNames: ["CounterIds", "PriorityGoals"] }, "key_goals_after");
   out.key_goals.after = c2?.result?.Campaigns?.[0]?.UnifiedCampaign?.PriorityGoals?.Items;
