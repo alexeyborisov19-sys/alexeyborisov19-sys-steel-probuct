@@ -38,5 +38,7 @@ jobs:
           console.log("SPB_GROUPS",JSON.stringify(await api("adgroups","get",{SelectionCriteria:{Ids:[5798460250,5798460251,5798460252,5798460253,5798460254]},FieldNames:["Id","RegionIds"]})));
           console.log("SPB_ACTIVE_ADS",JSON.stringify(ads.filter(a=>a.AdGroupId>=5798460250&&a.AdGroupId<=5798460254&&a.State==="ON")));
           console.log("CHECKED_AT",new Date().toISOString());
+          const groups=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[714391927]},FieldNames:["Id","Name","RegionIds"]});
+          console.log("SERVICE_GEOGRAPHY",JSON.stringify(groups.filter(g=>/гиб|свар|услуг/i.test(g.Name)).map(g=>({...g,Ads:ads.filter(a=>a.AdGroupId===g.Id)}))));
           NODE
           node /tmp/direct-spb.mjs
