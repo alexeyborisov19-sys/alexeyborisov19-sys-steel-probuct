@@ -56,6 +56,7 @@ jobs:
           step "typecheck" npm run typecheck
           step "lint" npm run lint
           step "test" npm test
+          { echo "== failing tests"; grep -n -A60 "^not ok" /tmp/step.log | head -400; } >> "$LOG"
           step "build" npm run build
           exit 0
 
