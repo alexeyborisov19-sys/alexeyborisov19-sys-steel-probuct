@@ -1,5 +1,6 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 09:45 MSK.
-//  0) the redundant draft campaign 714957797 is deleted (only that id, only while it is a draft without impressions);
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 09:50 MSK.
+//  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
+//     (only these ids, only while they are a draft or archived and have no impressions and no clicks);
 //  1) services sitelink set (the first try was rejected for the "×" sign) attached to every services ad;
 //  2) extra ads from extra-spec.json for groups with fewer than three ads, sent to moderation;
 //  3) old cassette/basket groups are suspended only for the product whose new groups all have an accepted ad;
@@ -10,7 +11,7 @@ const CAMPAIGN_ID = 714391927;
 const extra = JSON.parse(readFileSync(".yandex-report/extra-spec.json", "utf8"));
 const base = JSON.parse(readFileSync(".yandex-report/campaign-spec.json", "utf8"));
 const SV_CALLOUTS = [44698613, 44698991, 44261432, 44698992];
-const DRAFT_TO_DELETE = 714957797;
+const DELETE_IDS = [714957797, 714090502, 714382608, 714388573, 714388647, 714391871];
 const out = { generated_at: new Date().toISOString(), pass: "finish", calls: [], steps: {}, errors: [] };
 const UTM = "utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}";
 const isServices = (name) => /^Услуги (Смоленск|Москва Калуга Брянск) \| /.test(name);
@@ -28,8 +29,9 @@ const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
 
 const FORBIDDEN = new Set(["resume", "unarchive", "archive", "delete"]);
 async function api(service, method, params, label) {
-  const draftDelete = service === "campaigns" && method === "delete"
-    && JSON.stringify(params) === JSON.stringify({ SelectionCriteria: { Ids: [DRAFT_TO_DELETE] } });
+  const ids = params?.SelectionCriteria?.Ids || [];
+  const draftDelete = service === "campaigns" && method === "delete" && ids.length > 0
+    && ids.every((id) => DELETE_IDS.includes(id) && id !== CAMPAIGN_ID);
   if (FORBIDDEN.has(method) && !draftDelete) throw new Error(`method ${method} is not allowed in this script`);
   const headers = { Authorization: `Bearer ${token}`, "Accept-Language": "ru", "Content-Type": "application/json; charset=utf-8" };
   if (login) headers["Client-Login"] = login;
@@ -77,12 +79,14 @@ async function main() {
     SelectionCriteria: {}, FieldNames: ["Id", "Name", "State", "Status", "Type", "Statistics"],
   }, label))?.result?.Campaigns || [];
   const all = await listCampaigns("all_before");
-  const draft = all.find((x) => x.Id === DRAFT_TO_DELETE);
-  if (draft && draft.Status === "DRAFT" && draft.State !== "ON" && !(draft.Statistics?.Impressions > 0)) {
-    const d = await api("campaigns", "delete", { SelectionCriteria: { Ids: [DRAFT_TO_DELETE] } }, "draft");
-    out.steps.draft_deleted = d?.result?.DeleteResults ?? d?.error;
+  const junk = all.filter((x) => DELETE_IDS.includes(x.Id) && x.Id !== CAMPAIGN_ID
+    && (x.Status === "DRAFT" || x.State === "ARCHIVED") && x.State !== "ON"
+    && !(x.Statistics?.Impressions > 0) && !(x.Statistics?.Clicks > 0));
+  if (junk.length) {
+    const d = await api("campaigns", "delete", { SelectionCriteria: { Ids: junk.map((x) => x.Id) } }, `leftovers_${junk.length}`);
+    out.steps.deleted = d?.result?.DeleteResults ?? d?.error;
   } else {
-    out.steps.draft_deleted = draft ? { skipped: { Status: draft.Status, State: draft.State, Statistics: draft.Statistics } } : "already gone";
+    out.steps.deleted = "nothing to delete";
   }
   out.steps.campaigns = (await listCampaigns("all_after")).map((x) => ({ Id: x.Id, Name: x.Name, State: x.State, Status: x.Status, Statistics: x.Statistics }));
 
