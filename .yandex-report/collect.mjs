@@ -1,10 +1,11 @@
-// Read-only collector, run 2: Webmaster query analytics (per page / per query, with demand)
-// and Wordstat frequencies via Direct API v4 Live for commercial phrases.
-// Full results go to /tmp/report.json (encrypted by the workflow). The public log gets labels and HTTP codes only.
+// Read-only collector, run 3: current Yandex Direct setup and the search queries behind ad clicks,
+// Metrika view of ad traffic, and extra Wordstat frequencies for a commercial campaign.
+// Nothing here changes the Direct account. Results go to /tmp/report.json (encrypted by the workflow).
 import { writeFileSync } from "node:fs";
 
-const out = { generated_at: new Date().toISOString(), calls: [], webmaster: {}, wordstat: {} };
+const out = { generated_at: new Date().toISOString(), calls: [], direct: {}, metrika: {}, wordstat: {} };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const COUNTER_ID = "112542227";
 
 function normToken(raw = "") {
   let v = String(raw).trim().replace(/^OAuth\s+/i, "").replace(/^Bearer\s+/i, "");
@@ -13,215 +14,207 @@ function normToken(raw = "") {
   return v.trim();
 }
 
-async function call(label, url, { token, method = "GET", body, auth = "OAuth" } = {}) {
-  let status = 0, parsed = null;
+async function call(label, url, { method = "GET", headers = {}, body, raw = false } = {}) {
+  let status = 0, parsed = null, resHeaders = {};
   try {
-    const headers = { Accept: "application/json" };
-    if (token && auth) headers.Authorization = `${auth} ${token}`;
-    if (body !== undefined) headers["Content-Type"] = "application/json; charset=utf-8";
     const res = await fetch(url, {
       method,
-      headers,
+      headers: { Accept: "application/json", ...(body !== undefined ? { "Content-Type": "application/json; charset=utf-8" } : {}), ...headers },
       body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(40000),
+      signal: AbortSignal.timeout(60000),
     });
     status = res.status;
+    resHeaders = Object.fromEntries(res.headers.entries());
     const text = await res.text();
-    try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text.slice(0, 3000); }
+    if (raw) parsed = text;
+    else { try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text.slice(0, 4000); } }
   } catch (e) {
     parsed = { error: "NETWORK_ERROR", code: e?.cause?.code || e?.name || "UNKNOWN" };
   }
   out.calls.push({ label, status });
   console.log(`${label}: HTTP ${status}`);
-  return { ok: status >= 200 && status < 300, status, body: parsed };
+  return { ok: status >= 200 && status < 300, status, body: parsed, headers: resHeaders };
 }
 
-// Collapse daily statistics into totals so the report stays small.
-function aggregate(body) {
-  const rows = body?.text_indicator_to_statistics;
-  if (!Array.isArray(rows)) return null;
-  const dates = new Set();
-  const items = rows.map((r) => {
-    const acc = { IMPRESSIONS: 0, CLICKS: 0, DEMAND: 0, POS_W: 0, POS_N: 0 };
-    for (const s of r.statistics || []) {
-      if (s.date) dates.add(String(s.date).slice(0, 10));
-      const v = Number(s.value) || 0;
-      if (s.field === "IMPRESSIONS") acc.IMPRESSIONS += v;
-      else if (s.field === "CLICKS") acc.CLICKS += v;
-      else if (s.field === "DEMAND") acc.DEMAND += v;
-    }
-    // position weighted by daily impressions
-    const byDate = {};
-    for (const s of r.statistics || []) {
-      const d = String(s.date).slice(0, 10);
-      byDate[d] ??= {};
-      byDate[d][s.field] = Number(s.value) || 0;
-    }
-    for (const d of Object.values(byDate)) {
-      if (d.POSITION && d.IMPRESSIONS) { acc.POS_W += d.POSITION * d.IMPRESSIONS; acc.POS_N += d.IMPRESSIONS; }
-    }
-    return {
-      value: r.text_indicator?.value,
-      type: r.text_indicator?.type,
-      impressions: acc.IMPRESSIONS,
-      clicks: acc.CLICKS,
-      demand: acc.DEMAND,
-      position: acc.POS_N ? +(acc.POS_W / acc.POS_N).toFixed(2) : null,
-    };
-  });
-  const sorted = [...dates].sort();
-  return { count: body.count, date_from: sorted[0] || null, date_to: sorted.at(-1) || null, days: sorted.length, items };
-}
-
-// ---------------- WEBMASTER QUERY ANALYTICS ----------------
-const wmCandidates = [
-  ["YANDEX_WEBMASTER_OAUTH_TOKEN", process.env.YW_TOKEN],
-  ["YANDEX_DIRECT_OAUTH_TOKEN", process.env.YD_TOKEN],
-  ["YANDEX_OAUTH_TOKEN", process.env.YANDEX_OAUTH_TOKEN],
-  ["YANDEX_METRIKA_OAUTH_TOKEN", process.env.YM_TOKEN],
-].map(([n, v]) => [n, normToken(v || "")]).filter(([, v]) => v);
-
-let yw = "", uid = null;
-for (const [name, tok] of wmCandidates) {
-  const u = await call(`wm.user[${name}]`, "https://api.webmaster.yandex.net/v4/user", { token: tok });
-  if (u.ok && u.body?.user_id) { yw = tok; uid = u.body.user_id; out.webmaster.token_secret_used = name; break; }
-}
-
-if (uid) {
-  const hostId = "https:www.steelprodukt.ru:443";
-  const qa = `https://api.webmaster.yandex.net/v4/user/${uid}/hosts/${encodeURIComponent(hostId)}/query-analytics/list`;
-
-  async function qaList(label, body) {
-    const variants = [
-      body,
-      { ...body, filters: { ...(body.filters || {}), statistic_filters: [] } },
-      (() => { const b = { ...body }; delete b.device_type_indicator; return b; })(),
-    ];
-    let last = null;
-    for (const [i, v] of variants.entries()) {
-      const r = await call(`wm.qa.${label}${i ? `#v${i}` : ""}`, qa, { token: yw, method: "POST", body: v });
-      if (r.ok) {
-        const agg = aggregate(r.body);
-        return agg ? { request: v, ...agg } : { request: v, raw_head: JSON.stringify(r.body).slice(0, 4000) };
-      }
-      last = { request: v, status: r.status, error: r.body };
-      if (r.status !== 400) break;
-    }
-    return last;
-  }
-
-  const base = { offset: 0, limit: 500, device_type_indicator: "ALL", text_indicator: "QUERY", region_ids: [], filters: {} };
-
-  out.webmaster.qa_urls = await qaList("urls", { ...base, text_indicator: "URL" });
-  out.webmaster.qa_queries = await qaList("queries", base);
-  if (out.webmaster.qa_queries?.count > 500) {
-    out.webmaster.qa_queries_p2 = await qaList("queries_p2", { ...base, offset: 500 });
-    if (out.webmaster.qa_queries?.count > 1000) out.webmaster.qa_queries_p3 = await qaList("queries_p3", { ...base, offset: 1000 });
-    if (out.webmaster.qa_queries?.count > 1500) out.webmaster.qa_queries_p4 = await qaList("queries_p4", { ...base, offset: 1500 });
-  }
-  out.webmaster.qa_queries_smolensk = await qaList("queries_smolensk", { ...base, region_ids: [12] });
-  out.webmaster.qa_queries_moscow = await qaList("queries_moscow", { ...base, region_ids: [213] });
-
-  // Queries landing on each commercial page (cross filter by URL).
-  const pages = [
-    "/products/metallokassety", "/products/metallokassety-standart", "/products/metallokassety-premium",
-    "/products/metallokassety-azhur", "/products/metallokassety-relef", "/calculator-metallokassety",
-    "/production/lazernaya-rezka-metalla", "/production/gibka-listovogo-metalla",
-    "/production/poroshkovaya-okraska-metalla", "/production/svarka-i-sborka-metalloizdeliy",
-    "/production/proektirovanie-metalloizdeliy", "/products/korziny-dlya-konditsionerov",
-    "/products/metallicheskie-korpusa", "/products/ventilyacionnye-reshetki", "/products/zakladnye-detali",
-    "/products/dobornye-elementy", "/products/akvilon", "/products/pozharnye-otsechki",
-    "/products/otkosy-dlya-okon", "/products/otlivy-dlya-okon", "/products/parapetnye-kryshki",
-    "/solutions/custom", "/solutions/industry", "/solutions/climate", "/production", "/products", "/",
-  ];
-  out.webmaster.qa_by_page = {};
-  for (const p of pages) {
-    const url = `https://www.steelprodukt.ru${p}`;
-    out.webmaster.qa_by_page[p] = await qaList(`page${p.replaceAll("/", "_")}`, {
-      ...base,
-      limit: 200,
-      filters: { text_filters: [{ text_indicator: "URL", operation: "TEXT_MATCH", value: url }] },
-    });
-    if (out.webmaster.qa_by_page[p]?.status === 400 || out.webmaster.qa_by_page[p]?.error) {
-      out.webmaster.qa_by_page[p] = await qaList(`page${p.replaceAll("/", "_")}#contains`, {
-        ...base,
-        limit: 200,
-        filters: { text_filters: [{ text_indicator: "URL", operation: "TEXT_CONTAINS", value: p === "/" ? "steelprodukt.ru/" : p }] },
-      });
-    }
-  }
-
-  // All queries containing commercial stems (beyond the top-500 list).
-  const stems = ["кассет", "лазер", "резк", "гибк", "гнут", "окрас", "покрас", "порошк", "корзин", "кондиц", "корпус", "шкаф",
-    "металлоизд", "изделия из", "решет", "решёт", "отлив", "откос", "парапет", "закладн", "доборн", "смоленск", "на заказ", "по чертеж"];
-  out.webmaster.qa_by_stem = {};
-  for (const s of stems) {
-    out.webmaster.qa_by_stem[s] = await qaList(`stem`, {
-      ...base,
-      filters: { text_filters: [{ text_indicator: "QUERY", operation: "TEXT_CONTAINS", value: s }] },
-    });
-  }
-}
-
-// ---------------- WORDSTAT via Direct API v4 Live ----------------
 const yd = normToken(process.env.YD_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "");
 const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
+const ym = normToken(process.env.YM_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "");
+
+function dHeaders(extra = {}) {
+  const h = { Authorization: `Bearer ${yd}`, "Accept-Language": "ru", ...extra };
+  if (login) h["Client-Login"] = login;
+  return h;
+}
+
+async function direct(service, label, params, fallbacks = []) {
+  for (const [i, p] of [params, ...fallbacks].entries()) {
+    const r = await call(`direct.${label}${i ? `#fb${i}` : ""}`, `https://api.direct.yandex.com/json/v501/${service}`, {
+      method: "POST", headers: dHeaders(), body: { method: "get", params: p },
+    });
+    if (r.ok && !r.body?.error) return r.body?.result ?? r.body;
+    if (i === fallbacks.length) return { error: r.body?.error ?? r.body, status: r.status };
+  }
+}
+
+// ---------------- METRIKA: goals and ad traffic ----------------
+let goals = [];
+if (ym) {
+  const g = await call("metrika.goals", `https://api-metrika.yandex.net/management/v1/counter/${COUNTER_ID}/goals`, { headers: { Authorization: `OAuth ${ym}` } });
+  goals = (g.body?.goals || []).map((x) => ({ id: x.id, name: x.name, type: x.type, target: (x.conditions || [])[0]?.url ?? null }));
+  out.metrika.goals = goals;
+
+  async function report(label, params) {
+    const u = new URL("https://api-metrika.yandex.net/stat/v1/data");
+    u.searchParams.set("ids", COUNTER_ID);
+    u.searchParams.set("accuracy", "full");
+    u.searchParams.set("lang", "ru");
+    for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+    const r = await call(`metrika.${label}`, u.toString(), { headers: { Authorization: `OAuth ${ym}` } });
+    return r.ok ? { query: params, totals: r.body?.totals, data: r.body?.data } : { query: params, error: r.body, status: r.status };
+  }
+  const leadGoal = goals.find((x) => x.target === "ym-submit-leadform") || goals.find((x) => x.target === "quote_request_success");
+  const formGoal = goals.find((x) => x.target === "quote_form_started") || goals.find((x) => x.target === "ym-open-leadform");
+  const gm = [leadGoal && `ym:s:goal${leadGoal.id}reaches`, formGoal && `ym:s:goal${formGoal.id}reaches`].filter(Boolean);
+  const base = { date1: "90daysAgo", date2: "today", filters: "ym:s:lastsignTrafficSource=='ad'" };
+  out.metrika.ad_goals_used = { lead: leadGoal || null, form: formGoal || null };
+  out.metrika.ad_search_phrases = await report("ad_search_phrases", { ...base, dimensions: "ym:s:lastsignDirectSearchPhrase", metrics: ["ym:s:visits", "ym:s:bounceRate", "ym:s:avgVisitDurationSeconds", ...gm].join(","), limit: "200", sort: "-ym:s:visits" });
+  out.metrika.ad_conditions = await report("ad_conditions", { ...base, dimensions: "ym:s:lastsignDirectPhraseOrCond", metrics: ["ym:s:visits", "ym:s:bounceRate", ...gm].join(","), limit: "200", sort: "-ym:s:visits" });
+  out.metrika.ad_landings = await report("ad_landings", { ...base, dimensions: "ym:s:startURL", metrics: ["ym:s:visits", "ym:s:bounceRate", "ym:s:avgVisitDurationSeconds", ...gm].join(","), limit: "50", sort: "-ym:s:visits" });
+  out.metrika.ad_regions = await report("ad_regions", { ...base, dimensions: "ym:s:regionCity", metrics: "ym:s:visits,ym:s:bounceRate", limit: "40", sort: "-ym:s:visits" });
+  out.metrika.ad_platforms = await report("ad_platforms", { ...base, dimensions: "ym:s:lastsignDirectPlatformType,ym:s:lastsignDirectPlatform", metrics: "ym:s:visits,ym:s:bounceRate", limit: "60", sort: "-ym:s:visits" });
+  out.metrika.goal_reaches_all_sources_90d = await report("goals_all", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:lastsignTrafficSource", metrics: ["ym:s:visits", ...gm].join(","), limit: "20" });
+}
+
+// ---------------- DIRECT: structure ----------------
+if (yd) {
+  out.direct.campaigns = await direct("campaigns", "campaigns", {
+    SelectionCriteria: {},
+    FieldNames: ["Id", "Name", "StartDate", "Type", "Status", "State", "StatusPayment", "StatusClarification", "Statistics", "Currency", "DailyBudget", "NegativeKeywords", "TimeTargeting", "Funds"],
+    UnifiedCampaignFieldNames: ["CounterIds", "AttributionModel", "PriorityGoals", "TrackingParams", "Settings", "BiddingStrategy"],
+    TextCampaignFieldNames: ["CounterIds", "AttributionModel", "PriorityGoals", "TrackingParams", "Settings", "BiddingStrategy"],
+  }, [{
+    SelectionCriteria: {},
+    FieldNames: ["Id", "Name", "StartDate", "Type", "Status", "State", "StatusPayment", "StatusClarification", "Statistics", "Currency", "DailyBudget", "NegativeKeywords"],
+    UnifiedCampaignFieldNames: ["CounterIds", "AttributionModel", "PriorityGoals", "TrackingParams", "Settings", "BiddingStrategy"],
+  }]);
+  const ids = (out.direct.campaigns?.Campaigns || []).map((c) => c.Id);
+  if (ids.length) {
+    out.direct.adgroups = await direct("adgroups", "adgroups", {
+      SelectionCriteria: { CampaignIds: ids },
+      FieldNames: ["Id", "Name", "CampaignId", "RegionIds", "NegativeKeywords", "Status", "ServingStatus", "Type", "Subtype"],
+    }, [{ SelectionCriteria: { CampaignIds: ids }, FieldNames: ["Id", "Name", "CampaignId", "RegionIds", "NegativeKeywords", "Status", "Type"] }]);
+    out.direct.keywords = await direct("keywords", "keywords", {
+      SelectionCriteria: { CampaignIds: ids },
+      FieldNames: ["Id", "Keyword", "AdGroupId", "CampaignId", "State", "Status", "ServingStatus", "StatisticsSearch", "StatisticsNetwork"],
+      Page: { Limit: 10000 },
+    }, [{ SelectionCriteria: { CampaignIds: ids }, FieldNames: ["Id", "Keyword", "AdGroupId", "CampaignId", "State", "Status"], Page: { Limit: 10000 } }]);
+    out.direct.ads = await direct("ads", "ads", {
+      SelectionCriteria: { CampaignIds: ids },
+      FieldNames: ["Id", "CampaignId", "AdGroupId", "Status", "State", "StatusClarification", "Type", "Subtype"],
+      TextAdFieldNames: ["Title", "Title2", "Text", "Href", "DisplayUrlPath", "SitelinkSetId", "AdExtensions"],
+      Page: { Limit: 1000 },
+    }, [{
+      SelectionCriteria: { CampaignIds: ids },
+      FieldNames: ["Id", "CampaignId", "AdGroupId", "Status", "State", "Type"],
+      TextAdFieldNames: ["Title", "Title2", "Text", "Href"],
+      Page: { Limit: 1000 },
+    }]);
+  }
+
+  // ---------------- DIRECT: reports ----------------
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const to = new Date();
+  const from = new Date(to.getTime() - 89 * 86400000);
+  const goalIds = goals.filter((g) => ["ym-submit-leadform", "quote_request_success"].includes(g.target)).map((g) => g.id).slice(0, 2);
+
+  async function directReport(name, type, fields, withGoals) {
+    const spec = {
+      params: {
+        SelectionCriteria: { DateFrom: fmt(from), DateTo: fmt(to) },
+        FieldNames: withGoals ? fields : fields.filter((f) => f !== "Conversions"),
+        ReportName: `SP readonly ${name} ${Date.now()}`,
+        ReportType: type,
+        DateRangeType: "CUSTOM_DATE",
+        Format: "TSV",
+        IncludeVAT: "YES",
+        IncludeDiscount: "NO",
+        ...(withGoals && goalIds.length ? { Goals: goalIds, AttributionModels: ["AUTO"] } : {}),
+      },
+    };
+    for (let i = 0; i < 20; i++) {
+      const r = await call(`direct.report.${name}`, "https://api.direct.yandex.com/json/v501/reports", {
+        method: "POST", body: spec, raw: true,
+        headers: dHeaders({ processingMode: "auto", returnMoneyInMicros: "false", skipReportHeader: "true", skipReportSummary: "true" }),
+      });
+      if (r.status === 200) return { tsv: r.body };
+      if (r.status === 201 || r.status === 202) { await sleep((Number(r.headers.retryin) || 10) * 1000); continue; }
+      return { status: r.status, error: String(r.body).slice(0, 3000) };
+    }
+    return { error: "TIMEOUT" };
+  }
+  async function reportWithGoalsFallback(name, type, fields) {
+    if (goalIds.length) {
+      const r = await directReport(name, type, fields, true);
+      if (r.tsv !== undefined) return r;
+      out.direct[`${name}_goals_error`] = r;
+    }
+    return directReport(`${name}_nogoals`, type, fields, false);
+  }
+
+  out.direct.report_search_queries = await reportWithGoalsFallback("search_queries", "SEARCH_QUERY_PERFORMANCE_REPORT",
+    ["Query", "CampaignId", "AdGroupName", "Criterion", "CriterionType", "MatchType", "Impressions", "Clicks", "Cost", "Conversions"]);
+  out.direct.report_criteria = await reportWithGoalsFallback("criteria", "CRITERIA_PERFORMANCE_REPORT",
+    ["CampaignId", "AdGroupName", "Criterion", "CriterionType", "AdNetworkType", "Impressions", "Clicks", "Cost", "Conversions"]);
+  out.direct.report_placements = await directReport("placements", "CUSTOM_REPORT",
+    ["AdNetworkType", "Placement", "Impressions", "Clicks", "Cost"], false);
+  out.direct.report_daily = await reportWithGoalsFallback("daily", "CAMPAIGN_PERFORMANCE_REPORT",
+    ["Date", "CampaignId", "CampaignName", "AdNetworkType", "Impressions", "Clicks", "Cost", "Conversions"]);
+  out.direct.report_regions = await directReport("regions", "CUSTOM_REPORT",
+    ["LocationOfPresenceName", "Impressions", "Clicks", "Cost"], false);
+}
+
+// ---------------- WORDSTAT (Direct API v4 Live) ----------------
 const sets = [
-  { name: "kassety_rf", geo: [225], phrases: ["металлокассеты", "фасадные кассеты", "металлокассеты для фасада", "металлокассеты цена", "металлокассеты производство", "металлокассеты купить", "кассетный фасад", "металлокассеты закрытого типа", "металлокассеты открытого типа", "производство фасадных кассет"] },
-  { name: "kassety_msk", geo: [1], phrases: ["металлокассеты", "фасадные кассеты", "металлокассеты для фасада", "металлокассеты цена", "металлокассеты производство", "металлокассеты купить", "кассетный фасад", "металлокассеты закрытого типа", "металлокассеты открытого типа", "производство фасадных кассет"] },
-  { name: "services_smol", geo: [10795], phrases: ["лазерная резка металла", "лазерная резка", "гибка металла", "порошковая покраска", "порошковая окраска", "металлообработка", "изготовление металлоизделий", "металлоизделия на заказ", "резка металла", "сварочные работы"] },
-  { name: "services_rf", geo: [225], phrases: ["лазерная резка металла", "гибка листового металла", "порошковая окраска металла", "изготовление металлоизделий", "изделия из листового металла", "изготовление металлоизделий по чертежам", "металлоизделия на заказ", "изготовление корпусов из металла", "контрактное производство металлоизделий", "металлообработка на заказ"] },
-  { name: "products_rf", geo: [225], phrases: ["корзины для кондиционеров", "корзина для кондиционера на фасад", "вентиляционные решетки металлические", "откосы металлические", "отливы оконные металлические", "парапетные крышки", "аквилон", "противопожарные отсечки", "закладные детали", "доборные элементы фасада"] },
-  { name: "products_smol", geo: [10795], phrases: ["металлокассеты", "корзина для кондиционера", "отливы", "откосы", "парапет", "металлический корпус", "металлический шкаф", "вентиляционная решетка", "закладные детали", "металлоконструкции"] },
+  { name: "services_smol2", geo: [10795], phrases: ["лазерная резка металла цена", "лазерная резка металла на заказ", "гибка металла на заказ", "порошковая покраска металла", "изготовление металлоизделий", "металлоизделия на заказ", "изготовление деталей из металла", "металлообработка на заказ", "изготовление металлоконструкций", "сварка металлоконструкций"] },
+  { name: "kassety_rf2", geo: [225], phrases: ["металлокассеты от производителя", "металлокассеты оптом", "фасадные кассеты производство", "фасадные кассеты цена", "металлокассеты для вентфасада", "кассеты для вентилируемого фасада", "металлокассеты оцинкованные", "металлокассеты с полимерным покрытием", "фасадные панели металлические", "изготовление фасадных кассет"] },
+  { name: "b2b_rf", geo: [225], phrases: ["изготовление деталей из листового металла", "детали из листового металла на заказ", "изготовление металлоизделий по чертежам заказчика", "производство металлоизделий на заказ", "изготовление закладных деталей", "закладные детали на заказ", "изготовление металлических корпусов", "металлический корпус на заказ", "корзины для кондиционеров производство", "корзины для кондиционеров оптом"] },
+  { name: "fasad_rf", geo: [225], phrases: ["парапетные крышки на заказ", "изготовление парапетных крышек", "отливы оконные на заказ", "откосы металлические на заказ", "аквилоны изготовление", "противопожарные отсечки изготовление", "доборные элементы для вентфасада", "фасонные элементы из оцинковки", "гибка оцинковки на заказ", "изготовление доборных элементов"] },
+  { name: "b2b_msk", geo: [1], phrases: ["изготовление деталей из листового металла", "металлоизделия на заказ", "изготовление металлоизделий по чертежам", "лазерная резка металла", "гибка металла", "корзины для кондиционеров", "закладные детали", "парапетные крышки", "металлический корпус на заказ", "порошковая покраска металла"] },
 ];
 
 async function v4(label, method, param) {
   const body = { method, locale: "ru", token: yd };
   if (param !== undefined) body.param = param;
   for (const host of ["https://api.direct.yandex.ru/live/v4/json/", "https://api.direct.yandex.com/live/v4/json/"]) {
-    const r = await call(`ws.${label}`, host, { token: yd, method: "POST", body, auth: "Bearer" });
+    const r = await call(`ws.${label}`, host, { method: "POST", body, headers: { Authorization: `Bearer ${yd}` } });
     if (r.status !== 0 && !(r.status >= 500)) return r;
   }
   return { ok: false, status: 0, body: null };
 }
 
-if (!yd) {
-  out.wordstat.error = "DIRECT_TOKEN_MISSING";
-} else {
-  const list0 = await v4("list0", "GetWordstatReportList");
-  out.wordstat.initial_list = list0.body;
+if (yd) {
   const queue = [...sets];
   const results = {};
   while (queue.length) {
     const batch = queue.splice(0, 4);
     const created = [];
     for (const s of batch) {
-      const param = { Phrases: s.phrases, GeoID: s.geo };
-      if (login) param.Login = login;
-      let r = await v4(`create.${s.name}`, "CreateNewWordstatReport", param);
-      if (r.body?.error_code && login) {
-        // retry without Login for non-agency accounts
-        r = await v4(`create.${s.name}#nologin`, "CreateNewWordstatReport", { Phrases: s.phrases, GeoID: s.geo });
-      }
+      const r = await v4(`create.${s.name}`, "CreateNewWordstatReport", { Phrases: s.phrases, GeoID: s.geo });
       if (typeof r.body?.data === "number") created.push({ s, id: r.body.data });
       else results[s.name] = { geo: s.geo, error: r.body };
     }
-    // poll
     for (let i = 0; i < 40 && created.some((c) => !c.done); i++) {
       await sleep(8000);
-      const l = await v4(`poll`, "GetWordstatReportList");
+      const l = await v4("poll", "GetWordstatReportList");
       const st = Object.fromEntries((l.body?.data || []).map((x) => [x.ReportID, x.StatusReport]));
       for (const c of created) {
-        if (!c.done && st[c.id] === "Done") {
+        if (c.done || !["Done", "Failed"].includes(st[c.id])) continue;
+        if (st[c.id] === "Done") {
           const g = await v4(`get.${c.s.name}`, "GetWordstatReport", c.id);
           results[c.s.name] = { geo: c.s.geo, data: g.body?.data ?? null, error: g.body?.data ? undefined : g.body };
-          await v4(`delete.${c.s.name}`, "DeleteWordstatReport", c.id);
-          c.done = true;
-        } else if (!c.done && st[c.id] === "Failed") {
-          results[c.s.name] = { geo: c.s.geo, error: "REPORT_FAILED" };
-          await v4(`delete.${c.s.name}`, "DeleteWordstatReport", c.id);
-          c.done = true;
-        }
+        } else results[c.s.name] = { geo: c.s.geo, error: "REPORT_FAILED" };
+        await v4(`delete.${c.s.name}`, "DeleteWordstatReport", c.id);
+        c.done = true;
       }
     }
     for (const c of created) if (!c.done) {
