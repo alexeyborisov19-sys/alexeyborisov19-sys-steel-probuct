@@ -51,15 +51,18 @@ export function Analytics() {
   }, []);
 
   function analyticsReady() {
-    // Next Script invokes onReady again on remount. The lifecycle deduplicates
-    // normal mounts and permits a fresh initialization after an explicit regrant.
-    if (!lifecycle.start(window as Window & MetrikaRuntime, hasAnalyticsConsent())) {
-      setRuntimeReady(false);
-      return;
-    }
-    lastPath.current = window.location.pathname;
-    setRuntimeReady(true);
-    flushPendingAnalyticsGoals();
+    // In Next 15.5, inline Script onReady runs before appendChild executes its
+    // bootstrap. Defer to the microtask checkpoint, not an arbitrary timeout.
+    // The same callback handles cached-script remounts after a new permission.
+    queueMicrotask(() => {
+      if (!lifecycle.start(window as Window & MetrikaRuntime, hasAnalyticsConsent())) {
+        setRuntimeReady(false);
+        return;
+      }
+      lastPath.current = window.location.pathname;
+      setRuntimeReady(true);
+      flushPendingAnalyticsGoals();
+    });
   }
 
   useEffect(() => {
