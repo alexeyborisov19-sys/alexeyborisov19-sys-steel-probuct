@@ -12,8 +12,8 @@ import { faqSchema, productGroupSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Фасадные металлокассеты от производителя",
-  description: "Фасадные металлокассеты открытого и закрытого типа от производителя. Расчёт количества и ориентировочной цены онлайн, изготовление по размерам, RAL и проектной документации.",
+  title: "Металлокассеты для фасада — цена за м²",
+  description: "Фасадные металлокассеты открытого и закрытого типа от производителя: толщина 0,7–1,5 мм, любой цвет RAL. Калькулятор количества и цены за м², поставка в Москву и регионы.",
   path: "/products/metallokassety",
   keywords: [
     "фасадные металлокассеты",
@@ -79,7 +79,7 @@ export default function MetalCassetteCollectionPage() {
       <PageLayout
         path="/products/metallokassety"
         eyebrow="Фасадные решения"
-        title="Фасадные металлокассеты от производителя"
+        title="Металлокассеты для фасада от производителя"
         description="Открытые и закрытые металлокассеты, угловые и архитектурные исполнения. Рассчитайте ориентировочную цену и количество онлайн или передайте фасадную раскладку для точного коммерческого расчёта."
         image="/images/web/hero-main.webp"
         imageAlt="Иллюстративный визуал: фасад промышленного здания из тёмных металлокассет с перфорированным экраном"
@@ -157,7 +157,7 @@ export default function MetalCassetteCollectionPage() {
             <section className="mt-16">
               <div className="border-b border-white/12 pb-5">
                 <p className="eyebrow">Выберите исполнение</p>
-                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Четыре серии металлокассет</h2>
+                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Типы металлокассет: четыре серии</h2>
               </div>
               <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {series.map(([title, badge, text], index) => (

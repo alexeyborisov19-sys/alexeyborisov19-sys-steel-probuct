@@ -66,6 +66,10 @@ function secondaryAction(path?: string): SecondaryAction | undefined {
   if (path === "/products") {
     return { secondaryHref: "/production", secondaryLabel: "Производство" };
   }
+  if (path === "/products/korziny-dlya-konditsionerov") {
+    // Paid search lands here: offer the CAD calculator next to the engineer request.
+    return { secondaryHref: "/online-order", secondaryLabel: "Рассчитать по чертежу" };
+  }
   if (path.startsWith("/products/")) {
     return { secondaryHref: "/products", secondaryLabel: "Вся продукция" };
   }

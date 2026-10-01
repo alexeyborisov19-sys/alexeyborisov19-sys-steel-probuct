@@ -9,7 +9,7 @@ import { createPageMetadata } from "@/lib/seo";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
 const path = "/calculator-metallokassety";
-const title = "Калькулятор металлокассет — цена";
+const title = "Калькулятор металлокассет: расчёт онлайн";
 const description = "Получите предварительную оценку количества и стоимости фасадных металлокассет по площади или размерам стены: открытый и закрытый тип, толщины 0,65–1,2 мм.";
 
 export const metadata: Metadata = createPageMetadata({
