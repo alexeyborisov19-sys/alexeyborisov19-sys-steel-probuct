@@ -82,8 +82,16 @@ else {
 
   if (campaignId) {
     // ---------- 2. sitelinks and callouts per kit ----------
+    // Settings Direct may ignore on create: switch off extended geo targeting explicitly.
+    await api("campaigns", "update", { Campaigns: [{ Id: campaignId, UnifiedCampaign: { Settings: [
+      { Option: "ENABLE_AREA_OF_INTEREST_TARGETING", Value: "NO" },
+      { Option: "ALTERNATIVE_TEXTS_ENABLED", Value: "NO" },
+      { Option: "AUTO_ASSETS_ENABLED", Value: "NO" },
+    ] } }] }, "settings");
+
     const kits = {};
     for (const [name, kit] of Object.entries(spec.Kits)) {
+      if (spec.KitIds?.[name]) { kits[name] = spec.KitIds[name]; continue; }
       const sl = await api("sitelinks", "add", { SitelinksSets: [{ Sitelinks: kit.Sitelinks }] }, `kit_${name}`);
       const [sitelinkSetId] = addIds(sl, `sitelinks.add:${name}`);
       const ex = await api("adextensions", "add", { AdExtensions: kit.Callouts.map((t) => ({ Callout: { CalloutText: t } })) }, `kit_${name}`);
@@ -143,9 +151,9 @@ else {
         out.steps.autotargeting_suspend_errors = failed;
         if (s?.error || failed.length) {
           const upd = await api("keywords", "update", {
-            Keywords: autoOn.map((id) => ({ Id: id, AutotargetingCategories: { Items: [
+            Keywords: autoOn.map((id) => ({ Id: id, AutotargetingCategories: [
               { Category: "EXACT", Value: "YES" }, { Category: "ALTERNATIVE", Value: "NO" }, { Category: "COMPETITOR", Value: "NO" },
-              { Category: "BROADER", Value: "NO" }, { Category: "ACCESSORY", Value: "NO" }] } })),
+              { Category: "BROADER", Value: "NO" }, { Category: "ACCESSORY", Value: "NO" }] })),
           }, "autotargeting_exact_only");
           out.steps.autotargeting_update = upd?.result ?? upd?.error;
         }
@@ -187,6 +195,8 @@ else {
     out.readback.groups = g?.result?.AdGroups ?? g?.error;
     const k = await api("keywords", "get", { SelectionCriteria: { CampaignIds: [campaignId] }, FieldNames: ["Id", "Keyword", "AdGroupId", "State", "Status"] }, "readback");
     out.readback.keywords = k?.result?.Keywords ?? k?.error;
+    const at = await api("keywords", "get", { SelectionCriteria: { CampaignIds: [campaignId] }, FieldNames: ["Id", "Keyword", "AdGroupId", "State", "AutotargetingCategories"] }, "readback_autotargeting");
+    out.readback.autotargeting = (at?.result?.Keywords || []).filter((x) => x.Keyword.startsWith("---")).map((x) => ({ AdGroupId: x.AdGroupId, State: x.State, AutotargetingCategories: x.AutotargetingCategories })) || at?.error;
     const a = await api("ads", "get", {
       SelectionCriteria: { CampaignIds: [campaignId] },
       FieldNames: ["Id", "AdGroupId", "Status", "State", "StatusClarification", "Type"],
