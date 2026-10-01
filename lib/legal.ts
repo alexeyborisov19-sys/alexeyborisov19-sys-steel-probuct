@@ -27,7 +27,7 @@ export const legalDocumentVersions = {
   analyticsConsent: "2026-10-01",
   marketingConsent: "2026-10-01",
   cookies: "2026-10-01",
-  terms: "2026-07-30",
+  terms: "2026-10-01",
   services: "2026-10-01",
 } as const;
 
@@ -37,7 +37,7 @@ export const legalDocumentDisplayDates = {
   analyticsConsent: "1 октября 2026 года",
   marketingConsent: "1 октября 2026 года",
   cookies: "1 октября 2026 года",
-  terms: "30 июля 2026 года",
+  terms: "1 октября 2026 года",
   services: "1 октября 2026 года",
 } as const;
 
