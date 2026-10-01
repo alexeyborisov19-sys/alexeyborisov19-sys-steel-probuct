@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
       YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
       YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
     steps:
@@ -37,23 +38,8 @@ jobs:
           const campaign=await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","Type","State","DailyBudget","NegativeKeywords"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy","CounterIds","PriorityGoals","TrackingParams","AttributionModel"]});
           console.log("BEFORE_CAMPAIGN",JSON.stringify(campaign));
           console.log("ALL_GROUPS",JSON.stringify(groups));console.log("ALL_KEYWORDS",JSON.stringify(keywords));console.log("ALL_ADS",JSON.stringify(ads));
-          if(campaign.length!==1||campaign[0].State!=="ON")throw Error("Campaign guard failed");
-          const spbGroups=groups.filter(g=>g.RegionIds.includes(10174));if(spbGroups.length!==5||spbGroups.some(g=>!/СПб\/ЛО/.test(g.Name)))throw Error("Geo guard failed");
-          function spb(s){return /петербург|петербурж|спб|питер|saint.?petersburg/i.test(s);}
-          const ks=keywords.filter(k=>k.State==="ON"&&spb(k.Keyword.split(/\s+/).filter(t=>!t.startsWith("-")).join(" ")));
-          const as=ads.filter(a=>a.State==="ON"&&spb(JSON.stringify(a.TextAd||{})));
-          console.log("SPB_PLAN",JSON.stringify({groupIds:spbGroups.map(g=>g.Id),keywords:ks.map(k=>({Id:k.Id,Keyword:k.Keyword})),ads:as.map(a=>a.Id),expandedGeo:"YES -> NO",rollback:"restore logged regions and keyword/ad states; restore interest setting"}));
-          function check(d){for(const r of Object.values(d).flat()){if(r.Errors?.length)throw Error(JSON.stringify(r));}return d;}
-          console.log("SPB_GEO_RESULT",JSON.stringify(check(await api("adgroups","update",{AdGroups:spbGroups.map(g=>({Id:g.Id,RegionIds:[...g.RegionIds.filter(r=>r!==-2),-2]}))}))));
-          if(ks.length)console.log("SPB_KEYWORDS_RESULT",JSON.stringify(check(await api("keywords","suspend",{SelectionCriteria:{Ids:ks.map(k=>k.Id)}}))));
-          if(as.length)console.log("SPB_ADS_RESULT",JSON.stringify(check(await api("ads","suspend",{SelectionCriteria:{Ids:as.map(a=>a.Id)}}))));
-          console.log("SPB_CAMPAIGN_RESULT",JSON.stringify(check(await api("campaigns","update",{Campaigns:[{Id:campaignId,UnifiedCampaign:{Settings:[{Option:"ENABLE_AREA_OF_INTEREST_TARGETING",Value:"NO"}]}}]}))));
-          const afterGroups=await all("adgroups","AdGroups",{SelectionCriteria:{Ids:spbGroups.map(g=>g.Id)},FieldNames:["Id","RegionIds"]});
-          const afterKeywords=ks.length?await all("keywords","Keywords",{SelectionCriteria:{Ids:ks.map(k=>k.Id)},FieldNames:["Id","State"]}):[];
-          const afterAds=as.length?await all("ads","Ads",{SelectionCriteria:{Ids:as.map(a=>a.Id)},FieldNames:["Id","State"]}):[];
-          const afterCampaign=await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","State","DailyBudget"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy"]});
-          if(afterGroups.some(g=>!g.RegionIds.includes(-2))||afterKeywords.some(k=>k.State==="ON")||afterAds.some(a=>a.State==="ON")||afterCampaign[0].UnifiedCampaign.Settings.find(s=>s.Option==="ENABLE_AREA_OF_INTEREST_TARGETING")?.Value!=="NO")throw Error("SPB readback failed");
-          console.log("SPB_VERIFIED",JSON.stringify({groups:afterGroups,keywordsSuspended:afterKeywords.length,adsSuspended:afterAds.length,campaign:afterCampaign}));
+          
+          console.log("SPB_READBACK",JSON.stringify({groups:groups.filter(g=>g.Name.includes("СПб")),positiveKeywords:keywords.filter(k=>/петербург|спб/i.test(k.Keyword.split(/\s+/).filter(t=>!t.startsWith("-")).join(" "))),campaign}));
           async function report(label,from,to,type,fields){
           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru",processingMode:"auto",returnMoneyInMicros:"false",skipReportHeader:"true",skipReportSummary:"true"};if(login)headers["Client-Login"]=login;
           const body=JSON.stringify({params:{SelectionCriteria:{DateFrom:from,DateTo:to,Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:[String(campaignId)]}]},FieldNames:fields,ReportName:"steel-direct-"+label+"-20261001",ReportType:type,DateRangeType:"CUSTOM_DATE",Format:"TSV",IncludeVAT:"NO",IncludeDiscount:"NO"}});
@@ -62,6 +48,17 @@ jobs:
           await report("LATEST","2026-09-24","2026-09-30","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost","Conversions"]);
           await report("PREVIOUS","2026-09-17","2026-09-23","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost","Conversions"]);
           await report("QUERIES","2026-09-17","2026-09-30","SEARCH_QUERY_PERFORMANCE_REPORT",["AdGroupId","SearchQuery","Criterion","Impressions","Clicks","Cost"]);
+          
+          const ym=String(process.env.YM_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          async function metric(path){const r=await fetch("https://api-metrika.yandex.net/"+path,{headers:{Authorization:"OAuth "+ym},signal:AbortSignal.timeout(30000)});return {status:r.status,data:await r.json()};}
+          const goal=await metric("management/v1/counter/112542227/goals");console.log("METRIKA_GOALS",JSON.stringify(goal));
+          for(const [label,date1,date2]of[["LATEST","2026-09-24","2026-09-30"],["PREVIOUS","2026-09-17","2026-09-23"]]){
+          const goals=(goal.data.goals||[]).filter(g=>(g.conditions||[]).some(c=>["quote_request_success","assistant_lead_success"].includes(c.url)));
+          const u=new URLSearchParams({ids:"112542227",date1,date2,dimensions:"ym:s:trafficSource",metrics:["ym:s:visits","ym:s:users","ym:s:bounceRate","ym:s:avgVisitDurationSeconds",...goals.map(g=>"ym:s:goal"+g.id+"reaches")].join(","),accuracy:"full",limit:"100"});
+          console.log("METRIKA_"+label,JSON.stringify(await metric("stat/v1/data?"+u)));
+          }
+          const urls=[...new Set(ads.filter(a=>a.State==="ON").map(a=>a.TextAd?.Href||a.ResponsiveAd?.Href).filter(Boolean).map(s=>{const u=new URL(s);u.search="";return u.href;}))];
+          for(const url of urls){try{const r=await fetch(url,{signal:AbortSignal.timeout(30000)});const html=await r.text();console.log("LANDING",JSON.stringify({url,status:r.status,finalUrl:r.url,h1:html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1]?.replace(/<[^>]*>/g,""),title:html.match(/<title>(.*?)<\/title>/)?.[1],hasQuoteForm:html.includes("quote"),noindex:/name="robots"[^>]*noindex/.test(html)}));}catch(e){console.log("LANDING_ERROR",url,e.name);}}
           
           NODE
           node /tmp/direct-spb.mjs
