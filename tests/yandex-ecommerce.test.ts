@@ -8,7 +8,7 @@ const publicLayoutSource = readFileSync("app/(public)/layout.tsx", "utf8");
 
 test("Yandex ecommerce is consent-gated and uses the canonical dataLayer container", () => {
   assert.match(analyticsSource, /window\.dataLayer = window\.dataLayer \|\| \[\]/);
-  assert.match(analyticsSource, /ecommerce:\"dataLayer\"/);
+  assert.match(analyticsSource, /ecommerce:\s*"dataLayer"/);
   assert.match(ecommerceSource, /hasAnalyticsConsent\(\)/);
   assert.match(publicLayoutSource, /<YandexEcommerce \/>/);
 });
