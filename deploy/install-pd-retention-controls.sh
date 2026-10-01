@@ -8,6 +8,7 @@ for name in steelprodukt-pd-retention-check steelprodukt-pd-export-expiry; do
   install -m 0644 -o root -g root "$APP_PATH/deploy/systemd/$name.service" "/etc/systemd/system/$name.service"
   install -m 0644 -o root -g root "$APP_PATH/deploy/systemd/$name.timer" "/etc/systemd/system/$name.timer"
 done
+install -m 0644 -o root -g root "$APP_PATH/deploy/systemd/steelprodukt-pd-offsite-backup.service" /etc/systemd/system/steelprodukt-pd-offsite-backup.service
 systemctl daemon-reload
 systemctl enable --now steelprodukt-pd-retention-check.timer steelprodukt-pd-export-expiry.timer
 if ! systemctl start steelprodukt-pd-retention-check.service; then
