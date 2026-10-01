@@ -5,7 +5,7 @@
 //  N) negative keywords from negatives-spec.json are merged into the campaign and the new groups (nothing removed);
 //  1) services sitelink set (the first try was rejected for the "×" sign) attached to every services ad;
 //  2) extra ads from extra-spec.json for groups with fewer than three ads, sent to moderation;
-//  3) old cassette/basket groups are suspended only for the product whose new groups all have an accepted ad;
+//  3) one-off (2026-10-01, owner's request): the old groups run again next to the new ones, except St. Petersburg;
 //  4) read back, plus today's group statistics and search queries (read-only reports).
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -21,8 +21,6 @@ const DELETE_IDS = [714957797];
 const out = { generated_at: new Date().toISOString(), pass: "finish", calls: [], steps: {}, errors: [] };
 const UTM = "utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}";
 const isServices = (name) => /^Услуги (Смоленск|Москва Калуга Брянск) \| /.test(name);
-const OLD = { cassettes: /^МК (Москва\/МО|ЦФО|Россия) \| /, baskets: /^Корзины \| Кондиционеры$/ };
-const NEW = { cassettes: /^Металлокассеты \| /, baskets: /^Корзины \| (?!Кондиционеры$)/ };
 
 function normToken(raw = "") {
   let v = String(raw).trim().replace(/^OAuth\s+/i, "").replace(/^Bearer\s+/i, "");
@@ -34,11 +32,13 @@ const token = normToken(process.env.YD_TOKEN || "");
 const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
 
 const FORBIDDEN = new Set(["resume", "unarchive", "archive", "delete"]);
+let RESUME_ALLOWED = new Set();
 async function api(service, method, params, label) {
   const ids = params?.SelectionCriteria?.Ids || [];
   const draftDelete = service === "campaigns" && ["delete", "unarchive", "archive"].includes(method) && ids.length > 0
     && ids.every((id) => DELETE_IDS.includes(id) && id !== CAMPAIGN_ID);
-  if (FORBIDDEN.has(method) && !draftDelete) throw new Error(`method ${method} is not allowed in this script`);
+  const oldResume = service === "ads" && method === "resume" && ids.length > 0 && ids.every((id) => RESUME_ALLOWED.has(String(id)));
+  if (FORBIDDEN.has(method) && !draftDelete && !oldResume) throw new Error(`method ${method} is not allowed in this script`);
   const headers = { Authorization: `Bearer ${token}`, "Accept-Language": "ru", "Content-Type": "application/json; charset=utf-8" };
   if (login) headers["Client-Login"] = login;
   let status = 0, body = null;
@@ -57,7 +57,7 @@ async function api(service, method, params, label) {
     body = { error: { error_string: "NETWORK_ERROR", error_detail: e?.cause?.code || e?.name } };
   }
   const r = body?.result || {};
-  const results = r.AddResults || r.UpdateResults || r.SuspendResults || r.ModerateResults || r.DeleteResults
+  const results = r.AddResults || r.UpdateResults || r.SuspendResults || r.ModerateResults || r.ResumeResults || r.DeleteResults
     || r.UnarchiveResults || r.ArchiveResults || [];
   const itemErrors = results.filter((x) => x.Errors?.length);
   out.calls.push({ label: `${service}.${method}:${label}`, status, apiError: Boolean(body?.error), itemErrors: itemErrors.length });
@@ -171,23 +171,20 @@ async function main() {
     out.steps.moderate = m?.result?.ModerateResults ?? m?.error;
   }
 
-  // ---------- 3. stop old groups only where the replacement is live ----------
+  // ---------- 3. one-off: old groups run again, St. Petersburg stays off ----------
   ads = await readAds("statuses");
-  out.steps.switch = {};
-  for (const product of ["cassettes", "baskets"]) {
-    const newGroups = groups.filter((g) => NEW[product].test(g.Name));
-    const ready = newGroups.length > 0 && newGroups.every((g) => ads.some((a) => a.AdGroupId === g.Id && a.Status === "ACCEPTED"));
-    const stop = ads.filter((a) => OLD[product].test(nameOf[a.AdGroupId] || "") && a.State === "ON").map((a) => a.Id);
-    out.steps.switch[product] = {
-      ready,
-      new_groups_waiting: newGroups.filter((g) => !ads.some((a) => a.AdGroupId === g.Id && a.Status === "ACCEPTED")).map((g) => g.Name),
-      old_ads_on: stop.length,
-    };
-    if (ready && stop.length) {
-      await api("ads", "suspend", { SelectionCriteria: { Ids: stop } }, `suspend_${product}_${stop.length}`);
-      out.steps.switch[product].suspended = stop.length;
-    }
+  const RESUME = [/^МК (Москва\/МО|ЦФО|Россия) \| /, /^Корзины \| Кондиционеры$/, /^Доборы \| /, /^Решётки \| /, /^Корпуса \| /,
+    /^Закладные \| /, /^По КД \| /, /^Услуги \| /, /^Онлайн-калькулятор \| /];
+  const resumeIds = ads.filter((a) => {
+    const n = nameOf[a.AdGroupId] || "";
+    return RESUME.some((re) => re.test(n)) && !/СПб/.test(n) && a.State === "SUSPENDED" && a.Status === "ACCEPTED";
+  }).map((a) => a.Id);
+  RESUME_ALLOWED = new Set(resumeIds.map(String));
+  out.steps.resumed_groups = [...new Set(ads.filter((a) => resumeIds.includes(a.Id)).map((a) => nameOf[a.AdGroupId]))];
+  for (const part of chunk(resumeIds, 1000)) {
+    await api("ads", "resume", { SelectionCriteria: { Ids: part } }, `resume_old_${part.length}`);
   }
+  out.steps.resumed_ads = resumeIds.length;
 
   // ---------- 4. read back ----------
   out.after = { groups, ads: await readAds("after") };
