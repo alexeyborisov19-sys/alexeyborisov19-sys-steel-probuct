@@ -20,4 +20,6 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 ReadOnlyPaths=/var/lib/steelprodukt /var/www/html /etc/steelprodukt
-ReadWritePaths=/var/backups/steelprodukt
+# SQLite read-only connections still initialise WAL/SHM sidecars after a cold close.
+# The database is opened mode=ro; only this private directory needs the mount exception.
+ReadWritePaths=/var/backups/steelprodukt /var/lib/steelprodukt/admin

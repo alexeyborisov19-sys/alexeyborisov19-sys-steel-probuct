@@ -1,0 +1,57 @@
+name: Verify SQLite WAL backup fix
+on:
+  push:
+    branches: [fix/pd-backup-wal-20261001]
+    paths: ['.github/workflows/install-pd-backup-wal.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Backup regression tests
+        run: python3 tests/pd-backup-files.py
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Install scoped WAL access and verify cold starts
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          unit_source_b64=$(base64 -w0 deploy/systemd/steelprodukt-pd-offsite-backup.service)
+          helper_source_b64=$(base64 -w0 deploy/pd-backup-files.py)
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "UNIT_SOURCE_B64='$unit_source_b64' HELPER_SOURCE_B64='$helper_source_b64' bash -s" <<'REMOTE'
+          set -euo pipefail
+          task_directory=$(mktemp -d)
+          trap 'rm -rf "$task_directory"' EXIT
+          printf '%s' "$UNIT_SOURCE_B64" | base64 --decode > "$task_directory/backup.service"
+          printf '%s' "$HELPER_SOURCE_B64" | base64 --decode > "$task_directory/backup-helper"
+          sudo -n install -m 0644 -o root -g root "$task_directory/backup.service" /etc/systemd/system/steelprodukt-pd-offsite-backup.service
+          sudo -n install -m 0750 -o root -g root "$task_directory/backup-helper" /usr/local/sbin/steelprodukt-pd-backup-files
+          sudo -n systemctl daemon-reload
+          for attempt in 1 2; do
+            if ! sudo -n systemctl start steelprodukt-pd-retention-check.service; then
+              test "$(sudo -n systemctl show steelprodukt-pd-retention-check.service --property=ExecMainStatus --value)" = 2
+            fi
+            sudo -n systemctl start steelprodukt-pd-export-expiry.service
+            sudo -n systemctl start steelprodukt-pd-offsite-backup.service
+            sudo -n systemctl show steelprodukt-pd-offsite-backup.service --property=Result --property=ExecMainStatus
+            echo "cold_start_verified=$attempt"
+          done
+          REMOTE

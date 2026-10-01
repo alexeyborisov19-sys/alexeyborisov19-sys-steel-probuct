@@ -90,5 +90,6 @@ if __name__ == "__main__":
             stage(args.source, Path(args.target))
         else:
             print("expired_local_archives_removed=" + str(prune(args.source, args.target, args.days)))
-    except Exception:
-        raise SystemExit("PD backup staging/retention failed; inspect protected source locally") from None
+    except Exception as error:
+        code = getattr(error, "sqlite_errorname", None) or getattr(error, "errno", None)
+        raise SystemExit(f"PD backup staging/retention failed: {type(error).__name__}; code={code}") from None
