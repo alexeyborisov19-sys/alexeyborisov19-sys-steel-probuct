@@ -1,4 +1,4 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 17:05 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 18:10 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
@@ -74,7 +74,61 @@ const readAds = async (label) => (await api("ads", "get", {
   TextAdFieldNames: ["Title", "Text", "Href", "SitelinkSetId", "AdExtensions"],
 }, label))?.result?.Ads || [];
 
+
+// ---------- site probe (read-only): why no leads ----------
+// Pages and form endpoints are checked without creating a lead: the form posts carry an empty
+// name, which every handler rejects with 400 before anything is stored or e-mailed.
+async function siteProbe() {
+  const site = {};
+  const timed = async (label, url, init = {}) => {
+    const t0 = Date.now();
+    try {
+      const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(30000), ...init });
+      const text = await res.text();
+      let json = null; try { json = JSON.parse(text); } catch {}
+      site[label] = { status: res.status, ms: Date.now() - t0, location: res.headers.get("location"), json,
+        bytes: text.length, hasMetrikaTag: /mc\.yandex\.ru\/metrika/.test(text), title: (text.match(/<title>([^<]*)<\/title>/) || [])[1] || null };
+    } catch (e) { site[label] = { error: e?.cause?.code || e?.name, ms: Date.now() - t0 }; }
+  };
+  for (const host of ["https://www.steelprodukt.ru", "https://steelprodukt.ru", "http://steelprodukt.ru", "http://www.steelprodukt.ru"]) {
+    await timed(`GET ${host}/`, `${host}/`);
+  }
+  for (const path of ["/contacts", "/online-order", "/products/metallokassety", "/products/korziny-dlya-konditsionerov", "/production/lazernaya-rezka-metalla", "/api/health"]) {
+    await timed(`GET www${path}`, `https://www.steelprodukt.ru${path}`);
+  }
+  const emptyLead = () => { const f = new FormData(); f.append("name", ""); f.append("phone", ""); return f; };
+  for (const host of ["https://www.steelprodukt.ru", "https://steelprodukt.ru"]) {
+    for (const ep of ["/api/quote", "/api/assistant/lead"]) {
+      await timed(`POST ${host}${ep} (empty name, Origin=${host})`, `${host}${ep}`, { method: "POST", body: emptyLead(), headers: { Origin: host, Referer: `${host}/contacts` } });
+    }
+  }
+  // the non-www page posting to the non-www API while the canonical origin is www
+  await timed("POST https://steelprodukt.ru/api/quote (Origin=https://steelprodukt.ru, sec-fetch-site same-origin)", "https://steelprodukt.ru/api/quote",
+    { method: "POST", body: emptyLead(), headers: { Origin: "https://steelprodukt.ru", "Sec-Fetch-Site": "same-origin" } });
+  out.site = site;
+
+  // Metrika: every goal over 90 days, and visits by source, to compare with Direct clicks
+  const ym = String(process.env.YM_TOKEN || "").trim();
+  if (ym) {
+    const get = async (label, url) => {
+      try {
+        const res = await fetch(url, { headers: { Authorization: `OAuth ${ym}` }, signal: AbortSignal.timeout(60000) });
+        out.metrika = out.metrika || {};
+        out.metrika[label] = { status: res.status, body: await res.json().catch(() => null) };
+      } catch (e) { out.metrika = out.metrika || {}; out.metrika[label] = { error: e?.cause?.code || e?.name }; }
+    };
+    const C = 112542227;
+    await get("goals", `https://api-metrika.yandex.net/management/v1/counter/${C}/goals`);
+    await get("counter", `https://api-metrika.yandex.net/management/v1/counter/${C}`);
+    const goals = out.metrika.goals?.body?.goals || [];
+    const metrics = goals.slice(0, 18).map((g) => `ym:s:goal${g.id}reaches`).join(",");
+    await get("goals_90d", `https://api-metrika.yandex.net/stat/v1/data?ids=${C}&date1=90daysAgo&date2=today&metrics=ym:s:visits${metrics ? "," + metrics : ""}&accuracy=full`);
+    await get("sources_daily_14d", `https://api-metrika.yandex.net/stat/v1/data?ids=${C}&date1=14daysAgo&date2=today&dimensions=ym:s:date,ym:s:lastsignTrafficSource&metrics=ym:s:visits&sort=ym:s:date&limit=200&accuracy=full`);
+  }
+}
+
 async function main() {
+  await siteProbe();
   if (!token) { out.errors.push({ step: "token", error: "missing" }); return; }
   const c = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "State", "Status"] }, "guard");
   const campaign = c?.result?.Campaigns?.[0];
@@ -205,6 +259,7 @@ async function main() {
     groups_today: await report("groups_today", "CUSTOM_REPORT", ["AdGroupName", "Impressions", "Clicks", "Cost"], "TODAY"),
     queries_today: await report("queries_today", "SEARCH_QUERY_PERFORMANCE_REPORT", ["Query", "AdGroupName", "Criterion", "CriterionType", "Impressions", "Clicks", "Cost"], "TODAY"),
     groups_yesterday: await report("groups_yesterday", "CUSTOM_REPORT", ["AdGroupName", "Impressions", "Clicks", "Cost"], "YESTERDAY"),
+    daily_14d: await report("daily_14d", "CUSTOM_REPORT", ["Date", "Impressions", "Clicks", "Cost"], "LAST_14_DAYS"),
   };
 }
 
