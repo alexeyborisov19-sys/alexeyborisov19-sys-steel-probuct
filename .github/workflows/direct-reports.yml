@@ -1,0 +1,47 @@
+name: Direct comparable performance reports
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-reports.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read targeting without changing advertising
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function apiOnce(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function api(service,method,params){for(let i=0;i<4;i++){try{return await apiOnce(service,method,params);}catch(e){if(i===3||!String(e).includes('"error_code":1000'))throw e;console.log("TRANSIENT_RETRY",service,method,i+1);await new Promise(r=>setTimeout(r,3000));}}}
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          
+          
+          const campaignId=714391927;
+          async function report(label,from,to,type,fields){
+          const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru",processingMode:"auto",returnMoneyInMicros:"false",skipReportHeader:"true",skipReportSummary:"true"};if(login)headers["Client-Login"]=login;
+          const body=JSON.stringify({params:{SelectionCriteria:{DateFrom:from,DateTo:to,Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:[String(campaignId)]}]},FieldNames:fields,ReportName:"steel-finish-"+label+"-20261001-v2",ReportType:type,DateRangeType:"CUSTOM_DATE",Format:"TSV",IncludeVAT:"NO",IncludeDiscount:"NO"}});
+          for(let i=0;i<6;i++){try{const r=await fetch("https://api.direct.yandex.com/json/v501/reports",{method:"POST",headers,body,signal:AbortSignal.timeout(45000)});const t=await r.text();if(r.status===200){console.log("REPORT_"+label+"\n"+t);return;}console.log("REPORT_STATUS",label,r.status,t.slice(0,300));if(![201,202,500,502,503,504].includes(r.status))return;}catch(e){console.log("REPORT_TRANSIENT",label,e.name);}await new Promise(r=>setTimeout(r,5000));}console.log("REPORT_UNAVAILABLE",label);}
+          await Promise.allSettled([
+          report("LATEST","2026-09-24","2026-09-30","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost"]),
+          report("PREVIOUS","2026-09-17","2026-09-23","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost"]),
+          report("QUERIES","2026-09-24","2026-09-30","SEARCH_QUERY_PERFORMANCE_REPORT",["AdGroupId","SearchQuery","Criterion","Impressions","Clicks","Cost"])
+          ]);
+          
+          NODE
+          node /tmp/direct-spb.mjs
