@@ -1,0 +1,43 @@
+name: Direct geography verification
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-geo-final.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Disable extended geography preserving budget
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function apiOnce(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function api(service,method,params){for(let i=0;i<4;i++){try{return await apiOnce(service,method,params);}catch(e){if(i===3||!String(e).includes('"error_code":1000'))throw e;console.log("TRANSIENT_RETRY",service,method,i+1);await new Promise(r=>setTimeout(r,3000));}}}
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          
+          
+          const query={SelectionCriteria:{Ids:[714391927]},FieldNames:["Id","Name","State"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy"]};
+          const before=(await api("campaigns","get",query)).Campaigns[0];console.log("BEFORE",JSON.stringify(before));
+          const writable=["ADD_METRICA_TAG","ADD_TO_FAVORITES","CAMPAIGN_EXACT_PHRASE_MATCHING_ENABLED","ENABLE_AREA_OF_INTEREST_TARGETING","ENABLE_COMPANY_INFO","ENABLE_SITE_MONITORING","REQUIRE_SERVICING","ALTERNATIVE_TEXTS_ENABLED"];
+          const Settings=before.UnifiedCampaign.Settings.filter(x=>writable.includes(x.Option)).map(x=>({...x,Value:x.Option==="ENABLE_AREA_OF_INTEREST_TARGETING"?"NO":x.Value}));
+          const result=await api("campaigns","update",{Campaigns:[{Id:714391927,UnifiedCampaign:{Settings}}]});console.log("UPDATE",JSON.stringify(result));
+          for(let i=0;i<3;i++){await new Promise(r=>setTimeout(r,10000));const after=(await api("campaigns","get",query)).Campaigns[0];console.log("AFTER",i,JSON.stringify(after));if(after.UnifiedCampaign.Settings.find(x=>x.Option==="ENABLE_AREA_OF_INTEREST_TARGETING")?.Value==="NO"){console.log("GEO_VERIFIED");break;}}
+          
+          NODE
+          node /tmp/direct-spb.mjs
