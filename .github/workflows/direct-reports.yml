@@ -35,12 +35,10 @@ jobs:
           const campaignId=714391927;
           async function report(label,from,to,type,fields){
           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru",processingMode:"auto",returnMoneyInMicros:"false",skipReportHeader:"true",skipReportSummary:"true"};if(login)headers["Client-Login"]=login;
-          const body=JSON.stringify({params:{SelectionCriteria:{DateFrom:from,DateTo:to,Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:[String(campaignId)]}]},FieldNames:fields,ReportName:"steel-finish-"+label+"-20261001-v2",ReportType:type,DateRangeType:"CUSTOM_DATE",Format:"TSV",IncludeVAT:"NO",IncludeDiscount:"NO"}});
+          const body=JSON.stringify({params:{SelectionCriteria:{DateFrom:from,DateTo:to,Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:[String(campaignId)]}]},FieldNames:fields,ReportName:"steel-finish-"+label+"-20261001-v3",ReportType:type,DateRangeType:"CUSTOM_DATE",Format:"TSV",IncludeVAT:"NO",IncludeDiscount:"NO"}});
           for(let i=0;i<6;i++){try{const r=await fetch("https://api.direct.yandex.com/json/v501/reports",{method:"POST",headers,body,signal:AbortSignal.timeout(45000)});const t=await r.text();if(r.status===200){console.log("REPORT_"+label+"\n"+t);return;}console.log("REPORT_STATUS",label,r.status,t.slice(0,300));if(![201,202,500,502,503,504].includes(r.status))return;}catch(e){console.log("REPORT_TRANSIENT",label,e.name);}await new Promise(r=>setTimeout(r,5000));}console.log("REPORT_UNAVAILABLE",label);}
           await Promise.allSettled([
-          report("LATEST","2026-09-24","2026-09-30","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost"]),
-          report("PREVIOUS","2026-09-17","2026-09-23","ADGROUP_PERFORMANCE_REPORT",["AdGroupId","AdGroupName","Impressions","Clicks","Cost"]),
-          report("QUERIES","2026-09-24","2026-09-30","SEARCH_QUERY_PERFORMANCE_REPORT",["AdGroupId","SearchQuery","Criterion","Impressions","Clicks","Cost"])
+          report("QUERIES","2026-09-24","2026-09-30","SEARCH_QUERY_PERFORMANCE_REPORT",["AdGroupId","Query","Criterion","Impressions","Clicks","Cost"])
           ]);
           
           NODE
