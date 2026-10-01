@@ -47,7 +47,7 @@ jobs:
           console.log("OPTIMIZATION_PLAN",JSON.stringify({campaignNegativesRemoved:campaign.NegativeKeywords.Items.filter(x=>removeCampaign.has(x.toLowerCase())),groups:groupChanges,copyChanges,rollback:"Restore OPTIMIZATION_BEFORE values, do not delete objects"}));
           console.log("CAMPAIGN_FIX",JSON.stringify(checked(await api("campaigns","update",{Campaigns:[{Id:campaignId,Name:"Сталь Продукт | Поиск | Металлокассеты и корзины | ЦФО",NegativeKeywords:{Items:negatives}}]}))));
           if(groupChanges.length)console.log("GROUP_FIX",JSON.stringify(checked(await api("adgroups","update",{AdGroups:groupChanges}))));
-          if(copyChanges.length)console.log("COPY_FIX",JSON.stringify(checked(await api("ads","update",{Ads:copyChanges.map(({Id,ResponsiveAd})=>({Id,ResponsiveAd}))}))));
+          if(copyChanges.length)console.log("COPY_FIX",JSON.stringify(checked(await api("ads","update",{Ads:copyChanges.map(({Id,ResponsiveAd})=>({Id,ResponsiveAd:{Texts:ResponsiveAd.Texts.map(x=>x.Text),Titles:ads.find(a=>a.Id===Id).ResponsiveAd.Titles.map(x=>x.Title),Href:ads.find(a=>a.Id===Id).ResponsiveAd.Href}}))}))));
           const spbGroupIds=groups.filter(g=>g.Name.includes("СПб")).map(g=>g.Id);
           const auto=await all("keywords","Keywords",{SelectionCriteria:{AdGroupIds:spbGroupIds},FieldNames:["Id","Keyword","State"]});
           const spbAuto=auto.filter(k=>k.Keyword==="---autotargeting"&&k.State==="ON");
@@ -57,6 +57,8 @@ jobs:
           console.log("OPTIMIZATION_AFTER_GROUPS",JSON.stringify(await all("adgroups","AdGroups",{SelectionCriteria:{Ids:[...groupChanges.map(g=>g.Id),...spbGroupIds]},FieldNames:["Id","RegionIds","NegativeKeywords"]})));
           console.log("OPTIMIZATION_AFTER_ADS",JSON.stringify(await all("ads","Ads",{SelectionCriteria:{Ids:copyChanges.map(a=>a.Id)},FieldNames:["Id","State","Status"],ResponsiveAdFieldNames:["Texts"]})));
           console.log("SPB_AFTER_KEYWORDS",JSON.stringify(await all("keywords","Keywords",{SelectionCriteria:{AdGroupIds:spbGroupIds},FieldNames:["Id","Keyword","State"]})));
+          
+          console.log("SITELINKS",JSON.stringify(await all("sitelinks","SitelinksSets",{SelectionCriteria:{},FieldNames:["Id","Sitelinks"]})));
           
           NODE
           node /tmp/direct-spb.mjs
