@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
+import { createCookieChoiceStore } from "@/lib/cookie-consent-state";
 import {
   CANONICAL_YANDEX_COUNTER_ID,
   createResettableOnce,
@@ -13,6 +14,15 @@ import {
 
 type GoalCall = [number, string, string, Record<string, unknown>];
 
+// Match the complete record written by the real consent banner, including its
+// timestamp. Incomplete records are intentionally not treated as permission.
+const storedAnalyticsChoice = (analytics: boolean) => JSON.stringify({
+  version: 2,
+  necessary: true,
+  analytics,
+  updatedAt: "2026-10-01T00:00:00.000Z",
+});
+
 function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
   const previousWindow = globalThis.window;
   const previousCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
@@ -21,7 +31,7 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
     configurable: true,
     value: {
       ym: (...args: GoalCall) => calls.push(args),
-      localStorage: { getItem: () => JSON.stringify({ version: 2, necessary: true, analytics: true }) },
+      localStorage: { getItem: () => storedAnalyticsChoice(true) },
     },
   });
   process.env.NEXT_PUBLIC_YM_COUNTER_ID = String(CANONICAL_YANDEX_COUNTER_ID);
@@ -82,14 +92,14 @@ test("consented goals survive lazy runtime startup exactly once", () => {
 
 test("refused analytics does not send goals even if runtime is already loaded", () => {
   withAnalyticsWindow((calls) => {
-    window.localStorage.getItem = () => JSON.stringify({ version: 2, necessary: true, analytics: false });
+    window.localStorage.getItem = () => storedAnalyticsChoice(false);
     trackLeadEvent("quote_request_success");
     flushPendingAnalyticsGoals();
     assert.equal(calls.length, 0);
   });
 });
 
-test("legacy or unknown Metrica counters fail closed", () => {
+test("legacy or unknown Metrika counters fail closed", () => {
   const previousCounterId = process.env.NEXT_PUBLIC_YM_COUNTER_ID;
   try {
     for (const legacyId of ["111263638", "112129777", "999999999", ""]) {
@@ -184,9 +194,18 @@ test("Metrika runtime stays dynamically imported and requires explicit opt-in", 
 
 test("cookie consent keeps an in-memory choice when localStorage is unavailable", () => {
   const consent = readFileSync(resolve("components/CookieConsent.tsx"), "utf8");
-  assert.match(consent, /let transientChoice: CookieChoice \| null = null/);
-  assert.match(consent, /transientChoice = choice/);
-  assert.match(consent, /return transientChoice/);
+  assert.match(consent, /createCookieChoiceStore\(consentKey\)/);
+  assert.match(consent, /choiceStore\.read\(getStorage\)/);
+  assert.match(consent, /choiceStore\.write\(analytics, getStorage\)/);
+  const store = createCookieChoiceStore("test-consent");
+  const blocked = () => { throw new Error("Storage unavailable"); };
+  assert.equal(store.read(blocked), null);
+  store.write(true, blocked);
+  assert.equal(store.read(blocked)?.analytics, true);
+  store.write(false, blocked);
+  assert.equal(store.read(blocked)?.analytics, false);
+  store.invalidate();
+  assert.equal(store.read(blocked), null);
 });
 
 test("calculator stages never count as an accepted lead", () => {
