@@ -1,0 +1,72 @@
+name: Audit legal runtime controls
+
+on:
+  push:
+    paths:
+      - '.github/workflows/legal-controls-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Inspect retention and backups without personal data
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          sudo -n python3 - "$APP_PATH" <<'PYTHON'
+          import sys, pathlib, sqlite3, json, datetime, subprocess
+          app=pathlib.Path(sys.argv[1]); env={}
+          for line in (app/'.env.production').read_text().splitlines():
+              if '=' in line and not line.lstrip().startswith('#'):
+                  k,v=line.split('=',1); env[k.strip()]=v.strip().strip('"').strip("'")
+          print('PD_ADMIN_ENABLED='+str(env.get('PD_ADMIN_ENABLED')=='true').lower())
+          now=datetime.datetime.now(datetime.timezone.utc)
+          for key,default in [('QUOTE_STORAGE_PATH','/var/lib/steelprodukt/quote-leads'),('ASSISTANT_LEAD_STORAGE_PATH','/var/lib/steelprodukt/assistant-leads'),('CONSENT_AUDIT_STORAGE_PATH','/var/lib/steelprodukt/consent-audit')]:
+              root=pathlib.Path(env.get(key) or default); count=expired=invalid=0
+              for file in root.glob('*.json'):
+                  if file.is_symlink(): invalid+=1; continue
+                  try:
+                      record=json.loads(file.read_text()); count+=1
+                      created=datetime.datetime.fromisoformat(str(record['createdAt']).replace('Z','+00:00'))
+                      days=int(record['retentionDays'])
+                      if days<=0: raise ValueError()
+                      expired+=int(created+datetime.timedelta(days=days)<=now)
+                  except Exception: invalid+=1
+              print(key+': '+json.dumps({'exists':root.is_dir(),'records':count,'expired':expired,'invalid':invalid}))
+          dbpath=pathlib.Path(env.get('PD_ADMIN_DB_PATH') or '/var/lib/steelprodukt/admin/personal-data.sqlite')
+          if dbpath.is_file():
+              con=sqlite3.connect(dbpath.as_uri()+'?mode=ro',uri=True)
+              for table,column in [('lead_workflow','internal_status'),('deletion_jobs','stage4_status')]:
+                  try: print(table+': '+json.dumps(con.execute('SELECT '+column+', COUNT(*) FROM '+table+' GROUP BY '+column).fetchall()))
+                  except sqlite3.Error: print(table+': SCHEMA_UNAVAILABLE')
+              con.close()
+          root=pathlib.Path('/var/backups/steelprodukt')
+          files=[f for f in root.glob('steelprodukt-pd-*.tar.gz.enc') if f.is_file() and not f.is_symlink()]
+          print('LOCAL_BACKUP='+json.dumps({'count':len(files),'older_than_30d':sum(now.timestamp()-f.stat().st_mtime>30*86400 for f in files),'latest_age_hours':round((now.timestamp()-max(f.stat().st_mtime for f in files))/3600,1) if files else None}))
+          result=subprocess.run(['systemctl','is-active','steelprodukt-pd-offsite-backup.timer'],capture_output=True,text=True)
+          print('BACKUP_TIMER='+result.stdout.strip())
+          PYTHON
+          REMOTE
