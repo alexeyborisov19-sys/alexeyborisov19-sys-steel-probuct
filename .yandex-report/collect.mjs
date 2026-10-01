@@ -1,4 +1,4 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 14:18 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 16:50 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
@@ -6,7 +6,7 @@
 //  1) services sitelink set (the first try was rejected for the "×" sign) attached to every services ad;
 //  2) extra ads from extra-spec.json for groups with fewer than three ads, sent to moderation;
 //  3) old cassette/basket groups are suspended only for the product whose new groups all have an accepted ad;
-//  4) read back.
+//  4) read back, plus today's group statistics and search queries (read-only reports).
 import { readFileSync, writeFileSync } from "node:fs";
 
 const CAMPAIGN_ID = 714391927;
@@ -191,6 +191,38 @@ async function main() {
 
   // ---------- 4. read back ----------
   out.after = { groups, ads: await readAds("after") };
+
+  // ---------- 5. read-only reports: today's groups and search queries ----------
+  const report = async (name, type, fields, range) => {
+    const body = { params: {
+      SelectionCriteria: { Filter: [{ Field: "CampaignId", Operator: "EQUALS", Values: [String(CAMPAIGN_ID)] }] },
+      FieldNames: fields, ReportName: `SP check ${name} ${Date.now()}`, ReportType: type,
+      DateRangeType: range, Format: "TSV", IncludeVAT: "YES", IncludeDiscount: "NO",
+    } };
+    const headers = {
+      Authorization: `Bearer ${token}`, "Accept-Language": "ru", "Content-Type": "application/json; charset=utf-8",
+      processingMode: "auto", returnMoneyInMicros: "false", skipReportHeader: "true", skipReportSummary: "true",
+    };
+    if (login) headers["Client-Login"] = login;
+    for (let i = 0; i < 20; i++) {
+      let res;
+      try {
+        res = await fetch("https://api.direct.yandex.com/json/v5/reports", { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(90000) });
+      } catch (e) { return { error: e?.cause?.code || e?.name }; }
+      const text = await res.text();
+      out.calls.push({ label: `reports:${name}`, status: res.status });
+      if (res.status === 200) return { tsv: text };
+      if (res.status === 201 || res.status === 202) { await new Promise((r) => setTimeout(r, (Number(res.headers.get("retryIn")) || 10) * 1000)); continue; }
+      out.errors.push({ step: `reports:${name}`, status: res.status, body: text.slice(0, 1500) });
+      return { status: res.status };
+    }
+    return { error: "TIMEOUT" };
+  };
+  out.reports = {
+    groups_today: await report("groups_today", "CUSTOM_REPORT", ["AdGroupName", "Impressions", "Clicks", "Cost"], "TODAY"),
+    queries_today: await report("queries_today", "SEARCH_QUERY_PERFORMANCE_REPORT", ["Query", "AdGroupName", "Criterion", "CriterionType", "Impressions", "Clicks", "Cost"], "TODAY"),
+    groups_yesterday: await report("groups_yesterday", "CUSTOM_REPORT", ["AdGroupName", "Impressions", "Clicks", "Cost"], "YESTERDAY"),
+  };
 }
 
 await main();
