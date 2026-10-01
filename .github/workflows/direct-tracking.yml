@@ -1,0 +1,59 @@
+name: Fix Direct sitelink attribution and brand targeting
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-tracking.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read targeting without changing advertising
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function apiOnce(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function api(service,method,params){for(let i=0;i<4;i++){try{return await apiOnce(service,method,params);}catch(e){if(i===3||!String(e).includes('"error_code":1000'))throw e;console.log("TRANSIENT_RETRY",service,method,i+1);await new Promise(r=>setTimeout(r,3000));}}}
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          
+          
+          const cid=714391927;
+          function checked(d){for(const x of Object.values(d).flat()){if(x.Errors?.length)throw Error(JSON.stringify(x));}return d;}
+          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[cid]},FieldNames:["Id","State","Status","AdGroupId"],ResponsiveAdFieldNames:["Titles","Texts","Href","SitelinkSetId"]});
+          const oldIds=[1515337984,1515337985,1515347129];
+          const sets=await all("sitelinks","SitelinksSets",{SelectionCriteria:{Ids:oldIds},FieldNames:["Id","Sitelinks"]});
+          const brand=(await all("keywords","Keywords",{SelectionCriteria:{Ids:[205798460271]},FieldNames:["Id","Keyword","State"],AutotargetingSettingsCategoriesFieldNames:["Exact","Narrow","Alternative","Accessory","Broader"],AutotargetingSettingsBrandOptionsFieldNames:["WithoutBrands","WithAdvertiserBrand","WithCompetitorsBrand"]}))[0];
+          console.log("TRACKING_BRAND_BEFORE",JSON.stringify({sets,brand,ads:ads.filter(a=>oldIds.includes(a.ResponsiveAd?.SitelinkSetId))}));
+          if(sets.length!==3)throw Error("Sitelink guard");
+          const newSets=sets.map(set=>({Sitelinks:set.Sitelinks.map(l=>({...l,Href:l.Href+"?utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}.sitelink&utm_term=sitelink"}))}));
+          console.log("TRACKING_BRAND_PLAN",JSON.stringify({newSets,brand:{Exact:"YES",Narrow:"NO",WithoutBrands:"NO",WithAdvertiserBrand:"YES",WithCompetitorsBrand:"NO"},rollback:"Restore original SitelinkSetId values and TRACKING_BRAND_BEFORE settings"}));
+          const created=checked(await api("sitelinks","add",{SitelinksSets:newSets}));console.log("TRACKING_SETS_CREATED",JSON.stringify(created));
+          const mapping=new Map(sets.map((set,i)=>[set.Id,created.AddResults[i].Id]));
+          const updates=ads.filter(a=>mapping.has(a.ResponsiveAd?.SitelinkSetId)).map(a=>({Id:a.Id,ResponsiveAd:{Href:a.ResponsiveAd.Href,Titles:a.ResponsiveAd.Titles.map(x=>x.Title),Texts:a.ResponsiveAd.Texts.map(x=>x.Text),SitelinkSetId:mapping.get(a.ResponsiveAd.SitelinkSetId)}}));
+          console.log("TRACKING_ADS_RESULT",JSON.stringify(checked(await api("ads","update",{Ads:updates}))));
+          console.log("BRAND_RESULT",JSON.stringify(checked(await api("keywords","update",{Keywords:[{Id:205798460271,AutotargetingSettings:{Categories:{Exact:"YES",Narrow:"NO",Alternative:"NO",Accessory:"NO",Broader:"NO"},BrandOptions:{WithoutBrands:"NO",WithAdvertiserBrand:"YES",WithCompetitorsBrand:"NO"}}}]}))));
+          await new Promise(r=>setTimeout(r,5000));
+          const after=await all("ads","Ads",{SelectionCriteria:{Ids:updates.map(a=>a.Id)},FieldNames:["Id","State","Status"],ResponsiveAdFieldNames:["SitelinkSetId"]});
+          console.log("TRACKING_ADS_READBACK",JSON.stringify(after));
+          console.log("TRACKING_SETS_READBACK",JSON.stringify(await all("sitelinks","SitelinksSets",{SelectionCriteria:{Ids:created.AddResults.map(x=>x.Id)},FieldNames:["Id","Sitelinks"]})));
+          console.log("BRAND_READBACK",JSON.stringify(await all("keywords","Keywords",{SelectionCriteria:{Ids:[205798460271]},FieldNames:["Id","State"],AutotargetingSettingsCategoriesFieldNames:["Exact","Narrow","Alternative","Accessory","Broader"],AutotargetingSettingsBrandOptionsFieldNames:["WithoutBrands","WithAdvertiserBrand","WithCompetitorsBrand"]})));
+          if(after.length!==updates.length||after.some(a=>!created.AddResults.some(x=>x.Id===a.ResponsiveAd.SitelinkSetId)))throw Error("Tracking verification failed");
+          console.log("TRACKING_VERIFIED",updates.length);
+          
+          NODE
+          node /tmp/direct-spb.mjs
