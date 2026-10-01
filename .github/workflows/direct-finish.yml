@@ -1,0 +1,62 @@
+name: Finish Direct campaign corrections
+on:
+  push:
+    branches: [ops/direct-spb-20261001]
+    paths: ['.github/workflows/direct-finish.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Read targeting without changing advertising
+        run: |
+          cat > /tmp/direct-spb.mjs <<'NODE'
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Direct token missing");
+          async function apiOnce(service,method,params){
+           const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};
+           if(login)headers["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:JSON.stringify({method,params}).replace(/"(\d{16,})"/g,"$1"),signal:AbortSignal.timeout(30000)});
+           const raw=await r.text();const d=JSON.parse(raw.replace(/([:\[,]\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));if(!r.ok||d.error)throw Error(JSON.stringify({status:r.status,error:d.error}));return d.result;
+          }
+          async function api(service,method,params){for(let i=0;i<4;i++){try{return await apiOnce(service,method,params);}catch(e){if(i===3||!String(e).includes('"error_code":1000'))throw e;console.log("TRANSIENT_RETRY",service,method,i+1);await new Promise(r=>setTimeout(r,3000));}}}
+          async function all(service,key,params){
+           let list=[],offset=0;while(true){const d=await api(service,"get",{...params,Page:{Limit:1000,Offset:offset}});list.push(...(d[key]||[]));if(d.LimitedBy==null)break;offset=d.LimitedBy;}return list;
+          }
+          
+          
+          const campaignId=714391927;
+          function checked(d){for(const x of Object.values(d).flat()){if(x.Errors?.length)throw Error(JSON.stringify(x));}return d;}
+          const campaign=(await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","State","NegativeKeywords"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy"]}))[0];
+          if(campaign.State!=="ON"||campaign.UnifiedCampaign.BiddingStrategy.Search.WbMaximumClicks.WeeklySpendLimit!==3000000000)throw Error("Budget/campaign guard");
+          const groups=await all("adgroups","AdGroups",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","Name","RegionIds","NegativeKeywords"]});
+          const ads=await all("ads","Ads",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","State","Status","AdGroupId"],ResponsiveAdFieldNames:["Texts","Titles","Href"]});
+          console.log("OPTIMIZATION_BEFORE",JSON.stringify({campaign,groups,ads}));
+          const removeCampaign=new Set(["pdf","dwg","autocad","автокад","solidworks","бесплатно"]);
+          const negatives=campaign.NegativeKeywords.Items.filter(x=>!removeCampaign.has(x.toLowerCase()));
+          const groupChanges=groups.filter(g=>g.Id>=5807078455&&g.Id<=5807078565&&g.NegativeKeywords?.Items.includes("чертеж")).map(g=>({Id:g.Id,NegativeKeywords:{Items:g.NegativeKeywords.Items.filter(x=>x!=="чертеж")}}));
+          const copyChanges=[{"Id":"1922894480187500966","old":["Открытые и закрытые, 0,7–1,5 мм, любой RAL. Расчёт по раскладке фасада."],"ResponsiveAd":{"Texts":[{"Text":"Открытые и закрытые кассеты по проекту, окраска по RAL. Расчёт по раскладке фасада."}]}},{"Id":"1922894491996732147","old":["Оцинкованная сталь 0,7–1,5 мм, порошковая окраска. Пришлите раскладку на расчёт."],"ResponsiveAd":{"Texts":[{"Text":"Оцинкованная сталь по проекту, порошковая окраска. Пришлите раскладку на расчёт."}]}},{"Id":"1922896445137195286","old":["Оцинкованная сталь 0,7–1,5 мм, порошковая окраска. Цена по площади фасада онлайн."],"ResponsiveAd":{"Texts":[{"Text":"Оцинкованная сталь по проекту, порошковая окраска. Цена по площади фасада онлайн."}]}},{"Id":"1922894517769915360","old":["Сталь с цинком от 100 г/м², порошковая окраска: матовая, глянец, под дерево."],"ResponsiveAd":{"Texts":[{"Text":"Оцинкованные кассеты по проекту. Порошковая окраска по RAL."}]}},{"Id":"1922894519915851987","old":["Оцинкованная сталь 0,7–1,5 мм с порошковым покрытием. Поставка по ЦФО."],"ResponsiveAd":{"Texts":[{"Text":"Оцинкованная сталь по проекту с порошковым покрытием. Поставка по ЦФО."}]}},{"Id":"1922896450501547370","old":["Матовые, глянцевые, под дерево. Оцинковка от 100 г/м². Производство в Смоленске."],"ResponsiveAd":{"Texts":[{"Text":"Оцинкованные кассеты по проекту. Окраска по RAL. Производство в Смоленске."}]}},{"Id":"1922896424732409375","old":["3 лазерных комплекса, сталь 0,5–40 мм. Обычный срок 7–14 дней. Металл заказчика."],"ResponsiveAd":{"Texts":[{"Text":"3 лазера, чёрная сталь 0,5–40 мм. Работаем с металлом заказчика. Срок по партии."}]}},{"Id":"1922896429031738189","old":["Полный цикл: лазер, гибка, сварка, порошковая окраска. Обычный срок 7–14 дней."],"ResponsiveAd":{"Texts":[{"Text":"Полный цикл: лазер, гибка, сварка, порошковая окраска. Срок согласуем по партии."}]}},{"Id":"1922896431177412557","old":["3 лазерных комплекса, сталь 0,5–40 мм. Цех в Смоленске, поставка по России."],"ResponsiveAd":{"Texts":[{"Text":"3 лазерных комплекса, чёрная сталь 0,5–40 мм. Цех в Смоленске, поставка по России."}]}}];
+          for(const x of copyChanges){const a=ads.find(a=>a.Id===x.Id);if(!a||JSON.stringify(a.ResponsiveAd.Texts.map(t=>t.Text))!==JSON.stringify(x.old))throw Error("Creative guard failed");for(const t of x.ResponsiveAd.Texts)if(t.Text.replace(/[!,.;:"]/g,"").length>81)throw Error("Text length guard");}
+          console.log("OPTIMIZATION_PLAN",JSON.stringify({campaignNegativesRemoved:campaign.NegativeKeywords.Items.filter(x=>removeCampaign.has(x.toLowerCase())),groups:groupChanges,copyChanges,rollback:"Restore OPTIMIZATION_BEFORE values, do not delete objects"}));
+          console.log("CAMPAIGN_FIX",JSON.stringify(checked(await api("campaigns","update",{Campaigns:[{Id:campaignId,Name:"Сталь Продукт | Поиск | Металлокассеты и корзины | ЦФО",NegativeKeywords:{Items:negatives}}]}))));
+          if(groupChanges.length)console.log("GROUP_FIX",JSON.stringify(checked(await api("adgroups","update",{AdGroups:groupChanges}))));
+          if(copyChanges.length)console.log("COPY_FIX",JSON.stringify(checked(await api("ads","update",{Ads:copyChanges.map(({Id,ResponsiveAd})=>({Id,ResponsiveAd}))}))));
+          const spbGroupIds=groups.filter(g=>g.Name.includes("СПб")).map(g=>g.Id);
+          const auto=await all("keywords","Keywords",{SelectionCriteria:{AdGroupIds:spbGroupIds},FieldNames:["Id","Keyword","State"]});
+          const spbAuto=auto.filter(k=>k.Keyword==="---autotargeting"&&k.State==="ON");
+          if(spbAuto.length)console.log("SPB_AUTO_STOP",JSON.stringify(checked(await api("keywords","suspend",{SelectionCriteria:{Ids:spbAuto.map(k=>k.Id)}}))));
+          await new Promise(r=>setTimeout(r,5000));
+          console.log("OPTIMIZATION_AFTER_CAMPAIGN",JSON.stringify(await all("campaigns","Campaigns",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","State","NegativeKeywords"],UnifiedCampaignFieldNames:["Settings","BiddingStrategy"]})));
+          console.log("OPTIMIZATION_AFTER_GROUPS",JSON.stringify(await all("adgroups","AdGroups",{SelectionCriteria:{Ids:[...groupChanges.map(g=>g.Id),...spbGroupIds]},FieldNames:["Id","RegionIds","NegativeKeywords"]})));
+          console.log("OPTIMIZATION_AFTER_ADS",JSON.stringify(await all("ads","Ads",{SelectionCriteria:{Ids:copyChanges.map(a=>a.Id)},FieldNames:["Id","State","Status"],ResponsiveAdFieldNames:["Texts"]})));
+          console.log("SPB_AFTER_KEYWORDS",JSON.stringify(await all("keywords","Keywords",{SelectionCriteria:{AdGroupIds:spbGroupIds},FieldNames:["Id","Keyword","State"]})));
+          
+          NODE
+          node /tmp/direct-spb.mjs
