@@ -41,6 +41,21 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
             "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
           set -euo pipefail
+          wrapper=$(sudo -n mktemp /var/backups/steelprodukt/.backup-diagnostic.XXXXXX)
+          trap 'sudo -n rm -f "$wrapper"' EXIT
+          sudo -n tee "$wrapper" >/dev/null <<'WRAPPER'
+          #!/usr/bin/env python3
+          import runpy,sys,traceback
+          try:
+              runpy.run_path('/usr/local/sbin/steelprodukt-pd-backup-files',run_name='__main__')
+          except BaseException as failure:
+              error=failure.__context__ or failure
+              print('BACKUP_ERROR='+type(error).__name__+' errno='+str(getattr(error,'errno',None))+' sqlite='+str(getattr(error,'sqlite_errorname',None)),file=sys.stderr)
+              print('BACKUP_TRACE='+str([(frame.name,frame.lineno) for frame in traceback.extract_tb(error.__traceback__)]),file=sys.stderr)
+              raise
+          WRAPPER
+          sudo -n chmod 0700 "$wrapper"
+          sudo -n systemd-run --quiet --wait --pipe --collect -p ProtectSystem=strict -p ProtectHome=true -p PrivateTmp=true -p NoNewPrivileges=true -p ReadWritePaths=/var/backups/steelprodukt --setenv="PD_BACKUP_FILES_HELPER=$wrapper" /usr/local/sbin/steelprodukt-pd-offsite-backup || true
           sudo -n python3 - "$APP_PATH" <<'PYTHON'
           import sys, pathlib, sqlite3, json, datetime, subprocess
           app=pathlib.Path(sys.argv[1]); env={}
