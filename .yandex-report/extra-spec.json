@@ -1,0 +1,163 @@
+{
+ "Ads": [
+  {
+   "Group": "Услуги Смоленск | Лазерная резка",
+   "Kit": "sv",
+   "Title": "Лазерная резка листового металла. Смоленск",
+   "Title2": "",
+   "Text": "3 лазерных комплекса, сталь 0,5–40 мм. Обычный срок 7–14 дней. Металл заказчика.",
+   "Href": "https://www.steelprodukt.ru/production/lazernaya-rezka-metalla",
+   "DisplayUrlPath": "lazernaya-rezka"
+  },
+  {
+   "Group": "Услуги Смоленск | Гибка",
+   "Kit": "sv",
+   "Title": "Гибка металла по чертежам в Смоленске",
+   "Title2": "Срок 7–14 дней",
+   "Text": "Сталь, алюминий, оцинковка. Проверим развёртку до запуска. Расчёт по STEP онлайн.",
+   "Href": "https://www.steelprodukt.ru/production/gibka-listovogo-metalla",
+   "DisplayUrlPath": "gibka"
+  },
+  {
+   "Group": "Услуги Смоленск | Порошковая покраска",
+   "Kit": "sv",
+   "Title": "Порошковая окраска металлоизделий. Смоленск",
+   "Title2": "",
+   "Text": "Окраска деталей и конструкций в любой цвет RAL: матовые и глянцевые покрытия.",
+   "Href": "https://www.steelprodukt.ru/production/poroshkovaya-okraska-metalla",
+   "DisplayUrlPath": "pokraska"
+  },
+  {
+   "Group": "Услуги Смоленск | Сварка",
+   "Kit": "sv",
+   "Title": "Сварка и сборка металлоизделий в Смоленске",
+   "Title2": "",
+   "Text": "Сварные корпуса, рамы и каркасы по КД. Резка, гибка и окраска в одном цехе.",
+   "Href": "https://www.steelprodukt.ru/production/svarka-i-sborka-metalloizdeliy",
+   "DisplayUrlPath": "svarka"
+  },
+  {
+   "Group": "Услуги Смоленск | Металлообработка",
+   "Kit": "sv",
+   "Title": "Изделия из листового металла в Смоленске",
+   "Title2": "",
+   "Text": "Полный цикл: лазер, гибка, сварка, порошковая окраска. Обычный срок 7–14 дней.",
+   "Href": "https://www.steelprodukt.ru/production",
+   "DisplayUrlPath": "proizvodstvo"
+  },
+  {
+   "Group": "Услуги Москва Калуга Брянск | Лазерная резка",
+   "Kit": "sv",
+   "Title": "Лазерная резка металла на заказ",
+   "Title2": "Срок 7–14 дней",
+   "Text": "3 лазерных комплекса, сталь 0,5–40 мм. Цех в Смоленске, поставка по России.",
+   "Href": "https://www.steelprodukt.ru/production/lazernaya-rezka-metalla",
+   "DisplayUrlPath": "lazernaya-rezka"
+  },
+  {
+   "Group": "Услуги Москва Калуга Брянск | Гибка",
+   "Kit": "sv",
+   "Title": "Гибка металла по чертежам",
+   "Title2": "Срок 7–14 дней",
+   "Text": "Сталь, алюминий, оцинковка. 4 листогиба с ЧПУ и панельгиб. Поставка по России.",
+   "Href": "https://www.steelprodukt.ru/production/gibka-listovogo-metalla",
+   "DisplayUrlPath": "gibka"
+  },
+  {
+   "Group": "Услуги Москва Калуга Брянск | Сварка изделий",
+   "Kit": "sv",
+   "Title": "Сварные металлоконструкции на заказ. По чертежам",
+   "Title2": "",
+   "Text": "Рамы, каркасы и корпуса из листового металла. Окраска по RAL, поставка по России.",
+   "Href": "https://www.steelprodukt.ru/production/svarka-i-sborka-metalloizdeliy",
+   "DisplayUrlPath": "svarka"
+  },
+  {
+   "Group": "Услуги Москва Калуга Брянск | Сварка изделий",
+   "Kit": "sv",
+   "Title": "Сварка металлоизделий: расчёт по STEP онлайн",
+   "Title2": "",
+   "Text": "Загрузите модель — цена изделия онлайн. Резка, гибка, сварка и окраска в цехе.",
+   "Href": "https://www.steelprodukt.ru/online-order",
+   "DisplayUrlPath": "raschet-onlain"
+  },
+  {
+   "Group": "Услуги Москва Калуга Брянск | Изделия по чертежам",
+   "Kit": "sv",
+   "Title": "Контрактное производство металлоизделий",
+   "Title2": "Образец и серия",
+   "Text": "Изготовим детали по DXF, DWG и STEP. Обычный срок 7–14 дней, поставка по России.",
+   "Href": "https://www.steelprodukt.ru/solutions/custom",
+   "DisplayUrlPath": "po-chertezham"
+  },
+  {
+   "Group": "Металлокассеты | Закрытый тип",
+   "Kit": "mk",
+   "Title": "Металлокассеты со скрытым крепежом",
+   "Title2": "От производителя",
+   "Text": "Монолитная плоскость фасада. Оцинкованная сталь, порошковая окраска по RAL.",
+   "Href": "https://www.steelprodukt.ru/products/metallokassety-premium",
+   "DisplayUrlPath": "premium"
+  },
+  {
+   "Group": "Металлокассеты | Открытый тип",
+   "Kit": "mk",
+   "Title": "Металлокассеты открытого типа на заказ. Любой RAL",
+   "Title2": "",
+   "Text": "Оцинкованная сталь 0,7–1,5 мм, порошковая окраска. Цена по площади фасада онлайн.",
+   "Href": "https://www.steelprodukt.ru/products/metallokassety-standart",
+   "DisplayUrlPath": "standart"
+  },
+  {
+   "Group": "Металлокассеты | Калькулятор",
+   "Kit": "mk",
+   "Title": "Расчёт количества металлокассет онлайн",
+   "Title2": "Цена по площади",
+   "Text": "Открытый и закрытый тип, толщина 0,65–1,2 мм. По площади или размерам стены.",
+   "Href": "https://www.steelprodukt.ru/calculator-metallokassety",
+   "DisplayUrlPath": "kalkulyator"
+  },
+  {
+   "Group": "Металлокассеты | Оцинковка и RAL",
+   "Kit": "mk",
+   "Title": "Металлокассеты с порошковой окраской по RAL",
+   "Title2": "",
+   "Text": "Матовые, глянцевые, под дерево. Оцинковка от 100 г/м². Производство в Смоленске.",
+   "Href": "https://www.steelprodukt.ru/products/metallokassety",
+   "DisplayUrlPath": "ral"
+  },
+  {
+   "Group": "Корзины | Экраны",
+   "Kit": "kz",
+   "Title": "Декоративные экраны для кондиционеров на фасад",
+   "Title2": "",
+   "Text": "Скрывают наружные блоки и сохраняют воздухообмен. Любой RAL, поставка по ЦФО.",
+   "Href": "https://www.steelprodukt.ru/products/korziny-dlya-konditsionerov",
+   "DisplayUrlPath": "ekrany"
+  }
+ ],
+ "ServicesKit": {
+  "Sitelinks": [
+   {
+    "Title": "Онлайн-расчёт детали",
+    "Href": "https://www.steelprodukt.ru/online-order",
+    "Description": "Загрузите DXF или STEP — стоимость бесплатно"
+   },
+   {
+    "Title": "Производство",
+    "Href": "https://www.steelprodukt.ru/production",
+    "Description": "Резка, гибка, сварка и окраска в Смоленске"
+   },
+   {
+    "Title": "Лазерная резка",
+    "Href": "https://www.steelprodukt.ru/production/lazernaya-rezka-metalla",
+    "Description": "Сталь до 40 мм, стол 1500x3000 мм"
+   },
+   {
+    "Title": "Гибка металла",
+    "Href": "https://www.steelprodukt.ru/production/gibka-listovogo-metalla",
+    "Description": "4 листогибочных комплекса и панельгиб"
+   }
+  ]
+ }
+}
