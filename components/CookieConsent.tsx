@@ -4,57 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { legalLinks } from "@/lib/legal";
+import { createCookieChoiceStore, observeCookieChoiceStorage } from "@/lib/cookie-consent-state";
 
 const consentKey = "steelprodukt-cookie-consent-v2";
 const consentEvent = "steelprodukt-cookie-consent";
 const settingsEvent = "steelprodukt-cookie-settings";
+const choiceStore = createCookieChoiceStore(consentKey);
+const getStorage = () => window.localStorage;
 
-type CookieChoice = {
-  version: 2;
-  necessary: true;
-  analytics: boolean;
-  updatedAt: string;
-};
-
-// Private/embedded browsers can deny localStorage. Keep the visitor's explicit
-// choice for the lifetime of the current document so the banner and analytics
-// behaviour still match the button they pressed, without inventing persistence.
-let transientChoice: CookieChoice | null = null;
-
-function readChoice(): CookieChoice | null {
-  try {
-    const stored = window.localStorage.getItem(consentKey);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Partial<CookieChoice>;
-      if (parsed.version === 2 && parsed.necessary === true && typeof parsed.analytics === "boolean") {
-        return parsed as CookieChoice;
-      }
-    }
-  } catch {
-    // Some private-browser and embedded-browser modes disable storage access.
-  }
-  return transientChoice;
+function readChoice() {
+  return choiceStore.read(getStorage);
 }
 
 function saveChoice(analytics: boolean) {
-  const choice: CookieChoice = {
-    version: 2,
-    necessary: true,
-    analytics,
-    updatedAt: new Date().toISOString(),
-  };
-  transientChoice = choice;
-  try {
-    window.localStorage.setItem(consentKey, JSON.stringify(choice));
-  } catch {
-    // The in-memory choice above keeps consent consistent for this page visit.
-  }
+  choiceStore.write(analytics, getStorage);
   window.dispatchEvent(new Event(consentEvent));
 }
 
 function hasAnalyticsConsent() {
-  // The published policy requires an explicit choice. Missing, malformed or
-  // unavailable storage is not permission to load analytics or Webvisor.
+  // Missing or malformed readable storage cannot restore an older permission.
   return readChoice()?.analytics === true;
 }
 
@@ -86,9 +54,18 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
       });
     };
     const syncChoice = () => setVisible(readChoice() === null);
+    const stopObservingStorage = observeCookieChoiceStorage({
+      target: window,
+      key: consentKey,
+      consentEvent,
+      getStorage,
+      store: choiceStore,
+      onRevoked: () => window.location.reload(),
+    });
     window.addEventListener(settingsEvent, openSettings);
     window.addEventListener(consentEvent, syncChoice);
     return () => {
+      stopObservingStorage();
       window.removeEventListener(settingsEvent, openSettings);
       window.removeEventListener(consentEvent, syncChoice);
     };
@@ -131,9 +108,8 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
     saveChoice(analytics);
     setVisible(false);
 
-    // If analytics was active during this page session, unmounting the Script
-    // component cannot undo JavaScript that the vendor tag has already executed.
-    // Reload after an opt-out so the next document starts without the tag.
+    // Reload after opt-out to remove vendor JavaScript already executed in this
+    // document. The storage observer applies the same rule in other open tabs.
     if (analyticsWasAllowed && analytics === false) {
       window.location.reload();
     }
