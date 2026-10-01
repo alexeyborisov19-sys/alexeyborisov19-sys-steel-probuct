@@ -94,7 +94,7 @@ jobs:
           with tempfile.TemporaryDirectory(prefix='.diagnostic-',dir='/var/backups/steelprodukt') as temporary:
               for index,source in enumerate(sources):
                   try:
-                      helper.stage(pathlib.Path(source),pathlib.Path(temporary)/str(index)); print('STAGE_'+str(index)+'=OK')
+                      helper.stage(pathlib.Path(source),pathlib.Path(temporary)/pathlib.Path(source).relative_to('/')); print('STAGE_'+str(index)+'=OK')
                   except Exception as error:
                       print('STAGE_'+str(index)+'='+type(error).__name__+' errno='+str(getattr(error,'errno',None))+' sqlite='+str(getattr(error,'sqlite_errorname',None)))
                       print('TRACE='+str([(frame.name,frame.lineno) for frame in traceback.extract_tb(error.__traceback__)]))
