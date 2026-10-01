@@ -194,3 +194,20 @@ test("calculator stages never count as an accepted lead", () => {
     assert.ok(calls.every(call => call[2] !== "ym-submit-leadform"));
   });
 });
+
+test("a phone link tap is a contact goal, never a submitted lead, and never carries the number", () => {
+  withAnalyticsWindow((calls) => {
+    trackLeadEvent("phone_click", { link_location: "header", page_path: "/contacts", phone: "+7 910 780 37 23" });
+    assert.deepEqual(calls.map((call) => call[2]), ["ym-show-contacts", "phone_click"]);
+    assert.ok(calls.every((call) => call[2] !== "ym-submit-leadform"));
+    assert.ok(calls.every((call) => !("phone" in call[3])));
+    assert.equal(calls[1][3].link_location, "header");
+  });
+});
+
+test("the consent-gated Metrika component tracks taps on every tel: link", () => {
+  const source = readFileSync(resolve("components/Analytics.tsx"), "utf8");
+  assert.match(source, /closest\('a\[href\^="tel:"\]'\)/);
+  assert.match(source, /trackLeadEvent\("phone_click"/);
+  assert.match(source, /removeEventListener\("click", trackPhoneClick/);
+});

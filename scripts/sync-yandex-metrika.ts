@@ -58,6 +58,7 @@ export const METRIKA_GOAL_METADATA: Record<string, GoalMetadata> = {
   quote_files_cta_click: { name: "Заявка с файлами — CTA" },
   "ym-show-contacts": { name: "Контакты — показ/переход (Яндекс)" },
   email_click: { name: "Контакты — e-mail" },
+  phone_click: { name: "Контакты — звонок по телефону", favorite: true },
   exhibition_official_click: { name: "Выставки — официальный сайт" },
   exhibition_quote_click: { name: "Выставки — запрос расчёта" },
   assistant_opened: { name: "Инженерный помощник — открыт" },

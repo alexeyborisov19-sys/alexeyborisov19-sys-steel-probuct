@@ -3,7 +3,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { flushPendingAnalyticsGoals, yandexCounterIds } from "@/lib/analytics";
+import { flushPendingAnalyticsGoals, trackLeadEvent, yandexCounterIds } from "@/lib/analytics";
 import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
 const counterIds = yandexCounterIds();
@@ -33,6 +33,20 @@ export function Analytics() {
     const runtime = window as Window & { ym?: (id: number, command: string, path: string, options: { referer: string }) => void };
     for (const id of counterIds) runtime.ym?.(id, "hit", pathname, { referer: previousPath });
   }, [pathname, runtimeReady, analyticsAllowed]);
+
+  // A tap on any phone link is a lead signal. One delegated listener covers the
+  // header, footer, hero and contact blocks; the number itself is never sent.
+  useEffect(() => {
+    function trackPhoneClick(event: MouseEvent) {
+      const target = event.target instanceof Element ? event.target : null;
+      const link = target?.closest('a[href^="tel:"]');
+      if (!link) return;
+      const area = link.closest("header") ? "header" : link.closest("footer") ? "footer" : "page";
+      trackLeadEvent("phone_click", { link_location: area, page_path: window.location.pathname });
+    }
+    document.addEventListener("click", trackPhoneClick, { capture: true });
+    return () => document.removeEventListener("click", trackPhoneClick, { capture: true });
+  }, []);
 
   function analyticsReady() {
     lastPath.current = window.location.pathname;
