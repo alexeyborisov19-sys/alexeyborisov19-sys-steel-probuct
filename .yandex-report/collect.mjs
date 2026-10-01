@@ -1,4 +1,4 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 19:05 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 19:30 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
@@ -9,6 +9,7 @@
 //     The step is removed so later runs never undo a manual stop;
 //  4) read back, plus today's group statistics and search queries (read-only reports).
 import { readFileSync, writeFileSync } from "node:fs";
+import { promises as dns } from "node:dns";
 
 const CAMPAIGN_ID = 714391927;
 const extra = JSON.parse(readFileSync(".yandex-report/extra-spec.json", "utf8"));
@@ -105,6 +106,49 @@ async function siteProbe() {
   // the non-www page posting to the non-www API while the canonical origin is www
   await timed("POST https://steelprodukt.ru/api/quote (Origin=https://steelprodukt.ru, sec-fetch-site same-origin)", "https://steelprodukt.ru/api/quote",
     { method: "POST", body: emptyLead(), headers: { Origin: "https://steelprodukt.ru", "Sec-Fetch-Site": "same-origin" } });
+  // compliance checks (read-only): legal pages, consent markup, CSP, internal area, robots, mail DNS, RKN registry
+  const compliance = {};
+  const page = async (path) => {
+    try {
+      const res = await fetch(`https://www.steelprodukt.ru${path}`, { redirect: "manual", signal: AbortSignal.timeout(30000) });
+      return { status: res.status, headers: Object.fromEntries(res.headers), text: await res.text() };
+    } catch (e) { return { error: e?.cause?.code || e?.name }; }
+  };
+  for (const path of ["/legal/privacy", "/legal/personal-data-consent", "/legal/cookies", "/legal/marketing-consent", "/legal/services", "/legal/terms", "/legal/requisites"]) {
+    const r = await page(path);
+    compliance[path] = { status: r.status, edition: (r.text || "").match(/(Редакция от|Актуально на)[^<]{0,40}/)?.[0] || null };
+  }
+  const home = await page("/");
+  compliance.home = {
+    csp: home.headers?.["content-security-policy"] || null,
+    footerPrivacyLink: /href="\/legal\/privacy"/.test(home.text || ""),
+    footerCookiesLink: /href="\/legal\/cookies"/.test(home.text || ""),
+    requisitesLink: /href="\/legal\/requisites"/.test(home.text || ""),
+    cookieSettingsButton: /Настройки cookies/.test(home.text || ""),
+    externalHosts: [...new Set([...(home.text || "").matchAll(/(?:src|href)="(https?:\/\/[^"/]+)/g)].map((m) => m[1]))],
+  };
+  const contacts = await page("/contacts");
+  const pdBox = (contacts.text || "").match(/<input[^>]*name="personalDataConsent"[^>]*>/)?.[0] || null;
+  const mkBox = (contacts.text || "").match(/<input[^>]*name="marketingConsent"[^>]*>/)?.[0] || null;
+  compliance.contactsForm = { personalDataConsentInput: pdBox, preChecked: pdBox ? /checked/.test(pdBox) : null, marketingInput: mkBox, marketingPreChecked: mkBox ? /checked/.test(mkBox) : null };
+  for (const path of ["/internal/personal-data/leads", "/internal/personal-data", "/robots.txt"]) {
+    const r = await page(path);
+    compliance[path] = { status: r.status, location: r.headers?.location || null, snippet: path === "/robots.txt" ? (r.text || "").slice(0, 600) : (r.text || "").match(/<title>[^<]*<\/title>/)?.[0] || null };
+  }
+  const q = async (fn, name) => { try { return await fn(name); } catch (e) { return { error: e.code || e.message }; } };
+  compliance.dns = {
+    mx: await q(dns.resolveMx, "steelprodukt.ru"),
+    txt: await q(dns.resolveTxt, "steelprodukt.ru"),
+    dmarc: await q(dns.resolveTxt, "_dmarc.steelprodukt.ru"),
+    dkim_mailru: await q(dns.resolveTxt, "mailru._domainkey.steelprodukt.ru"),
+    dkim_mail: await q(dns.resolveTxt, "mail._domainkey.steelprodukt.ru"),
+  };
+  try {
+    const res = await fetch("https://pd.rkn.gov.ru/operators-registry/operators-list/?act=search&inn=6732110789", { signal: AbortSignal.timeout(30000) });
+    const text = await res.text();
+    compliance.rknRegistry = { status: res.status, found: /6732110789/.test(text), snippet: (text.match(/6732110789[\s\S]{0,400}/) || [""])[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 400) };
+  } catch (e) { compliance.rknRegistry = { error: e?.cause?.code || e?.name }; }
+  site.compliance = compliance;
   out.site = site;
 
   // Metrika: every goal over 90 days, and visits by source, to compare with Direct clicks
