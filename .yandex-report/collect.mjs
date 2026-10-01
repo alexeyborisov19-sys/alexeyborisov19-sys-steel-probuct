@@ -1,4 +1,4 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 18:45 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 19:00 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
@@ -130,7 +130,31 @@ async function siteProbe() {
 // The one-off test request (owner-approved) was sent on 2026-10-01 18:29 MSK as SP-20261001-CF9E637F
 // and accepted with e-mail delivery; the step is removed so reruns never send another.
 
+// Key goals of the campaign: add the new phone_click goal next to the existing ones (nothing removed).
+async function keyGoals() {
+  const ym = String(process.env.YM_TOKEN || "").trim();
+  const res = await fetch("https://api-metrika.yandex.net/management/v1/counter/112542227/goals", { headers: { Authorization: `OAuth ${ym}` } });
+  const goals = (await res.json().catch(() => ({}))).goals || [];
+  const byTarget = Object.fromEntries(goals.map((g) => [g.conditions?.[0]?.url, g.id]));
+  const want = ["quote_request_success", "assistant_lead_success", "phone_click"].map((t) => [t, byTarget[t]]);
+  out.key_goals = { want: Object.fromEntries(want) };
+  const c = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id"], UnifiedCampaignFieldNames: ["CounterIds", "PriorityGoals"] }, "key_goals_before");
+  const uc = c?.result?.Campaigns?.[0]?.UnifiedCampaign || {};
+  const items = uc.PriorityGoals?.Items || [];
+  out.key_goals.before = { counters: uc.CounterIds, items };
+  const have = new Set(items.map((i) => i.GoalId));
+  const value = Math.max(0, ...items.map((i) => i.Value || 0)) || 1000000000;
+  const add = want.filter(([, id]) => id && !have.has(id)).map(([, id]) => ({ GoalId: id, Value: value, IsMetrikaSourceOfValue: "NO" }));
+  if (add.length) {
+    const merged = [...items.map((i) => ({ GoalId: i.GoalId, Value: i.Value, IsMetrikaSourceOfValue: i.IsMetrikaSourceOfValue || "NO" })), ...add];
+    await api("campaigns", "update", { Campaigns: [{ Id: CAMPAIGN_ID, UnifiedCampaign: { PriorityGoals: { Items: merged, Operation: "SET" } } }] }, "key_goals");
+  }
+  const c2 = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id"], UnifiedCampaignFieldNames: ["CounterIds", "PriorityGoals"] }, "key_goals_after");
+  out.key_goals.after = c2?.result?.Campaigns?.[0]?.UnifiedCampaign?.PriorityGoals?.Items;
+}
+
 async function main() {
+  await keyGoals();
   await siteProbe();
   if (!token) { out.errors.push({ step: "token", error: "missing" }); return; }
   const c = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "State", "Status"] }, "guard");
