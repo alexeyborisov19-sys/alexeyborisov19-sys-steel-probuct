@@ -5,6 +5,16 @@ import test from "node:test";
 
 const root = process.cwd();
 
+test("advertising opt-out is immediate and localization covers collection", async () => {
+  const marketing = await readFile(join(root, "app/(public)/legal/marketing-consent/page.tsx"), "utf8");
+  assert.match(marketing, /прекращается немедленно после получения требования/);
+  assert.doesNotMatch(marketing, /без необоснованной задержки/);
+  for (const page of ["privacy", "services"]) {
+    const document = await readFile(join(root, `app/(public)/legal/${page}/page.tsx`), "utf8");
+    assert.match(document, /Использование для этих операций при сборе баз данных за пределами Российской Федерации не допускается/);
+  }
+});
+
 test("public legal retention matches the configured 90-day lead period", async () => {
   const [environment, deployment, privacy, consent, regulation] = await Promise.all([
     readFile(join(root, ".env.example"), "utf8"),
@@ -82,7 +92,8 @@ test("public services disclosure does not expose internal administration details
     readFile(join(root, "docs/legal-approval-package/14-public-site-legal-review.md"), "utf8"),
   ]);
 
-  assert.match(privacy, /Административный интерфейс выключен/);
+  assert.match(privacy, /закрытых информационных системах Оператора/);
+  assert.doesNotMatch(privacy, /SQLite|HMAC|legal hold|применены миграции/);
   assert.match(services, /не публикует сведения, которые могут раскрывать внутреннюю архитектуру/);
   assert.doesNotMatch(services, /PD_ADMIN_ENABLED|SQLite|HMAC/);
   assert.match(approvalPackage, /internal-база развёрнута, но `PD_ADMIN_ENABLED=false`/);
