@@ -39,15 +39,21 @@ test("published services page describes controls without exposing internal imple
 test("public legal version identifiers match their displayed dates", async () => {
   const legal = await readFile(join(root, "lib/legal.ts"), "utf8");
 
-  assert.match(legal, /privacy: "2026-09-23"/);
-  assert.match(legal, /personalDataConsent: "2026-08-27"/);
-  assert.match(legal, /cookies: "2026-09-23"/);
-  assert.match(legal, /services: "2026-09-19"/);
+  assert.match(legal, /privacy: "2026-10-01"/);
+  assert.match(legal, /personalDataConsent: "2026-10-01"/);
+  assert.match(legal, /analyticsConsent: "2026-10-01"/);
+  assert.match(legal, /marketingConsent: "2026-07-30"/);
+  assert.match(legal, /cookies: "2026-10-01"/);
+  assert.match(legal, /terms: "2026-07-30"/);
+  assert.match(legal, /services: "2026-10-01"/);
 
-  assert.match(legal, /privacy: "23 сентября 2026 года"/);
-  assert.match(legal, /personalDataConsent: "27 августа 2026 года"/);
-  assert.match(legal, /cookies: "23 сентября 2026 года"/);
-  assert.match(legal, /services: "19 сентября 2026 года"/);
+  assert.match(legal, /privacy: "1 октября 2026 года"/);
+  assert.match(legal, /personalDataConsent: "1 октября 2026 года"/);
+  assert.match(legal, /analyticsConsent: "1 октября 2026 года"/);
+  assert.match(legal, /marketingConsent: "30 июля 2026 года"/);
+  assert.match(legal, /cookies: "1 октября 2026 года"/);
+  assert.match(legal, /terms: "30 июля 2026 года"/);
+  assert.match(legal, /services: "1 октября 2026 года"/);
 });
 
 test("every public form leads with the separate consent document", async () => {
@@ -94,4 +100,68 @@ test("MAX is disclosed as a user-initiated external link, not automatic form for
   assert.match(services, /Автоматическая пересылка заявок или файлов из формы steelprodukt\.ru в MAX не подключена/);
   assert.match(privacy, /обычная внешняя ссылка на официальный профиль или чат-бот Оператора в MAX/);
   assert.match(privacy, /до самостоятельного перехода пользователя сайт не передаёт в MAX поля формы/);
+});
+
+
+test("every legal page shows its own edition date, never another document's", async () => {
+  for (const [file, key] of [
+    ["marketing-consent", "marketingConsent"],
+    ["terms", "terms"],
+    ["analytics-consent", "analyticsConsent"],
+    ["personal-data-consent", "personalDataConsent"],
+    ["privacy", "privacy"],
+    ["cookies", "cookies"],
+  ] as const) {
+    const page = await readFile(join(root, `app/(public)/legal/${file}/page.tsx`), "utf8");
+    assert.match(page, new RegExp(`Редакция от \\{legalDocumentDisplayDates\\.${key}\\}`), `${file} must show its own edition`);
+    assert.doesNotMatch(page, /Редакция от \{legalOperator\.policyVersion\}/, `${file} must not borrow the policy date`);
+  }
+});
+
+test("processors are named with INN and address in the consent, the policy and the services page", async () => {
+  const [legal, consent, privacy, services, cookies] = await Promise.all([
+    readFile(join(root, "lib/legal.ts"), "utf8"),
+    readFile(join(root, "app/(public)/legal/personal-data-consent/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/privacy/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/services/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/cookies/page.tsx"), "utf8"),
+  ]);
+
+  for (const [name, inn] of [["ООО «Бегет»", "7801451618"], ["ООО «ВК»", "7743001840"], ["ООО «ЯНДЕКС»", "7736207543"]]) {
+    assert.ok(legal.includes(name) && legal.includes(inn), `${name} must be listed with its INN`);
+  }
+  for (const key of ["hosting", "mail"]) {
+    assert.match(consent, new RegExp(`legalProcessors\\.${key}\\.name[\\s\\S]*legalProcessors\\.${key}\\.address`));
+  }
+  assert.match(privacy, /Object\.values\(legalProcessors\)/);
+  assert.match(services, /Object\.values\(legalProcessors\)/);
+  assert.match(cookies, /legalProcessors\.analytics\.name/);
+  assert.doesNotMatch(legal + consent + privacy + services, /UniSender|Юнисендер|GitHub/i);
+});
+
+test("analytics consent is its own document with every element the law asks for", async () => {
+  const [page, banner, footer, sitemap] = await Promise.all([
+    readFile(join(root, "app/(public)/legal/analytics-consent/page.tsx"), "utf8"),
+    readFile(join(root, "components/CookieConsent.tsx"), "utf8"),
+    readFile(join(root, "components/Footer.tsx"), "utf8"),
+    readFile(join(root, "app/sitemap.ts"), "utf8"),
+  ]);
+
+  for (const heading of ["Какие данные обрабатываются", "Цели", "Действия и способ обработки", "Лицо, обрабатывающее данные по поручению Оператора", "Срок и отзыв", "Добровольность"]) {
+    assert.ok(page.includes(heading), `analytics consent: missing «${heading}»`);
+  }
+  assert.match(page, /legalOperator\.legalAddress/);
+  assert.match(page, /Согласие действует до его отзыва/);
+  assert.match(page, /До выбора пользователя аналитика выключена/);
+  assert.doesNotMatch(page, /mc\.yandex\.(?:ru|com)/);
+  assert.match(banner, /Нажимая «Разрешить аналитику», вы даёте[\s\S]*legalLinks\.analyticsConsent/);
+  assert.match(footer, /legalLinks\.analyticsConsent/);
+  assert.match(sitemap, /"\/legal\/analytics-consent"/);
+});
+
+test("the assistant's consent checkbox carries only the consent, the policy is a separate note", async () => {
+  const assistant = await readFile(new URL("../components/EngineeringAssistant.tsx", import.meta.url), "utf8");
+  const label = assistant.slice(assistant.indexOf('name="personalDataConsent"'), assistant.indexOf("</label>", assistant.indexOf('name="personalDataConsent"')));
+  assert.match(label, /legalLinks\.personalDataConsent/);
+  assert.doesNotMatch(label, /legalLinks\.privacy|Ознакомлен/);
 });

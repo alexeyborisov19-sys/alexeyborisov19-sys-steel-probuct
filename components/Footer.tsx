@@ -45,6 +45,7 @@ const keyCommercialLinks = [
 const legalDocuments = [
   ["Политика обработки данных", legalLinks.privacy],
   ["Согласие на обработку данных", legalLinks.personalDataConsent],
+  ["Согласие на веб-аналитику", legalLinks.analyticsConsent],
   ["Согласие на рассылку", legalLinks.marketingConsent],
   ["Политика cookies", legalLinks.cookies],
   ["Сервисы обработки данных", legalLinks.services],

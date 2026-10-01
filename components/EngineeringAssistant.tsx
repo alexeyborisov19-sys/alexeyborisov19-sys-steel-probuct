@@ -796,9 +796,12 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                         className="mt-0.5 h-4 w-4 shrink-0 accent-[#EA5B0C]"
                       />
                       <span>
-                        Я даю <Link href={legalLinks.personalDataConsent} target="_blank" className="text-steel-orange hover:underline">согласие на обработку персональных данных</Link> для рассмотрения заявки и связи со мной. Ознакомлен с <Link href={legalLinks.privacy} target="_blank" className="text-steel-orange hover:underline">политикой обработки данных</Link>.
+                        Я даю отдельное <Link href={legalLinks.personalDataConsent} target="_blank" className="text-steel-orange hover:underline">согласие на обработку персональных данных</Link> для рассмотрения заявки и связи со мной.
                       </span>
                     </label>
+                    <p className="text-xs leading-relaxed text-white/45">
+                      С <Link href={legalLinks.privacy} target="_blank" className="text-steel-orange hover:underline">политикой обработки персональных данных</Link> можно ознакомиться до отправки.
+                    </p>
 
                     {leadFeedback ? (
                       <p role={leadFeedback.type === "error" ? "alert" : "status"} className={`border px-3 py-3 text-xs leading-relaxed ${

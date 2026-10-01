@@ -175,8 +175,11 @@ test("Metrika runtime stays dynamically imported and requires explicit opt-in", 
   assert.equal(runtime.includes("mc.yandex.com"), false);
   assert.doesNotMatch(runtime, /\['mc','yandex','ru'\]\.join\('\.'\)/);
 
+  // Analytics consent, cookies policy and privacy policy — none of them prefetched before consent.
   const legalLinks = consent.match(/<Link prefetch=\{false\}/g) ?? [];
-  assert.equal(legalLinks.length, 2, "cookie-banner legal routes must not be prefetched before consent");
+  const allLinks = consent.match(/<Link\b/g) ?? [];
+  assert.equal(legalLinks.length, 3, "cookie-banner legal routes must not be prefetched before consent");
+  assert.equal(allLinks.length, legalLinks.length, "every cookie-banner link must opt out of prefetch");
 });
 
 test("cookie consent keeps an in-memory choice when localStorage is unavailable", () => {
