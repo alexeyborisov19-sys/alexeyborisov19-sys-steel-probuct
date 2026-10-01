@@ -1,10 +1,10 @@
-// Read-only collector: Yandex Webmaster (index, queries, positions) + Yandex Metrika (organic traffic).
-// Writes the full result to /tmp/report.json. Only endpoint labels and HTTP statuses go to the log,
-// because this repository is public and its Actions logs are public too.
+// Read-only collector, run 2: Webmaster query analytics (per page / per query, with demand)
+// and Wordstat frequencies via Direct API v4 Live for commercial phrases.
+// Full results go to /tmp/report.json (encrypted by the workflow). The public log gets labels and HTTP codes only.
 import { writeFileSync } from "node:fs";
 
-const COUNTER_ID = "112542227";
-const out = { generated_at: new Date().toISOString(), calls: [], webmaster: {}, metrika: {} };
+const out = { generated_at: new Date().toISOString(), calls: [], webmaster: {}, wordstat: {} };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function normToken(raw = "") {
   let v = String(raw).trim().replace(/^OAuth\s+/i, "").replace(/^Bearer\s+/i, "");
@@ -13,156 +13,223 @@ function normToken(raw = "") {
   return v.trim();
 }
 
-async function get(label, url, token) {
-  let status = 0, body = null;
+async function call(label, url, { token, method = "GET", body, auth = "OAuth" } = {}) {
+  let status = 0, parsed = null;
   try {
+    const headers = { Accept: "application/json" };
+    if (token && auth) headers.Authorization = `${auth} ${token}`;
+    if (body !== undefined) headers["Content-Type"] = "application/json; charset=utf-8";
     const res = await fetch(url, {
-      headers: { Authorization: `OAuth ${token}`, Accept: "application/json" },
-      signal: AbortSignal.timeout(30000),
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(40000),
     });
     status = res.status;
     const text = await res.text();
-    try { body = text ? JSON.parse(text) : {}; } catch { body = text.slice(0, 2000); }
+    try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text.slice(0, 3000); }
   } catch (e) {
-    body = { error: "NETWORK_ERROR", code: e?.cause?.code || e?.name || "UNKNOWN" };
+    parsed = { error: "NETWORK_ERROR", code: e?.cause?.code || e?.name || "UNKNOWN" };
   }
   out.calls.push({ label, status });
   console.log(`${label}: HTTP ${status}`);
-  return { ok: status >= 200 && status < 300, status, body };
+  return { ok: status >= 200 && status < 300, status, body: parsed };
 }
 
-const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
-const today = day(0);
+// Collapse daily statistics into totals so the report stays small.
+function aggregate(body) {
+  const rows = body?.text_indicator_to_statistics;
+  if (!Array.isArray(rows)) return null;
+  const dates = new Set();
+  const items = rows.map((r) => {
+    const acc = { IMPRESSIONS: 0, CLICKS: 0, DEMAND: 0, POS_W: 0, POS_N: 0 };
+    for (const s of r.statistics || []) {
+      if (s.date) dates.add(String(s.date).slice(0, 10));
+      const v = Number(s.value) || 0;
+      if (s.field === "IMPRESSIONS") acc.IMPRESSIONS += v;
+      else if (s.field === "CLICKS") acc.CLICKS += v;
+      else if (s.field === "DEMAND") acc.DEMAND += v;
+    }
+    // position weighted by daily impressions
+    const byDate = {};
+    for (const s of r.statistics || []) {
+      const d = String(s.date).slice(0, 10);
+      byDate[d] ??= {};
+      byDate[d][s.field] = Number(s.value) || 0;
+    }
+    for (const d of Object.values(byDate)) {
+      if (d.POSITION && d.IMPRESSIONS) { acc.POS_W += d.POSITION * d.IMPRESSIONS; acc.POS_N += d.IMPRESSIONS; }
+    }
+    return {
+      value: r.text_indicator?.value,
+      type: r.text_indicator?.type,
+      impressions: acc.IMPRESSIONS,
+      clicks: acc.CLICKS,
+      demand: acc.DEMAND,
+      position: acc.POS_N ? +(acc.POS_W / acc.POS_N).toFixed(2) : null,
+    };
+  });
+  const sorted = [...dates].sort();
+  return { count: body.count, date_from: sorted[0] || null, date_to: sorted.at(-1) || null, days: sorted.length, items };
+}
 
-// ---------------- WEBMASTER ----------------
+// ---------------- WEBMASTER QUERY ANALYTICS ----------------
 const wmCandidates = [
   ["YANDEX_WEBMASTER_OAUTH_TOKEN", process.env.YW_TOKEN],
+  ["YANDEX_DIRECT_OAUTH_TOKEN", process.env.YD_TOKEN],
   ["YANDEX_OAUTH_TOKEN", process.env.YANDEX_OAUTH_TOKEN],
   ["YANDEX_METRIKA_OAUTH_TOKEN", process.env.YM_TOKEN],
-  ["YANDEX_DIRECT_OAUTH_TOKEN", process.env.YD_TOKEN],
 ].map(([n, v]) => [n, normToken(v || "")]).filter(([, v]) => v);
 
 let yw = "", uid = null;
 for (const [name, tok] of wmCandidates) {
-  const u = await get(`webmaster.user[${name}]`, "https://api.webmaster.yandex.net/v4/user", tok);
+  const u = await call(`wm.user[${name}]`, "https://api.webmaster.yandex.net/v4/user", { token: tok });
   if (u.ok && u.body?.user_id) { yw = tok; uid = u.body.user_id; out.webmaster.token_secret_used = name; break; }
-  out.webmaster[`user_error_${name}`] = u.body;
 }
 
 if (uid) {
-  const base = `https://api.webmaster.yandex.net/v4/user/${uid}`;
-  const hosts = await get("webmaster.hosts", `${base}/hosts`, yw);
-  const all = hosts.body?.hosts || [];
-  const mine = all.filter((h) => String(h.unicode_host_url || h.ascii_host_url || "").includes("steelprodukt"));
-  out.webmaster.hosts = mine.map((h) => ({
-    host_id: h.host_id,
-    url: h.unicode_host_url || h.ascii_host_url,
-    verified: h.verified,
-    host_data_status: h.host_data_status,
-    main_mirror: h.main_mirror ? (h.main_mirror.unicode_host_url || h.main_mirror.ascii_host_url) : null,
-  }));
-  const main = mine.find((h) => h.verified && !h.main_mirror) || mine.find((h) => h.verified) || mine[0];
+  const hostId = "https:www.steelprodukt.ru:443";
+  const qa = `https://api.webmaster.yandex.net/v4/user/${uid}/hosts/${encodeURIComponent(hostId)}/query-analytics/list`;
 
-  // Summary for every steelprodukt host (www and non-www may both be registered).
-  out.webmaster.summaries = {};
-  for (const h of mine) {
-    const s = await get(`webmaster.summary[${h.host_id}]`, `${base}/hosts/${encodeURIComponent(h.host_id)}/summary`, yw);
-    out.webmaster.summaries[h.host_id] = s.body;
-  }
-
-  if (main) {
-    const hb = `${base}/hosts/${encodeURIComponent(main.host_id)}`;
-    out.webmaster.main_host = main.host_id;
-
-    async function withDates(label, path, from, extra = "") {
-      let r = await get(label, `${hb}/${path}?date_from=${from}&date_to=${today}${extra}`, yw);
-      if (r.status === 400) {
-        r = await get(`${label}#iso`, `${hb}/${path}?date_from=${from}T00:00:00%2B03:00&date_to=${today}T23:59:59%2B03:00${extra}`, yw);
+  async function qaList(label, body) {
+    const variants = [
+      body,
+      { ...body, filters: { ...(body.filters || {}), statistic_filters: [] } },
+      (() => { const b = { ...body }; delete b.device_type_indicator; return b; })(),
+    ];
+    let last = null;
+    for (const [i, v] of variants.entries()) {
+      const r = await call(`wm.qa.${label}${i ? `#v${i}` : ""}`, qa, { token: yw, method: "POST", body: v });
+      if (r.ok) {
+        const agg = aggregate(r.body);
+        return agg ? { request: v, ...agg } : { request: v, raw_head: JSON.stringify(r.body).slice(0, 4000) };
       }
-      return r.body;
+      last = { request: v, status: r.status, error: r.body };
+      if (r.status !== 400) break;
     }
+    return last;
+  }
 
-    const ind = "&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&query_indicator=AVG_CLICK_POSITION";
-    out.webmaster.popular_queries_30d = await withDates("webmaster.popular_30d", "search-queries/popular", day(30), `&order_by=TOTAL_SHOWS${ind}&limit=500`);
-    out.webmaster.popular_queries_7d = await withDates("webmaster.popular_7d", "search-queries/popular", day(7), `&order_by=TOTAL_SHOWS${ind}&limit=500`);
-    out.webmaster.queries_history_90d = await withDates("webmaster.queries_history", "search-queries/all/history", day(90), "&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION");
-    out.webmaster.in_search_history_90d = await withDates("webmaster.in_search_history", "search-urls/in-search/history", day(90));
-    out.webmaster.indexing_history_90d = await withDates("webmaster.indexing_history", "indexing/history", day(90));
-    out.webmaster.sqi_history = await withDates("webmaster.sqi_history", "sqi-history", day(365));
+  const base = { offset: 0, limit: 500, device_type_indicator: "ALL", text_indicator: "QUERY", region_ids: [], filters: {} };
 
-    // Pages in search (paginate up to 500).
-    const inSearch = [];
-    let inSearchCount = null;
-    for (let off = 0; off < 500; off += 100) {
-      const r = await get(`webmaster.in_search_samples@${off}`, `${hb}/search-urls/in-search/samples?offset=${off}&limit=100`, yw);
-      if (!r.ok) { out.webmaster.in_search_samples_error = r.body; break; }
-      inSearchCount = r.body?.count ?? inSearchCount;
-      inSearch.push(...(r.body?.samples || []));
-      if ((r.body?.samples || []).length < 100) break;
+  out.webmaster.qa_urls = await qaList("urls", { ...base, text_indicator: "URL" });
+  out.webmaster.qa_queries = await qaList("queries", base);
+  if (out.webmaster.qa_queries?.count > 500) {
+    out.webmaster.qa_queries_p2 = await qaList("queries_p2", { ...base, offset: 500 });
+    if (out.webmaster.qa_queries?.count > 1000) out.webmaster.qa_queries_p3 = await qaList("queries_p3", { ...base, offset: 1000 });
+    if (out.webmaster.qa_queries?.count > 1500) out.webmaster.qa_queries_p4 = await qaList("queries_p4", { ...base, offset: 1500 });
+  }
+  out.webmaster.qa_queries_smolensk = await qaList("queries_smolensk", { ...base, region_ids: [12] });
+  out.webmaster.qa_queries_moscow = await qaList("queries_moscow", { ...base, region_ids: [213] });
+
+  // Queries landing on each commercial page (cross filter by URL).
+  const pages = [
+    "/products/metallokassety", "/products/metallokassety-standart", "/products/metallokassety-premium",
+    "/products/metallokassety-azhur", "/products/metallokassety-relef", "/calculator-metallokassety",
+    "/production/lazernaya-rezka-metalla", "/production/gibka-listovogo-metalla",
+    "/production/poroshkovaya-okraska-metalla", "/production/svarka-i-sborka-metalloizdeliy",
+    "/production/proektirovanie-metalloizdeliy", "/products/korziny-dlya-konditsionerov",
+    "/products/metallicheskie-korpusa", "/products/ventilyacionnye-reshetki", "/products/zakladnye-detali",
+    "/products/dobornye-elementy", "/products/akvilon", "/products/pozharnye-otsechki",
+    "/products/otkosy-dlya-okon", "/products/otlivy-dlya-okon", "/products/parapetnye-kryshki",
+    "/solutions/custom", "/solutions/industry", "/solutions/climate", "/production", "/products", "/",
+  ];
+  out.webmaster.qa_by_page = {};
+  for (const p of pages) {
+    const url = `https://www.steelprodukt.ru${p}`;
+    out.webmaster.qa_by_page[p] = await qaList(`page${p.replaceAll("/", "_")}`, {
+      ...base,
+      limit: 200,
+      filters: { text_filters: [{ text_indicator: "URL", operation: "TEXT_MATCH", value: url }] },
+    });
+    if (out.webmaster.qa_by_page[p]?.status === 400 || out.webmaster.qa_by_page[p]?.error) {
+      out.webmaster.qa_by_page[p] = await qaList(`page${p.replaceAll("/", "_")}#contains`, {
+        ...base,
+        limit: 200,
+        filters: { text_filters: [{ text_indicator: "URL", operation: "TEXT_CONTAINS", value: p === "/" ? "steelprodukt.ru/" : p }] },
+      });
     }
-    out.webmaster.in_search = { count: inSearchCount, samples: inSearch };
+  }
 
-    const events = await get("webmaster.search_events", `${hb}/search-urls/events/samples?offset=0&limit=100`, yw);
-    out.webmaster.search_events = events.body;
-
-    const crawled = [];
-    let crawledCount = null;
-    for (let off = 0; off < 300; off += 100) {
-      const r = await get(`webmaster.indexing_samples@${off}`, `${hb}/indexing/samples?offset=${off}&limit=100`, yw);
-      if (!r.ok) { out.webmaster.indexing_samples_error = r.body; break; }
-      crawledCount = r.body?.count ?? crawledCount;
-      crawled.push(...(r.body?.samples || []));
-      if ((r.body?.samples || []).length < 100) break;
-    }
-    out.webmaster.indexing = { count: crawledCount, samples: crawled };
-
-    out.webmaster.diagnostics = (await get("webmaster.diagnostics", `${hb}/diagnostics`, yw)).body;
-    out.webmaster.important_urls = (await get("webmaster.important_urls", `${hb}/important-urls`, yw)).body;
-    out.webmaster.external_links = (await get("webmaster.external_links", `${hb}/links/external/samples?offset=0&limit=100`, yw)).body;
-    out.webmaster.sitemaps = (await get("webmaster.sitemaps", `${hb}/sitemaps?limit=100`, yw)).body;
+  // All queries containing commercial stems (beyond the top-500 list).
+  const stems = ["кассет", "лазер", "резк", "гибк", "гнут", "окрас", "покрас", "порошк", "корзин", "кондиц", "корпус", "шкаф",
+    "металлоизд", "изделия из", "решет", "решёт", "отлив", "откос", "парапет", "закладн", "доборн", "смоленск", "на заказ", "по чертеж"];
+  out.webmaster.qa_by_stem = {};
+  for (const s of stems) {
+    out.webmaster.qa_by_stem[s] = await qaList(`stem`, {
+      ...base,
+      filters: { text_filters: [{ text_indicator: "QUERY", operation: "TEXT_CONTAINS", value: s }] },
+    });
   }
 }
 
-// ---------------- METRIKA ----------------
-const ymCandidates = [
-  ["YANDEX_METRIKA_OAUTH_TOKEN", process.env.YM_TOKEN],
-  ["YANDEX_OAUTH_TOKEN", process.env.YANDEX_OAUTH_TOKEN],
-].map(([n, v]) => [n, normToken(v || "")]).filter(([, v]) => v);
+// ---------------- WORDSTAT via Direct API v4 Live ----------------
+const yd = normToken(process.env.YD_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "");
+const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
+const sets = [
+  { name: "kassety_rf", geo: [225], phrases: ["металлокассеты", "фасадные кассеты", "металлокассеты для фасада", "металлокассеты цена", "металлокассеты производство", "металлокассеты купить", "кассетный фасад", "металлокассеты закрытого типа", "металлокассеты открытого типа", "производство фасадных кассет"] },
+  { name: "kassety_msk", geo: [1], phrases: ["металлокассеты", "фасадные кассеты", "металлокассеты для фасада", "металлокассеты цена", "металлокассеты производство", "металлокассеты купить", "кассетный фасад", "металлокассеты закрытого типа", "металлокассеты открытого типа", "производство фасадных кассет"] },
+  { name: "services_smol", geo: [10795], phrases: ["лазерная резка металла", "лазерная резка", "гибка металла", "порошковая покраска", "порошковая окраска", "металлообработка", "изготовление металлоизделий", "металлоизделия на заказ", "резка металла", "сварочные работы"] },
+  { name: "services_rf", geo: [225], phrases: ["лазерная резка металла", "гибка листового металла", "порошковая окраска металла", "изготовление металлоизделий", "изделия из листового металла", "изготовление металлоизделий по чертежам", "металлоизделия на заказ", "изготовление корпусов из металла", "контрактное производство металлоизделий", "металлообработка на заказ"] },
+  { name: "products_rf", geo: [225], phrases: ["корзины для кондиционеров", "корзина для кондиционера на фасад", "вентиляционные решетки металлические", "откосы металлические", "отливы оконные металлические", "парапетные крышки", "аквилон", "противопожарные отсечки", "закладные детали", "доборные элементы фасада"] },
+  { name: "products_smol", geo: [10795], phrases: ["металлокассеты", "корзина для кондиционера", "отливы", "откосы", "парапет", "металлический корпус", "металлический шкаф", "вентиляционная решетка", "закладные детали", "металлоконструкции"] },
+];
 
-let ym = "";
-for (const [name, tok] of ymCandidates) {
-  const c = await get(`metrika.counter[${name}]`, `https://api-metrika.yandex.net/management/v1/counter/${COUNTER_ID}`, tok);
-  if (c.ok) { ym = tok; out.metrika.token_secret_used = name; out.metrika.counter = { id: c.body?.counter?.id, site: c.body?.counter?.site, status: c.body?.counter?.status }; break; }
+async function v4(label, method, param) {
+  const body = { method, locale: "ru", token: yd };
+  if (param !== undefined) body.param = param;
+  for (const host of ["https://api.direct.yandex.ru/live/v4/json/", "https://api.direct.yandex.com/live/v4/json/"]) {
+    const r = await call(`ws.${label}`, host, { token: yd, method: "POST", body, auth: "Bearer" });
+    if (r.status !== 0 && !(r.status >= 500)) return r;
+  }
+  return { ok: false, status: 0, body: null };
 }
 
-if (ym) {
-  async function report(label, params, endpoint = "data") {
-    const u = new URL(`https://api-metrika.yandex.net/stat/v1/${endpoint}`);
-    u.searchParams.set("ids", COUNTER_ID);
-    u.searchParams.set("accuracy", "full");
-    u.searchParams.set("lang", "ru");
-    for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
-    const r = await get(`metrika.${label}`, u.toString(), ym);
-    return r.ok ? { query: params, totals: r.body?.totals, data: r.body?.data, time_intervals: r.body?.time_intervals, sampled: r.body?.sampled } : { query: params, error: r.body, status: r.status };
+if (!yd) {
+  out.wordstat.error = "DIRECT_TOKEN_MISSING";
+} else {
+  const list0 = await v4("list0", "GetWordstatReportList");
+  out.wordstat.initial_list = list0.body;
+  const queue = [...sets];
+  const results = {};
+  while (queue.length) {
+    const batch = queue.splice(0, 4);
+    const created = [];
+    for (const s of batch) {
+      const param = { Phrases: s.phrases, GeoID: s.geo };
+      if (login) param.Login = login;
+      let r = await v4(`create.${s.name}`, "CreateNewWordstatReport", param);
+      if (r.body?.error_code && login) {
+        // retry without Login for non-agency accounts
+        r = await v4(`create.${s.name}#nologin`, "CreateNewWordstatReport", { Phrases: s.phrases, GeoID: s.geo });
+      }
+      if (typeof r.body?.data === "number") created.push({ s, id: r.body.data });
+      else results[s.name] = { geo: s.geo, error: r.body };
+    }
+    // poll
+    for (let i = 0; i < 40 && created.some((c) => !c.done); i++) {
+      await sleep(8000);
+      const l = await v4(`poll`, "GetWordstatReportList");
+      const st = Object.fromEntries((l.body?.data || []).map((x) => [x.ReportID, x.StatusReport]));
+      for (const c of created) {
+        if (!c.done && st[c.id] === "Done") {
+          const g = await v4(`get.${c.s.name}`, "GetWordstatReport", c.id);
+          results[c.s.name] = { geo: c.s.geo, data: g.body?.data ?? null, error: g.body?.data ? undefined : g.body };
+          await v4(`delete.${c.s.name}`, "DeleteWordstatReport", c.id);
+          c.done = true;
+        } else if (!c.done && st[c.id] === "Failed") {
+          results[c.s.name] = { geo: c.s.geo, error: "REPORT_FAILED" };
+          await v4(`delete.${c.s.name}`, "DeleteWordstatReport", c.id);
+          c.done = true;
+        }
+      }
+    }
+    for (const c of created) if (!c.done) {
+      results[c.s.name] = { geo: c.s.geo, error: "TIMEOUT" };
+      await v4(`delete.${c.s.name}`, "DeleteWordstatReport", c.id);
+    }
   }
-  const organic = "ym:s:trafficSource=='organic'";
-
-  out.metrika.sources_30d = await report("sources_30d", { date1: "30daysAgo", date2: "today", dimensions: "ym:s:trafficSource", metrics: "ym:s:visits,ym:s:users,ym:s:bounceRate", limit: "20" });
-  out.metrika.sources_90d = await report("sources_90d", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:trafficSource", metrics: "ym:s:visits,ym:s:users,ym:s:bounceRate", limit: "20" });
-  out.metrika.organic_engines_90d = await report("organic_engines_90d", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:searchEngineRoot", metrics: "ym:s:visits,ym:s:users,ym:s:bounceRate,ym:s:pageDepth", filters: organic, limit: "20" });
-  out.metrika.organic_landings_90d = await report("organic_landings_90d", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:startURL", metrics: "ym:s:visits,ym:s:users,ym:s:bounceRate", filters: organic, limit: "60", sort: "-ym:s:visits" });
-  let phrases = await report("organic_phrases_90d", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:lastsignSearchPhrase", metrics: "ym:s:visits,ym:s:users", filters: organic, limit: "150", sort: "-ym:s:visits" });
-  if (phrases.error) phrases = await report("organic_phrases_90d_fallback", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:lastSearchPhrase", metrics: "ym:s:visits,ym:s:users", filters: organic, limit: "150", sort: "-ym:s:visits" });
-  out.metrika.organic_phrases_90d = phrases;
-  out.metrika.weekly_by_source_90d = await report("weekly_by_source_90d", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:trafficSource", metrics: "ym:s:visits", group: "week", limit: "10" }, "data/bytime");
-
-  const goals = await get("metrika.goals", `https://api-metrika.yandex.net/management/v1/counter/${COUNTER_ID}/goals`, ym);
-  const list = goals.body?.goals || [];
-  const primary = list.find((g) => (g.conditions || []).some((c) => c.url === "quote_request_success")) || list.find((g) => g.name === "Форма заявки — успешно отправлена");
-  if (primary) {
-    out.metrika.primary_goal = { id: primary.id, name: primary.name };
-    out.metrika.leads_by_source_90d = await report("leads_by_source_90d", { date1: "90daysAgo", date2: "today", dimensions: "ym:s:trafficSource", metrics: `ym:s:visits,ym:s:goal${primary.id}reaches`, limit: "20" });
-  }
+  out.wordstat.results = results;
 }
 
 writeFileSync("/tmp/report.json", JSON.stringify(out, null, 2));
