@@ -12,7 +12,10 @@ const CAMPAIGN_ID = 714391927;
 const extra = JSON.parse(readFileSync(".yandex-report/extra-spec.json", "utf8"));
 const base = JSON.parse(readFileSync(".yandex-report/campaign-spec.json", "utf8"));
 const SV_CALLOUTS = [44698613, 44698991, 44261432, 44698992];
-const DELETE_IDS = [714957797, 714090502, 714382608, 714388573, 714388647, 714391871];
+// Draft 714957797 was deleted on 2026-10-01. The five archived empty "Новая" campaigns
+// (714090502, 714382608, 714388573, 714388647, 714391871) cannot be deleted: Direct answers 8301
+// because they were once sent to moderation, so they stay archived and are no longer touched.
+const DELETE_IDS = [714957797];
 const out = { generated_at: new Date().toISOString(), pass: "finish", calls: [], steps: {}, errors: [] };
 const UTM = "utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}";
 const isServices = (name) => /^Услуги (Смоленск|Москва Калуга Брянск) \| /.test(name);
