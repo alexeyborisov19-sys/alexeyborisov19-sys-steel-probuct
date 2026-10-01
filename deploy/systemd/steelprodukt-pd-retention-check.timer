@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Steelprodukt personal-data expiry check
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Europe/Moscow
+Persistent=true
+Unit=steelprodukt-pd-retention-check.service
+
+[Install]
+WantedBy=timers.target

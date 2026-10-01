@@ -96,7 +96,7 @@ test("public services disclosure does not expose internal administration details
   assert.doesNotMatch(privacy, /SQLite|HMAC|legal hold|применены миграции/);
   assert.match(services, /не публикует сведения, которые могут раскрывать внутреннюю архитектуру/);
   assert.doesNotMatch(services, /PD_ADMIN_ENABLED|SQLite|HMAC/);
-  assert.match(approvalPackage, /internal-база развёрнута, но `PD_ADMIN_ENABLED=false`/);
+  assert.match(approvalPackage, /проверка сервера 01.10.2026 подтвердила `PD_ADMIN_ENABLED=true`/);
 });
 
 test("the legal approval package contains exact public drafts and staff confidentiality terms", async () => {

@@ -19,6 +19,7 @@
     "secrets:scan": "node scripts/run-gitleaks.mjs",
     "indexnow:submit": "node scripts/submit-indexnow.mjs",
     "prices:refresh": "node --conditions react-server --import tsx --import ./scripts/repo-alias-hook.mjs scripts/refresh-steel-product-prices.ts",
+    "pd:retention:check": "node --import tsx scripts/pd-retention-check.ts",
     "pd:migrate": "node --import tsx scripts/pd-migrate.ts",
     "pd:migrate:status": "node --import tsx scripts/pd-migrate.ts --status",
     "pd:integrity-check": "node --import tsx scripts/pd-integrity-check.ts",

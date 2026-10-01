@@ -12,11 +12,24 @@ STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 ARCHIVE="$BACKUP_ROOT/steelprodukt-pd-$STAMP.tar.gz.enc"
 HASH_FILE="$ARCHIVE.sha256"
 REPORT="$BACKUP_ROOT/steelprodukt-pd-$STAMP.json"
+HELPER=${PD_BACKUP_FILES_HELPER:-/usr/local/sbin/steelprodukt-pd-backup-files}
+RETENTION_DAYS=${PD_LOCAL_RETENTION_DAYS:-30}
+[[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]] && (( RETENTION_DAYS >= 1 && RETENTION_DAYS <= 3650 ))
+test -r "$KEY_FILE"
+test -x "$HELPER"
+[[ ! -L "$BACKUP_ROOT" ]]
+install -d -m 700 -o root -g root "$BACKUP_ROOT"
+exec 9>"$BACKUP_ROOT/.backup.lock"
+flock -n 9 || { echo 'PD backup already running'; exit 1; }
 RESTORE_DIR=$(mktemp -d "$BACKUP_ROOT/.restore-test.XXXXXX")
+STAGE_DIR=$(mktemp -d "$BACKUP_ROOT/.snapshot.XXXXXX")
 
 cleanup() {
   if [[ "$RESTORE_DIR" == "$BACKUP_ROOT"/.restore-test.* && -d "$RESTORE_DIR" ]]; then
     find "$RESTORE_DIR" -depth -delete
+  fi
+  if [[ "$STAGE_DIR" == "$BACKUP_ROOT"/.snapshot.* && -d "$STAGE_DIR" ]]; then
+    find "$STAGE_DIR" -depth -delete
   fi
 }
 trap cleanup EXIT
@@ -42,7 +55,11 @@ for item in "${ITEMS[@]}"; do
   fi
 done
 
-tar -C / --numeric-owner --acls --xattrs -czf - "${ITEMS[@]}" \
+for item in "${ITEMS[@]}"; do
+  "$HELPER" stage "/$item" "$STAGE_DIR/$item"
+done
+
+tar -C "$STAGE_DIR" --numeric-owner --acls --xattrs -czf - "${ITEMS[@]}" \
   | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
       -pass "file:$KEY_FILE" -out "$ARCHIVE"
 chmod 600 "$ARCHIVE"
@@ -53,7 +70,7 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
   -pass "file:$KEY_FILE" -in "$ARCHIVE" \
   | tar -C "$RESTORE_DIR" --no-same-owner --no-same-permissions -xzf -
 
-FILE_COUNT=$(python3 - "$RESTORE_DIR" "$LEGAL_DOCUMENTS_RELATIVE" <<'PY'
+FILE_COUNT=$(python3 - "$RESTORE_DIR" "$LEGAL_DOCUMENTS_RELATIVE" "$STAGE_DIR" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -61,7 +78,7 @@ import sys
 from pathlib import Path
 
 restore_root = Path(sys.argv[1])
-source_root = Path("/")
+source_root = Path(sys.argv[3])
 legal_documents_relative = sys.argv[2]
 items = (
     "var/lib/steelprodukt/quote-leads",
@@ -122,6 +139,9 @@ printf '%s\n' \
   "  \"limitation\": \"Interim copy on the same VPS; an independent Russian storage target is still required.\"" \
   "}" > "$REPORT"
 chmod 600 "$REPORT"
+
+# Only after a new encrypted archive passed restore verification.
+"$HELPER" prune "$BACKUP_ROOT" "$(basename "$ARCHIVE")" --days "$RETENTION_DAYS"
 
 printf 'backup=%s\nsha256=%s\nfiles_verified=%s\nrestore_tested=true\n' \
   "$ARCHIVE" "$ARCHIVE_HASH" "$FILE_COUNT"

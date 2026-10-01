@@ -44,7 +44,7 @@ test("public legal version identifiers match their displayed dates", async () =>
   assert.match(legal, /analyticsConsent: "2026-10-01"/);
   assert.match(legal, /marketingConsent: "2026-10-01"/);
   assert.match(legal, /cookies: "2026-10-01"/);
-  assert.match(legal, /terms: "2026-07-30"/);
+  assert.match(legal, /terms: "2026-10-01"/);
   assert.match(legal, /services: "2026-10-01"/);
 
   assert.match(legal, /privacy: "1 октября 2026 года"/);
@@ -52,7 +52,7 @@ test("public legal version identifiers match their displayed dates", async () =>
   assert.match(legal, /analyticsConsent: "1 октября 2026 года"/);
   assert.match(legal, /marketingConsent: "1 октября 2026 года"/);
   assert.match(legal, /cookies: "1 октября 2026 года"/);
-  assert.match(legal, /terms: "30 июля 2026 года"/);
+  assert.match(legal, /terms: "1 октября 2026 года"/);
   assert.match(legal, /services: "1 октября 2026 года"/);
 });
 

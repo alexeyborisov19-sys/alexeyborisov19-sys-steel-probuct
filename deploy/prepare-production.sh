@@ -171,6 +171,9 @@ test -f "$APP_PATH/deploy/backup-personal-data.sh" || {
 install -m 0750 -o root -g root \
   "$APP_PATH/deploy/backup-personal-data.sh" \
   /usr/local/sbin/steelprodukt-pd-backup
+install -m 0750 -o root -g root \
+  "$APP_PATH/deploy/pd-backup-files.py" \
+  /usr/local/sbin/steelprodukt-pd-backup-files
 
 migrate_existing_records() {
   local source="$1"

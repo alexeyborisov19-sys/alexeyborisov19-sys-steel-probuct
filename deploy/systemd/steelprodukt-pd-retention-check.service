@@ -1,0 +1,22 @@
+[Unit]
+Description=Steelprodukt personal-data index and expiry check
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=nodejs
+Group=nodejs
+UMask=0077
+WorkingDirectory=/var/www/html
+EnvironmentFile=/var/www/html/.env.production
+ExecStart=/usr/bin/npm run pd:retention:check
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/var/www/html /var/lib/steelprodukt
+ReadWritePaths=/var/lib/steelprodukt/admin
