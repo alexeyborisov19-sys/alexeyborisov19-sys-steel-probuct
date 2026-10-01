@@ -1,6 +1,7 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 09:50 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 09:55 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
-//     (only these ids, only while they are a draft or archived and have no impressions and no clicks);
+//     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
+//     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
 //  1) services sitelink set (the first try was rejected for the "×" sign) attached to every services ad;
 //  2) extra ads from extra-spec.json for groups with fewer than three ads, sent to moderation;
 //  3) old cassette/basket groups are suspended only for the product whose new groups all have an accepted ad;
@@ -30,7 +31,7 @@ const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
 const FORBIDDEN = new Set(["resume", "unarchive", "archive", "delete"]);
 async function api(service, method, params, label) {
   const ids = params?.SelectionCriteria?.Ids || [];
-  const draftDelete = service === "campaigns" && method === "delete" && ids.length > 0
+  const draftDelete = service === "campaigns" && ["delete", "unarchive", "archive"].includes(method) && ids.length > 0
     && ids.every((id) => DELETE_IDS.includes(id) && id !== CAMPAIGN_ID);
   if (FORBIDDEN.has(method) && !draftDelete) throw new Error(`method ${method} is not allowed in this script`);
   const headers = { Authorization: `Bearer ${token}`, "Accept-Language": "ru", "Content-Type": "application/json; charset=utf-8" };
@@ -51,7 +52,8 @@ async function api(service, method, params, label) {
     body = { error: { error_string: "NETWORK_ERROR", error_detail: e?.cause?.code || e?.name } };
   }
   const r = body?.result || {};
-  const results = r.AddResults || r.UpdateResults || r.SuspendResults || r.ModerateResults || r.DeleteResults || [];
+  const results = r.AddResults || r.UpdateResults || r.SuspendResults || r.ModerateResults || r.DeleteResults
+    || r.UnarchiveResults || r.ArchiveResults || [];
   const itemErrors = results.filter((x) => x.Errors?.length);
   out.calls.push({ label: `${service}.${method}:${label}`, status, apiError: Boolean(body?.error), itemErrors: itemErrors.length });
   console.log(`${service}.${method}:${label}: HTTP ${status}${body?.error ? " API_ERROR" : ""}${itemErrors.length ? ` ITEM_ERRORS=${itemErrors.length}` : ""}`);
@@ -83,8 +85,14 @@ async function main() {
     && (x.Status === "DRAFT" || x.State === "ARCHIVED") && x.State !== "ON"
     && !(x.Statistics?.Impressions > 0) && !(x.Statistics?.Clicks > 0));
   if (junk.length) {
-    const d = await api("campaigns", "delete", { SelectionCriteria: { Ids: junk.map((x) => x.Id) } }, `leftovers_${junk.length}`);
-    out.steps.deleted = d?.result?.DeleteResults ?? d?.error;
+    const archived = junk.filter((x) => x.State === "ARCHIVED").map((x) => x.Id);
+    if (archived.length) await api("campaigns", "unarchive", { SelectionCriteria: { Ids: archived } }, `leftovers_${archived.length}`);
+    const ids = junk.map((x) => x.Id);
+    const d = await api("campaigns", "delete", { SelectionCriteria: { Ids: ids } }, `leftovers_${ids.length}`);
+    const res = d?.result?.DeleteResults || [];
+    out.steps.deleted = ids.map((id, i) => ({ id, ok: Boolean(res[i]?.Id) && !res[i]?.Errors?.length, errors: res[i]?.Errors }));
+    const back = archived.filter((id) => !out.steps.deleted.find((x) => x.id === id)?.ok);
+    if (back.length) await api("campaigns", "archive", { SelectionCriteria: { Ids: back } }, `rollback_${back.length}`);
   } else {
     out.steps.deleted = "nothing to delete";
   }
