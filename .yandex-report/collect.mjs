@@ -31,12 +31,16 @@ async function api(service, method, params, label) {
   if (login) headers["Client-Login"] = login;
   let status = 0, body = null;
   try {
+    // Ad ids exceed Number.MAX_SAFE_INTEGER: keep every 16+ digit integer as a "BIG:" string
+    // on the way in and write it back as a bare JSON number on the way out.
+    const payload = JSON.stringify({ method, params }).replace(/"BIG:(-?\d+)"/g, "$1");
     const res = await fetch(`https://api.direct.yandex.com/json/v501/${service}`, {
-      method: "POST", headers, body: JSON.stringify({ method, params }), signal: AbortSignal.timeout(60000),
+      method: "POST", headers, body: payload, signal: AbortSignal.timeout(60000),
     });
     status = res.status;
     const text = await res.text();
-    try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 3000) }; }
+    const safe = text.replace(/([:\[,]\s*)(-?\d{16,})(?=\s*[,\]}])/g, '$1"BIG:$2"');
+    try { body = JSON.parse(safe); } catch { body = { raw: text.slice(0, 3000) }; }
   } catch (e) {
     body = { error: { error_string: "NETWORK_ERROR", error_detail: e?.cause?.code || e?.name } };
   }
