@@ -86,16 +86,18 @@ jobs:
                       print(line[:600])
 
           PYTHON
-          sudo -n systemd-run --quiet --wait --pipe --collect -p ProtectSystem=strict -p ReadWritePaths=/var/backups/steelprodukt python3 - <<'DIAG'
-          import importlib.util, importlib.machinery, pathlib, tempfile, traceback
+          sudo -n systemd-run --quiet --wait --pipe --collect -p ProtectSystem=strict -p ProtectHome=true -p PrivateTmp=true -p NoNewPrivileges=true -p ReadWritePaths=/var/backups/steelprodukt python3 - <<'DIAG'
+          import importlib.util, importlib.machinery, pathlib, tempfile, traceback, runpy, sys
           loader=importlib.machinery.SourceFileLoader('backup_helper','/usr/local/sbin/steelprodukt-pd-backup-files')
           spec=importlib.util.spec_from_loader(loader.name,loader); helper=importlib.util.module_from_spec(spec); loader.exec_module(helper)
           sources=['/var/lib/steelprodukt/quote-leads','/var/lib/steelprodukt/assistant-leads','/var/lib/steelprodukt/consent-audit','/var/lib/steelprodukt/quarantine','/var/lib/steelprodukt/admin','/var/www/html/app/(public)/legal','/var/www/html/lib/legal.ts','/var/www/html/LEGAL_COMPLIANCE_RU.md']
           with tempfile.TemporaryDirectory(prefix='.diagnostic-',dir='/var/backups/steelprodukt') as temporary:
               for index,source in enumerate(sources):
                   try:
-                      helper.stage(pathlib.Path(source),pathlib.Path(temporary)/pathlib.Path(source).relative_to('/')); print('STAGE_'+str(index)+'=OK')
-                  except Exception as error:
+                      sys.argv=['/usr/local/sbin/steelprodukt-pd-backup-files','stage',source,str(pathlib.Path(temporary)/pathlib.Path(source).relative_to('/'))]
+                      runpy.run_path(sys.argv[0],run_name='__main__'); print('STAGE_'+str(index)+'=OK')
+                  except BaseException as failure:
+                      error=failure.__context__ or failure
                       print('STAGE_'+str(index)+'='+type(error).__name__+' errno='+str(getattr(error,'errno',None))+' sqlite='+str(getattr(error,'sqlite_errorname',None)))
                       print('TRACE='+str([(frame.name,frame.lineno) for frame in traceback.extract_tb(error.__traceback__)]))
           DIAG
