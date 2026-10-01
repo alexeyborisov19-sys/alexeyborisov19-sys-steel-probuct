@@ -6,7 +6,7 @@ import { legalDocumentDisplayDates, legalLinks, legalOperator, legalProcessors }
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Согласие на обработку данных для веб-аналитики",
+  title: "Согласие на веб-аналитику",
   description: "Отдельное согласие на обработку данных с помощью cookies и Яндекс Метрики на сайте «Сталь Продукт»: состав данных, цели, срок и порядок отзыва.",
   path: legalLinks.analyticsConsent,
 });
