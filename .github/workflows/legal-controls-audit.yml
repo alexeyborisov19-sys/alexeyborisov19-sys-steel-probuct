@@ -41,6 +41,28 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
             "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
           set -euo pipefail
+          wrapper=$(sudo -n mktemp /var/backups/steelprodukt/.backup-diagnostic.XXXXXX)
+          trap 'sudo -n rm -f "$wrapper"' EXIT
+          sudo -n tee "$wrapper" >/dev/null <<'WRAPPER'
+          #!/usr/bin/env python3
+          import runpy,sys,traceback
+          try:
+              runpy.run_path('/usr/local/sbin/steelprodukt-pd-backup-files',run_name='__main__')
+          except BaseException as failure:
+              error=failure.__context__ or failure
+              print('BACKUP_ERROR='+type(error).__name__+' errno='+str(getattr(error,'errno',None))+' sqlite='+str(getattr(error,'sqlite_errorname',None)),file=sys.stderr)
+              print('BACKUP_TRACE='+str([(frame.name,frame.lineno) for frame in traceback.extract_tb(error.__traceback__)]),file=sys.stderr)
+              raise
+          WRAPPER
+          sudo -n chmod 0700 "$wrapper"
+          sudo -n install -d -m 0755 /run/systemd/system/steelprodukt-pd-offsite-backup.service.d
+          dropin=$(sudo -n mktemp /run/systemd/system/steelprodukt-pd-offsite-backup.service.d/diagnostic-XXXXXX.conf)
+          trap 'sudo -n rm -f "$wrapper" "$dropin"; sudo -n systemctl daemon-reload' EXIT
+          printf '[Service]\nEnvironment="PD_BACKUP_FILES_HELPER=%s"\n' "$wrapper" | sudo -n tee "$dropin" >/dev/null
+          sudo -n systemctl daemon-reload
+          sudo -n systemctl start steelprodukt-pd-offsite-backup.service || true
+
+          sudo -n systemd-run --quiet --wait --pipe --collect -p ProtectSystem=strict -p ProtectHome=true -p PrivateTmp=true -p NoNewPrivileges=true -p ReadWritePaths=/var/backups/steelprodukt --setenv="PD_BACKUP_FILES_HELPER=$wrapper" /usr/local/sbin/steelprodukt-pd-offsite-backup || true
           sudo -n python3 - "$APP_PATH" <<'PYTHON'
           import sys, pathlib, sqlite3, json, datetime, subprocess
           app=pathlib.Path(sys.argv[1]); env={}
@@ -78,5 +100,27 @@ jobs:
           if report.is_file():
               value=json.loads(report.read_text()); print('RETENTION_CHECK='+json.dumps({key:value.get(key) for key in ['checkedAt','examined','indexed','expired','status','deletionPerformed','findings']}))
           print('BACKUP_TIMER='+result.stdout.strip())
+          for unit in ['steelprodukt-pd-retention-check.service','steelprodukt-pd-export-expiry.service','steelprodukt-pd-offsite-backup.service']:
+              print('SERVICE='+unit)
+              log=subprocess.run(['journalctl','-u',unit,'--since','2026-10-01 19:51:00 UTC','--no-pager','-o','cat'],capture_output=True,text=True).stdout
+              for line in log.splitlines():
+                  if any(word in line.lower() for word in ['failed','error','readonly','read-only','denied','retention','examined','status','traceback','backup_error','backup_trace']):
+                      print(line[:600])
+
           PYTHON
+          sudo -n systemd-run --quiet --wait --pipe --collect -p ProtectSystem=strict -p ProtectHome=true -p PrivateTmp=true -p NoNewPrivileges=true -p ReadWritePaths=/var/backups/steelprodukt python3 - <<'DIAG'
+          import importlib.util, importlib.machinery, pathlib, tempfile, traceback, runpy, sys
+          loader=importlib.machinery.SourceFileLoader('backup_helper','/usr/local/sbin/steelprodukt-pd-backup-files')
+          spec=importlib.util.spec_from_loader(loader.name,loader); helper=importlib.util.module_from_spec(spec); loader.exec_module(helper)
+          sources=['/var/lib/steelprodukt/quote-leads','/var/lib/steelprodukt/assistant-leads','/var/lib/steelprodukt/consent-audit','/var/lib/steelprodukt/quarantine','/var/lib/steelprodukt/admin','/var/www/html/app/(public)/legal','/var/www/html/lib/legal.ts','/var/www/html/LEGAL_COMPLIANCE_RU.md']
+          with tempfile.TemporaryDirectory(prefix='.diagnostic-',dir='/var/backups/steelprodukt') as temporary:
+              for index,source in enumerate(sources):
+                  try:
+                      sys.argv=['/usr/local/sbin/steelprodukt-pd-backup-files','stage',source,str(pathlib.Path(temporary)/pathlib.Path(source).relative_to('/'))]
+                      runpy.run_path(sys.argv[0],run_name='__main__'); print('STAGE_'+str(index)+'=OK')
+                  except BaseException as failure:
+                      error=failure.__context__ or failure
+                      print('STAGE_'+str(index)+'='+type(error).__name__+' errno='+str(getattr(error,'errno',None))+' sqlite='+str(getattr(error,'sqlite_errorname',None)))
+                      print('TRACE='+str([(frame.name,frame.lineno) for frame in traceback.extract_tb(error.__traceback__)]))
+          DIAG
           REMOTE
