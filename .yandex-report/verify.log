@@ -1,7 +1,7 @@
-target seo/kassety-korziny-landings @ de3f931de347a9c72e3202a07e2f3408eec7032d
+target analytics/phone-click-goal @ cc2957cf52d3af53b50af2f830d6dd5dd495e5c8
 == npm ci
 
-added 372 packages in 8s
+added 372 packages in 7s
 == npm ci exit 0
 == typecheck
 
@@ -18,209 +18,209 @@ added 372 packages in 8s
 == test
   ...
 # Subtest: rejects an executable renamed to PDF
-ok 1440 - rejects an executable renamed to PDF
+ok 1442 - rejects an executable renamed to PDF
   ---
-  duration_ms: 3.035466
+  duration_ms: 2.506918
   ...
 # Subtest: rejects a fake PNG
-ok 1441 - rejects a fake PNG
+ok 1443 - rejects a fake PNG
   ---
-  duration_ms: 0.52925
+  duration_ms: 0.426126
   ...
 # Subtest: rejects a browser MIME that conflicts with the extension
-ok 1442 - rejects a browser MIME that conflicts with the extension
+ok 1444 - rejects a browser MIME that conflicts with the extension
   ---
-  duration_ms: 0.632753
+  duration_ms: 0.406529
   ...
 # Subtest: accepts a ZIP only as an unverified archive
-ok 1443 - accepts a ZIP only as an unverified archive
+ok 1445 - accepts a ZIP only as an unverified archive
   ---
-  duration_ms: 1.502981
+  duration_ms: 1.204337
   ...
 # Subtest: enforces maximum size before reading file content
-ok 1444 - enforces maximum size before reading file content
+ok 1446 - enforces maximum size before reading file content
   ---
-  duration_ms: 2.474597
+  duration_ms: 2.458088
   ...
 # Subtest: quarantine uses private file and directory permissions
-ok 1445 - quarantine uses private file and directory permissions
+ok 1447 - quarantine uses private file and directory permissions
   ---
-  duration_ms: 20.758771
+  duration_ms: 12.365586
   ...
 # Subtest: unavailable antivirus fails closed and leaves the file blocked in quarantine
-ok 1446 - unavailable antivirus fails closed and leaves the file blocked in quarantine
+ok 1448 - unavailable antivirus fails closed and leaves the file blocked in quarantine
   ---
-  duration_ms: 7.827366
+  duration_ms: 6.556575
   ...
 # Subtest: accepts the DXF headers real exporters write
-ok 1447 - accepts the DXF headers real exporters write
+ok 1449 - accepts the DXF headers real exporters write
   ---
-  duration_ms: 1.913127
+  duration_ms: 1.925424
   ...
 # Subtest: still refuses a file that only claims to be a DXF
-ok 1448 - still refuses a file that only claims to be a DXF
+ok 1450 - still refuses a file that only claims to be a DXF
   ---
-  duration_ms: 1.138839
+  duration_ms: 4.493413
   ...
 # Subtest: a binary DXF still passes the signature check so the parser can name it
-ok 1449 - a binary DXF still passes the signature check so the parser can name it
+ok 1451 - a binary DXF still passes the signature check so the parser can name it
   ---
-  duration_ms: 0.866289
+  duration_ms: 0.941487
   ...
 # Subtest: header exposes a keyboard skip action and uses centralized contact data
-ok 1450 - header exposes a keyboard skip action and uses centralized contact data
+ok 1452 - header exposes a keyboard skip action and uses centralized contact data
   ---
-  duration_ms: 6.278981
+  duration_ms: 7.276308
   ...
 # Subtest: engineering assistant launcher stays compact on small screens
-ok 1451 - engineering assistant launcher stays compact on small screens
+ok 1453 - engineering assistant launcher stays compact on small screens
   ---
-  duration_ms: 1.377787
+  duration_ms: 2.67791
   ...
 # Subtest: production service pages do not promise an unverified one-day response SLA
-ok 1452 - production service pages do not promise an unverified one-day response SLA
+ok 1454 - production service pages do not promise an unverified one-day response SLA
   ---
-  duration_ms: 1.475399
+  duration_ms: 1.769823
   ...
 # Subtest: real bent STEP retains warnings but supplies estimate-only cost with all 50 bends priced
-ok 1453 - real bent STEP retains warnings but supplies estimate-only cost with all 50 bends priced
+ok 1455 - real bent STEP retains warnings but supplies estimate-only cost with all 50 bends priced
   ---
-  duration_ms: 764.655346
+  duration_ms: 802.59748
   ...
 # Subtest: bent cost source rejects unknown warnings, missing blanks, extra solids and mismatched volume
-ok 1454 - bent cost source rejects unknown warnings, missing blanks, extra solids and mismatched volume
+ok 1456 - bent cost source rejects unknown warnings, missing blanks, extra solids and mismatched volume
   ---
-  duration_ms: 2908.838067
+  duration_ms: 2679.671915
   ...
 # Subtest: 100×60 rectangle with four Ø6 holes gives diameter 6, ligament 7, side 60
-ok 1455 - 100×60 rectangle with four Ø6 holes gives diameter 6, ligament 7, side 60
+ok 1457 - 100×60 rectangle with four Ø6 holes gives diameter 6, ligament 7, side 60
   ---
-  duration_ms: 9.270781
+  duration_ms: 9.529413
   ...
 # Subtest: unordered reversed LINE rectangle and hole-to-hole clearance are measured exactly
-ok 1456 - unordered reversed LINE rectangle and hole-to-hole clearance are measured exactly
+ok 1458 - unordered reversed LINE rectangle and hole-to-hole clearance are measured exactly
   ---
-  duration_ms: 1.331981
+  duration_ms: 1.53773
   ...
 # Subtest: solid rectangle treats hole rules as not applicable, still checks part size
-ok 1457 - solid rectangle treats hole rules as not applicable, still checks part size
+ok 1459 - solid rectangle treats hole rules as not applicable, still checks part size
   ---
-  duration_ms: 0.465471
+  duration_ms: 0.429782
   ...
 # Subtest: rejects touching, overlapping, nested, exterior, open and unknown geometry
-ok 1458 - rejects touching, overlapping, nested, exterior, open and unknown geometry
+ok 1460 - rejects touching, overlapping, nested, exterior, open and unknown geometry
   ---
-  duration_ms: 41.552506
+  duration_ms: 26.244881
   ...
 # Subtest: norm absence, wrong applicability, missing source and invalid numbers never pass
-ok 1459 - norm absence, wrong applicability, missing source and invalid numbers never pass
+ok 1461 - norm absence, wrong applicability, missing source and invalid numbers never pass
   ---
-  duration_ms: 0.751226
+  duration_ms: 0.856779
   ...
 # Subtest: actual DXF parser output retains millimetres and supported feature values
-ok 1460 - actual DXF parser output retains millimetres and supported feature values
+ok 1462 - actual DXF parser output retains millimetres and supported feature values
   ---
-  duration_ms: 8.309708
+  duration_ms: 5.956585
   ...
 # Subtest: open line paths retain invalid-production status but allow an explicit cost estimate
-ok 1461 - open line paths retain invalid-production status but allow an explicit cost estimate
+ok 1463 - open line paths retain invalid-production status but allow an explicit cost estimate
   ---
-  duration_ms: 0.594102
+  duration_ms: 0.584541
   ...
 # Subtest: measured blank only obtains the estimate marker with matching server geometry and retained warning
-ok 1462 - measured blank only obtains the estimate marker with matching server geometry and retained warning
+ok 1464 - measured blank only obtains the estimate marker with matching server geometry and retained warning
   ---
-  duration_ms: 1.744794
+  duration_ms: 4.646271
   ...
 # Subtest: blank estimate rejects inconsistent evidence, incomplete scope and suppressed diagnostics
-ok 1463 - blank estimate rejects inconsistent evidence, incomplete scope and suppressed diagnostics
+ok 1465 - blank estimate rejects inconsistent evidence, incomplete scope and suppressed diagnostics
   ---
-  duration_ms: 7.924263
+  duration_ms: 1.087309
   ...
 # Subtest: exact OCC prism proof accepts real plate with holes and rejects bent sheet
-ok 1464 - exact OCC prism proof accepts real plate with holes and rejects bent sheet
+ok 1466 - exact OCC prism proof accepts real plate with holes and rejects bent sheet
   ---
-  duration_ms: 1269.489837
+  duration_ms: 976.911282
   ...
 # Subtest: failed boolean and wrong volume cannot prove a prism
-ok 1465 - failed boolean and wrong volume cannot prove a prism
+ok 1467 - failed boolean and wrong volume cannot prove a prism
   ---
-  duration_ms: 2252.48852
+  duration_ms: 2227.604424
   ...
 # Subtest: automatic video previews respect reduced motion, page visibility and viewport visibility
-ok 1466 - automatic video previews respect reduced motion, page visibility and viewport visibility
+ok 1468 - automatic video previews respect reduced motion, page visibility and viewport visibility
   ---
-  duration_ms: 7.280829
+  duration_ms: 6.476677
   ...
 # Subtest: organization schema does not advertise videos on unrelated pages
-ok 1467 - organization schema does not advertise videos on unrelated pages
+ok 1469 - organization schema does not advertise videos on unrelated pages
   ---
-  duration_ms: 6.742492
+  duration_ms: 1.46804
   ...
 # Subtest: page-scoped video schemas expose valid absolute video metadata
-ok 1468 - page-scoped video schemas expose valid absolute video metadata
+ok 1470 - page-scoped video schemas expose valid absolute video metadata
   ---
-  duration_ms: 0.700711
+  duration_ms: 0.520451
   ...
 # Subtest: visible video components emit their own VideoObject markup
-ok 1469 - visible video components emit their own VideoObject markup
+ok 1471 - visible video components emit their own VideoObject markup
   ---
-  duration_ms: 23.162276
+  duration_ms: 10.860207
   ...
 # Subtest: public metadata keeps the canonical origin and webmaster verification tokens
-ok 1470 - public metadata keeps the canonical origin and webmaster verification tokens
+ok 1472 - public metadata keeps the canonical origin and webmaster verification tokens
   ---
-  duration_ms: 1.781252
+  duration_ms: 1.877043
   ...
 # Subtest: Yandex ecommerce is consent-gated and uses the canonical dataLayer container
-ok 1471 - Yandex ecommerce is consent-gated and uses the canonical dataLayer container
+ok 1473 - Yandex ecommerce is consent-gated and uses the canonical dataLayer container
   ---
-  duration_ms: 1.214571
+  duration_ms: 1.356371
   ...
 # Subtest: B2B ecommerce reports catalog interest without inventing online sales
-ok 1472 - B2B ecommerce reports catalog interest without inventing online sales
+ok 1474 - B2B ecommerce reports catalog interest without inventing online sales
   ---
-  duration_ms: 0.432438
+  duration_ms: 0.455981
   ...
 # Subtest: Metrika sync metadata covers every reachGoal target exactly once
-ok 1473 - Metrika sync metadata covers every reachGoal target exactly once
+ok 1475 - Metrika sync metadata covers every reachGoal target exactly once
   ---
-  duration_ms: 1.580054
+  duration_ms: 1.424869
   ...
 # Subtest: Metrika goal display names are unique and key conversions are favorites
-ok 1474 - Metrika goal display names are unique and key conversions are favorites
+ok 1476 - Metrika goal display names are unique and key conversions are favorites
   ---
-  duration_ms: 0.351187
+  duration_ms: 0.215241
   ...
 # Subtest: site emits the primary Direct optimization goal on successful quote requests
-ok 1475 - site emits the primary Direct optimization goal on successful quote requests
+ok 1477 - site emits the primary Direct optimization goal on successful quote requests
   ---
-  duration_ms: 0.188472
+  duration_ms: 0.173554
   ...
 # Subtest: OAuth token normalization accepts safe copied formats
-ok 1476 - OAuth token normalization accepts safe copied formats
+ok 1478 - OAuth token normalization accepts safe copied formats
   ---
-  duration_ms: 0.479386
+  duration_ms: 0.404635
   ...
 # Subtest: OAuth token normalization rejects empty or unrelated URLs
-ok 1477 - OAuth token normalization rejects empty or unrelated URLs
+ok 1479 - OAuth token normalization rejects empty or unrelated URLs
   ---
-  duration_ms: 0.489866
+  duration_ms: 0.488401
   ...
-1..1477
-# tests 1485
+1..1479
+# tests 1487
 # suites 0
-# pass 1485
+# pass 1487
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 51431.034611
+# duration_ms 49678.230707
 == test exit 0
 == build
-(node:7476) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:7488) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:7470) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(node:7494) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
    Generating static pages (0/121) ...
    Generating static pages (30/121) 
@@ -304,12 +304,12 @@ Route (app)                                                                     
 ├ ○ /articles/metall-dlya-goroda-proekty-stal-produkt                            276 B         120 kB
 ├ ○ /articles/ploshchad-fasada-raskhod-metalla-metallokassety                    276 B         120 kB
 ├ ○ /articles/uzly-fasada-metallokassety                                         276 B         120 kB
-├ ○ /articles/vystavki-fasady-arhitektura-2026                                 1.27 kB         121 kB
+├ ○ /articles/vystavki-fasady-arhitektura-2026                                 1.28 kB         121 kB
 ├ ○ /articles/vystavki-metalloobrabotka-kitay-2026                               276 B         120 kB
 ├ ○ /calculator-metallokassety                                                   206 B         125 kB
 ├ ○ /company                                                                   3.14 kB         123 kB
 ├ ○ /company/facts                                                               276 B         120 kB
-├ ○ /contacts                                                                  8.78 kB         128 kB
+├ ○ /contacts                                                                  8.79 kB         128 kB
 ├ ƒ /dekorattivnie                                                               312 B         103 kB
 ├ ○ /feed.xml                                                                    312 B         103 kB
 ├ ○ /icon.svg                                                                      0 B            0 B
@@ -405,7 +405,7 @@ Route (app)                                                                     
 ├   ├ /solutions/industry
 ├   ├ /solutions/engineering
 ├   └ /solutions/custom
-└ ○ /tools                                                                     1.39 kB         121 kB
+└ ○ /tools                                                                      1.4 kB         121 kB
 + First Load JS shared by all                                                   103 kB
   ├ chunks/1255-fc6c00ab2f765339.js                                            46.4 kB
   ├ chunks/4bd1b696-f785427dddbba9fb.js                                        54.2 kB
