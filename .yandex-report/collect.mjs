@@ -1,7 +1,8 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 10:40 MSK.
+// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 11:05 MSK.
 //  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
 //     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
 //     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
+//  N) negative keywords from negatives-spec.json are merged into the campaign and the new groups (nothing removed);
 //  1) services sitelink set (the first try was rejected for the "×" sign) attached to every services ad;
 //  2) extra ads from extra-spec.json for groups with fewer than three ads, sent to moderation;
 //  3) old cassette/basket groups are suspended only for the product whose new groups all have an accepted ad;
@@ -11,6 +12,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const CAMPAIGN_ID = 714391927;
 const extra = JSON.parse(readFileSync(".yandex-report/extra-spec.json", "utf8"));
 const base = JSON.parse(readFileSync(".yandex-report/campaign-spec.json", "utf8"));
+const negSpec = JSON.parse(readFileSync(".yandex-report/negatives-spec.json", "utf8"));
 const SV_CALLOUTS = [44698613, 44698991, 44261432, 44698992];
 // Draft 714957797 was deleted on 2026-10-01. The five archived empty "Новая" campaigns
 // (714090502, 714382608, 714388573, 714388647, 714391871) cannot be deleted: Direct answers 8301
@@ -105,6 +107,30 @@ async function main() {
   const nameOf = Object.fromEntries(groups.map((g) => [g.Id, g.Name]));
   const idOf = Object.fromEntries(groups.map((g) => [g.Name, g.Id]));
   let ads = await readAds("before");
+
+  // ---------- N. negative keywords: merge, never remove ----------
+  const cn = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "NegativeKeywords"] }, "negatives_before");
+  const campNeg = cn?.result?.Campaigns?.[0]?.NegativeKeywords?.Items || [];
+  const campMerged = [...new Set([...campNeg, ...negSpec.Campaign])];
+  out.steps.negatives = { campaign_before: campNeg.length, campaign_after: campMerged.length, groups: {} };
+  if (campMerged.length !== campNeg.length) {
+    await api("campaigns", "update", { Campaigns: [{ Id: CAMPAIGN_ID, NegativeKeywords: { Items: campMerged } }] }, "negatives");
+  }
+  const gn = await api("adgroups", "get", { SelectionCriteria: { CampaignIds: [CAMPAIGN_ID] }, FieldNames: ["Id", "Name", "NegativeKeywords"] }, "negatives_groups");
+  const groupUpdates = [];
+  for (const g of gn?.result?.AdGroups || []) {
+    const add = negSpec.Groups[g.Name];
+    if (!add) continue;
+    const before = g.NegativeKeywords?.Items || [];
+    const merged = [...new Set([...before, ...add])];
+    out.steps.negatives.groups[g.Name] = { before: before.length, after: merged.length };
+    if (merged.length !== before.length) groupUpdates.push({ Id: g.Id, NegativeKeywords: { Items: merged } });
+  }
+  for (const part of chunk(groupUpdates, 100)) {
+    await api("adgroups", "update", { AdGroups: part }, `negatives_${part.length}`);
+  }
+  const cn2 = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "NegativeKeywords"] }, "negatives_after");
+  out.steps.negatives.campaign_now = cn2?.result?.Campaigns?.[0]?.NegativeKeywords?.Items?.length ?? null;
 
   // ---------- 1. services sitelinks ----------
   const sl = await api("sitelinks", "add", { SitelinksSets: [{ Sitelinks: extra.ServicesKit.Sitelinks }] }, "kit_sv");
