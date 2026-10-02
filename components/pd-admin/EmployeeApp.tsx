@@ -10,8 +10,8 @@ export function EmployeeApp({csrfToken}:{csrfToken:string}){
  return <div className="space-y-6">
  <p>Это доступ только к приложению сотрудников. Ваше локальное приложение владельца здесь не регистрируется и не отключается.</p>
  <form className="flex flex-wrap gap-4" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void action({action:'create',label:String(f.get('label')),limit:Number(f.get('limit'))})}}>
- <label>Обозначение сотрудника<input className="block border p-2 text-black" name="label" required maxLength={80} placeholder="Технолог 1"/></label>
- <label>Компьютеров<input className="block border p-2 text-black" name="limit" type="number" min={1} max={20} defaultValue={1} required/></label>
+ <label>Обозначение сотрудника<input className="block border bg-white p-2 text-black" name="label" required maxLength={80} placeholder="Технолог 1"/></label>
+ <label>Компьютеров<input className="block border bg-white p-2 text-black" name="limit" type="number" min={1} max={20} defaultValue={1} required/></label>
  <button disabled={busy} className="border px-4 py-2">Выдать код</button></form>
  {code&&<div className="border p-4"><p>Код показан один раз. Передайте его сотруднику лично.</p><code className="break-all select-all">{code}</code><button className="ml-4 border p-2" onClick={()=>setCode('')}>Скрыть</button></div>}
  <p role="status">{message}</p>
