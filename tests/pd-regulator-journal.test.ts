@@ -213,3 +213,23 @@ test("production configuration still uses private Russian server storage paths",
   }
   assert.match(deployScript, /\/var\/lib\/steelprodukt\//);
 });
+
+test("journal includes both lead stores once and rejects non-object records", async () => {
+  const first = await fixtureWithPersonalData();
+  const second = await fixtureWithPersonalData();
+  await writeFile(join(second.leads, "null.json"), "null");
+  await writeFile(join(second.leads, "array.json"), "[]");
+  await writeFile(join(second.consents, "null.json"), "null");
+  const leads = await summariseLeads([first.leads, second.leads, first.leads]);
+  assert.equal(leads.total, 2);
+  assert.equal(leads.attachments, 2);
+  assert.equal(leads.malformed, 2);
+  assert.equal((await summariseConsents(second.consents)).malformed, 1);
+});
+
+test("official request rejects nonexistent calendar dates", async () => {
+  const empty = join(tmpdir(), "regulator-journal-missing");
+  const base = { ...requestInput(), storage: [], consents: await summariseConsents(empty), leads: await summariseLeads(empty) };
+  assert.throws(() => buildJournal({ ...base, requestDate: "2026-02-30" }), /YYYY-MM-DD/);
+  assert.doesNotThrow(() => buildJournal({ ...base, requestDate: "2024-02-29" }));
+});

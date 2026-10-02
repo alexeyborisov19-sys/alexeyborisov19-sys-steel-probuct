@@ -143,7 +143,7 @@ async function main() {
     preparedBy,
     storage,
     consents: await summariseConsents(resolve(paths["Доказательства согласия"])),
-    leads: await summariseLeads(resolve(paths["Обращения (форма расчёта)"])),
+    leads: await summariseLeads([resolve(paths["Обращения (форма расчёта)"]), resolve(paths["Обращения (инженерный помощник)"])]),
   });
 
   await mkdir(outputDirectory, { recursive: true, mode: 0o700 });

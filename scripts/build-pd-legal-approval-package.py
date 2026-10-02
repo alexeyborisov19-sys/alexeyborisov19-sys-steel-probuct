@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from docx import Document
 from docx.enum.section import WD_SECTION
@@ -305,7 +307,7 @@ def add_cover(doc: Document) -> None:
         ("Оператор", "ООО «ЭНЕРГОАЛЬЯНС»"),
         ("ИНН / ОГРН", "6732110789 / 1156733014657"),
         ("Сайт", "https://www.steelprodukt.ru"),
-        ("Дата подготовки", "13 августа 2026 года"),
+        ("Дата подготовки", datetime.now(ZoneInfo("Europe/Moscow")).strftime("%d.%m.%Y")),
         ("Статус", "DRAFT — НЕ УТВЕРЖДЕНО"),
     ]
     for label, value in metadata:
@@ -328,7 +330,7 @@ def add_cover(doc: Document) -> None:
     p.paragraph_format.space_before = Pt(10)
     p.paragraph_format.space_after = Pt(8)
     shade_paragraph(p, LIGHT_ORANGE)
-    set_font(p.add_run("  ВАЖНО: техническая подготовка и наличие этого документа не означают юридического утверждения. До отдельного решения internal-раздел остаётся выключенным.  "), size=10.5, bold=True, color=ORANGE)
+    set_font(p.add_run("  ВАЖНО: техническая подготовка и наличие этого документа не означают юридического утверждения. Фактический статус систем проверяется отдельно; техническое включение не заменяет утверждение документов.  "), size=10.5, bold=True, color=ORANGE)
 
     doc.add_page_break()
     p = doc.add_paragraph("Состав пакета", style="Heading 1")
