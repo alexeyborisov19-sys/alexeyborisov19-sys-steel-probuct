@@ -159,7 +159,7 @@ const retiredRedirects = new Map([
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
   ["/dimli", "/solutions/engineering"],
   ["/rehotka", "/solutions/engineering"],
-  ["/korzina", "/solutions/climate"],
+  ["/korzina", "/products/korziny-dlya-konditsionerov"],
 ]);
 const retiredPaths = new Set(retiredRedirects.keys());
 
