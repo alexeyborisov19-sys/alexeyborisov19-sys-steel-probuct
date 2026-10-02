@@ -2,9 +2,6 @@ name: Switch Yandex Direct to click accumulation
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/yandex-direct-switch-to-clicks.yml"
 
 permissions:
   contents: read
