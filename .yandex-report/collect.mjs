@@ -1,28 +1,11 @@
-// Pass 4: finish the live campaign 714391927. Run: 2026-10-01 19:30 MSK.
-//  0) leftover campaigns are deleted: the draft 714957797 and five archived empty "Новая" campaigns
-//     (only these ids, only while they are a draft or archived and have no impressions and no clicks;
-//     Direct refuses to delete an archived campaign, so it is unarchived first and archived back if the delete fails);
-//  N) negative keywords from negatives-spec.json are merged into the campaign and the new groups (nothing removed);
-//  1) services sitelink set (the first try was rejected for the "×" sign) attached to every services ad;
-//  2) extra ads from extra-spec.json for groups with fewer than three ads, sent to moderation;
-//  3) done once on 2026-10-01 17:00 MSK (owner's request): 50 ads of the old groups resumed, St. Petersburg left off.
-//     The step is removed so later runs never undo a manual stop;
-//  4) read back, plus today's group statistics and search queries (read-only reports).
-import { readFileSync, writeFileSync } from "node:fs";
-import { promises as dns } from "node:dns";
+// Read-only search visibility pass (2026-10-02 09:20 MSK): Yandex Webmaster summary, queries, indexing,
+// query analytics for commercial pages, Metrika organic visits. Nothing is changed anywhere.
+// Writes the full result to /tmp/report.json. Only endpoint labels and HTTP statuses go to the log,
+// because this repository is public and its Actions logs are public too.
+import { writeFileSync } from "node:fs";
 
-const CAMPAIGN_ID = 714391927;
-const extra = JSON.parse(readFileSync(".yandex-report/extra-spec.json", "utf8"));
-const base = JSON.parse(readFileSync(".yandex-report/campaign-spec.json", "utf8"));
-const negSpec = JSON.parse(readFileSync(".yandex-report/negatives-spec.json", "utf8"));
-const SV_CALLOUTS = [44698613, 44698991, 44261432, 44698992];
-// Draft 714957797 was deleted on 2026-10-01. The five archived empty "Новая" campaigns
-// (714090502, 714382608, 714388573, 714388647, 714391871) cannot be deleted: Direct answers 8301
-// because they were once sent to moderation, so they stay archived and are no longer touched.
-const DELETE_IDS = [714957797];
-const out = { generated_at: new Date().toISOString(), pass: "finish", calls: [], steps: {}, errors: [] };
-const UTM = "utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}";
-const isServices = (name) => /^Услуги (Смоленск|Москва Калуга Брянск) \| /.test(name);
+const COUNTER_ID = "112542227";
+const out = { generated_at: new Date().toISOString(), pass: "search", calls: [], webmaster: {}, metrika: {} };
 
 function normToken(raw = "") {
   let v = String(raw).trim().replace(/^OAuth\s+/i, "").replace(/^Bearer\s+/i, "");
@@ -30,309 +13,204 @@ function normToken(raw = "") {
   if (m) { try { v = decodeURIComponent(m[1]); } catch { v = m[1]; } }
   return v.trim();
 }
-const token = normToken(process.env.YD_TOKEN || "");
-const login = String(process.env.YD_CLIENT_LOGIN || "").trim();
 
-const FORBIDDEN = new Set(["resume", "unarchive", "archive", "delete"]);
-let RESUME_ALLOWED = new Set();
-async function api(service, method, params, label) {
-  const ids = params?.SelectionCriteria?.Ids || [];
-  const draftDelete = service === "campaigns" && ["delete", "unarchive", "archive"].includes(method) && ids.length > 0
-    && ids.every((id) => DELETE_IDS.includes(id) && id !== CAMPAIGN_ID);
-  const oldResume = service === "ads" && method === "resume" && ids.length > 0 && ids.every((id) => RESUME_ALLOWED.has(String(id)));
-  if (FORBIDDEN.has(method) && !draftDelete && !oldResume) throw new Error(`method ${method} is not allowed in this script`);
-  const headers = { Authorization: `Bearer ${token}`, "Accept-Language": "ru", "Content-Type": "application/json; charset=utf-8" };
-  if (login) headers["Client-Login"] = login;
+async function get(label, url, token) {
   let status = 0, body = null;
   try {
-    // Ad ids exceed Number.MAX_SAFE_INTEGER: keep every 16+ digit integer as a "BIG:" string
-    // on the way in and write it back as a bare JSON number on the way out.
-    const payload = JSON.stringify({ method, params }).replace(/"BIG:(-?\d+)"/g, "$1");
-    const res = await fetch(`https://api.direct.yandex.com/json/v501/${service}`, {
-      method: "POST", headers, body: payload, signal: AbortSignal.timeout(60000),
+    const res = await fetch(url, {
+      headers: { Authorization: `OAuth ${token}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(30000),
     });
     status = res.status;
     const text = await res.text();
-    const safe = text.replace(/([:\[,]\s*)(-?\d{16,})(?=\s*[,\]}])/g, '$1"BIG:$2"');
-    try { body = JSON.parse(safe); } catch { body = { raw: text.slice(0, 3000) }; }
+    try { body = text ? JSON.parse(text) : {}; } catch { body = text.slice(0, 2000); }
   } catch (e) {
-    body = { error: { error_string: "NETWORK_ERROR", error_detail: e?.cause?.code || e?.name } };
+    body = { error: "NETWORK_ERROR", code: e?.cause?.code || e?.name || "UNKNOWN" };
   }
-  const r = body?.result || {};
-  const results = r.AddResults || r.UpdateResults || r.SuspendResults || r.ModerateResults || r.ResumeResults || r.DeleteResults
-    || r.UnarchiveResults || r.ArchiveResults || [];
-  const itemErrors = results.filter((x) => x.Errors?.length);
-  out.calls.push({ label: `${service}.${method}:${label}`, status, apiError: Boolean(body?.error), itemErrors: itemErrors.length });
-  console.log(`${service}.${method}:${label}: HTTP ${status}${body?.error ? " API_ERROR" : ""}${itemErrors.length ? ` ITEM_ERRORS=${itemErrors.length}` : ""}`);
-  if (body?.error) out.errors.push({ step: `${service}.${method}:${label}`, error: body.error });
-  if (itemErrors.length) out.errors.push({ step: `${service}.${method}:${label}`, itemErrors: itemErrors.slice(0, 20) });
-  return body;
+  out.calls.push({ label, status });
+  console.log(`${label}: HTTP ${status}`);
+  return { ok: status >= 200 && status < 300, status, body };
 }
-const addIds = (body) => (body?.result?.AddResults || []).map((x) => x.Id ?? null);
-const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
-const readAds = async (label) => (await api("ads", "get", {
-  SelectionCriteria: { CampaignIds: [CAMPAIGN_ID] }, FieldNames: ["Id", "AdGroupId", "State", "Status", "StatusClarification"],
-  TextAdFieldNames: ["Title", "Text", "Href", "SitelinkSetId", "AdExtensions"],
-}, label))?.result?.Ads || [];
 
+const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+const today = day(0);
 
-// ---------- site probe (read-only): why no leads ----------
-// Pages and form endpoints are checked without creating a lead: the form posts carry an empty
-// name, which every handler rejects with 400 before anything is stored or e-mailed.
-async function siteProbe() {
-  const site = {};
-  const timed = async (label, url, init = {}) => {
-    const t0 = Date.now();
-    try {
-      const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(30000), ...init });
-      const text = await res.text();
-      let json = null; try { json = JSON.parse(text); } catch {}
-      site[label] = { status: res.status, ms: Date.now() - t0, location: res.headers.get("location"), json,
-        bytes: text.length, hasMetrikaTag: /mc\.yandex\.ru\/metrika/.test(text), title: (text.match(/<title>([^<]*)<\/title>/) || [])[1] || null };
-    } catch (e) { site[label] = { error: e?.cause?.code || e?.name, ms: Date.now() - t0 }; }
-  };
-  for (const host of ["https://www.steelprodukt.ru", "https://steelprodukt.ru", "http://steelprodukt.ru", "http://www.steelprodukt.ru"]) {
-    await timed(`GET ${host}/`, `${host}/`);
+// ---------------- WEBMASTER ----------------
+const wmCandidates = [
+  ["YANDEX_WEBMASTER_OAUTH_TOKEN", process.env.YW_TOKEN],
+  ["YANDEX_OAUTH_TOKEN", process.env.YANDEX_OAUTH_TOKEN],
+  ["YANDEX_METRIKA_OAUTH_TOKEN", process.env.YM_TOKEN],
+  ["YANDEX_DIRECT_OAUTH_TOKEN", process.env.YD_TOKEN],
+].map(([n, v]) => [n, normToken(v || "")]).filter(([, v]) => v);
+
+let yw = "", uid = null;
+for (const [name, tok] of wmCandidates) {
+  const u = await get(`webmaster.user[${name}]`, "https://api.webmaster.yandex.net/v4/user", tok);
+  if (u.ok && u.body?.user_id) { yw = tok; uid = u.body.user_id; out.webmaster.token_secret_used = name; break; }
+  out.webmaster[`user_error_${name}`] = u.body;
+}
+
+if (uid) {
+  const base = `https://api.webmaster.yandex.net/v4/user/${uid}`;
+  const hosts = await get("webmaster.hosts", `${base}/hosts`, yw);
+  const all = hosts.body?.hosts || [];
+  const mine = all.filter((h) => String(h.unicode_host_url || h.ascii_host_url || "").includes("steelprodukt"));
+  out.webmaster.hosts = mine.map((h) => ({
+    host_id: h.host_id,
+    url: h.unicode_host_url || h.ascii_host_url,
+    verified: h.verified,
+    host_data_status: h.host_data_status,
+    main_mirror: h.main_mirror ? (h.main_mirror.unicode_host_url || h.main_mirror.ascii_host_url) : null,
+  }));
+  const main = mine.find((h) => h.verified && !h.main_mirror) || mine.find((h) => h.verified) || mine[0];
+
+  // Summary for every steelprodukt host (www and non-www may both be registered).
+  out.webmaster.summaries = {};
+  for (const h of mine) {
+    const s = await get(`webmaster.summary[${h.host_id}]`, `${base}/hosts/${encodeURIComponent(h.host_id)}/summary`, yw);
+    out.webmaster.summaries[h.host_id] = s.body;
   }
-  for (const path of ["/contacts", "/online-order", "/products/metallokassety", "/products/korziny-dlya-konditsionerov", "/production/lazernaya-rezka-metalla", "/api/health"]) {
-    await timed(`GET www${path}`, `https://www.steelprodukt.ru${path}`);
-  }
-  const emptyLead = () => { const f = new FormData(); f.append("name", ""); f.append("phone", ""); return f; };
-  for (const host of ["https://www.steelprodukt.ru", "https://steelprodukt.ru"]) {
-    for (const ep of ["/api/quote", "/api/assistant/lead"]) {
-      await timed(`POST ${host}${ep} (empty name, Origin=${host})`, `${host}${ep}`, { method: "POST", body: emptyLead(), headers: { Origin: host, Referer: `${host}/contacts` } });
+
+  if (main) {
+    const hb = `${base}/hosts/${encodeURIComponent(main.host_id)}`;
+    out.webmaster.main_host = main.host_id;
+
+    async function withDates(label, path, from, extra = "") {
+      let r = await get(label, `${hb}/${path}?date_from=${from}&date_to=${today}${extra}`, yw);
+      if (r.status === 400) {
+        r = await get(`${label}#iso`, `${hb}/${path}?date_from=${from}T00:00:00%2B03:00&date_to=${today}T23:59:59%2B03:00${extra}`, yw);
+      }
+      return r.body;
     }
+
+    const ind = "&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION&query_indicator=AVG_CLICK_POSITION";
+    out.webmaster.popular_queries_30d = await withDates("webmaster.popular_30d", "search-queries/popular", day(30), `&order_by=TOTAL_SHOWS${ind}&limit=500`);
+    out.webmaster.popular_queries_7d = await withDates("webmaster.popular_7d", "search-queries/popular", day(7), `&order_by=TOTAL_SHOWS${ind}&limit=500`);
+    out.webmaster.queries_history_90d = await withDates("webmaster.queries_history", "search-queries/all/history", day(90), "&query_indicator=TOTAL_SHOWS&query_indicator=TOTAL_CLICKS&query_indicator=AVG_SHOW_POSITION");
+    out.webmaster.in_search_history_90d = await withDates("webmaster.in_search_history", "search-urls/in-search/history", day(90));
+    out.webmaster.indexing_history_90d = await withDates("webmaster.indexing_history", "indexing/history", day(90));
+    out.webmaster.sqi_history = await withDates("webmaster.sqi_history", "sqi-history", day(365));
+
+    // Pages in search (paginate up to 500).
+    const inSearch = [];
+    let inSearchCount = null;
+    for (let off = 0; off < 500; off += 100) {
+      const r = await get(`webmaster.in_search_samples@${off}`, `${hb}/search-urls/in-search/samples?offset=${off}&limit=100`, yw);
+      if (!r.ok) { out.webmaster.in_search_samples_error = r.body; break; }
+      inSearchCount = r.body?.count ?? inSearchCount;
+      inSearch.push(...(r.body?.samples || []));
+      if ((r.body?.samples || []).length < 100) break;
+    }
+    out.webmaster.in_search = { count: inSearchCount, samples: inSearch };
+
+    const events = await get("webmaster.search_events", `${hb}/search-urls/events/samples?offset=0&limit=100`, yw);
+    out.webmaster.search_events = events.body;
+
+    const crawled = [];
+    let crawledCount = null;
+    for (let off = 0; off < 300; off += 100) {
+      const r = await get(`webmaster.indexing_samples@${off}`, `${hb}/indexing/samples?offset=${off}&limit=100`, yw);
+      if (!r.ok) { out.webmaster.indexing_samples_error = r.body; break; }
+      crawledCount = r.body?.count ?? crawledCount;
+      crawled.push(...(r.body?.samples || []));
+      if ((r.body?.samples || []).length < 100) break;
+    }
+    out.webmaster.indexing = { count: crawledCount, samples: crawled };
+
+    out.webmaster.diagnostics = (await get("webmaster.diagnostics", `${hb}/diagnostics`, yw)).body;
+    out.webmaster.important_urls = (await get("webmaster.important_urls", `${hb}/important-urls`, yw)).body;
+    out.webmaster.external_links = (await get("webmaster.external_links", `${hb}/links/external/samples?offset=0&limit=100`, yw)).body;
+    out.webmaster.sitemaps = (await get("webmaster.sitemaps", `${hb}/sitemaps?limit=100`, yw)).body;
   }
-  // the non-www page posting to the non-www API while the canonical origin is www
-  await timed("POST https://steelprodukt.ru/api/quote (Origin=https://steelprodukt.ru, sec-fetch-site same-origin)", "https://steelprodukt.ru/api/quote",
-    { method: "POST", body: emptyLead(), headers: { Origin: "https://steelprodukt.ru", "Sec-Fetch-Site": "same-origin" } });
-  // compliance checks (read-only): legal pages, consent markup, CSP, internal area, robots, mail DNS, RKN registry
-  const compliance = {};
-  const page = async (path) => {
-    try {
-      const res = await fetch(`https://www.steelprodukt.ru${path}`, { redirect: "manual", signal: AbortSignal.timeout(30000) });
-      return { status: res.status, headers: Object.fromEntries(res.headers), text: await res.text() };
-    } catch (e) { return { error: e?.cause?.code || e?.name }; }
-  };
-  for (const path of ["/legal/privacy", "/legal/personal-data-consent", "/legal/cookies", "/legal/marketing-consent", "/legal/services", "/legal/terms", "/legal/requisites"]) {
-    const r = await page(path);
-    compliance[path] = { status: r.status, edition: (r.text || "").match(/(Редакция от|Актуально на)[^<]{0,40}/)?.[0] || null };
-  }
-  const home = await page("/");
-  compliance.home = {
-    csp: home.headers?.["content-security-policy"] || null,
-    footerPrivacyLink: /href="\/legal\/privacy"/.test(home.text || ""),
-    footerCookiesLink: /href="\/legal\/cookies"/.test(home.text || ""),
-    requisitesLink: /href="\/legal\/requisites"/.test(home.text || ""),
-    cookieSettingsButton: /Настройки cookies/.test(home.text || ""),
-    externalHosts: [...new Set([...(home.text || "").matchAll(/(?:src|href)="(https?:\/\/[^"/]+)/g)].map((m) => m[1]))],
-  };
-  const contacts = await page("/contacts");
-  const pdBox = (contacts.text || "").match(/<input[^>]*name="personalDataConsent"[^>]*>/)?.[0] || null;
-  const mkBox = (contacts.text || "").match(/<input[^>]*name="marketingConsent"[^>]*>/)?.[0] || null;
-  compliance.contactsForm = { personalDataConsentInput: pdBox, preChecked: pdBox ? /checked/.test(pdBox) : null, marketingInput: mkBox, marketingPreChecked: mkBox ? /checked/.test(mkBox) : null };
-  for (const path of ["/internal/personal-data/leads", "/internal/personal-data", "/robots.txt"]) {
-    const r = await page(path);
-    compliance[path] = { status: r.status, location: r.headers?.location || null, snippet: path === "/robots.txt" ? (r.text || "").slice(0, 600) : (r.text || "").match(/<title>[^<]*<\/title>/)?.[0] || null };
-  }
-  const q = async (fn, name) => { try { return await fn(name); } catch (e) { return { error: e.code || e.message }; } };
-  compliance.dns = {
-    mx: await q(dns.resolveMx, "steelprodukt.ru"),
-    txt: await q(dns.resolveTxt, "steelprodukt.ru"),
-    dmarc: await q(dns.resolveTxt, "_dmarc.steelprodukt.ru"),
-    dkim_mailru: await q(dns.resolveTxt, "mailru._domainkey.steelprodukt.ru"),
-    dkim_mail: await q(dns.resolveTxt, "mail._domainkey.steelprodukt.ru"),
-  };
+}
+
+
+// Collapse daily statistics into totals so the report stays small.
+function aggregate(body) {
+  const rows = body?.text_indicator_to_statistics;
+  if (!Array.isArray(rows)) return null;
+  const dates = new Set();
+  const items = rows.map((r) => {
+    const acc = { IMPRESSIONS: 0, CLICKS: 0, DEMAND: 0, POS_W: 0, POS_N: 0 };
+    for (const s of r.statistics || []) {
+      if (s.date) dates.add(String(s.date).slice(0, 10));
+      const v = Number(s.value) || 0;
+      if (s.field === "IMPRESSIONS") acc.IMPRESSIONS += v;
+      else if (s.field === "CLICKS") acc.CLICKS += v;
+      else if (s.field === "DEMAND") acc.DEMAND += v;
+    }
+    // position weighted by daily impressions
+    const byDate = {};
+    for (const s of r.statistics || []) {
+      const d = String(s.date).slice(0, 10);
+      byDate[d] ??= {};
+      byDate[d][s.field] = Number(s.value) || 0;
+    }
+    for (const d of Object.values(byDate)) {
+      if (d.POSITION && d.IMPRESSIONS) { acc.POS_W += d.POSITION * d.IMPRESSIONS; acc.POS_N += d.IMPRESSIONS; }
+    }
+    return {
+      value: r.text_indicator?.value,
+      type: r.text_indicator?.type,
+      impressions: acc.IMPRESSIONS,
+      clicks: acc.CLICKS,
+      demand: acc.DEMAND,
+      position: acc.POS_N ? +(acc.POS_W / acc.POS_N).toFixed(2) : null,
+    };
+  });
+  const sorted = [...dates].sort();
+  return { count: body.count, date_from: sorted[0] || null, date_to: sorted.at(-1) || null, days: sorted.length, items };
+}
+
+
+async function post(label, url, body) {
+  let status = 0, parsed = null;
   try {
-    const res = await fetch("https://pd.rkn.gov.ru/operators-registry/operators-list/?act=search&inn=6732110789", { signal: AbortSignal.timeout(30000) });
+    const res = await fetch(url, { method: "POST", headers: { Authorization: `OAuth ${yw}`, Accept: "application/json", "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify(body), signal: AbortSignal.timeout(40000) });
+    status = res.status;
     const text = await res.text();
-    compliance.rknRegistry = { status: res.status, found: /6732110789/.test(text), snippet: (text.match(/6732110789[\s\S]{0,400}/) || [""])[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 400) };
-  } catch (e) { compliance.rknRegistry = { error: e?.cause?.code || e?.name }; }
-  site.compliance = compliance;
-  out.site = site;
-
-  // Metrika: every goal over 90 days, and visits by source, to compare with Direct clicks
-  const ym = String(process.env.YM_TOKEN || "").trim();
-  if (ym) {
-    const get = async (label, url) => {
-      try {
-        const res = await fetch(url, { headers: { Authorization: `OAuth ${ym}` }, signal: AbortSignal.timeout(60000) });
-        out.metrika = out.metrika || {};
-        out.metrika[label] = { status: res.status, body: await res.json().catch(() => null) };
-      } catch (e) { out.metrika = out.metrika || {}; out.metrika[label] = { error: e?.cause?.code || e?.name }; }
-    };
-    const C = 112542227;
-    await get("goals", `https://api-metrika.yandex.net/management/v1/counter/${C}/goals`);
-    await get("counter", `https://api-metrika.yandex.net/management/v1/counter/${C}`);
-    const goals = out.metrika.goals?.body?.goals || [];
-    const metrics = goals.slice(0, 18).map((g) => `ym:s:goal${g.id}reaches`).join(",");
-    await get("goals_90d", `https://api-metrika.yandex.net/stat/v1/data?ids=${C}&date1=90daysAgo&date2=today&metrics=ym:s:visits${metrics ? "," + metrics : ""}&accuracy=full`);
-    await get("sources_daily_14d", `https://api-metrika.yandex.net/stat/v1/data?ids=${C}&date1=14daysAgo&date2=today&dimensions=ym:s:date,ym:s:lastsignTrafficSource&metrics=ym:s:visits&sort=ym:s:date&limit=200&accuracy=full`);
-  }
+    try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text.slice(0, 3000); }
+  } catch (e) { parsed = { error: "NETWORK_ERROR", code: e?.cause?.code || e?.name || "UNKNOWN" }; }
+  out.calls.push({ label, status });
+  console.log(`${label}: HTTP ${status}`);
+  return { ok: status >= 200 && status < 300, status, body: parsed };
 }
 
-// The one-off test request (owner-approved) was sent on 2026-10-01 18:29 MSK as SP-20261001-CF9E637F
-// and accepted with e-mail delivery; the step is removed so reruns never send another.
-
-// Key goals of the campaign: add the new phone_click goal next to the existing ones (nothing removed).
-async function keyGoals() {
-  const ym = String(process.env.YM_TOKEN || "").trim();
-  const res = await fetch("https://api-metrika.yandex.net/management/v1/counter/112542227/goals", { headers: { Authorization: `OAuth ${ym}` } });
-  const goals = (await res.json().catch(() => ({}))).goals || [];
-  const byTarget = Object.fromEntries(goals.map((g) => [g.conditions?.[0]?.url, g.id]));
-  const want = ["quote_request_success", "assistant_lead_success", "phone_click"].map((t) => [t, byTarget[t]]);
-  out.key_goals = { want: Object.fromEntries(want) };
-  const c = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id"], UnifiedCampaignFieldNames: ["CounterIds", "PriorityGoals"] }, "key_goals_before");
-  const uc = c?.result?.Campaigns?.[0]?.UnifiedCampaign || {};
-  const items = uc.PriorityGoals?.Items || [];
-  out.key_goals.before = { counters: uc.CounterIds, items };
-  const have = new Set(items.map((i) => i.GoalId));
-  const value = Math.max(0, ...items.map((i) => i.Value || 0)) || 1000000000;
-  const add = want.filter(([, id]) => id && !have.has(id)).map(([, id]) => ({ GoalId: id, Value: value, Operation: "SET" }));
-  if (add.length) {
-    await api("campaigns", "update", { Campaigns: [{ Id: CAMPAIGN_ID, UnifiedCampaign: { PriorityGoals: { Items: add } } }] }, "key_goals");
-  }
-  const c2 = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id"], UnifiedCampaignFieldNames: ["CounterIds", "PriorityGoals"] }, "key_goals_after");
-  out.key_goals.after = c2?.result?.Campaigns?.[0]?.UnifiedCampaign?.PriorityGoals?.Items;
-}
-
-async function main() {
-  await keyGoals();
-  await siteProbe();
-  if (!token) { out.errors.push({ step: "token", error: "missing" }); return; }
-  const c = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "State", "Status"] }, "guard");
-  const campaign = c?.result?.Campaigns?.[0];
-  if (!campaign || campaign.Id !== CAMPAIGN_ID || campaign.State === "ARCHIVED") {
-    out.errors.push({ step: "guard", error: "campaign not found or archived", campaign });
-    return;
-  }
-  // ---------- 0. drafts: delete only the redundant draft campaign, list everything else ----------
-  const listCampaigns = async (label) => (await api("campaigns", "get", {
-    SelectionCriteria: {}, FieldNames: ["Id", "Name", "State", "Status", "Type", "Statistics"],
-  }, label))?.result?.Campaigns || [];
-  const all = await listCampaigns("all_before");
-  const junk = all.filter((x) => DELETE_IDS.includes(x.Id) && x.Id !== CAMPAIGN_ID
-    && (x.Status === "DRAFT" || x.State === "ARCHIVED") && x.State !== "ON"
-    && !(x.Statistics?.Impressions > 0) && !(x.Statistics?.Clicks > 0));
-  if (junk.length) {
-    const archived = junk.filter((x) => x.State === "ARCHIVED").map((x) => x.Id);
-    if (archived.length) await api("campaigns", "unarchive", { SelectionCriteria: { Ids: archived } }, `leftovers_${archived.length}`);
-    const ids = junk.map((x) => x.Id);
-    const d = await api("campaigns", "delete", { SelectionCriteria: { Ids: ids } }, `leftovers_${ids.length}`);
-    const res = d?.result?.DeleteResults || [];
-    out.steps.deleted = ids.map((id, i) => ({ id, ok: Boolean(res[i]?.Id) && !res[i]?.Errors?.length, errors: res[i]?.Errors }));
-    const back = archived.filter((id) => !out.steps.deleted.find((x) => x.id === id)?.ok);
-    if (back.length) await api("campaigns", "archive", { SelectionCriteria: { Ids: back } }, `rollback_${back.length}`);
-  } else {
-    out.steps.deleted = "nothing to delete";
-  }
-  out.steps.campaigns = (await listCampaigns("all_after")).map((x) => ({ Id: x.Id, Name: x.Name, State: x.State, Status: x.Status, Statistics: x.Statistics }));
-
-  const groups = (await api("adgroups", "get", { SelectionCriteria: { CampaignIds: [CAMPAIGN_ID] }, FieldNames: ["Id", "Name"] }, "groups"))?.result?.AdGroups || [];
-  const nameOf = Object.fromEntries(groups.map((g) => [g.Id, g.Name]));
-  const idOf = Object.fromEntries(groups.map((g) => [g.Name, g.Id]));
-  let ads = await readAds("before");
-
-  // ---------- N. negative keywords: merge, never remove ----------
-  const cn = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "NegativeKeywords"] }, "negatives_before");
-  const campNeg = cn?.result?.Campaigns?.[0]?.NegativeKeywords?.Items || [];
-  const campMerged = [...new Set([...campNeg, ...negSpec.Campaign])];
-  out.steps.negatives = { campaign_before: campNeg.length, campaign_after: campMerged.length, groups: {} };
-  if (campMerged.length !== campNeg.length) {
-    await api("campaigns", "update", { Campaigns: [{ Id: CAMPAIGN_ID, NegativeKeywords: { Items: campMerged } }] }, "negatives");
-  }
-  const gn = await api("adgroups", "get", { SelectionCriteria: { CampaignIds: [CAMPAIGN_ID] }, FieldNames: ["Id", "Name", "NegativeKeywords"] }, "negatives_groups");
-  const groupUpdates = [];
-  for (const g of gn?.result?.AdGroups || []) {
-    const add = negSpec.Groups[g.Name];
-    if (!add) continue;
-    const before = g.NegativeKeywords?.Items || [];
-    const merged = [...new Set([...before, ...add])];
-    out.steps.negatives.groups[g.Name] = { before: before.length, after: merged.length };
-    if (merged.length !== before.length) groupUpdates.push({ Id: g.Id, NegativeKeywords: { Items: merged } });
-  }
-  for (const part of chunk(groupUpdates, 100)) {
-    await api("adgroups", "update", { AdGroups: part }, `negatives_${part.length}`);
-  }
-  const cn2 = await api("campaigns", "get", { SelectionCriteria: { Ids: [CAMPAIGN_ID] }, FieldNames: ["Id", "NegativeKeywords"] }, "negatives_after");
-  out.steps.negatives.campaign_now = cn2?.result?.Campaigns?.[0]?.NegativeKeywords?.Items?.length ?? null;
-
-  // ---------- 1. services sitelinks ----------
-  const sl = await api("sitelinks", "add", { SitelinksSets: [{ Sitelinks: extra.ServicesKit.Sitelinks }] }, "kit_sv");
-  const [svSitelinks] = addIds(sl);
-  out.steps.sv_sitelinks = svSitelinks ?? null;
-  const kits = {
-    mk: base.KitIds.mk, kz: base.KitIds.kz,
-    sv: { sitelinkSetId: svSitelinks ?? null, calloutIds: SV_CALLOUTS },
-  };
-  if (svSitelinks) {
-    const need = ads.filter((a) => isServices(nameOf[a.AdGroupId]) && a.TextAd && a.TextAd.SitelinkSetId !== svSitelinks).map((a) => a.Id);
-    for (const part of chunk(need, 100)) {
-      await api("ads", "update", { Ads: part.map((Id) => ({ Id, TextAd: { SitelinkSetId: svSitelinks } })) }, `sv_sitelinks_${part.length}`);
+if (uid) {
+  const hostId = "https:www.steelprodukt.ru:443";
+  const qaUrl = `https://api.webmaster.yandex.net/v4/user/${uid}/hosts/${encodeURIComponent(hostId)}/query-analytics/list`;
+  async function qaList(label, body) {
+    const variants = [body, { ...body, filters: { ...(body.filters || {}), statistic_filters: [] } }, (() => { const b = { ...body }; delete b.device_type_indicator; return b; })()];
+    let last = null;
+    for (const [i, v] of variants.entries()) {
+      const r = await post(`wm.qa.${label}${i ? `#v${i}` : ""}`, qaUrl, v);
+      if (r.ok) { const a = aggregate(r.body); return a ? { request: v, ...a } : { request: v, raw_head: JSON.stringify(r.body).slice(0, 4000) }; }
+      last = { request: v, status: r.status, error: r.body };
+      if (r.status !== 400) break;
     }
-    out.steps.sv_sitelinks_attached = need.length;
+    return last;
   }
-
-  // ---------- 2. extra ads ----------
-  const titles = new Set(ads.map((a) => `${a.AdGroupId}|${a.TextAd?.Title}`));
-  const newIds = [];
-  const added = [];
-  for (const a of extra.Ads) {
-    const gid = idOf[a.Group];
-    if (!gid) { out.errors.push({ step: "extra", error: `group not found: ${a.Group}` }); continue; }
-    const merged = a.Title2 ? `${a.Title}. ${a.Title2}` : a.Title;
-    if (titles.has(`${gid}|${merged}`) || titles.has(`${gid}|${a.Title}`)) continue;
-    const kit = kits[a.Kit];
-    const TextAd = { Title: a.Title, Text: a.Text, Mobile: "NO", DisplayUrlPath: a.DisplayUrlPath, Href: `${a.Href}?${UTM}`, AdExtensionIds: kit.calloutIds };
-    if (a.Title2) TextAd.Title2 = a.Title2;
-    if (kit.sitelinkSetId) TextAd.SitelinkSetId = kit.sitelinkSetId;
-    const r = await api("ads", "add", { Ads: [{ AdGroupId: gid, TextAd }] }, "extra");
-    const [id] = addIds(r);
-    if (id) { newIds.push(id); added.push(`${a.Group}: ${merged}`); }
+  const base = { offset: 0, limit: 500, device_type_indicator: "ALL", text_indicator: "QUERY", region_ids: [], filters: {} };
+  out.webmaster.qa_queries = await qaList("queries", base);
+  out.webmaster.qa_urls = await qaList("urls", { ...base, text_indicator: "URL" });
+  const pages = ["/", "/products/metallokassety", "/calculator-metallokassety", "/products/korziny-dlya-konditsionerov",
+    "/production/lazernaya-rezka-metalla", "/production/gibka-listovogo-metalla", "/production/poroshkovaya-okraska-metalla",
+    "/production/svarka-i-sborka-metalloizdeliy", "/online-order", "/solutions/custom", "/contacts"];
+  out.webmaster.qa_by_page = {};
+  for (const p of pages) {
+    out.webmaster.qa_by_page[p] = await qaList(`page${p.replaceAll("/", "_")}`, { ...base, limit: 100,
+      filters: { text_filters: [{ text_indicator: "URL", operation: "TEXT_MATCH", value: `https://www.steelprodukt.ru${p}` }] } });
   }
-  out.steps.extra_added = added;
-  for (const part of chunk(newIds, 1000)) {
-    const m = await api("ads", "moderate", { SelectionCriteria: { Ids: part } }, `moderate_${part.length}`);
-    out.steps.moderate = m?.result?.ModerateResults ?? m?.error;
-  }
-
-  // ---------- 4. read back ----------
-  out.after = { groups, ads: await readAds("after") };
-
-  // ---------- 5. read-only reports: today's groups and search queries ----------
-  const report = async (name, type, fields, range) => {
-    const body = { params: {
-      SelectionCriteria: { Filter: [{ Field: "CampaignId", Operator: "EQUALS", Values: [String(CAMPAIGN_ID)] }] },
-      FieldNames: fields, ReportName: `SP check ${name} ${Date.now()}`, ReportType: type,
-      DateRangeType: range, Format: "TSV", IncludeVAT: "YES", IncludeDiscount: "NO",
-    } };
-    const headers = {
-      Authorization: `Bearer ${token}`, "Accept-Language": "ru", "Content-Type": "application/json; charset=utf-8",
-      processingMode: "auto", returnMoneyInMicros: "false", skipReportHeader: "true", skipReportSummary: "true",
-    };
-    if (login) headers["Client-Login"] = login;
-    for (let i = 0; i < 20; i++) {
-      let res;
-      try {
-        res = await fetch("https://api.direct.yandex.com/json/v5/reports", { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(90000) });
-      } catch (e) { return { error: e?.cause?.code || e?.name }; }
-      const text = await res.text();
-      out.calls.push({ label: `reports:${name}`, status: res.status });
-      if (res.status === 200) return { tsv: text };
-      if (res.status === 201 || res.status === 202) { await new Promise((r) => setTimeout(r, (Number(res.headers.get("retryIn")) || 10) * 1000)); continue; }
-      out.errors.push({ step: `reports:${name}`, status: res.status, body: text.slice(0, 1500) });
-      return { status: res.status };
-    }
-    return { error: "TIMEOUT" };
-  };
-  out.reports = {
-    groups_today: await report("groups_today", "CUSTOM_REPORT", ["AdGroupName", "Impressions", "Clicks", "Cost"], "TODAY"),
-    queries_today: await report("queries_today", "SEARCH_QUERY_PERFORMANCE_REPORT", ["Query", "AdGroupName", "Criterion", "CriterionType", "Impressions", "Clicks", "Cost"], "TODAY"),
-    groups_yesterday: await report("groups_yesterday", "CUSTOM_REPORT", ["AdGroupName", "Impressions", "Clicks", "Cost"], "YESTERDAY"),
-    daily_14d: await report("daily_14d", "CUSTOM_REPORT", ["Date", "Impressions", "Clicks", "Cost"], "LAST_14_DAYS"),
-  };
 }
 
-await main();
-writeFileSync("/tmp/report.json", JSON.stringify(out, null, 2));
-console.log("ERRORS:", out.errors.length, "REPORT_BYTES:", Buffer.byteLength(JSON.stringify(out)));
+// ---------------- METRIKA: organic visits by day and landing page ----------------
+const ym = normToken(process.env.YM_TOKEN || "");
+if (ym) {
+  const C = 112542227;
+  const m = async (label, q) => (await get(`metrika.${label}`, `https://api-metrika.yandex.net/stat/v1/data?ids=${C}&accuracy=full&${q}`, ym)).body;
+  out.metrika.organic_daily_30d = await m("organic_daily", "date1=30daysAgo&date2=today&dimensions=ym:s:date,ym:s:lastsignSearchEngineRoot&filters=ym:s:lastsignTrafficSource=='organic'&metrics=ym:s:visits&sort=ym:s:date&limit=200");
+  out.metrika.organic_landings_30d = await m("organic_landings", "date1=30daysAgo&date2=today&dimensions=ym:s:startURLPath&filters=ym:s:lastsignTrafficSource=='organic'&metrics=ym:s:visits,ym:s:bounceRate&sort=-ym:s:visits&limit=50");
+}
+
+writeFileSync("/tmp/report.json", JSON.stringify(out));
+console.log("REPORT_BYTES:", Buffer.byteLength(JSON.stringify(out)));
