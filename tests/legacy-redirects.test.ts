@@ -13,7 +13,7 @@ const legacyRedirects = new Map([
   ["/otdekrf", "/products"],
   ["/dekorattivnie", "/products"],
   ["/dimli", "/solutions/engineering"],
-  ["/korzina", "/solutions/climate"],
+  ["/korzina", "/products/korziny-dlya-konditsionerov"],
   ["/kronhtein", "/solutions/engineering"],
   ["/rehotka", "/solutions/engineering"],
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
@@ -59,4 +59,14 @@ test("legacy URLs are excluded from sitemap", () => {
   for (const legacyPath of legacyRedirects.keys()) {
     assert.equal(urls.some((url) => new URL(url).pathname === legacyPath), false);
   }
+});
+
+
+test("retired product preloader returns 410 and cannot enter the sitemap", () => {
+  const path = "/products/preload";
+  assert.ok(middlewareConfig.matcher.includes(path));
+  const response = middleware(new NextRequest(`https://www.steelprodukt.ru${path}`));
+  assert.equal(response.status, 410);
+  assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
+  assert.ok(!sitemap().some((entry) => new URL(entry.url).pathname === path));
 });
