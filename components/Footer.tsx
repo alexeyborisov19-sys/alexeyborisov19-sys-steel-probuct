@@ -47,7 +47,7 @@ const legalDocuments = [
   ["Согласие на обработку данных", legalLinks.personalDataConsent],
   ["Согласие на веб-аналитику", legalLinks.analyticsConsent],
   ["Согласие на рассылку", legalLinks.marketingConsent],
-  ["Политика cookies", legalLinks.cookies],
+  ["Политика файлов cookie", legalLinks.cookies],
   ["Сервисы обработки данных", legalLinks.services],
   ["Пользовательское соглашение", legalLinks.terms],
   ["Реквизиты", legalLinks.requisites],

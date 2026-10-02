@@ -11,7 +11,7 @@
    `/legal/analytics-consent`.
 3. Согласие на рекламные и информационные материалы —
    `/legal/marketing-consent`.
-4. Политика cookies — `/legal/cookies`.
+4. Политика файлов cookie — `/legal/cookies`.
 5. Сервисы обработки данных — `/legal/services`.
 6. Пользовательское соглашение — `/legal/terms`.
 7. Реквизиты Оператора — `/legal/requisites`.

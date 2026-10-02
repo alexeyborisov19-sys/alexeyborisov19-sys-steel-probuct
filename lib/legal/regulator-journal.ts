@@ -81,7 +81,7 @@ function assertRequestMetadata(input: JournalInput) {
   const requestDate = requireText(input.requestDate, "дата запроса");
   const preparedBy = requireText(input.preparedBy, "ФИО подготовившего выгрузку");
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(requestDate) || Number.isNaN(Date.parse(`${requestDate}T00:00:00Z`))) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(requestDate) || Number.isNaN(Date.parse(`${requestDate}T00:00:00Z`)) || new Date(`${requestDate}T00:00:00Z`).toISOString().slice(0, 10) !== requestDate) {
     throw new Error("Дата запроса должна быть указана в формате YYYY-MM-DD");
   }
   return { authority, requestNumber, requestDate, preparedBy };
@@ -153,6 +153,7 @@ export async function summariseConsents(path: string): Promise<ConsentSummary> {
     let record: Record<string, unknown>;
     try {
       record = JSON.parse(await readFile(resolve(path, name), "utf8")) as Record<string, unknown>;
+      if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("Invalid record");
     } catch {
       summary.malformed += 1;
       continue;
@@ -169,14 +170,18 @@ export async function summariseConsents(path: string): Promise<ConsentSummary> {
   return summary;
 }
 
-export async function summariseLeads(path: string, now = new Date()): Promise<LeadSummary> {
+export async function summariseLeads(path: string | string[], now = new Date()): Promise<LeadSummary> {
   const summary: LeadSummary = {
     total: 0, bySource: {}, byConsentAudit: {}, byDelivery: {}, withAttachments: 0,
     attachments: 0, retentionDays: [], pastRetention: 0, earliest: null, latest: null, malformed: 0,
   };
   let names: string[];
   try {
-    names = await jsonFiles(path);
+    names = [];
+    for (const directory of new Set(Array.isArray(path) ? path : [path])) {
+      try { names.push(...(await jsonFiles(directory)).map((name) => resolve(directory, name))); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    }
   } catch {
     return summary;
   }
@@ -184,7 +189,8 @@ export async function summariseLeads(path: string, now = new Date()): Promise<Le
   for (const name of names) {
     let record: Record<string, unknown>;
     try {
-      record = JSON.parse(await readFile(resolve(path, name), "utf8")) as Record<string, unknown>;
+      record = JSON.parse(await readFile(name, "utf8")) as Record<string, unknown>;
+      if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("Invalid record");
     } catch {
       summary.malformed += 1;
       continue;

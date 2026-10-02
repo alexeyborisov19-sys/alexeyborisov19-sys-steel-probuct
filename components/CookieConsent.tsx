@@ -64,7 +64,7 @@ export function CookieSettingsButton({ className = "" }: { className?: string })
     className={className}
     onClick={() => window.dispatchEvent(new Event(settingsEvent))}
   >
-    Настройки cookies
+    Настройки файлов cookie
   </button>;
 }
 
@@ -143,9 +143,9 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
 
   const banner = <aside ref={bannerRef} tabIndex={-1} className={inline
     ? "cookie-consent-bar my-5 rounded-xl border border-white/20 bg-[#202831] p-4 sm:p-5"
-    : "cookie-consent-bar fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5"} aria-label="Настройки cookies">
-    <p className="text-sm font-semibold text-white">Настройки cookies</p>
-    <p className="mt-2 text-sm leading-relaxed text-white/80">Сайт использует необходимые cookies для работы форм и настроек. До вашего выбора аналитика выключена. Яндекс Метрика и Вебвизор включаются только после отдельного разрешения. Нажимая «Разрешить аналитику», вы даёте <Link prefetch={false} className="text-[#ff8a3d] underline underline-offset-2" href={legalLinks.analyticsConsent}>согласие на обработку данных для веб-аналитики</Link>. Вы можете продолжить без аналитики и в любой момент изменить выбор в подвале сайта. Подробнее — в <Link prefetch={false} className="text-[#ff8a3d] underline underline-offset-2" href={legalLinks.cookies}>политике cookies</Link> и <Link prefetch={false} className="text-[#ff8a3d] underline underline-offset-2" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
+    : "cookie-consent-bar fixed bottom-4 left-4 right-4 z-[90] border border-white/15 bg-[#151719]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6 sm:w-[min(510px,calc(100vw-48px))] sm:p-5"} aria-label="Настройки файлов cookie">
+    <p className="text-sm font-semibold text-white">Настройки файлов cookie</p>
+    <p className="mt-2 text-sm leading-relaxed text-white/80">Сайт использует необходимые технические файлы cookie и локальное хранилище браузера для работы форм и настроек. До вашего выбора аналитика выключена. Яндекс Метрика и Вебвизор включаются только после отдельного разрешения. Нажимая «Разрешить аналитику», вы даёте <Link prefetch={false} className="text-[#ff8a3d] underline underline-offset-2" href={legalLinks.analyticsConsent}>согласие на обработку данных для веб-аналитики</Link>. Вы можете продолжить без аналитики и в любой момент изменить выбор в подвале сайта. Подробнее — в <Link prefetch={false} className="text-[#ff8a3d] underline underline-offset-2" href={legalLinks.cookies}>политике файлов cookie</Link> и <Link prefetch={false} className="text-[#ff8a3d] underline underline-offset-2" href={legalLinks.privacy}>политике обработки данных</Link>.</p>
     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={() => choose(false)} className="border border-white/25 px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white/80 transition hover:border-steel-orange hover:text-steel-orange">Продолжить без аналитики</button>
       <button type="button" onClick={() => choose(true)} className="clip-corner bg-steel-orange-deep px-4 py-3 text-xs font-bold uppercase tracking-[.08em] text-white transition hover:bg-steel-orange-deeper">Разрешить аналитику</button>
