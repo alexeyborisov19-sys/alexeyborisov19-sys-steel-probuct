@@ -31,6 +31,7 @@ const mainNavigation = [
   ["Реестр систем", "/internal/personal-data/systems", "VIEW_SYSTEMS_REGISTRY"],
   ["Юридические документы", "/internal/personal-data/legal-documents", "VIEW_LEGAL_DOCUMENT_VERSIONS"],
   ["Резервные копии", "/internal/personal-data/backups", "VIEW_BACKUPS"],
+  ["Калькуляторы сотрудников", "/internal/personal-data/employee-app", "MANAGE_USERS"],
   ["Пользователи", "/internal/personal-data/users", "MANAGE_USERS"],
 ] as const;
 
