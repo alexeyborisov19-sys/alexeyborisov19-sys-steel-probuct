@@ -68,7 +68,7 @@ export default function ProductsPage() {
     </section>
     <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
       <div className="container">
-        <div className="max-w-3xl"><p className="eyebrow">Другие направления производства</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Коммерческие изделия по чертежам</h2><p className="mt-4 text-sm leading-relaxed text-white/60">Отдельные посадочные страницы собраны для задач, которые не относятся к фасадному каталогу, но производятся на тех же участках раскроя, гибки, сварки и порошковой окраски.</p></div>
+        <div className="max-w-3xl"><p className="eyebrow">Другие направления производства</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Коммерческие изделия по чертежам</h2><p className="mt-4 text-sm leading-relaxed text-white/60">Изготавливаем корзины для кондиционеров, вентиляционные решётки, металлические корпуса и закладные детали по размерам и чертежам. Согласуем конструкцию, покрытие и комплектность перед запуском партии.</p></div>
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{commercialDirections.map((item) => <AttributionLink key={item.href} href={item.href} className="group border border-white/12 bg-[#111519] p-5 transition hover:border-steel-orange/60"><h3 className="text-sm font-semibold uppercase leading-tight transition group-hover:text-steel-orange">{item.title}</h3><p className="mt-3 text-xs leading-5 text-white/58">{item.text}</p><span className="mt-5 block text-xs font-bold uppercase text-steel-orange">Открыть страницу&nbsp; →</span></AttributionLink>)}</div>
       </div>
     </section>

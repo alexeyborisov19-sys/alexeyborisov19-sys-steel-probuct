@@ -9,7 +9,7 @@ const legacyRedirects = new Map([
   ["/otdekrf", "/products"],
   ["/dekorattivnie", "/products"],
   ["/dimli", "/solutions/engineering"],
-  ["/korzina", "/solutions/climate"],
+  ["/korzina", "/products/korziny-dlya-konditsionerov"],
   ["/kronhtein", "/solutions/engineering"],
   ["/rehotka", "/solutions/engineering"],
   ["/vnutri", "/production/lazernaya-rezka-metalla"],
@@ -25,6 +25,7 @@ const legacyRedirects = new Map([
 const retiredUrls = [
   "/preload",
   "/articles/preload",
+    "/products/preload",
   "/industries/preload",
   "/tpost/8k5t28gnc1-there-is-a-first-post-headline",
   "/tpost/0h4a9f3hn1-title-of-the-second-sample-post",
