@@ -79,4 +79,9 @@ jobs:
           chown nodejs:nodejs "$EMPLOYEE_ROOT/release.json"
           chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/environment-before-install" .env.production
           sudo -iu nodejs bash -lc "cd '$APP_PATH' && pm2 restart ecosystem.config.cjs --env production --update-env"
+          for attempt in 1 2 3 4 5; do
+            if curl --silent --fail http://127.0.0.1:3000/ > /dev/null; then break; fi
+            sleep 2
+          done
+          sudo -iu nodejs bash -lc "cd '$APP_PATH' && node --env-file=.env.production --import tsx scripts/verify-employee-release.ts"
           REMOTE
