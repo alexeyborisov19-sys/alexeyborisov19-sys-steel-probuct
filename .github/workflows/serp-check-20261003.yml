@@ -28,30 +28,27 @@ jobs:
           ref: claude/search-check-20261003
           fetch-depth: 1
 
-      - name: Configure existing server access
-        env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          install -m 700 -d ~/.ssh
-          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      - name: Run read-only SERP check on the server
+      - name: Run read-only SERP check with repository secrets
         env:
-          BEGET_HOST: ${{ secrets.BEGET_HOST }}
-          BEGET_USER: ${{ secrets.BEGET_USER }}
-          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
-          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+          YANDEX_SEARCH_API_KEY: ${{ secrets.YANDEX_SEARCH_API_KEY }}
+          YANDEX_SEARCH_FOLDER_ID: ${{ secrets.YANDEX_SEARCH_FOLDER_ID }}
+          YANDEX_AI_API_KEY: ${{ secrets.YANDEX_AI_API_KEY }}
+          YANDEX_AI_FOLDER_ID: ${{ secrets.YANDEX_AI_FOLDER_ID }}
+          YANDEX_CLOUD_API_KEY: ${{ secrets.YANDEX_CLOUD_API_KEY }}
+          YANDEX_CLOUD_FOLDER_ID: ${{ secrets.YANDEX_CLOUD_FOLDER_ID }}
+          YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+          YC_API_KEY: ${{ secrets.YC_API_KEY }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YANDEX_SPEECHKIT_API_KEY: ${{ secrets.YANDEX_SPEECHKIT_API_KEY }}
         run: |
           set -uo pipefail
           umask 077
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
-            "cd '$BEGET_APP_PATH' && node --input-type=module -" < .search-check/serp.mjs > /tmp/raw.txt 2>/dev/null
-          echo "ssh exit: $?"
+          node .search-check/serp.mjs > /tmp/raw.txt 2>/dev/null
+          echo "node exit: $?"
           python3 - <<'PY'
           import re, json
           raw = open('/tmp/raw.txt', encoding='utf-8', errors='replace').read()

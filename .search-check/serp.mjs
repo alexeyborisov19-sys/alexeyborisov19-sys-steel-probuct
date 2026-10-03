@@ -1,5 +1,5 @@
-// Read-only live SERP check (2026-10-03). Runs on the site server via SSH, uses the Yandex Search API
-// key already configured there, prints ONE JSON line between markers. Keys never leave the server and
+// Read-only live SERP check (2026-10-03). Runs on the Actions runner with repository secrets (or on the
+// server), uses whichever Yandex Cloud API key has Search API access, prints ONE JSON line between markers. Keys never leave the server and
 // are never printed; only the env variable NAME that worked is reported.
 import { createRequire } from "node:module";
 
@@ -9,8 +9,9 @@ try { require("@next/env").loadEnvConfig(process.cwd(), false, silent); } catch 
 const e = process.env;
 const has = (k) => Boolean(e[k] && String(e[k]).trim());
 
-const keyNames = ["YANDEX_SEARCH_API_KEY", "YANDEX_AI_API_KEY", "YANDEX_SPEECHKIT_API_KEY"].filter(has);
-const folderNames = ["YANDEX_SEARCH_FOLDER_ID", "YANDEX_AI_FOLDER_ID"].filter(has);
+const keyNames = ["YANDEX_SEARCH_API_KEY", "YANDEX_AI_API_KEY", "YANDEX_CLOUD_API_KEY", "YC_API_KEY", "YANDEX_SPEECHKIT_API_KEY"].filter(has);
+// "" = no folderId in the request (works when the key belongs to a service account in the right folder).
+const folderNames = ["YANDEX_SEARCH_FOLDER_ID", "YANDEX_AI_FOLDER_ID", "YANDEX_CLOUD_FOLDER_ID", "YANDEX_FOLDER_ID", "YC_FOLDER_ID"].filter(has).concat([""]);
 
 const SMOLENSK = "12";
 const MOSCOW = "213";
@@ -62,7 +63,7 @@ async function search(key, folder, queryText, region, page = "0") {
       maxPassages: "1",
       region,
       l10n: "LOCALIZATION_RU",
-      folderId: folder,
+      ...(folder ? { folderId: folder } : {}),
       responseFormat: "FORMAT_XML",
     }),
     signal: AbortSignal.timeout(40000),
@@ -80,7 +81,7 @@ const report = { generated_at: new Date().toISOString(), key_names_present: keyN
 let auth = null;
 outer: for (const k of keyNames) {
   for (const f of folderNames) {
-    const r = await search(e[k].trim(), e[f].trim(), "сталь продукт", SMOLENSK);
+    const r = await search(e[k].trim(), f ? e[f].trim() : "", "сталь продукт", SMOLENSK);
     report.probes.push({ key: k, folder: f, status: r.status, error: r.error ? r.error.slice(0, 200) : undefined });
     if (r.status === 200 && !r.error) { auth = { k, f }; break outer; }
   }
@@ -90,7 +91,7 @@ if (auth) {
   report.auth = { key: auth.k, folder: auth.f };
   for (const [q, regions] of plan) {
     for (const region of regions) {
-      const r = await search(e[auth.k].trim(), e[auth.f].trim(), q, region);
+      const r = await search(e[auth.k].trim(), auth.f ? e[auth.f].trim() : "", q, region);
       report.serp.push({ query: q, region, ...r });
     }
   }
