@@ -9,7 +9,7 @@ try { require("@next/env").loadEnvConfig(process.cwd(), false, silent); } catch 
 const e = process.env;
 const has = (k) => Boolean(e[k] && String(e[k]).trim());
 
-const keyNames = ["YANDEX_SEARCH_API_KEY", "YANDEX_AI_API_KEY", "YANDEX_CLOUD_API_KEY", "YC_API_KEY", "YANDEX_SPEECHKIT_API_KEY"].filter(has);
+const keyNames = ["YANDEX_SEARCH_API_KEY", "YANDEX_SEARCH_IAM_TOKEN", "YANDEX_AI_API_KEY", "YANDEX_CLOUD_API_KEY", "YC_API_KEY", "YANDEX_SPEECHKIT_API_KEY"].filter(has);
 // "" = no folderId in the request (works when the key belongs to a service account in the right folder).
 const folderNames = ["YANDEX_SEARCH_FOLDER_ID", "YANDEX_AI_FOLDER_ID", "YANDEX_CLOUD_FOLDER_ID", "YANDEX_FOLDER_ID", "YC_FOLDER_ID"].filter(has).concat([""]);
 
@@ -55,7 +55,7 @@ function parse(xml) {
 async function search(key, folder, queryText, region, page = "0") {
   const res = await fetch("https://searchapi.api.cloud.yandex.net/v2/web/search", {
     method: "POST",
-    headers: { Authorization: `Api-Key ${key}`, "Content-Type": "application/json" },
+    headers: { Authorization: key.startsWith("t1.") ? `Bearer ${key}` : `Api-Key ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       query: { searchType: "SEARCH_TYPE_RU", queryText, familyMode: "FAMILY_MODE_MODERATE", page, fixTypoMode: "FIX_TYPO_MODE_OFF" },
       sortSpec: { sortMode: "SORT_MODE_BY_RELEVANCE" },
