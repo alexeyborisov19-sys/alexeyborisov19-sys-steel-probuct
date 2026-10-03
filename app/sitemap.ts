@@ -51,7 +51,7 @@ const staticModifiedAt: Record<string, Date> = {
   "/products/metallokassety": new Date("2026-09-28T00:00:00.000Z"),
   "/products/metallokassety/bim": new Date("2026-09-28T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
-  "/products/korziny-dlya-konditsionerov": new Date("2026-09-18T00:00:00.000Z"),
+  "/products/korziny-dlya-konditsionerov": new Date("2026-10-03T00:00:00.000Z"),
   "/products/ventilyacionnye-reshetki": commercialProductPagesModifiedAt,
   "/products/metallicheskie-korpusa": new Date("2026-09-18T00:00:00.000Z"),
   "/products/zakladnye-detali": commercialProductPagesModifiedAt,

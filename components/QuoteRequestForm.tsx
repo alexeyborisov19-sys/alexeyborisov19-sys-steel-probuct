@@ -5,6 +5,7 @@ import { ChangeEvent, DragEvent, FocusEvent, FormEvent, useEffect, useRef, useSt
 import { createResettableOnce, trackLeadEvent } from "@/lib/analytics";
 import { legalLinks } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
+import { basketBriefSummary } from "@/lib/quote/basket-brief";
 import { cassetteHandoffSummary } from "@/lib/quote/cassette-handoff";
 
 const MAX_FILES = 10;
@@ -61,6 +62,12 @@ export function QuoteRequestForm() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const formatNumber = (value: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
+
+    const basketBrief = basketBriefSummary(params);
+    if (basketBrief) {
+      setMessage((current) => current || basketBrief);
+      return;
+    }
 
     if (params.get("source") === "online-order") {
       setCadHandoff(true);

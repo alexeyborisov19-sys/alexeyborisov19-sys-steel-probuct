@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CommercialProductLandingPage } from "@/components/CommercialProductLandingPage";
+import { BasketLandingPage } from "@/components/commercial/BasketLandingPage";
 import { commercialProductLandingBySlug } from "@/data/commercial-product-landings";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -14,5 +14,5 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 export default function Page() {
-  return <CommercialProductLandingPage landing={landing} />;
+  return <BasketLandingPage />;
 }

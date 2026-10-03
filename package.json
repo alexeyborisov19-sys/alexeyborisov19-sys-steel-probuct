@@ -63,12 +63,14 @@
     "postcss": "^8.5.25",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "braces": "file:vendor/braces-depth-guard"
   },
   "overrides": {
     "next": {
       "postcss": "$postcss",
       "sharp": "$sharp"
-    }
+    },
+    "braces": "$braces"
   }
 }
