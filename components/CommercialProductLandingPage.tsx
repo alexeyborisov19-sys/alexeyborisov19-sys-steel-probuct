@@ -27,7 +27,7 @@ const productionProofs = [
   },
 ] as const;
 
-function productSchema(landing: CommercialProductLanding) {
+export function productSchema(landing: CommercialProductLanding) {
   return {
     "@context": "https://schema.org",
     "@type": "Product",

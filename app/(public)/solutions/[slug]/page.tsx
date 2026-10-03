@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { CustomFabricationPage } from "@/components/commercial/CustomFabricationPage";
 import { SolutionDetailPage } from "@/components/SolutionDetailPage";
 import { solutionDetailBySlug, solutionDetails } from "@/data/solution-details";
 import { solutionSeoBySlug } from "@/data/solution-seo";
@@ -29,5 +30,6 @@ export default async function SolutionPage({ params }: SolutionPageProps) {
   const { slug } = await params;
   const solution = solutionDetailBySlug[slug];
   if (!solution) notFound();
+  if (slug === "custom") return <CustomFabricationPage />;
   return <SolutionDetailPage solution={solution} />;
 }

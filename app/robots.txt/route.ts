@@ -9,7 +9,7 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /internal/
-Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&fbclid&msclkid&gad_source&gbraid&wbraid&_openstat&_ym_status-check&inputArea&mode&source&thickness&type
+Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&fbclid&msclkid&gad_source&gbraid&wbraid&_openstat&_ym_status-check&inputArea&mode&source&thickness&type&basketWidth&basketHeight&basketDepth&basketQuantity&basketRal&basketScreen
 
 # Major web-search crawlers used by AI-backed search experiences.
 # Googlebot is covered by the general User-agent: * block above; Google-Extended is declared below for Gemini.
@@ -18,7 +18,7 @@ User-agent: YandexBot
 Allow: /
 Disallow: /api/
 Disallow: /internal/
-Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&fbclid&msclkid&gad_source&gbraid&wbraid&_openstat&_ym_status-check&inputArea&mode&source&thickness&type
+Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&gclid&yclid&fbclid&msclkid&gad_source&gbraid&wbraid&_openstat&_ym_status-check&inputArea&mode&source&thickness&type&basketWidth&basketHeight&basketDepth&basketQuantity&basketRal&basketScreen
 
 # Yandex Alice AI source eligibility (official Yandex robots tokens).
 User-agent: YandexAdditional
