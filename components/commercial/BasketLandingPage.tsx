@@ -1,3 +1,4 @@
+import { CustomerResources } from "@/components/commercial/CustomerResources";
 import Image from "next/image";
 import Link from "next/link";
 import { PageLayout } from "@/components/PageLayout";
@@ -347,6 +348,7 @@ export function BasketLandingPage() {
           title="Обсудим корзины для вашего объекта"
           text="Пришлите модель оборудования или задание с выбранными параметрами. Инженер уточнит исходные данные и согласует исполнение перед расчётом."
         />
+      <CustomerResources />
       </PageLayout>
     </>
   );

@@ -1,3 +1,4 @@
+import { customerGuides, customerGuidesModifiedAt } from "@/data/customer-guides";
 import type { MetadataRoute } from "next";
 import { commercialProductLandings } from "@/data/commercial-product-landings";
 import { products } from "@/data/products";
@@ -19,7 +20,7 @@ const legalModifiedAt: Record<string, Date> = {
   "/legal/services": new Date(`${legalDocumentVersions.services}T00:00:00.000Z`),
   "/legal/terms": new Date(`${legalDocumentVersions.terms}T00:00:00.000Z`),
 };
-const productionServicesModifiedAt = new Date("2026-09-28T00:00:00.000Z");
+const productionServicesModifiedAt = new Date("2026-10-03T00:00:00.000Z");
 const solutionDetailsModifiedAt = new Date("2026-08-25T14:09:18.000Z");
 const industryPagesModifiedAt = new Date("2026-08-25T15:10:21.000Z");
 const productPagesModifiedAt = new Date("2026-08-25T15:03:23.000Z");
@@ -30,7 +31,8 @@ const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
 const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
 const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
-  "/tools": new Date("2026-09-29T00:00:00.000Z"),
+  "/customers": new Date(`${customerGuidesModifiedAt}T00:00:00.000Z`),
+  "/tools": new Date("2026-10-03T00:00:00.000Z"),
   "/": new Date("2026-09-29T00:00:00.000Z"),
   "/company": new Date("2026-08-25T15:10:21.000Z"),
   "/company/facts": new Date("2026-09-28T00:00:00.000Z"),
@@ -58,6 +60,7 @@ const staticModifiedAt: Record<string, Date> = {
 };
 
 function contentModifiedAt(path: string) {
+  if (path.startsWith("/customers/")) return new Date(`${customerGuidesModifiedAt}T00:00:00.000Z`);
   if (path.startsWith("/legal/")) return legalModifiedAt[path] ?? legalFallbackUpdatedAt;
   if (path.startsWith("/production/")) return productionServicesModifiedAt;
   if (path.startsWith("/solutions/")) {
@@ -105,6 +108,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
   const paths = [
     ...staticPaths,
+    "/customers",
+    ...customerGuides.map((guide) => `/customers/${guide.slug}`),
     ...productionServices.map((service) => `/production/${service.slug}`),
     ...solutionDetails.map((solution) => `/solutions/${solution.slug}`),
     ...getIndustrySolutions().map((industry) => `/industries/${industry.slug}`),

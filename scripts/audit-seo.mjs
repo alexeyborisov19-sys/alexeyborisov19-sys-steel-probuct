@@ -68,6 +68,8 @@ function expectedSchemaTypes(path) {
   const expected = ["Organization", "LocalBusiness", "WebSite", "WebPage"];
   if (path !== "/") expected.push("BreadcrumbList");
   if (["/production", "/industries", "/products"].includes(path)) expected.push("ItemList");
+  if (path === "/customers") expected.push("ItemList");
+  if (path.startsWith("/customers/")) expected.push("FAQPage");
   if (path === "/products/metallokassety/bim") expected.push("WebApplication", "FAQPage");
   if (path === "/products/metallokassety") expected.push("ProductGroup");
   if (path.startsWith("/production/")) expected.push("Service", "FAQPage");

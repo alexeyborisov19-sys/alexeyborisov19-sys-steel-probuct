@@ -1,3 +1,4 @@
+import { CustomerResources } from "@/components/commercial/CustomerResources";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FaqSection } from "@/components/FaqSection";
@@ -258,6 +259,7 @@ export default async function ProductionServicePage({
             </div>
           </div>
         </section>
+      <CustomerResources />
       </PageLayout>
     </>
   );

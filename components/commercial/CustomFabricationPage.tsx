@@ -1,3 +1,4 @@
+import { CustomerResources } from "@/components/commercial/CustomerResources";
 import Image from "next/image";
 import Link from "next/link";
 import { AttributionLink } from "@/components/AttributionLink";
@@ -410,6 +411,7 @@ export function CustomFabricationPage() {
           title="Давайте превратим ваш чертёж в изделие"
           text="Передайте файл, спецификацию или описание. Проверим исходные данные и подготовим предложение по согласованному составу работ."
         />
+      <CustomerResources />
       </PageLayout>
     </>
   );
