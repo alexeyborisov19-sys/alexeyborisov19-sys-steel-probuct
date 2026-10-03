@@ -1,0 +1,58 @@
+name: Search check 2026-10-03 (encrypted, read-only)
+
+# Temporary, read-only. Runs only on this branch. Reads Yandex Webmaster + Metrika with the
+# repository secrets and commits the result back ENCRYPTED (repo and logs are public).
+on:
+  push:
+    branches:
+      - claude/search-check-20261003
+    paths:
+      - ".github/workflows/search-check-20261003.yml"
+      - ".search-check/collect.mjs"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: search-check-20261003
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/search-check-20261003
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Collect Webmaster and Metrika data
+        env:
+          YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+          YW_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+          YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+          YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+        run: node .search-check/collect.mjs
+
+      - name: Encrypt and commit the report
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          openssl rand -hex 32 > /tmp/k.txt
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -in /tmp/report.json -out .search-check/report.enc -pass file:/tmp/k.txt
+          openssl pkeyutl -encrypt -pubin -inkey .search-check/public-key.pem \
+            -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
+            -in /tmp/k.txt -out .search-check/key.enc
+          shred -u /tmp/k.txt /tmp/report.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add .search-check/report.enc .search-check/key.enc
+          git commit -m "Encrypted search check $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push origin HEAD:claude/search-check-20261003
