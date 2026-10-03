@@ -98,6 +98,23 @@ export default function Home() {
       <Header />
       <main id="main-content" tabIndex={-1}>
         <Hero />
+        <section aria-labelledby="order-directions" className="border-b border-white/10 bg-[#111519] py-8 sm:py-10">
+          <div className="container">
+            <h2 id="order-directions" className="text-xl font-semibold uppercase sm:text-2xl">Что нужно изготовить?</h2>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {[
+                { href: "/products/metallokassety", title: "Фасадные металлокассеты", text: "Открытое и закрытое крепление, угловые элементы. Подбор исполнения, расчёт и бесплатные BIM-модели." },
+                { href: "/products/korziny-dlya-konditsionerov", title: "Корзины для кондиционеров", text: "Размеры, варианты экрана и окраски. Подготовьте параметры корзины для согласования с инженером." },
+                { href: "/solutions/custom", title: "Изделия по вашим чертежам", text: "Детали и сборочные изделия из листового металла. Отправьте чертёж, материал и количество для расчёта партии." },
+              ].map((item) => (
+                <AttributionLink key={item.href} prefetch={false} href={item.href} className="group rounded-lg border border-white/15 p-5 transition hover:border-steel-orange focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-steel-orange">
+                  <h3 className="text-lg font-semibold text-white group-hover:text-steel-orange">{item.title} <span aria-hidden="true">→</span></h3>
+                  <p className="mt-3 text-sm leading-6 text-white/75">{item.text}</p>
+                </AttributionLink>
+              ))}
+            </div>
+          </div>
+        </section>
         <CadCalculatorShowcase />
         <section aria-label="Бесплатные сервисы" className="border-b border-white/10 bg-[#111519] py-6">
           <div className="container flex flex-wrap items-center justify-between gap-4">

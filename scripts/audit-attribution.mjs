@@ -6,9 +6,11 @@ import { chromium, expect } from '@playwright/test';
 const base = process.env.BROWSER_AUDIT_BASE_URL || 'http://127.0.0.1:3011';
 const campaign = 'attribution-regression';
 const tags = `utm_source=owner_test&utm_campaign=${campaign}&yclid=123456&email=do-not-forward`;
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {});
 const failures = [];
 const cases = [
+  { name: "hero engineer", path: "/", steps: ["hero-engineer"] },
+  { name: "hero calculator", path: "/", steps: ["hero-calculator", "Связаться с инженером"] },
   { name: 'header contacts', path: '/products/metallokassety', steps: ['header-contacts'] },
   { name: 'production through online calculator', path: '/production/lazernaya-rezka-metalla', steps: ['Рассчитать изделие онлайн →', 'Передайте исходные данные инженеру'] },
   { name: 'cassette calculator handoff', path: '/calculator-metallokassety', steps: [/Передать расчёт инженеру/], source: 'calculator-metallokassety' },
@@ -39,7 +41,9 @@ try {
         if (await decline.isVisible()) await decline.click();
         for (const step of scenario.steps) {
           let link;
-          if (step === 'header-contacts') {
+          if (step === 'hero-engineer' || step === 'hero-calculator') {
+            link = page.locator('main > section').first().locator(step === 'hero-engineer' ? 'a[href*="/contacts"]' : 'a[href*="/online-order"]');
+          } else if (step === 'header-contacts') {
             if (width < 1440) await page.getByRole('button', { name: 'Открыть меню', exact: true }).click();
             link = page.getByRole('navigation', { name: width < 1440 ? 'Мобильная навигация' : 'Основная навигация', exact: true }).getByRole('link', { name: 'Контакты', exact: true });
           } else if (step === 'footer-product') {
