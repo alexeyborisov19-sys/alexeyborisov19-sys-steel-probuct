@@ -344,6 +344,8 @@ jobs:
               console.log("CAMPAIGNS_ERROR:", safe(camps.body));
             }
 
+            const dictionary=await requestDirect("https://api.direct.yandex.com/json/v501/dictionaries",yd,{method:"get",params:{DictionaryNames:["GeoRegions"]}},login);
+            console.log("REGION_NAMES:",safe((dictionary.body.result?.GeoRegions||[]).filter(x=>[12,2,10174,10795].includes(x.GeoRegionId))));
             const groups = await requestDirect("https://api.direct.yandex.com/json/v501/adgroups", yd, {
               method:"get", params:{SelectionCriteria:{CampaignIds:[714391927]},FieldNames:["Id","Name","CampaignId","RegionIds","Status","ServingStatus"],Page:{Limit:1000,Offset:0}}
             }, login);
@@ -367,7 +369,8 @@ jobs:
             console.log("ADS_HTTP:", ads.status);
             if (ads.ok && ads.body?.result?.Ads) {
               console.log("ADS_DESTINATIONS:", safe(ads.body.result.Ads.map(a => ({
-                id: a.Id,
+                id: String(a.Id),
+                groupId: a.AdGroupId,
                 type: a.Type,
                 status: a.Status,
                 state: a.State,
@@ -419,11 +422,15 @@ jobs:
               console.log(label+":",(await r.text()).slice(0,50000));
             }
             const goalsIds=["612680821","612680809","666575171"];
+            const gd=await request(`https://api-metrika.yandex.net/management/v1/counter/${counterId}/goals`,ym);
+            const allGoals=(gd.body.goals||[]).map(g=>String(g.id));
+            for(let i=0;i<allGoals.length;i+=10) await report("ALL_GOALS_"+i,{...reportSpec.params,ReportName:"All goal diagnosis "+i,Goals:allGoals.slice(i,i+10),AttributionModels:["LC","AUTO"]});
+
             for (const [label,from,to] of [["CURRENT","2026-09-26","2026-10-02"],["PREVIOUS","2026-09-19","2026-09-25"]]) {
               const common={...reportSpec.params,SelectionCriteria:{DateFrom:from,DateTo:to,Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:["714391927"]}]},Goals:goalsIds,AttributionModels:["AUTO"],ReportName:"SteelProdukt goals "+label};
               await report("GOALS_"+label,common);
               const u=new URL("https://api-metrika.yandex.net/stat/v1/data");
-              for(const [k,v] of Object.entries({ids:canonicalCounter,date1:from,date2:to,dimensions:"ym:s:date",metrics:"ym:s:visits,"+goalsIds.map(id=>`ym:s:goal${id}visits`).join(","),accuracy:"full",limit:"100"}))u.searchParams.set(k,v);
+              for(const [k,v] of Object.entries({ids:canonicalCounter,date1:from,date2:to,dimensions:"ym:s:date",metrics:"ym:s:visits,"+goalsIds.map(id=>`ym:s:goal${id}visits`).join(","),accuracy:"full",attribution:"AUTOMATIC",limit:"100"}))u.searchParams.set(k,v);
               const rr=await request(u.toString(),ym);console.log("METRIKA_MATCH_"+label+":",safe(rr.body));
             }
             for (const [label,fields] of [["GEO",["LocationOfPresenceId","TargetingLocationId"]],["DEVICE",["Device"]],["GROUP",["AdGroupId","AdGroupName"]]]) {
@@ -432,5 +439,12 @@ jobs:
           }
           NODE
           node /tmp/audit.mjs
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/audit-consent-diagnostic.mjs
 
 # Audit refresh marker: 2026-09-26
