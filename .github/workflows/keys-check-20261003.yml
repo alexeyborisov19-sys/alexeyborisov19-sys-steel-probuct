@@ -1,0 +1,115 @@
+name: Keys check 2026-10-03 (encrypted, read-only)
+
+# Temporary. Runs only on this branch. Checks Yandex-related secrets by explicit name (names and type
+# guesses only, never values), probes them against Yandex Search API, and commits the result ENCRYPTED.
+on:
+  push:
+    branches:
+      - claude/search-check-20261003
+    paths:
+      - ".github/workflows/keys-check-20261003.yml"
+      - ".search-check/keys.mjs"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keys-check-20261003
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/search-check-20261003
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check Yandex-related secrets and probe Search API
+        env:
+          CANDIDATE_NAMES: "YANDEX_SEARCH_API_KEY,YANDEX_SEARCH_KEY,YANDEX_SEARCH_FOLDER_ID,YANDEX_SEARCH_IAM_TOKEN,SEARCH_API_KEY,YANDEX_XML_KEY,YANDEX_XML_API_KEY,YANDEX_API_KEY,YANDEX_CLOUD_API_KEY,YANDEX_CLOUD_KEY,YANDEX_CLOUD_TOKEN,YANDEX_CLOUD_OAUTH_TOKEN,YC_API_KEY,YC_KEY,YC_TOKEN,YC_OAUTH_TOKEN,YC_IAM_TOKEN,YANDEX_IAM_TOKEN,YANDEX_GPT_API_KEY,YANDEXGPT_API_KEY,YANDEX_GPT_KEY,YANDEX_AI_API_KEY,YANDEX_AI_KEY,YANDEX_AI_STUDIO_API_KEY,AI_STUDIO_API_KEY,YANDEX_FOUNDATION_MODELS_API_KEY,YANDEX_ART_API_KEY,YANDEX_SPEECHKIT_API_KEY,SPEECHKIT_API_KEY,YANDEX_VISION_API_KEY,YANDEX_TRANSLATE_API_KEY,YANDEX_SA_KEY,YANDEX_SERVICE_ACCOUNT_KEY,YANDEX_SA_KEY_JSON,YC_SA_KEY,YC_SA_JSON_CREDENTIALS,YC_SERVICE_ACCOUNT_KEY,YC_SERVICE_ACCOUNT_KEY_FILE,YANDEX_CLOUD_SA_KEY,YANDEX_CLOUD_SERVICE_ACCOUNT_KEY,YANDEX_FOLDER_ID,YANDEX_CLOUD_FOLDER_ID,YC_FOLDER_ID,YANDEX_AI_FOLDER_ID,YANDEX_GPT_FOLDER_ID,YANDEXGPT_FOLDER_ID,FOLDER_ID,YC_CLOUD_ID,YANDEX_CLOUD_ID,YANDEX_OAUTH_TOKEN,YANDEX_WEBMASTER_OAUTH_TOKEN,YANDEX_METRIKA_OAUTH_TOKEN,YANDEX_DIRECT_OAUTH_TOKEN,YANDEX_TOKEN,YANDEX_DISK_TOKEN,YANDEX_DISK_OAUTH_TOKEN,YANDEX_WORDSTAT_TOKEN,WORDSTAT_TOKEN,YANDEX_BUSINESS_TOKEN"
+          YANDEX_SEARCH_API_KEY: ${{ secrets.YANDEX_SEARCH_API_KEY }}
+          YANDEX_SEARCH_KEY: ${{ secrets.YANDEX_SEARCH_KEY }}
+          YANDEX_SEARCH_FOLDER_ID: ${{ secrets.YANDEX_SEARCH_FOLDER_ID }}
+          YANDEX_SEARCH_IAM_TOKEN: ${{ secrets.YANDEX_SEARCH_IAM_TOKEN }}
+          SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
+          YANDEX_XML_KEY: ${{ secrets.YANDEX_XML_KEY }}
+          YANDEX_XML_API_KEY: ${{ secrets.YANDEX_XML_API_KEY }}
+          YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+          YANDEX_CLOUD_API_KEY: ${{ secrets.YANDEX_CLOUD_API_KEY }}
+          YANDEX_CLOUD_KEY: ${{ secrets.YANDEX_CLOUD_KEY }}
+          YANDEX_CLOUD_TOKEN: ${{ secrets.YANDEX_CLOUD_TOKEN }}
+          YANDEX_CLOUD_OAUTH_TOKEN: ${{ secrets.YANDEX_CLOUD_OAUTH_TOKEN }}
+          YC_API_KEY: ${{ secrets.YC_API_KEY }}
+          YC_KEY: ${{ secrets.YC_KEY }}
+          YC_TOKEN: ${{ secrets.YC_TOKEN }}
+          YC_OAUTH_TOKEN: ${{ secrets.YC_OAUTH_TOKEN }}
+          YC_IAM_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YANDEX_IAM_TOKEN: ${{ secrets.YANDEX_IAM_TOKEN }}
+          YANDEX_GPT_API_KEY: ${{ secrets.YANDEX_GPT_API_KEY }}
+          YANDEXGPT_API_KEY: ${{ secrets.YANDEXGPT_API_KEY }}
+          YANDEX_GPT_KEY: ${{ secrets.YANDEX_GPT_KEY }}
+          YANDEX_AI_API_KEY: ${{ secrets.YANDEX_AI_API_KEY }}
+          YANDEX_AI_KEY: ${{ secrets.YANDEX_AI_KEY }}
+          YANDEX_AI_STUDIO_API_KEY: ${{ secrets.YANDEX_AI_STUDIO_API_KEY }}
+          AI_STUDIO_API_KEY: ${{ secrets.AI_STUDIO_API_KEY }}
+          YANDEX_FOUNDATION_MODELS_API_KEY: ${{ secrets.YANDEX_FOUNDATION_MODELS_API_KEY }}
+          YANDEX_ART_API_KEY: ${{ secrets.YANDEX_ART_API_KEY }}
+          YANDEX_SPEECHKIT_API_KEY: ${{ secrets.YANDEX_SPEECHKIT_API_KEY }}
+          SPEECHKIT_API_KEY: ${{ secrets.SPEECHKIT_API_KEY }}
+          YANDEX_VISION_API_KEY: ${{ secrets.YANDEX_VISION_API_KEY }}
+          YANDEX_TRANSLATE_API_KEY: ${{ secrets.YANDEX_TRANSLATE_API_KEY }}
+          YANDEX_SA_KEY: ${{ secrets.YANDEX_SA_KEY }}
+          YANDEX_SERVICE_ACCOUNT_KEY: ${{ secrets.YANDEX_SERVICE_ACCOUNT_KEY }}
+          YANDEX_SA_KEY_JSON: ${{ secrets.YANDEX_SA_KEY_JSON }}
+          YC_SA_KEY: ${{ secrets.YC_SA_KEY }}
+          YC_SA_JSON_CREDENTIALS: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+          YC_SERVICE_ACCOUNT_KEY: ${{ secrets.YC_SERVICE_ACCOUNT_KEY }}
+          YC_SERVICE_ACCOUNT_KEY_FILE: ${{ secrets.YC_SERVICE_ACCOUNT_KEY_FILE }}
+          YANDEX_CLOUD_SA_KEY: ${{ secrets.YANDEX_CLOUD_SA_KEY }}
+          YANDEX_CLOUD_SERVICE_ACCOUNT_KEY: ${{ secrets.YANDEX_CLOUD_SERVICE_ACCOUNT_KEY }}
+          YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+          YANDEX_CLOUD_FOLDER_ID: ${{ secrets.YANDEX_CLOUD_FOLDER_ID }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YANDEX_AI_FOLDER_ID: ${{ secrets.YANDEX_AI_FOLDER_ID }}
+          YANDEX_GPT_FOLDER_ID: ${{ secrets.YANDEX_GPT_FOLDER_ID }}
+          YANDEXGPT_FOLDER_ID: ${{ secrets.YANDEXGPT_FOLDER_ID }}
+          FOLDER_ID: ${{ secrets.FOLDER_ID }}
+          YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+          YANDEX_CLOUD_ID: ${{ secrets.YANDEX_CLOUD_ID }}
+          YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+          YANDEX_WEBMASTER_OAUTH_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+          YANDEX_METRIKA_OAUTH_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+          YANDEX_DIRECT_OAUTH_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+          YANDEX_TOKEN: ${{ secrets.YANDEX_TOKEN }}
+          YANDEX_DISK_TOKEN: ${{ secrets.YANDEX_DISK_TOKEN }}
+          YANDEX_DISK_OAUTH_TOKEN: ${{ secrets.YANDEX_DISK_OAUTH_TOKEN }}
+          YANDEX_WORDSTAT_TOKEN: ${{ secrets.YANDEX_WORDSTAT_TOKEN }}
+          WORDSTAT_TOKEN: ${{ secrets.WORDSTAT_TOKEN }}
+          YANDEX_BUSINESS_TOKEN: ${{ secrets.YANDEX_BUSINESS_TOKEN }}
+        run: node .search-check/keys.mjs
+
+      - name: Encrypt and commit the result
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          openssl rand -hex 32 > /tmp/k.txt
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -in /tmp/keys-check.json -out .search-check/keys.enc -pass file:/tmp/k.txt
+          openssl pkeyutl -encrypt -pubin -inkey .search-check/public-key.pem \
+            -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
+            -in /tmp/k.txt -out .search-check/keys-key.enc
+          shred -u /tmp/k.txt /tmp/keys-check.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add .search-check/keys.enc .search-check/keys-key.enc
+          git commit -m "Encrypted keys check $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin claude/search-check-20261003
+          git push origin HEAD:claude/search-check-20261003
