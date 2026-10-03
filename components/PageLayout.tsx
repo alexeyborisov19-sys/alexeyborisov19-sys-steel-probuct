@@ -31,6 +31,7 @@ type PageLayoutProps = {
 type SecondaryAction = { secondaryHref: string; secondaryLabel: string };
 
 const parentSections = [
+  { prefix: "/customers/", name: "Заказчику", path: "/customers" },
   { prefix: "/production/", name: "Производство", path: "/production" },
   { prefix: "/solutions/", name: "Решения", path: "/solutions" },
   { prefix: "/industries/", name: "Решения для объектов", path: "/industries" },

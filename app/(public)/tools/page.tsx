@@ -1,3 +1,4 @@
+import { CustomerResources } from "@/components/commercial/CustomerResources";
 import { PageLayout } from "@/components/PageLayout";
 import { FreeServiceLink } from "@/components/FreeServiceLink";
 import { AttributionLink } from "@/components/AttributionLink";
@@ -31,4 +32,5 @@ export default function ToolsPage(){return <PageLayout compactHero eyebrow="Ин
   </div></section>
   <section className="bg-[#172129] py-10"><div className="container flex flex-wrap items-center justify-between gap-6"><div className="max-w-2xl"><h2 className="text-2xl font-semibold">Нужен расчёт сложного заказа?</h2><p className="mt-3 leading-7 text-white/80">Пришлите исходные данные инженеру. Уточним состав работ, недостающие параметры и подготовим предложение.</p></div><AttributionLink prefetch={false} href="/contacts#contact-form" className="inline-flex min-h-12 items-center rounded-lg bg-steel-orange px-6 py-3 font-semibold text-black">Отправить проект инженеру →</AttributionLink></div></section>
   <FaqSection items={faq} title="Как пользоваться бесплатными сервисами" />
+<CustomerResources />
 </PageLayout>}

@@ -1,3 +1,4 @@
+import { customerGuides } from "@/data/customer-guides";
 import { publicTools } from "@/data/public-tools";
 import { brandOfficialProfiles } from "@/data/entity-references";
 import {
@@ -59,6 +60,11 @@ ${tools}
 - [Бесплатный расчёт по CAD или габаритам](${siteConfig.url}/online-order)
 - [Калькулятор металлокассет](${siteConfig.url}/calculator-metallokassety)
 - [Контакты и отправка проекта](${siteConfig.url}/contacts)
+
+## Заказчику
+
+- [Подготовка заказа](${siteConfig.url}/customers)
+${customerGuides.map((guide) => `- [${guide.title}](${siteConfig.url}/customers/${guide.slug}): ${guide.description}`).join("\n")}
 
 ## Машиночитаемые источники
 
