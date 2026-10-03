@@ -223,7 +223,10 @@ export function serviceSchema({ name, description, path, serviceType, serviceCit
     availableChannel: {
       "@type": "ServiceChannel",
       serviceUrl: absoluteUrl("/contacts#contact-form"),
-      servicePhone: siteConfig.telephone,
+      servicePhone: {
+        "@type": "ContactPoint",
+        telephone: siteConfig.telephone,
+      },
     },
   };
 }

@@ -20,7 +20,10 @@ test("structured data exposes only confirmed contact capabilities", () => {
 
   assert.equal(organization.telephone, siteConfig.telephone);
   assert.ok(!("openingHoursSpecification" in organization), "unconfirmed opening hours must not be published");
-  assert.equal(channel.servicePhone, siteConfig.telephone);
+  assert.deepEqual(channel.servicePhone, {
+    "@type": "ContactPoint",
+    telephone: siteConfig.telephone,
+  });
   assert.ok(!("serviceSmsNumber" in channel), "SMS capability must not be claimed without confirmation");
 });
 
