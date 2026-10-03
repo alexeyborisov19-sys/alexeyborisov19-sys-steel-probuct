@@ -53,3 +53,14 @@ test("product group variants never fabricate commerce signals", () => {
     assertNoFabricatedCommerce(variant, String(variant["@id"] ?? "product variant"));
   }
 });
+
+test("local service scope does not expand to nationwide product delivery", () => {
+  const local = serviceSchema({
+    name: "Гибка", description: "Гибка в Смоленске",
+    path: "/production/gibka-listovogo-metalla", serviceCity: "Смоленск",
+  });
+  assert.deepEqual(local.areaServed, { "@type": "City", name: "Смоленск" });
+  const other = serviceSchema({ name: "Изделия", description: "Изготовление", path: "/solutions/custom" });
+  assert.ok(Array.isArray(other.areaServed));
+  assert.ok(other.areaServed.some((area: Record<string, unknown>) => area.name === "Россия"));
+});
