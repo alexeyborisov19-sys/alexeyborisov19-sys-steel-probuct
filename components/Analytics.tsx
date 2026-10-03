@@ -49,9 +49,16 @@ export function Analytics() {
   }, []);
 
   function analyticsReady() {
-    lastPath.current = window.location.pathname;
-    setRuntimeReady(true);
-    flushPendingAnalyticsGoals();
+    // Next's inline Script calls onReady before appending/executing its body.
+    // Wait until that synchronous insertion creates ym and queues init; otherwise
+    // goals collected during startup remain stranded with no later flush.
+    queueMicrotask(() => {
+      const runtime = window as Window & { ym?: unknown };
+      if (!hasAnalyticsConsent() || typeof runtime.ym !== "function") return;
+      lastPath.current = window.location.pathname;
+      setRuntimeReady(true);
+      flushPendingAnalyticsGoals();
+    });
   }
 
   useEffect(() => {

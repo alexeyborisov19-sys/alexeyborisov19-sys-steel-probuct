@@ -1,0 +1,43 @@
+name: Analytics consent and form regression
+on:
+  pull_request:
+    paths:
+      - 'components/Analytics.tsx'
+      - 'components/CookieConsent.tsx'
+      - 'components/QuoteRequestForm.tsx'
+      - 'lib/analytics.ts'
+      - 'scripts/audit-form-goal-diagnostic.mjs'
+      - '.github/workflows/analytics-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
+      NEXT_PUBLIC_SITE_URL: 'https://www.steelprodukt.ru'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Browser goal regression with all submissions intercepted
+        run: |
+          npm start > /tmp/analytics-site.log 2>&1 &
+          SITE_PID=$!
+          trap 'kill "$SITE_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3000/contacts > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/audit-form-goal-diagnostic.mjs
