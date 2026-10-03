@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { AttributionLink as Link } from "@/components/AttributionLink";
 import { productionEquipment } from "@/data/manufacturing-facts";
 import { heroOffset } from "@/data/site-mode";
 
