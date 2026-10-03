@@ -14,6 +14,7 @@ export default defineConfig([
     ".next-candidate/**",
     ".next-previous/**",
     "node_modules/**",
+    "vendor/braces-depth-guard/**", // Preserved MIT upstream CommonJS; guarded by dedicated regression tests.
     "output/**",
     "public/**",
     ".agents/**",
