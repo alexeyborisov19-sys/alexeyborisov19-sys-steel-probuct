@@ -17,6 +17,11 @@ const trackingParameters = [
   "wbraid",
   "_openstat",
   "_ym_status-check",
+  "inputArea",
+  "mode",
+  "source",
+  "thickness",
+  "type",
 ] as const;
 
 test("robots.txt consolidates tracking-only URL variants with Clean-param", async () => {
