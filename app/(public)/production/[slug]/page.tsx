@@ -53,6 +53,7 @@ export default async function ProductionServicePage({
             description: service.description,
             path,
             serviceType: service.shortTitle,
+            serviceCity: service.serviceCity,
           }),
           faqSchema(service.faq),
         ]}
@@ -147,7 +148,9 @@ export default async function ProductionServicePage({
           <div className="container">
             <p className="eyebrow">Заказ напрямую у производителя</p>
             <h2 id="order-conditions" className="mt-3 text-3xl font-semibold sm:text-4xl">От исходных данных до согласованной партии</h2>
-            <p className="mt-5 max-w-3xl text-base leading-7 text-white/75">Производство в Смоленске. Перед расчётом согласуем материал, количество, требования к изделию и состав операций. Условия поставки по России определяем для конкретного заказа.</p>
+            <p className="mt-5 max-w-3xl text-base leading-7 text-white/75">{service.serviceCity
+              ? "Услуга доступна только в Смоленске. Перед расчётом согласуем чертежи, материал, количество и состав операций. Передачу заготовок и получение готовых деталей согласуем при оформлении заказа."
+              : "Производство в Смоленске. Перед расчётом согласуем материал, количество, требования к изделию и состав операций. Условия поставки по России определяем для конкретного заказа."}</p>
             <div className="mt-8 grid gap-5 md:grid-cols-3">
               <div className="border-t-2 border-steel-orange pt-5">
                 <h3 className="text-xl font-semibold">Из чего складывается цена</h3>

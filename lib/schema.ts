@@ -209,7 +209,7 @@ export function itemListSchema({
   };
 }
 
-export function serviceSchema({ name, description, path, serviceType }: { name: string; description: string; path: string; serviceType?: string }): JsonLd {
+export function serviceSchema({ name, description, path, serviceType, serviceCity }: { name: string; description: string; path: string; serviceType?: string; serviceCity?: string }): JsonLd {
   return {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -219,7 +219,7 @@ export function serviceSchema({ name, description, path, serviceType }: { name: 
     serviceType: serviceType ?? name,
     url: absoluteUrl(path),
     provider: { "@id": `${siteConfig.url}/#organization` },
-    areaServed,
+    areaServed: serviceCity ? { "@type": "City", name: serviceCity } : areaServed,
     availableChannel: {
       "@type": "ServiceChannel",
       serviceUrl: absoluteUrl("/contacts#contact-form"),

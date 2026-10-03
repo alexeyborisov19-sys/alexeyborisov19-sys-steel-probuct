@@ -127,6 +127,45 @@ export default function MetalCassetteCollectionPage() {
 
             <MetalCassetteCalculator />
 
+            <section id="razmery-metallokasset" className="mt-16">
+              <div className="border-b border-white/12 pb-5">
+                <p className="eyebrow">Размеры и раскладка</p>
+                <h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Размеры металлокассет: что указать в заказе</h2>
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-white/62">В чертеже важно различать видимую часть кассеты, её шаг в фасадной раскладке и плоскую заготовку. Эти размеры решают разные задачи; одного значения ширины и высоты недостаточно для запуска в производство.</p>
+              </div>
+              <dl className="mt-6 grid gap-3 lg:grid-cols-3">
+                <div className="border border-white/10 bg-[#111519] p-5">
+                  <dt className="text-sm font-semibold uppercase text-steel-orange">Лицевая часть</dt>
+                  <dd className="mt-3 text-sm leading-7 text-white/62">Ширина и высота видимой плоскости определяют рисунок фасада. В задании отдельно указывают глубину кассеты и размеры полок по рабочему узлу.</dd>
+                </div>
+                <div className="border border-white/10 bg-[#111519] p-5">
+                  <dt className="text-sm font-semibold uppercase text-steel-orange">Шаг в раскладке</dt>
+                  <dd className="mt-3 text-sm leading-7 text-white/62">Расстояние между повторяющимися элементами зависит от принятого стыка. Для открытого типа учитывают межкассетный руст, для закрытого — рабочий шаг замка. Шаг проверяют по узлу выбранной системы.</dd>
+                </div>
+                <div className="border border-white/10 bg-[#111519] p-5">
+                  <dt className="text-sm font-semibold uppercase text-steel-orange">Заготовка и развёртка</dt>
+                  <dd className="mt-3 text-sm leading-7 text-white/62">Для раскроя нужна плоская заготовка с учётом полок, замков и гибов. Её размеры определяют по конструкции, материалу и технологии; площадь лицевой части не равна расходу металла.</dd>
+                </div>
+              </dl>
+              <div className="mt-6 grid gap-6 border border-white/12 p-6 lg:grid-cols-[.8fr_1.2fr]">
+                <div>
+                  <h3 className="text-lg font-semibold uppercase">Данные для согласования размеров</h3>
+                  <p className="mt-3 text-sm leading-7 text-white/62">Допустимые габариты проверяем для конкретной конструкции, толщины и проектных требований. Типовой формат в калькуляторе служит для предварительной оценки и не заменяет рабочую раскладку.</p>
+                </div>
+                <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-white/62">
+                  <li>Ширина и высота лицевой части, глубина и полки с указанием единиц измерения.</li>
+                  <li>Открытое или закрытое крепление, размеры рустов и чертёж стыка.</li>
+                  <li>Материал, толщина, цвет и требования к покрытию.</li>
+                  <li>Количество по каждой позиции, угловые и крайние элементы, проёмы и примыкания.</li>
+                </ul>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold uppercase">
+                <AttributionLink href="/articles/ploshchad-fasada-raskhod-metalla-metallokassety" className="text-steel-orange">Как размеры влияют на расход металла&nbsp; →</AttributionLink>
+                <AttributionLink href="/articles/uzly-fasada-metallokassety" className="text-steel-orange">Какие узлы проверить&nbsp; →</AttributionLink>
+                <AttributionLink href="/contacts#contact-form" className="text-steel-orange">Передать раскладку инженеру&nbsp; →</AttributionLink>
+              </div>
+            </section>
+
             <section className="mt-16">
               <div className="border-b border-white/12 pb-5">
                 <p className="eyebrow">Открытый или закрытый тип</p>
