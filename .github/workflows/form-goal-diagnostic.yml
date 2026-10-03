@@ -1,4 +1,4 @@
-name: Diagnose form goal without sending leads
+name: Verify live form goals without sending leads
 on:
   push:
     paths:
@@ -8,9 +8,11 @@ on:
 permissions:
   contents: read
 jobs:
-  diagnose:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      BASE_URL: https://www.steelprodukt.ru
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,28 +22,3 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: node scripts/audit-form-goal-diagnostic.mjs
-      - name: Read goal definitions and daily totals
-        if: always()
-        env:
-          YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
-          YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
-        run: |
-          node --input-type=module <<'NODE'
-          let token=(process.env.YM_TOKEN||process.env.YANDEX_OAUTH_TOKEN||'').trim().replace(/^OAuth\s+/i,'').replace(/^Bearer\s+/i,'');
-          const match=token.match(/(?:^|[#?&])access_token=([^&#\s]+)/i);
-          if(match)token=decodeURIComponent(match[1]);
-          const get=async path=>{
-            const r=await fetch('https://api-metrika.yandex.net'+path,{headers:{Authorization:'OAuth '+token},signal:AbortSignal.timeout(30000)});
-            if(!r.ok)throw new Error('Metrika HTTP '+r.status);
-            return r.json();
-          };
-          console.log('TIME',new Date().toISOString());
-          const filters=await get('/management/v1/counter/112542227/filters');
-          console.log('FILTERS',JSON.stringify(filters));
-          const goals=(await get('/management/v1/counter/112542227/goals')).goals;
-          const selected=goals.filter(g=>(g.conditions||[]).some(c=>['quote_form_started','quote_request_submit','quote_request_success','quote_request_error','ym-submit-leadform'].includes(c.url)));
-          console.log('FORM_GOALS',JSON.stringify(selected.map(({id,name,type,conditions})=>({id,name,type,conditions}))));
-          const p=new URLSearchParams({ids:'112542227',date1:'2026-09-26',date2:'2026-10-02',dimensions:'ym:s:date',metrics:['ym:s:visits',...selected.map(g=>'ym:s:goal'+g.id+'reaches')].join(','),accuracy:'full',limit:'100'});
-          const report=await get('/stat/v1/data?'+p);
-          console.log('DAILY_REPORT',JSON.stringify({query:report.query,data:report.data,totals:report.totals,sampled:report.sampled,sample_share:report.sample_share}));
-          NODE

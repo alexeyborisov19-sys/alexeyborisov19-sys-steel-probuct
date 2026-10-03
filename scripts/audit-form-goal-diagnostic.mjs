@@ -1,5 +1,6 @@
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
+const origin=new URL(process.env.BASE_URL||'http://127.0.0.1:3000').origin;
 const browser=await chromium.launch();
 try {
 for(const width of [390,1440]) for(const choice of ['none','deny','allow','blocked']) {
@@ -7,7 +8,7 @@ for(const width of [390,1440]) for(const choice of ['none','deny','allow','block
  let mockedPosts=0,tagRequests=0;
  await context.route('**/*',async route=>{
   const req=route.request(),u=new URL(req.url());
-  if(u.hostname==='www.steelprodukt.ru'&&u.pathname==='/api/quote'&&req.method()==='POST'){
+  if(u.origin===origin&&u.pathname==='/api/quote'&&req.method()==='POST'){
    mockedPosts++;
    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,requestId:'SP-20261003-ABCDEF12',message:'Локальная проверка: данные не отправлены.'})});
   }
@@ -16,11 +17,11 @@ for(const width of [390,1440]) for(const choice of ['none','deny','allow','block
    if(choice==='blocked')return route.abort();
    return route.fulfill({contentType:'application/javascript',body:'window.__ymCalls=Array.from(window.ym?.a||[]).map(x=>Array.from(x));window.ym=function(){window.__ymCalls.push(Array.from(arguments))};'});
   }
-  if(u.hostname!=='www.steelprodukt.ru'||!['GET','HEAD'].includes(req.method()))return route.abort();
+  if(u.origin!==origin||!['GET','HEAD'].includes(req.method()))return route.abort();
   return route.continue();
  });
  const page=await context.newPage(); const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('https://www.steelprodukt.ru/contacts',{waitUntil:'networkidle',timeout:60000});
+ await page.goto(origin+'/contacts',{waitUntil:'networkidle',timeout:60000});
  if(choice!=='none') await page.getByRole('button',{name:choice==='deny'?'Продолжить без аналитики':'Разрешить аналитику',exact:true}).click();
  const form=page.locator('#quote-request-form');
  await form.locator('[name="name"]').fill('Локальная проверка');
@@ -32,9 +33,11 @@ for(const width of [390,1440]) for(const choice of ['none','deny','allow','block
  assert.equal(mockedPosts,1);
  const calls=await page.evaluate(()=>window.__ymCalls||Array.from(window.ym?.a||[]).map(x=>Array.from(x)));
  const success=calls.filter(x=>x[0]===112542227&&x[1]==='reachGoal'&&x[2]==='quote_request_success');
- console.log('DEBUG',JSON.stringify({width,choice,tagRequests,calls,errors,state:await page.evaluate(()=>({consent:localStorage.getItem('steelprodukt-cookie-consent-v2'),pending:window.steelPendingGoals||[],ymType:typeof window.ym}))}));
+ assert.equal(success.length,['allow','blocked'].includes(choice)?1:0,'consented form success must leave the startup queue exactly once');
+ assert.deepEqual(await page.evaluate(()=>window.steelPendingGoals||[]),[]);
+ assert.deepEqual(errors,[]);
  assert.equal(tagRequests,['allow','blocked'].includes(choice)?1:0);
- console.log(JSON.stringify({width,choice,mockedPosts,tagRequests,successGoalCalls:success.length,goalTransport:choice==='blocked'?'queued but tag blocked':'intercepted',result:success.length===(['allow','blocked'].includes(choice)?1:0)?'PASS':'MISSING_GOAL',realLeadsSent:0,realAnalyticsSent:0}));
+ console.log(JSON.stringify({width,choice,mockedPosts,tagRequests,successGoalCalls:success.length,goalTransport:choice==='blocked'?'queued but tag blocked':'intercepted',result:'PASS',realLeadsSent:0,realAnalyticsSent:0}));
  await context.close();
 }
 } finally {await browser.close();}
