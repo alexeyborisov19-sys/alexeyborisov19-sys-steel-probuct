@@ -127,6 +127,7 @@ jobs:
               const primary = simplified.find(g => g.target === "quote_request_success" || g.name === "Форма заявки — успешно отправлена");
               primaryGoalId = primary?.id || null;
               console.log("GOALS_COUNT:", simplified.length);
+              console.log("GOAL_DEFINITIONS:", safe(simplified));
               console.log("PRIMARY_GOAL:", safe(primary || null));
               console.log("REQUIRED_TARGETS_PRESENT:", safe([
                 "quote_form_started","quote_file_attached","quote_request_submit","quote_request_success",
@@ -327,6 +328,7 @@ jobs:
                   attributionModel: specific.AttributionModel || null,
                   priorityGoals: specific.PriorityGoals?.Items || specific.PriorityGoals || null,
                   trackingParams: specific.TrackingParams || null,
+                  settings: specific.Settings || null,
                   biddingStrategy: specific.BiddingStrategy || null
                 };
               });
@@ -341,6 +343,12 @@ jobs:
             } else {
               console.log("CAMPAIGNS_ERROR:", safe(camps.body));
             }
+
+            const groups = await requestDirect("https://api.direct.yandex.com/json/v501/adgroups", yd, {
+              method:"get", params:{SelectionCriteria:{CampaignIds:[714391927]},FieldNames:["Id","Name","CampaignId","RegionIds","Status","ServingStatus"],Page:{Limit:1000,Offset:0}}
+            }, login);
+            console.log("ADGROUPS_HTTP:",groups.status);
+            console.log("ADGROUPS:",safe(groups.body));
 
             const adsPayload = {
               method: "get",
@@ -368,7 +376,7 @@ jobs:
             } else console.log("ADS_ERROR:", safe(ads.body));
 
             // Recent performance report. This is a read-only POST to Reports.
-            const d2 = new Date();
+            const d2 = new Date("2026-10-02T12:00:00Z");
             const d1 = new Date(d2.getTime() - 6*86400000);
             const fmt = d => d.toISOString().slice(0,10);
             const reportSpec = {
@@ -403,6 +411,23 @@ jobs:
               console.log("REPORT_TSV:\n" + repText.slice(0,20000));
             } else {
               console.log("REPORT_BODY:", repText.slice(0,4000));
+            }
+            const reportHeaders = {...headers, processingMode:"online"};
+            async function report(label, params) {
+              const r = await fetch("https://api.direct.yandex.com/json/v501/reports", {method:"POST",headers:reportHeaders,body:JSON.stringify({params}),signal:AbortSignal.timeout(60000)});
+              console.log(label+"_HTTP:",r.status);
+              console.log(label+":",(await r.text()).slice(0,50000));
+            }
+            const goalsIds=["612680821","612680809","666575171"];
+            for (const [label,from,to] of [["CURRENT","2026-09-26","2026-10-02"],["PREVIOUS","2026-09-19","2026-09-25"]]) {
+              const common={...reportSpec.params,SelectionCriteria:{DateFrom:from,DateTo:to,Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:["714391927"]}]},Goals:goalsIds,AttributionModels:["AUTO"],ReportName:"SteelProdukt goals "+label};
+              await report("GOALS_"+label,common);
+              const u=new URL("https://api-metrika.yandex.net/stat/v1/data");
+              for(const [k,v] of Object.entries({ids:canonicalCounter,date1:from,date2:to,dimensions:"ym:s:date",metrics:"ym:s:visits,"+goalsIds.map(id=>`ym:s:goal${id}visits`).join(","),accuracy:"full",limit:"100"}))u.searchParams.set(k,v);
+              const rr=await request(u.toString(),ym);console.log("METRIKA_MATCH_"+label+":",safe(rr.body));
+            }
+            for (const [label,fields] of [["GEO",["LocationOfPresenceId","TargetingLocationId"]],["DEVICE",["Device"]],["GROUP",["AdGroupId","AdGroupName"]]]) {
+              await report(label,{...reportSpec.params,ReportName:"SteelProdukt "+label,ReportType:"CUSTOM_REPORT",Goals:goalsIds,AttributionModels:["AUTO"],FieldNames:[...fields,"Impressions","Clicks","Cost","Conversions"],SelectionCriteria:{DateFrom:"2026-09-26",DateTo:"2026-10-02",Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:["714391927"]}]}});
             }
           }
           NODE
