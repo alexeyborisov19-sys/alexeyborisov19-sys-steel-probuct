@@ -4,38 +4,40 @@ import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { flushPendingAnalyticsGoals, trackLeadEvent, yandexCounterIds } from "@/lib/analytics";
+import { createMetrikaLifecycle, type MetrikaRuntime } from "@/lib/analytics-runtime-control";
 import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
 const counterIds = yandexCounterIds();
 const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
+const lifecycle = createMetrikaLifecycle(counterIds, {
+  ssr: true,
+  clickmap: true,
+  trackLinks: true,
+  accurateTrackBounce: true,
+  webvisor: webvisorEnabled,
+  ecommerce: "dataLayer",
+});
 
-/**
- * Analytics remains inactive unless the canonical public counter ID is supplied
- * in the deployment environment AND the visitor explicitly permits analytics.
- * No vendor script, preconnect or tracking pixel is loaded before consent.
- * The counter-specific tag URL matches the code returned by Metrika Management
- * API for the ssr-enabled counter. Configuration must not expose contact data.
- */
+/** No vendor script, preconnect or tracking pixel is loaded before consent.
+ * Initialization rechecks the live preference; revocation also destroys an
+ * already running counter when blocked storage makes a reload unsafe. */
 export function Analytics() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
   const [runtimeReady, setRuntimeReady] = useState(false);
   const pathname = usePathname();
   const lastPath = useRef<string | null>(null);
 
-  // Init records the current document. Next client navigation does not reload
-  // that document, so record subsequent paths only while consent remains valid.
   useEffect(() => {
     if (!runtimeReady || !analyticsAllowed || !hasAnalyticsConsent() || !pathname) return;
     if (lastPath.current === pathname) return;
     const previousPath = lastPath.current;
     lastPath.current = pathname;
     if (!previousPath) return;
-    const runtime = window as Window & { ym?: (id: number, command: string, path: string, options: { referer: string }) => void };
+    const runtime = window as Window & MetrikaRuntime;
     for (const id of counterIds) runtime.ym?.(id, "hit", pathname, { referer: previousPath });
   }, [pathname, runtimeReady, analyticsAllowed]);
 
-  // A tap on any phone link is a lead signal. One delegated listener covers the
-  // header, footer, hero and contact blocks; the number itself is never sent.
+  // A contact tap is not an accepted lead; never send the telephone number.
   useEffect(() => {
     function trackPhoneClick(event: MouseEvent) {
       const target = event.target instanceof Element ? event.target : null;
@@ -49,22 +51,31 @@ export function Analytics() {
   }, []);
 
   function analyticsReady() {
-    lastPath.current = window.location.pathname;
-    setRuntimeReady(true);
-    flushPendingAnalyticsGoals();
+    // In Next 15.5, inline Script onReady runs before appendChild executes its
+    // bootstrap. Defer to the microtask checkpoint, not an arbitrary timeout.
+    // The same callback handles cached-script remounts after a new permission.
+    queueMicrotask(() => {
+      if (!lifecycle.start(window as Window & MetrikaRuntime, hasAnalyticsConsent())) {
+        setRuntimeReady(false);
+        return;
+      }
+      lastPath.current = window.location.pathname;
+      setRuntimeReady(true);
+      flushPendingAnalyticsGoals();
+    });
   }
 
   useEffect(() => {
     function syncConsent() {
-      try {
-        setAnalyticsAllowed(hasAnalyticsConsent());
-      } catch {
-        // Storage can be blocked in private or embedded browser modes.
-        // In that case analytics stays disabled and the site remains usable.
-        setAnalyticsAllowed(false);
+      let allowed = false;
+      try { allowed = hasAnalyticsConsent(); } catch { /* Fail closed. */ }
+      if (!allowed) {
+        lifecycle.stop(window as Window & MetrikaRuntime);
+        setRuntimeReady(false);
+        lastPath.current = null;
       }
+      setAnalyticsAllowed(allowed);
     }
-
     syncConsent();
     window.addEventListener(consentEvent, syncConsent);
     return () => window.removeEventListener(consentEvent, syncConsent);
@@ -82,14 +93,6 @@ export function Analytics() {
         for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
         k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a);
       })(window,document,'script',metrikaTagUrl,'ym');
-${counterIds.map((counterId) => `      ym(${counterId}, 'init', {
-        ssr:true,
-        clickmap:true,
-        trackLinks:true,
-        accurateTrackBounce:true,
-        webvisor:${webvisorEnabled ? "true" : "false"},
-        ecommerce:"dataLayer"
-      });`).join("\n")}
     `}</Script> : null}
   </>;
 }
