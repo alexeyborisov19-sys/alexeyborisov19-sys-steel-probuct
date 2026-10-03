@@ -1,0 +1,83 @@
+name: Diagnose lead delivery aggregates
+
+on:
+  push:
+    paths:
+      - '.github/workflows/lead-delivery-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure secure server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Inspect retention and backups without personal data
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          sudo -n python3 - "$APP_PATH" <<'PYTHON'
+          import sys, pathlib, sqlite3, json, datetime, subprocess
+          app=pathlib.Path(sys.argv[1]); env={}
+          for line in (app/'.env.production').read_text().splitlines():
+              if '=' in line and not line.lstrip().startswith('#'):
+                  k,v=line.split('=',1); env[k.strip()]=v.strip().strip('"').strip("'")
+          from collections import Counter
+          from urllib.parse import urlsplit,parse_qs
+          import re
+          print('DIAGNOSIS_TIME='+datetime.datetime.now(datetime.timezone.utc).isoformat())
+          print('MAIL_CONFIG='+json.dumps({k:bool(env.get(k)) for k in ['SMTP_HOST','SMTP_PORT','SMTP_USER','SMTP_PASSWORD','QUOTE_NOTIFICATION_EMAIL','QUOTE_FROM_EMAIL']}))
+          for key,default in [('QUOTE_STORAGE_PATH','/var/lib/steelprodukt/quote-leads'),('ASSISTANT_LEAD_STORAGE_PATH','/var/lib/steelprodukt/assistant-leads')]:
+              root=pathlib.Path(env.get(key) or default);counts=Counter();invalid=0
+              for file in root.glob('*.json'):
+                  if file.is_symlink():continue
+                  try:
+                      r=json.loads(file.read_text());dt=datetime.datetime.fromisoformat(str(r['createdAt']).replace('Z','+00:00'));day=dt.astimezone(datetime.timezone(datetime.timedelta(hours=3))).date().isoformat()
+                      if day<'2026-09-19':continue
+                      a=r.get('attribution') or {};counts[(day,str(r.get('delivery','unspecified')),bool(a.get('yclid')),bool(a.get('utm_source')))]+=1
+                  except Exception:invalid+=1
+              print(key+'='+json.dumps({'exists':root.is_dir(),'invalid':invalid,'daily':[{'date':k[0],'delivery':k[1],'has_yclid':k[2],'has_utm':k[3],'records':v} for k,v in sorted(counts.items())]}))
+          # Read only the recent tail of access logs; emit no IPs, URLs, query values or visitor identifiers.
+          for file in pathlib.Path('/var/log/nginx').glob('*access*.log'):
+              if not file.is_file() or file.is_symlink():continue
+              try:
+                  with file.open('rb') as f:
+                      size=f.seek(0,2);f.seek(max(0,size-16000000));data=f.read().decode('utf-8','replace').splitlines()
+                  if size>16000000:data=data[1:]
+                  counts=Counter()
+                  for line in data:
+                      m=re.search(r'\[(\d{2}/Oct/2026):[^]]+\] "(GET|POST|HEAD) ([^ ]+) HTTP/[^" ]+" (\d{3})',line)
+                      if not m:continue
+                      day,method,target,status=m.groups()
+                      if day not in ['01/Oct/2026','02/Oct/2026','03/Oct/2026']:continue
+                      u=urlsplit(target);query=parse_qs(u.query)
+                      if u.path.startswith('/api/'):
+                          category='quote_post' if method=='POST' and u.path=='/api/quote' else 'other_api'
+                      elif 'yclid' in query:category='yclid_request'
+                      elif query.get('utm_source')==['yandex']:category='yandex_utm_request'
+                      else:continue
+                      counts[(day,category,status)]+=1
+                  print('ACCESS_AGGREGATE='+json.dumps({'log':file.name,'tail_limited':size>16000000,'counts':[{'date':k[0],'category':k[1],'status':k[2],'requests':v} for k,v in sorted(counts.items())]}))
+              except Exception as e:print('ACCESS_READ_ERROR='+type(e).__name__)
+          PYTHON
+          REMOTE
