@@ -21,6 +21,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node scripts/audit-form-goal-diagnostic.mjs
       - name: Read goal definitions and daily totals
+        if: always()
         env:
           YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
           YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
@@ -35,6 +36,8 @@ jobs:
             return r.json();
           };
           console.log('TIME',new Date().toISOString());
+          const filters=await get('/management/v1/counter/112542227/filters');
+          console.log('FILTERS',JSON.stringify(filters));
           const goals=(await get('/management/v1/counter/112542227/goals')).goals;
           const selected=goals.filter(g=>(g.conditions||[]).some(c=>['quote_form_started','quote_request_submit','quote_request_success','quote_request_error','ym-submit-leadform'].includes(c.url)));
           console.log('FORM_GOALS',JSON.stringify(selected.map(({id,name,type,conditions})=>({id,name,type,conditions}))));
