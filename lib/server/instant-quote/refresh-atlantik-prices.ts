@@ -11,6 +11,7 @@ import {
   parseAtlantikSheetPriceText,
 } from "@/lib/instant-quote/atlantik-price-parser";
 import type { StoredPriceSnapshot } from "@/lib/instant-quote/material-price-feed";
+import { recoverPriceRowsWithAi, type PriceDocumentReader } from "@/lib/server/instant-quote/ai-price-extraction";
 import {
   loadPrivateCalculationBasis,
   replacePrivateMaterialPriceSnapshot,
@@ -122,6 +123,17 @@ function contentSha256(rows: StoredPriceSnapshot["rows"]) {
   return createHash("sha256").update(JSON.stringify(canonicalRows), "utf8").digest("hex");
 }
 
+/** The last confirmed rows for this source, so a recovered price can be drift-checked against them. */
+async function previousConfirmedRows() {
+  try {
+    const basis = await loadPrivateCalculationBasis();
+    return basis.materialPriceSnapshots.find((item) => item.sourceId === SOURCE_ID)?.rows ?? [];
+  } catch {
+    // No private basis configured yet: a first import has nothing to drift against.
+    return [];
+  }
+}
+
 async function previousSourceHash() {
   try {
     const basis = await loadPrivateCalculationBasis();
@@ -143,11 +155,15 @@ export type AtlantikRefreshResult = {
   materialCounts: { hot: number; cold: number; zinc: number };
   contentChanged: boolean | null;
   persisted: boolean;
+  /** True when the layout parser failed and the document had to be read by the model instead. */
+  recoveredByAi: boolean;
 };
 
 export type AtlantikRefreshOptions = {
   /** False validates the complete feed without modifying the private basis. */
   persist?: boolean;
+  /** Overrides the model used to recover an unparseable layout. Tests inject one; production leaves it unset. */
+  priceDocumentReader?: PriceDocumentReader;
 };
 
 /** Downloads the official Atlantik PDF and extracts its text locally. */
@@ -195,11 +211,36 @@ export async function refreshAtlantikPriceSnapshot(
   const { response, text } = await fetchPriceDocumentText();
   const fetchedAt = now.toISOString();
   const effectiveSourceDate = extractAtlantikPriceDocumentDate(text) ?? httpSourceDate(response, now);
-  const rows = parseAtlantikSheetPriceText(text, {
+  const parsedRows = parseAtlantikSheetPriceText(text, {
     sourceDate: effectiveSourceDate,
     fetchedAt,
   });
-  const materialCounts = validateRows(rows);
+
+  // The layout-specific parser decides whenever it can. Only when it produced
+  // too little to pass the sanity check is the document read again by the
+  // model — otherwise a changed layout takes the prices down entirely, they
+  // age past the staleness limit, and every quote blocks for want of a metal
+  // price. Whatever the model reads still has to clear the same sanity check
+  // below, on top of the stricter per-row gate inside the recovery itself.
+  let rows = parsedRows;
+  let recoveredByAi = false;
+  let materialCounts: ReturnType<typeof validateRows>;
+  try {
+    materialCounts = validateRows(parsedRows);
+  } catch (parserError) {
+    const recovery = await recoverPriceRowsWithAi({
+      documentText: text,
+      sourceDate: effectiveSourceDate,
+      fetchedAt,
+      source: SOURCE_ID,
+      previous: await previousConfirmedRows(),
+      ...(options.priceDocumentReader ? { reader: options.priceDocumentReader } : {}),
+    });
+    if (recovery.rows.length === 0) throw parserError;
+    materialCounts = validateRows(recovery.rows);
+    rows = recovery.rows;
+    recoveredByAi = true;
+  }
   const nextContentSha256 = contentSha256(rows);
   const previousContentSha256 = await previousSourceHash();
   const snapshot: StoredPriceSnapshot = {
@@ -220,5 +261,6 @@ export async function refreshAtlantikPriceSnapshot(
     materialCounts,
     contentChanged: previousContentSha256 == null ? null : previousContentSha256 !== nextContentSha256,
     persisted: persist,
+    recoveredByAi,
   };
 }

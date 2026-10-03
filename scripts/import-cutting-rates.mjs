@@ -161,7 +161,9 @@ function main() {
   // "both" emits the same table under both ids: laser cutting is priced by
   // material family and thickness, and the sheet keeps one table for
   // structural steel without splitting it by rolling.
-  materials.set("Конструкционная сталь", steel === "both" ? ["hot", "cold"] : [steel]);
+  // Galvanised sheet is cut at the cold-rolled price — the owner's own rule.
+  // The sheet keeps one structural-steel table, so zinc reads from it too.
+  materials.set("Конструкционная сталь", steel === "both" ? ["hot", "cold", "zinc"] : [steel, "zinc"]);
 
   // Each material's block is a label in column I, then a header row, then the
   // thickness rows — read until the thickness column stops being a number.

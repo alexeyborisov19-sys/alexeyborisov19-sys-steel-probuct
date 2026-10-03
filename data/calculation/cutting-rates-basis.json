@@ -31,6 +31,20 @@
         }
       },
       {
+        "materialId": "zinc",
+        "thicknessMm": 0.8,
+        "rateRub": 62.8,
+        "from100mRubPerM": 39.6,
+        "from500mRubPerM": 35.5,
+        "pierceRubEach": 1.4,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
         "materialId": "hot",
         "thicknessMm": 1,
         "rateRub": 62.8,
@@ -46,6 +60,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 1,
+        "rateRub": 62.8,
+        "from100mRubPerM": 39.6,
+        "from500mRubPerM": 35.5,
+        "pierceRubEach": 1.4,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 1,
         "rateRub": 62.8,
         "from100mRubPerM": 39.6,
@@ -74,6 +102,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 1.5,
+        "rateRub": 64.2,
+        "from100mRubPerM": 45.1,
+        "from500mRubPerM": 41,
+        "pierceRubEach": 1.4,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 1.5,
         "rateRub": 64.2,
         "from100mRubPerM": 45.1,
@@ -102,6 +144,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 2,
+        "rateRub": 66.9,
+        "from100mRubPerM": 51.9,
+        "from500mRubPerM": 46.5,
+        "pierceRubEach": 1.4,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 2,
         "rateRub": 66.9,
         "from100mRubPerM": 51.9,
@@ -130,6 +186,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 2.5,
+        "rateRub": 75.1,
+        "from100mRubPerM": 64.2,
+        "from500mRubPerM": 57.4,
+        "pierceRubEach": 1.4,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 2.5,
         "rateRub": 75.1,
         "from100mRubPerM": 64.2,
@@ -158,6 +228,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 3,
+        "rateRub": 88.8,
+        "from100mRubPerM": 73.8,
+        "from500mRubPerM": 66.9,
+        "pierceRubEach": 1.4,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 3,
         "rateRub": 88.8,
         "from100mRubPerM": 73.8,
@@ -186,6 +270,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 4,
+        "rateRub": 102.4,
+        "from100mRubPerM": 83.3,
+        "from500mRubPerM": 75.1,
+        "pierceRubEach": 2.8,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 4,
         "rateRub": 102.4,
         "from100mRubPerM": 83.3,
@@ -214,6 +312,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 5,
+        "rateRub": 122.9,
+        "from100mRubPerM": 97,
+        "from500mRubPerM": 88.8,
+        "pierceRubEach": 2.8,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 5,
         "rateRub": 122.9,
         "from100mRubPerM": 97,
@@ -242,6 +354,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 6,
+        "rateRub": 157,
+        "from100mRubPerM": 112,
+        "from500mRubPerM": 102.4,
+        "pierceRubEach": 2.8,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 6,
         "rateRub": 157,
         "from100mRubPerM": 112,
@@ -270,6 +396,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 8,
+        "rateRub": 218.4,
+        "from100mRubPerM": 143.4,
+        "from500mRubPerM": 129.7,
+        "pierceRubEach": 2.8,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 8,
         "rateRub": 218.4,
         "from100mRubPerM": 143.4,
@@ -298,6 +438,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 10,
+        "rateRub": 273,
+        "from100mRubPerM": 227.5,
+        "from500mRubPerM": 171.6,
+        "pierceRubEach": 6.5,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 10,
         "rateRub": 273,
         "from100mRubPerM": 227.5,
@@ -326,6 +480,20 @@
       },
       {
         "materialId": "cold",
+        "thicknessMm": 12,
+        "rateRub": 338,
+        "from100mRubPerM": 260,
+        "from500mRubPerM": 214.5,
+        "pierceRubEach": 6.5,
+        "source": {
+          "id": "production-cutting-sheet",
+          "label": "Производственный лист «Стоимость резки»",
+          "confirmedAt": "2025-10-29T12:56:14Z",
+          "note": "Производственный файл расчёта ООО «Энергоальянс», лист «Стоимость резки»"
+        }
+      },
+      {
+        "materialId": "zinc",
         "thicknessMm": 12,
         "rateRub": 338,
         "from100mRubPerM": 260,
