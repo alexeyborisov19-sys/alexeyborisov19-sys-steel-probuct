@@ -71,3 +71,27 @@ test("a unit that merely contains the same letters is never read as rolled steel
 test("«чёрная» through ё reads the same as «черная» — customers write both", () => {
   assert.equal(extractLeadState(emptyLeadState(), "черная сталь 3 мм").material, "Сталь");
 });
+
+test("a part called bent stays bent for the rest of the conversation", () => {
+  const first = extractLeadState(emptyLeadState(), "нужен гнутый кронштейн из оцинковки 2 мм");
+  assert.equal(first.bentPart, true);
+  // The next turn answers size and count and says nothing about bending.
+  assert.equal(extractLeadState(first, "500×400, 100 шт").bentPart, true);
+});
+
+test("operations named once are remembered, and each is recorded only once", () => {
+  const first = extractLeadState(emptyLeadState(), "кронштейн с покраской");
+  assert.deepEqual(first.extraOperations, ["покраска"]);
+
+  const second = extractLeadState(first, "и ещё приварить косынку");
+  assert.deepEqual(second.extraOperations, ["покраска", "сварка"]);
+
+  const third = extractLeadState(second, "покрасить в RAL 7024");
+  assert.deepEqual(third.extraOperations, ["покраска", "сварка"], "a repeat must not duplicate the entry");
+});
+
+test("a plain cut part names no extra operations at all", () => {
+  const state = extractLeadState(emptyLeadState(), "100 деталей 500×400 оцинковка 2 мм");
+  assert.equal(state.extraOperations, undefined);
+  assert.equal(state.bentPart, undefined);
+});

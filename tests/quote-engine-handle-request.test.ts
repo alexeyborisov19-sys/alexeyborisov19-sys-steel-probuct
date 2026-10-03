@@ -264,3 +264,54 @@ test("market data is informational by default: it does not move the price", asyn
   assert.equal(withMarket.record.finalPriceRubBatch, withoutMarket.record.finalPriceRubBatch);
   assert.ok(withMarket.record.market);
 });
+
+test("a bend stated in one turn is not forgotten by the next — a bent part is never priced as flat", async () => {
+  const first = await handleNaturalLanguageQuote(
+    "нужен гнутый кронштейн из оцинковки 2 мм", emptyLeadState(),
+    { ...fixtureOptions, calculatorOverride: "metal-parts", aiProposalCaller: null },
+  );
+  assert.equal(first.kind, "blocked");
+
+  // The customer now answers the size and count, saying nothing about bending.
+  // Before this was fixed, this turn priced the part flat: wrong blank, and no
+  // bending cost at all.
+  const second = await handleNaturalLanguageQuote(
+    "500×400, 100 шт", first.state,
+    { ...fixtureOptions, calculatorOverride: "metal-parts", aiProposalCaller: null },
+  );
+  assert.equal(second.kind, "blocked", "the part is still bent");
+  if (second.kind !== "blocked") return;
+  assert.match(second.clientMessage, /чертёж|3D/);
+});
+
+test("an operation the text calculator cannot price stops the quote instead of quoting only the cutting", async () => {
+  const result = await handleNaturalLanguageQuote(
+    "100 деталей 500×400 оцинкованная сталь 2 мм, с покраской", emptyLeadState(),
+    { ...fixtureOptions, calculatorOverride: "metal-parts", aiProposalCaller: null },
+  );
+  assert.equal(result.kind, "blocked");
+  if (result.kind !== "blocked") return;
+  assert.match(result.clientMessage, /покраска/);
+});
+
+test("a named operation also survives into a later turn", async () => {
+  const first = await handleNaturalLanguageQuote(
+    "кронштейн, нужно обварить", emptyLeadState(),
+    { ...fixtureOptions, calculatorOverride: "metal-parts", aiProposalCaller: null },
+  );
+  const second = await handleNaturalLanguageQuote(
+    "оцинковка 2 мм, 500×400, 100 шт", first.state,
+    { ...fixtureOptions, calculatorOverride: "metal-parts", aiProposalCaller: null },
+  );
+  assert.equal(second.kind, "blocked");
+  if (second.kind !== "blocked") return;
+  assert.match(second.clientMessage, /сварка/);
+});
+
+test("a plain cut part is unaffected and still prices", async () => {
+  const result = await handleNaturalLanguageQuote(
+    "Нужно изготовить 100 кронштейнов, 500×400, оцинкованная сталь 2 мм", emptyLeadState(),
+    { ...fixtureOptions, calculatorOverride: "metal-parts", aiProposalCaller: null },
+  );
+  assert.equal(result.kind, "priced");
+});

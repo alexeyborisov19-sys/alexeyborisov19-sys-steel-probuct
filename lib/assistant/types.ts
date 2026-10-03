@@ -32,6 +32,15 @@ export type EngineeringLeadState = {
    * cassette calculator needs it, and it asks in its own words when missing.
    */
   cassetteType?: "open" | "closed";
+  /**
+   * The customer called the part bent. Kept in state, not re-read per message,
+   * so it cannot be forgotten by a later turn that answers a different
+   * question — a bent part priced as a flat one gets both the wrong blank and
+   * no bending cost.
+   */
+  bentPart?: boolean;
+  /** Operations named by the customer that the text calculator cannot price (painting, welding, …). */
+  extraOperations?: string[];
   unknownFields: EngineeringField[];
   missingFields: EngineeringField[];
   readiness: "new" | "clarifying" | "ready_for_lead";

@@ -69,6 +69,21 @@ function match(text: string, expression: RegExp) {
   return text.match(expression)?.[1]?.trim();
 }
 
+/**
+ * Operations the shop really charges for and the text calculator cannot price
+ * from words alone: a weld needs its length, paint needs its sides. Naming one
+ * is enough to stop an automatic price — the production sheet shows works
+ * routinely outweighing the metal, so a cutting-only number for a job that
+ * also needs painting is not a rough price, it is a wrong one.
+ */
+const NAMED_EXTRA_OPERATIONS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/покрас[а-я]*|окрас[а-я]*|порошков[а-я]*/iu, "покраска"],
+  [/сварк[а-я]*|сварн[а-я]*|приварит[а-я]*|обварит[а-я]*/iu, "сварка"],
+  [/резьб[а-я]*|нарезк[а-я]* резьб[а-я]*/iu, "резьба"],
+  [/зенков[а-я]*/iu, "зенковка"],
+  [/сборк[а-я]*|собрат[а-я]*|в сборе/iu, "сборка"],
+];
+
 export function extractLeadState(
   current: EngineeringLeadState,
   message: string,
@@ -181,6 +196,20 @@ export function extractLeadState(
   // survives across turns instead of being re-read from scratch each time.
   if (/закрыт[а-я]*/iu.test(normalized)) state.cassetteType = "closed";
   else if (/открыт[а-я]*/iu.test(normalized)) state.cassetteType = "open";
+
+  // Tracked here rather than read from one message: a part the customer
+  // called bent stays bent for the rest of the conversation. Read per-message
+  // instead, it was forgotten the moment the next turn answered a different
+  // question, and a bent part was then priced as a flat one — wrong blank and
+  // no bending cost at all. Once set, never cleared: nothing a later message
+  // says un-bends the part.
+  if (/гнут[а-я]*|гиб[а-я]*|отбортов[а-я]*|загиб[а-я]*/iu.test(normalized)) state.bentPart = true;
+
+  for (const [pattern, operation] of NAMED_EXTRA_OPERATIONS) {
+    if (!pattern.test(normalized)) continue;
+    if (!state.extraOperations) state.extraOperations = [];
+    if (!state.extraOperations.includes(operation)) state.extraOperations = [...state.extraOperations, operation];
+  }
 
   if (/(?:черт[её]ж|эскиз|3d|модел\w*|dxf|dwg|step).{0,25}(?:есть|имеется|приложу|готов)/i.test(normalized)
     || /(?:есть|имеется|приложу|готов).{0,25}(?:черт[её]ж|эскиз|3d|модел\w*|dxf|dwg|step)/i.test(normalized)) {

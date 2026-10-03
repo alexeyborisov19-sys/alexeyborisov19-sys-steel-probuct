@@ -40,6 +40,7 @@ export type MetalCassetteReadyInput = {
 export type QuoteEnginePlan =
   | { status: "ambiguous-product"; question: string }
   | { status: "needs-cad"; calculator: "metal-parts"; reason: string }
+  | { status: "needs-engineer"; calculator: "metal-parts"; reason: string }
   | { status: "missing-fields"; calculator: "metal-parts" | "metal-cassettes"; missing: MissingField[] }
   | { status: "ready"; calculator: "metal-parts"; input: MetalPartsReadyInput }
   | { status: "ready"; calculator: "metal-cassettes"; input: MetalCassetteReadyInput };
@@ -54,17 +55,27 @@ export type QuoteEnginePlan =
  * (`manual-geometry.ts`) cannot price correctly regardless of what kind of
  * part it otherwise is.
  */
-function mentionsBending(rawMessage: string): boolean {
-  return /гнут[а-я]*|гиб[а-я]*|отбортов[а-я]*|загиб[а-я]*/iu.test(rawMessage);
-}
-
-function metalPartsPlan(state: EngineeringLeadState, rawMessage: string): QuoteEnginePlan {
-  if (mentionsBending(rawMessage)) {
+function metalPartsPlan(state: EngineeringLeadState): QuoteEnginePlan {
+  // Read from state, never from the current message alone: the customer says
+  // "гнутый кронштейн" once and then answers questions about size and count,
+  // and those later turns must not turn the part flat again.
+  if (state.bentPart) {
     return {
       status: "needs-cad",
       calculator: "metal-parts",
       reason: "Деталь с гибами: нужен чертёж (DXF) или 3D-модель (STEP) для точной развёртки, "
         + "либо расчёт передаётся технологу вручную.",
+    };
+  }
+
+  const named = state.extraOperations ?? [];
+  if (named.length > 0) {
+    return {
+      status: "needs-engineer",
+      calculator: "metal-parts",
+      reason: `Кроме резки в заявке названо: ${named.join(", ")}. `
+        + "Эти работы считаются по параметрам, которых в тексте нет — длине шва, числу окрашиваемых сторон, — "
+        + "и часто стоят дороже самого металла, поэтому цену подтверждает технолог.",
     };
   }
 
@@ -191,5 +202,5 @@ export function planQuoteEngineCalculation(
 
   return calculator === "metal-cassettes"
     ? metalCassettePlan(state)
-    : metalPartsPlan(state, rawMessage);
+    : metalPartsPlan(state);
 }

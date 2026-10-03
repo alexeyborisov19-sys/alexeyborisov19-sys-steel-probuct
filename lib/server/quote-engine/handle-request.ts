@@ -95,7 +95,7 @@ export async function handleNaturalLanguageQuote(
     return { kind: "question", question: plan.question, state };
   }
 
-  if (plan.status === "needs-cad") {
+  if (plan.status === "needs-cad" || plan.status === "needs-engineer") {
     return { kind: "blocked", clientMessage: plan.reason, record: null, state };
   }
 
