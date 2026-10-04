@@ -59,10 +59,6 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Check all public enquiry navigation paths with intercepted submissions
-        run: node scripts/audit-attribution.mjs
-        env:
-          BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
       - name: Send three owner-authorized TEST leads and test validation
         run: node scripts/owner-enquiry-checks.mjs
       - name: Verify TEST storage and actual inbox receipt

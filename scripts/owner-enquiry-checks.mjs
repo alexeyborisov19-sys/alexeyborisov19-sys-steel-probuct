@@ -76,9 +76,9 @@ try{
  }
  // One intentional duplicate of our own TEST, after the rate window permits it.
  await new Promise(r=>setTimeout(r,25000));
- const c=await context(1440),p=await c.newPage();await p.goto(base+'/contacts?'+tags,{waitUntil:'networkidle'});
- const duplicate=await p.request.post(base+'/api/quote',{headers:{origin:base,'content-type':firstType},data:firstPayload});
+ const duplicateContext=await context(1440),duplicatePage=await duplicateContext.newPage();await duplicatePage.goto(base+'/contacts?'+tags,{waitUntil:'networkidle'});
+ const duplicate=await duplicatePage.request.post(base+'/api/quote',{headers:{origin:base,'content-type':firstType},data:firstPayload});
  const result=await duplicate.json();console.log('DUPLICATE '+JSON.stringify({status:duplicate.status(),response:result}));
  assert.equal(duplicate.status(),429);assert.equal(result.code,'DUPLICATE_REQUEST');
- await c.close();
+ await duplicateContext.close();
 }finally{await browser.close();}
