@@ -70,3 +70,16 @@ test("retired product preloader returns 410 and cannot enter the sitemap", () =>
   assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
   assert.ok(!sitemap().some((entry) => new URL(entry.url).pathname === path));
 });
+
+test("both technical hosting aliases permanently redirect to the canonical domain", async () => {
+  const redirects = await nextConfig.redirects!();
+  for (const host of ["saquapequoke.beget.app", "www.saquapequoke.beget.app"]) {
+    const redirect = redirects.find((rule) => rule.has?.some(
+      (condition) => condition.type === "host" && new RegExp(`^${condition.value}$`).test(host),
+    ));
+    assert.ok(redirect, `${host}: technical duplicate remains accessible`);
+    assert.equal(redirect.source, "/:path*");
+    assert.equal(redirect.destination, "https://www.steelprodukt.ru/:path*");
+    assert.equal(redirect.permanent, true);
+  }
+});

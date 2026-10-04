@@ -55,6 +55,19 @@ for (const [source, destination] of legacyRedirects) {
   }
 }
 
+// Exercise the actual Next redirect manifest, including query preservation.
+for (const host of ["saquapequoke.beget.app", "www.saquapequoke.beget.app"]) {
+  const path = "/products/metallokassety?utm_source=seo_redirect_check";
+  const local = ["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname);
+  const response = await fetch(`${local ? baseUrl : `https://${host}`}${path}`, {
+    redirect: "manual",
+    ...(local ? { headers: { host } } : {}),
+  });
+  if (response.status !== 308 || response.headers.get("location") !== `${canonicalOrigin}${path}`) {
+    errors.push(`${host}: expected permanent canonical redirect preserving path and query, got ${response.status} ${response.headers.get("location")}`);
+  }
+}
+
 for (const path of retiredUrls) {
   const response = await fetch(`${baseUrl}${path}`, { redirect: "manual" });
   if (response.status !== 410) {
