@@ -1,3 +1,5 @@
+import { freeServices } from "@/data/free-services";
+import { FreeServiceLink } from "@/components/FreeServiceLink";
 import { AttributionLink } from "@/components/AttributionLink";
 import CustomerReviews from "@/components/CustomerReviews";
 import Image from "next/image";
@@ -116,10 +118,13 @@ export default function Home() {
           </div>
         </section>
         <CadCalculatorShowcase />
-        <section aria-label="Бесплатные сервисы" className="border-b border-white/10 bg-[#111519] py-6">
-          <div className="container flex flex-wrap items-center justify-between gap-4">
-            <p className="max-w-xl text-base text-white/75">Нет чертежа? Нужны металлокассеты или IFC-модель? Выберите инструмент под свою задачу.</p>
-            <AttributionLink prefetch={false} href="/tools" className="inline-flex min-h-12 items-center rounded-lg border border-steel-orange/50 px-5 py-3 font-semibold text-steel-orange hover:bg-white/5">Все бесплатные сервисы →</AttributionLink>
+        <section aria-label="Бесплатные сервисы" className="border-b border-white/10 bg-[#111519] py-12 sm:py-16">
+          <div className="container">
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
+              <div><p className="text-sm font-semibold text-steel-orange">Инструменты Сталь Продукт</p><h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Полезные бесплатные сервисы</h2><p className="mt-3 max-w-2xl text-white/75">От первого размера до задания на изготовление. Выберите сервис — пользоваться можно без обязательной заявки.</p></div>
+              <AttributionLink prefetch={false} href="/tools" className="inline-flex min-h-12 items-center border border-steel-orange/50 px-5 py-3 font-semibold text-steel-orange">Все бесплатные сервисы →</AttributionLink>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{freeServices.map((tool,i)=><article key={tool.id} className="flex flex-col rounded-lg border border-white/15 bg-[#172129] p-6"><p className="font-mono text-sm text-steel-orange">0{i+1} · Бесплатно</p><h3 className="mt-3 text-xl font-semibold">{tool.title}</h3><p className="mb-5 mt-3 text-sm leading-6 text-white/75">{tool.description}</p><FreeServiceLink href={tool.href} service={tool.id}>{tool.action}</FreeServiceLink></article>)}</div>
           </div>
         </section>
         <section id="solutions" className="bg-[#0c1013] py-14">
