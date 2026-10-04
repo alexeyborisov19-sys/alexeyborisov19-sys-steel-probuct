@@ -3,6 +3,7 @@ import { BasketVolumePrice } from "./BasketVolumePrice";
 import { BasketCutComparison } from "./BasketCutComparison";
 import { BasketFitResult } from "./BasketFitFields";
 import { BasketNumberInput } from "./BasketNumberInput";
+import { BasketMountingFields, BasketMountingResult } from "./BasketMountingFields";
 import { basketReference } from "@/lib/quote/basket-reference";
 import {
   type BasketDesign,
@@ -160,12 +161,7 @@ export function BasketDesignFields({
           <option value="bearing">Нужны несущие кронштейны</option>
         </select>
       </label>
-      <div className="mt-5 grid grid-cols-2 gap-4">
-        {number("facade", "Толщина фасада от стены, мм", 2000)}
-        {number("offset", "Отступ от облицовки, мм", 2000)}
-      </div>
-      <p className="mt-4 text-sm text-slate-600">Размеры блока и зазоры задаются один раз на первом шаге «Размеры».</p>
-      <p className="mt-4 text-xs leading-5 text-slate-600">Толщина фасада и отступ помогают определить вылет крепления. Сечение, толщину металла и анкеры проверяем по нагрузке и основанию.</p>
+      <BasketMountingFields design={design} onChange={onChange}/>
     </div>
   );
   if (step === 2) return (
@@ -201,7 +197,8 @@ export function BasketDesignFields({
       {!valid && <p className="mt-4 rounded-xl bg-orange-50 p-4 text-sm text-orange-900" role="status">Проверьте размеры и рисунок: шаг должен быть больше отверстия.</p>}
       {emptyPattern && <p className="mt-4 rounded-xl bg-orange-50 p-4 text-sm text-orange-900" role="status">В выбранном поле отверстия не помещаются. Измените рисунок или размеры.</p>}
       <BasketVolumePrice quantity={quantity} width={width} height={height} depth={depth} design={design} />
-      <p className="mt-4 text-sm leading-6 text-slate-600">Габариты, вентиляцию и крепления проверим перед изготовлением. Индивидуальный рисунок и несущие кронштейны уточняются при согласовании комплектации.</p>
+      <p className="mt-4 text-sm leading-6 text-slate-600">Все расчёты приблизительные. Габариты, вентиляцию, крепления и окончательную стоимость согласуем перед изготовлением.</p>
+      <BasketMountingResult design={design}/>
       <details className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <summary className="cursor-pointer text-sm font-semibold text-slate-700">Технические данные и проверка размеров</summary>
         {front && side && (

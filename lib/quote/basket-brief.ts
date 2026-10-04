@@ -90,6 +90,7 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
   if (!validBasketBrief({ ...input, design })) return null;
   return [
     "Прошу рассчитать корзины для кондиционеров.",
+    "Все расчёты приблизительные. Окончательные размеры, крепление и стоимость согласуются перед изготовлением.",
     `${design?.sizing === "block" ? "Расчётный внутренний габарит по блоку и зазорам" : "Предварительный наружный габарит"} (Ш × В × Г): ${input.width} × ${input.height} × ${input.depth} мм.`,
     ...(design?.sizing === "block" ? ["Наружные размеры с учётом панелей и отгибов уточняются по рабочему чертежу. Цена предварительная."] : []),
     `Количество: ${input.quantity} шт.`,

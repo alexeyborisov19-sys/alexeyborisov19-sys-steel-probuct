@@ -5,7 +5,8 @@ import { BasketAppearance } from "./BasketAppearance";
 import { BasketAcReference } from "./BasketAcReference";
 import { BasketFitFields } from "./BasketFitFields";
 import { BasketVolumePrice } from "./BasketVolumePrice";
-import { calculatedBasketSize, normalizedBasketFit, requiredBasketSpace } from "@/lib/quote/basket-fit";
+import { calculatedBasketSize, requiredBasketSpace } from "@/lib/quote/basket-fit";
+import { basketFitForSizing } from "@/lib/quote/basket-mounting";
 import { defaultBasketDesign, type BasketDesign } from "@/lib/quote/basket-design";
 import { BasketSpecification } from "./BasketSpecification";
 import type { BasketBrief } from "@/lib/quote/basket-brief";
@@ -80,7 +81,7 @@ export function BasketConfigurator() {
               <span><small>{byBlock ? "Расчётный внутренний размер" : "Наружные габариты"}, Ш × В × Г</small><b>{dimensionsValid ? `${input.width} × ${input.height} × ${input.depth}` : "Уточните размеры"}<em>{dimensionsValid ? " мм" : ""}</em></b></span>
               <span><small>Количество</small><b>{dimensionsValid ? input.quantity : "—"}<em> шт.</em></b></span>
             </div>
-            <p className={styles.studioNote}>Вид модели меняется вместе с параметрами. Конструкцию и совместимость проверит инженер.</p>
+            <p className={styles.studioNote}>Вид модели меняется вместе с параметрами. Расчёт приблизительный; размеры и крепление уточняются перед изготовлением.</p>
           </div>
         </aside>
         <div className={styles.editor}>
@@ -91,11 +92,11 @@ export function BasketConfigurator() {
           <div hidden={step !== 0}>
             <div className="mb-5 flex gap-2" role="group" aria-label="Способ определения размеров">
               {([['block','По размерам блока'],['basket','Знаю размер корзины']] as const).map(([value,label])=><button key={value} type="button" aria-pressed={(byBlock?'block':'basket')===value} onClick={()=>{
-                const fit=normalizedBasketFit(design.fit);
-                setDesign({...design,sizing:value,fit,...(fit?{blockWidth:fit.width??0,blockHeight:fit.height??0,blockDepth:fit.depth??0}:{})});
+                const fit=basketFitForSizing(design,value);
+                setDesign({...design,sizing:value,fit,...(fit?{offset:fit.rear,blockWidth:fit.width??0,blockHeight:fit.height??0,blockDepth:fit.depth??0}:{})});
               }} className={`min-h-12 flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${((byBlock?'block':'basket')===value)?'border-[#283431] bg-[#283431] text-white':'border-slate-300 bg-white text-slate-700'}`}>{label}</button>)}
             </div>
-            {byBlock ? <BasketFitFields value={design.fit} onChange={fit=>setDesign({...design,fit,blockWidth:fit.width??0,blockHeight:fit.height??0,blockDepth:fit.depth??0})}/> : <>
+            {byBlock ? <BasketFitFields value={design.fit} onChange={fit=>setDesign({...design,fit,offset:fit.rear,blockWidth:fit.width??0,blockHeight:fit.height??0,blockDepth:fit.depth??0})}/> : <>
             <p className={styles.intro}>Выберите ориентир или введите свои наружные размеры.</p>
             <div className={styles.presets} aria-label="Примеры габаритов">
               {basketSizeExamples.map((s, i) => <button type="button" key={s.width}

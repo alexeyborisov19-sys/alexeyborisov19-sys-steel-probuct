@@ -34,7 +34,7 @@ export function BasketVolumePrice(input:{quantity:number;width:number;height:num
       <h4 className="mt-2 text-3xl font-semibold" aria-live="polite">{rub(current.price.total)}</h4>
       <p className="mt-2 text-sm">За {input.quantity} шт. · {rub(current.price.unit)} / шт.</p>
       <p className="mt-3 text-sm leading-6 text-slate-600">Передняя и две боковые панели с окраской, без верхней крышки. Размер, выбранная перфорация и количество учтены.</p>
-      <p className="mt-2 text-xs leading-5 text-slate-600">Упрощённая оценка изготовления. Корзина крепится на кронштейнах блока; новые несущие кронштейны, анкеры и доставка в цену не входят. Окончательная комплектация — по чертежу.</p>
+      <p className="mt-2 text-xs leading-5 text-slate-600">Расчёт приблизительный. Окончательная стоимость — после проверки размеров и комплектации. Корзина крепится на кронштейнах блока; новые несущие кронштейны, анкеры и доставка в цену не входят.</p>
       {input.design.mount!=='existing'&&<p className="mt-2 text-xs leading-5 text-slate-600">Показана стоимость самой корзины. Опоры кондиционера рассчитаем отдельно по нагрузке и основанию.</p>}
     </>:<><h4 className="mt-2 text-xl font-semibold">По выбранной комплектации</h4><p className="mt-2 text-sm leading-6 text-slate-600">{current.reason||'Для этого исполнения нужен индивидуальный расчёт. Передайте собранные параметры инженеру.'}</p></>}
   </section>;

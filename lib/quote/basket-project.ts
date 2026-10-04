@@ -19,6 +19,7 @@ function clean(items: unknown): BasketBrief[] {
       ? {
           version: 1 as const,
           ...(v.design.sizing ? { sizing: v.design.sizing } : {}),
+          ...(v.design.wallKind ? { wallKind: v.design.wallKind } : {}),
           blockWidth: v.design.blockWidth,
           blockHeight: v.design.blockHeight,
           blockDepth: v.design.blockDepth,
