@@ -13,12 +13,14 @@ jobs:
     steps:
       - name: Export requested Webmaster query period
         env:
+          YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+          YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
           YW_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
           YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
         run: |
           cat > /tmp/export.mjs <<'NODE'
           import { mkdirSync, writeFileSync } from "node:fs";
-          const token = (process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || "").trim().replace(/^OAuth\s+|^Bearer\s+/i, "");
+          const token = (process.env.YW_TOKEN || process.env.YANDEX_OAUTH_TOKEN || process.env.YD_TOKEN || process.env.YM_TOKEN || "").trim().replace(/^OAuth\s+|^Bearer\s+/i, "");
           if (!token) throw new Error("Webmaster token missing");
           async function get(path) {
            const r = await fetch("https://api.webmaster.yandex.net/v4/"+path, {headers:{Authorization:"OAuth "+token},signal:AbortSignal.timeout(30000)});
