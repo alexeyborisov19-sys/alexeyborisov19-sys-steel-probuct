@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Metadata } from "next";
 import { metadata as metalBodiesMetadata } from "@/app/(public)/products/metallicheskie-korpusa/page";
-import { metadata as basketsMetadata } from "@/app/(public)/products/korziny-dlya-konditsionerov/page";
+import { basketPageMetadata as basketsMetadata } from "@/data/basket-page-metadata";
 import { generateMetadata as generateSolutionMetadata } from "@/app/(public)/solutions/[slug]/page";
 import { commercialProductLandingBySlug } from "@/data/commercial-product-landings";
 import { solutionDetailBySlug } from "@/data/solution-details";

@@ -1,3 +1,7 @@
+## Release CI recovery - 4 October 2026
+
+HEAD93cba44 CI37226888362/37226888359 failed one SEO test module before assertions: Node/tsx cannot execute the new CSS module pulled by a page metadata import. All1551 executed assertions passed. NEXT ACTION: isolate unchanged basket metadata from UI imports, retain every SEO assertion, repeat complete checks before publication.
+
 ## Release checkpoint - basket publication authorized, 4 October 2026
 
 Owner explicitly requests publication of the reviewed calculator. Candidate0052b52 is combined with current main741340b; its unrelated SEO updates are preserved. The free-services conflict keeps the later owner-approved wording with only the calculated price. Local-only restriction is superseded for this release. DONE: prior basket47 tests and responsive browser checks; independent UI/API review found no code blockers. IN PROGRESS: exact-head release CI, production deployment and live checks including custom dimensions requiring private rates. NEXT ACTION: reuse PR232, verify checks, merge and validate live. No checkout/payment, legal/consent or advertising changes.
