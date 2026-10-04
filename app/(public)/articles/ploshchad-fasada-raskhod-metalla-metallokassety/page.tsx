@@ -6,7 +6,7 @@ import { articleSchema, faqSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 const path = "/articles/ploshchad-fasada-raskhod-metalla-metallokassety";
-const title = "Расход металла на фасаде: русты и замки";
+const title = "Расчёт фасадных металлокассет: русты и расход металла";
 const description = "Почему площадь фасада не равна расходу металла: русты, крайние кассеты, замковый стык закрытого типа, проёмы и правильный предварительный расчёт.";
 
 export const metadata: Metadata = createPageMetadata({
@@ -66,7 +66,7 @@ export default function FacadeAreaMetalConsumptionArticle() {
           { name: "Расход металла на фасаде", path },
         ]}
         eyebrow="Инженерный журнал · Фасадная практика"
-        title="Почему площадь фасада не равна площади металла"
+        title="Расчёт фасадных металлокассет: почему площади недостаточно"
         description="Русты, замки, крайние кассеты и проёмы меняют количество изделий и фактический расход. Разбираем расчёт без производственных формул и без иллюзии точности там, где нужна раскладка."
         image="/images/web/hero-main.webp"
       >
