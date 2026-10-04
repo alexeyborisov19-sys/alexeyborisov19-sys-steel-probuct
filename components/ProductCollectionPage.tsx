@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AttributionLink as Link } from "./AttributionLink";
 import { PageLayout } from "@/components/PageLayout";
 import { ProductCard } from "@/components/ProductCard";
 import { FaqSection } from "@/components/FaqSection";

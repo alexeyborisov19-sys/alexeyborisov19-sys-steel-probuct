@@ -3,7 +3,7 @@ import { chromium, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const base = process.env.BROWSER_AUDIT_BASE_URL || 'http://127.0.0.1:3020';
-const browser = await chromium.launch();
+const browser = await chromium.launch({ ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}) });
 const results = [];
 const cases = [
   ['/production/gibka-listovogo-metalla', 2],
@@ -47,6 +47,27 @@ try {
       results.push({ path, width, guideCount: count, attribution: true, accessibilityViolations: 0 });
       await context.close();
     }
+  }
+  for (const path of ['/products/dobornye-elementy', '/products/metallicheskie-korpusa', '/products/korziny-dlya-konditsionerov', '/products/ventilyacionnye-reshetki', '/products/zakladnye-detali', '/solutions/industry', '/solutions/climate', '/solutions/custom', '/solutions/engineering']) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+    await context.route('**/*', route => {
+      const request = route.request();
+      if (!['GET', 'HEAD'].includes(request.method()) || new URL(request.url()).origin !== new URL(base).origin) return route.abort();
+      return route.continue();
+    });
+    const page = await context.newPage();
+    await page.goto(`${base}${path}?utm_campaign=commercial-check&yclid=456`, { waitUntil: 'networkidle' });
+    console.log('Checking all enquiry links: ' + path);
+    const enquiryLinks = page.locator('main a[href*="/contacts"][href*="contact-form"]');
+    assert.ok(await enquiryLinks.count() >= 3, `Expected all enquiry links on ${path}`);
+    for (const link of await enquiryLinks.all()) {
+      await expect.poll(async () => {
+        const target = new URL(await link.getAttribute('href'), base);
+        return [target.pathname, target.searchParams.get('utm_campaign'), target.searchParams.get('yclid'), target.hash];
+      }).toEqual(['/contacts', 'commercial-check', '456', '#contact-form']);
+    }
+    results.push({ path, width: 390, enquiryLinks: await enquiryLinks.count(), attribution: true });
+    await context.close();
   }
   console.log(JSON.stringify(results, null, 2));
 } finally { await browser.close(); }
