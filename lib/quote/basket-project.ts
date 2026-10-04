@@ -18,6 +18,7 @@ function clean(items: unknown): BasketBrief[] {
     const design = v.design
       ? {
           version: 1 as const,
+          ...(v.design.sizing ? { sizing: v.design.sizing } : {}),
           blockWidth: v.design.blockWidth,
           blockHeight: v.design.blockHeight,
           blockDepth: v.design.blockDepth,

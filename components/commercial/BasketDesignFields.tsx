@@ -1,7 +1,7 @@
 "use client";
 import { BasketVolumePrice } from "./BasketVolumePrice";
 import { BasketCutComparison } from "./BasketCutComparison";
-import { BasketFitFields, BasketFitResult } from "./BasketFitFields";
+import { BasketFitResult } from "./BasketFitFields";
 import { BasketNumberInput } from "./BasketNumberInput";
 import { basketReference } from "@/lib/quote/basket-reference";
 import {
@@ -150,9 +150,6 @@ export function BasketDesignFields({
       <h3 className="text-xl font-semibold">Блок и крепление</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">Укажите известные данные из паспорта кондиционера. Остальное можно уточнить с инженером.</p>
       <div className="mt-5 grid grid-cols-2 gap-4">
-        {number("blockWidth", "Ширина блока, мм", 10000)}
-        {number("blockHeight", "Высота блока, мм", 10000)}
-        {number("blockDepth", "Глубина блока, мм", 10000)}
         {number("mass", "Масса блока, кг", 2000)}
       </div>
       <label className="mt-5 block text-sm font-medium text-slate-700">
@@ -167,7 +164,7 @@ export function BasketDesignFields({
         {number("facade", "Толщина фасада от стены, мм", 2000)}
         {number("offset", "Отступ от облицовки, мм", 2000)}
       </div>
-      <BasketFitFields value={design.fit} onChange={(fit) => onChange({ ...design, fit })} />
+      <p className="mt-4 text-sm text-slate-600">Размеры блока и зазоры задаются один раз на первом шаге «Размеры».</p>
       <p className="mt-4 text-xs leading-5 text-slate-600">Толщина фасада и отступ помогают определить вылет крепления. Сечение, толщину металла и анкеры проверяем по нагрузке и основанию.</p>
     </div>
   );
@@ -194,7 +191,7 @@ export function BasketDesignFields({
   return (
     <div className="text-slate-800">
       <h3 className="text-xl font-semibold">Ваша корзина</h3>
-      <p className="mt-2 text-sm text-slate-600">{width} × {height} × {depth} мм · {quantity} шт.</p>
+      <p className="mt-2 text-sm text-slate-600">{design.sizing === "block" ? "Расчётный внутренний размер" : "Наружный размер"}: {width} × {height} × {depth} мм · {quantity} шт.</p>
       <p className="mt-3 text-sm text-slate-600">Передняя и две боковые панели. Без верхней крышки. Корзина закрепляется на кронштейнах наружного блока; задние отгибы не крепятся к стене.</p>
       <dl className="mt-5 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white px-4 text-sm">
         <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Передняя панель</dt><dd className="font-medium">{panelPatterns[design.front.pattern]}</dd></div>
@@ -219,7 +216,7 @@ export function BasketDesignFields({
           </>
         )}
         <BasketCutComparison design={design} width={width} height={height} depth={depth} quantity={quantity} />
-        <BasketFitResult fit={design.fit} width={width} height={height} depth={depth} />
+        <BasketFitResult calculated={design.sizing === "block"} fit={design.fit} width={width} height={height} depth={depth} />
         <details className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
           <summary className="cursor-pointer text-sm font-semibold">Состав производственного образца 1180 × 630 × 510 мм</summary>
           <p className="mt-3 text-sm leading-6 text-slate-600">По сборочному чертежу. Образец состава не подтверждает пригодность для выбранного блока или фасада. При изменении размеров и крепления состав пересматривается.</p>

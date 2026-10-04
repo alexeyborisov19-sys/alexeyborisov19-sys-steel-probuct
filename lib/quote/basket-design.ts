@@ -17,6 +17,7 @@ export type PanelPattern = {
 };
 export type BasketDesign = {
   version: 1;
+  sizing?: "basket" | "block";
   capacityClass?: number;
   fit?: BasketFit;
   blockWidth: number;
@@ -79,6 +80,7 @@ export function validBasketDesign(v: unknown): v is BasketDesign {
   const d = v as BasketDesign;
   return (
     d.version === 1 &&
+    (d.sizing === undefined || d.sizing === "basket" || d.sizing === "block") &&
     (d.fit === undefined || validBasketFit(d.fit)) &&
     (d.capacityClass === undefined ||
       [7, 9, 12, 18, 24, 36].includes(d.capacityClass)) &&

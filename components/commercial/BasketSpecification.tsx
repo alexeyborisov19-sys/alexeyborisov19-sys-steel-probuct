@@ -143,6 +143,7 @@ export function BasketSpecification({
                     <td className="p-3">{i + 1}</td>
                     <td className="whitespace-nowrap p-3">
                       {x.width} × {x.height} × {x.depth}
+                      <span className="mt-1 block text-xs text-slate-600">{x.design?.sizing === "block" ? "внутренний расчётный" : "наружный"}</span>
                     </td>
                     <td className="p-3">{x.quantity}</td>
                     <td className="p-3">{x.ral}</td>

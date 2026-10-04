@@ -22,6 +22,15 @@ export const emptyBasketFit = (): BasketFit => ({
   front: null,
   rear: null,
 });
+/** Preserve entered data when changing input mode, but clear invalid drafts. */
+export function normalizedBasketFit(fit?: BasketFit): BasketFit | undefined {
+  if (!fit) return undefined;
+  return Object.fromEntries((Object.keys(fitLabels) as (keyof BasketFit)[]).map(k => {
+    const value = fit[k];
+    const min = ["width", "height", "depth"].includes(k) ? 1 : 0;
+    return [k, typeof value === "number" && Number.isFinite(value) && value >= min && value <= 10000 ? value : null];
+  })) as BasketFit;
+}
 export function validBasketFit(value: unknown): value is BasketFit {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const x = value as BasketFit;
@@ -45,6 +54,16 @@ export function requiredBasketSpace(fit?: BasketFit) {
     width: fit.width! + fit.left! + fit.right!,
     height: fit.height! + fit.top! + fit.bottom!,
     depth: fit.depth! + fit.front! + fit.rear!,
+  };
+}
+/** Quoting envelope, not fabricated outside dimensions or an airflow standard. */
+export function calculatedBasketSize(fit?: BasketFit) {
+  const required = requiredBasketSpace(fit);
+  if (!required || Object.values(required).some(n => n <= 0 || n > 10000)) return null;
+  return {
+    width: Math.ceil(required.width),
+    height: Math.ceil(required.height),
+    depth: Math.ceil(required.depth),
   };
 }
 export function basketFitSummary(fit?: BasketFit) {
