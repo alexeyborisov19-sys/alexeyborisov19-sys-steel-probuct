@@ -1,3 +1,4 @@
+import { AttributionLink } from "@/components/AttributionLink";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -364,17 +365,17 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 </ul>
               </div>
 
-              <Link
+              <AttributionLink
                 href="/contacts#contact-form"
                 className="clip-corner mt-7 block bg-steel-orange-deep px-5 py-4 text-center text-xs font-bold uppercase transition hover:bg-steel-orange-deeper"
               >
                 Передать задачу инженеру&nbsp; →
-              </Link>
+              </AttributionLink>
               <div className="mt-5 border-t border-white/15 pt-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-white/70">По теме статьи</p>
-                <Link href={article.related.href} className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold leading-6 text-steel-orange hover:underline">
+                <AttributionLink href={article.related.href} className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold leading-6 text-steel-orange hover:underline">
                   {article.related.label}&nbsp; →
-                </Link>
+                </AttributionLink>
               </div>
             </aside>
           </div>
@@ -416,9 +417,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 Получим исходные данные, проверим задачу и предложим следующий технический шаг.
               </p>
             </div>
-            <Link href={article.related.href} className="shrink-0 text-xs font-bold uppercase text-steel-orange">
+            <AttributionLink href={article.related.href} className="shrink-0 text-xs font-bold uppercase text-steel-orange">
               {article.related.label}&nbsp; →
-            </Link>
+            </AttributionLink>
           </div>
         </section>
       </main>

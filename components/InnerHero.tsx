@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import { AttributionLink } from "./AttributionLink";
 import { innerHeroOffset } from "@/data/site-mode";
 import { siteConfig } from "@/lib/site";
@@ -44,7 +43,7 @@ export function InnerHero({
         <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/72">{description}</p>
         <div className="mt-9 flex flex-wrap gap-3">
           <AttributionLink href="/contacts#contact-form" className="clip-corner bg-steel-orange-deep px-7 py-4 text-sm font-bold">{primaryLabel}</AttributionLink>
-          <Link href={secondaryHref} className="clip-corner border border-white/45 px-7 py-4 text-sm font-bold">{secondaryLabel}</Link>
+          <AttributionLink href={secondaryHref} className="clip-corner border border-white/45 px-7 py-4 text-sm font-bold">{secondaryLabel}</AttributionLink>
         </div>
         {enquirySupport ? <div data-enquiry-support className="mt-4 max-w-2xl">
           <p className="text-sm leading-6 text-white/80">Можно без чертежа: опишите изделие и количество. Недостающие данные уточнит инженер.</p>
