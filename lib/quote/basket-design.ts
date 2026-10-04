@@ -1,6 +1,8 @@
 import { validBasketFit, basketFitSummary, type BasketFit } from "./basket-fit";
+import { basketMountingDimensions } from "./basket-mounting";
 /** Geometry of a user-defined rectangular panel field, not a shop flat pattern. */
 export const panelPatterns = {
+  "wide-slots": "10 длинных прорезей",
   round: "Круглые отверстия",
   slots: "Продольные отверстия",
   solid: "Без перфорации",
@@ -16,6 +18,8 @@ export type PanelPattern = {
 };
 export type BasketDesign = {
   version: 1;
+  sizing?: "basket" | "block";
+  wallKind?: "wall" | "ventilated" | "unknown";
   capacityClass?: number;
   fit?: BasketFit;
   blockWidth: number;
@@ -78,6 +82,8 @@ export function validBasketDesign(v: unknown): v is BasketDesign {
   const d = v as BasketDesign;
   return (
     d.version === 1 &&
+    (d.sizing === undefined || d.sizing === "basket" || d.sizing === "block") &&
+    (d.wallKind === undefined || ["wall", "ventilated", "unknown"].includes(d.wallKind)) &&
     (d.fit === undefined || validBasketFit(d.fit)) &&
     (d.capacityClass === undefined ||
       [7, 9, 12, 18, 24, 36].includes(d.capacityClass)) &&
@@ -86,7 +92,7 @@ export function validBasketDesign(v: unknown): v is BasketDesign {
     ) &&
     bounded(d.mass, 0, 2000) &&
     (d.facade === null || bounded(d.facade, 0, 2000)) &&
-    (d.offset === null || bounded(d.offset, 0, 2000)) &&
+    (d.offset === null || bounded(d.offset, 0, 10000)) &&
     ["existing", "bearing", "unknown"].includes(d.mount) &&
     validPanel(d.front) &&
     validPanel(d.side)
@@ -95,6 +101,8 @@ export function validBasketDesign(v: unknown): v is BasketDesign {
 export function panelCutting(width: number, height: number, p: PanelPattern) {
   if (!bounded(width, 1, 10000) || !bounded(height, 1, 10000) || !validPanel(p))
     throw Error("Некорректные параметры панели");
+  // Wide-slot count is confirmed; width/margins are not a fabrication specification yet.
+  if (p.pattern === "wide-slots") return { known:false, holes:10, rows:10, cols:1, cutLengthM:0, openPercent:0, grossAreaM2:width*height/1e6 };
   const known = p.pattern !== "custom" && p.pattern !== "lamella";
   const holeWidth = p.pattern === "slots" ? p.slotLength : p.diameter;
   const cols = Math.max(
@@ -130,12 +138,15 @@ export function bracketSelection(d: BasketDesign) {
     required: d.mount !== "existing",
     thicknessMm: null,
     facadeOffsetMm:
-      d.facade === null || d.offset === null ? null : d.facade + d.offset,
+      basketMountingDimensions(d).wallToBlockRearMm,
     status: d.mount === "existing" ? "existing-supports" : "engineering-review",
   } as const;
 }
 export function basketDesignSummary(d: BasketDesign) {
+  const mounting = basketMountingDimensions(d);
+  const mm = (n: number | null) => n === null ? "неизвестно" : `${n} мм`;
   const panel = (p: PanelPattern) =>
+    p.pattern === "wide-slots" ? "10 длинных продолговатых прорезей по ширине панели; ширина отверстий и краевые отступы уточняются по чертежу" :
     `${panelPatterns[p.pattern]}; отверстие ${p.diameter} мм${p.pattern === "slots" ? `, длина ${p.slotLength} мм` : ""}; шаг ${p.pitch} мм; поле от края ${p.margin} мм`;
   return [
     ...(d.capacityClass
@@ -144,12 +155,16 @@ export function basketDesignSummary(d: BasketDesign) {
         ]
       : []),
     `Блок (Ш × В × Г): ${d.blockWidth || "неизвестно"} × ${d.blockHeight || "неизвестно"} × ${d.blockDepth || "неизвестно"} мм; масса: ${d.mass ? `${d.mass} кг` : "неизвестна"}.`,
-    `Фасад от несущей стены: ${d.facade === null ? "неизвестно" : `${d.facade} мм`}; отступ от облицовки: ${d.offset === null ? "неизвестно" : `${d.offset} мм`} (эти значения не равны полной длине кронштейна).`,
-    `Опоры блока: ${d.mount === "existing" ? "существующие; нужны крепления экрана" : d.mount === "bearing" ? "нужны несущие кронштейны" : "тип необходимо уточнить"}.`,
+    `Основание крепления кронштейнов: ${mounting.wallKind === "wall" ? "непосредственно несущая стена, без выноса через фасад" : mounting.wallKind === "ventilated" ? "несущая стена за вентфасадом" : "необходимо уточнить"}.`,
+    `Фасад от несущей стены: ${mm(mounting.facadeMm)}; задний зазор от стены / облицовки до блока: ${mm(mounting.rearMm)}.`,
+    `Предварительно от несущей стены до задней стенки блока: ${mm(mounting.wallToBlockRearMm)}. Это не полная длина кронштейна: дополнительно учитываются опоры блока и крепление корзины.`,
+    `Опоры блока: ${d.mount === "existing" ? "существующие кронштейны блока; корзина крепится к этим кронштейнам" : d.mount === "bearing" ? "нужны несущие кронштейны" : "тип необходимо уточнить"}.`,
     basketFitSummary(d.fit),
     "Толщина кронштейнов: требуется подбор по проверенной конструкции, основанию и нагрузкам.",
+    "Конструкция: передняя и две боковые панели, без верхней крышки. Задние отгибы не крепятся к стене; корзина закрепляется только на кронштейнах наружного блока.",
     `Передняя панель: ${panel(d.front)}.`,
     `Боковые панели: ${panel(d.side)}.`,
+    "Все расчёты приблизительные: размеры, крепление и окончательная стоимость уточняются по модели блока и проекту фасада.",
     "Перфорация рассчитана для прямоугольных полей; развёртки, гибы, крепёжные зоны, вентиляция и несущая способность требуют проверки.",
   ].join("\n");
 }

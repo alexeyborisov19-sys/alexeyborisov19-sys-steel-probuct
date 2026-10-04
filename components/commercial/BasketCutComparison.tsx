@@ -57,12 +57,12 @@ export function BasketCutComparison({
     })
     .filter((x) => x !== null);
   return (
-    <details className="mt-5 border border-white/25 p-4">
+    <details className="mt-5 border border-slate-300 p-4">
       <summary className="cursor-pointer font-semibold">
         Сравнить трудоёмкость перфорации
       </summary>
-      <p className="mt-3 text-sm text-white/75">
-        Сравнение при тех же габаритах и диаметрах: увеличиваем шаг отверстий на
+      <p className="mt-3 text-sm text-slate-600">
+        Приблизительное сравнение при тех же габаритах и диаметрах: увеличиваем шаг отверстий на
         всех перфорированных панелях. Это длина реза и число отверстий, не цена.
         Больший шаг снижает открытую площадь; вариант требует проверки
         вентиляции. Выбранный рисунок не изменяется.
@@ -103,7 +103,7 @@ export function BasketCutComparison({
         {(rows[0].holes * quantity).toLocaleString("ru-RU")} отверстий в трёх
         панелях на каждую корзину. Без технологических вырезов и припусков.
       </p>
-      <p className="mt-3 text-sm text-white/75">
+      <p className="mt-3 text-sm text-slate-600">
         Полная цена складывается из металла и отходов раскроя, резки и врезок,
         гибки, каркаса и кронштейнов, крепежа, подготовки и окраски, сборки и
         упаковки. Ставки и комплектацию ещё нужно подтвердить.

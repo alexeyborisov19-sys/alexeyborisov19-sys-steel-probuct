@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { basketBriefSummary, basketBriefHref } from "../lib/quote/basket-brief";
+import { defaultBasketDesign } from "../lib/quote/basket-design";
 const input = {
   width: 1000,
   height: 700,
@@ -41,3 +42,29 @@ test("unrelated form handoffs are ignored", () =>
     basketBriefSummary(new URLSearchParams("source=online-order")),
     null,
   ));
+
+test("wide slots retain their name in the contact query and TXT brief", () => {
+  const design = defaultBasketDesign();
+  design.front.pattern = "wide-slots";
+  design.side.pattern = "wide-slots";
+  const url = new URL(basketBriefHref({ ...input, screen: "wide-slots", design }), "https://www.steelprodukt.ru");
+  assert.equal(url.searchParams.get("basketScreen"), "wide-slots");
+  assert.equal(url.pathname, "/contacts");
+  assert.equal(url.hash, "#contact-form");
+  const summary = basketBriefSummary(url.searchParams) ?? "";
+  assert.match(summary, /Экран: 10 длинных прорезей\./);
+  assert.match(summary, /Передняя панель: 10 длинных продолговатых прорезей/);
+  assert.doesNotMatch(summary, /Рисунок по проекту/);
+  // Older saved links used "custom" for every non-round/short-slot pattern.
+  url.searchParams.set("basketScreen", "custom");
+  assert.match(basketBriefSummary(url.searchParams) ?? "", /Экран: 10 длинных прорезей\./);
+  const normalized = new URL(basketBriefHref({ ...input, screen: "custom", design }), "https://www.steelprodukt.ru");
+  assert.equal(normalized.searchParams.get("basketScreen"), "wide-slots");
+});
+
+test("lamella and solid panels also keep distinct short descriptions", () => {
+  for (const [screen, label] of [["lamella", "Ламели"], ["solid", "Без перфорации"]]) {
+    const url = new URL(basketBriefHref({ ...input, screen }), "https://www.steelprodukt.ru");
+    assert.ok(basketBriefSummary(url.searchParams)?.includes(`Экран: ${label}.`));
+  }
+});

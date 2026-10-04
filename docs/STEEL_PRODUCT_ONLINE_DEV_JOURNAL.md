@@ -1,3 +1,26 @@
+## Release CI recovery - 4 October 2026
+
+HEAD93cba44 CI37226888362/37226888359 failed one SEO test module before assertions: Node/tsx cannot execute the new CSS module pulled by a page metadata import. All1551 executed assertions passed. NEXT ACTION: isolate unchanged basket metadata from UI imports, retain every SEO assertion, repeat complete checks before publication.
+
+## Release checkpoint - basket publication authorized, 4 October 2026
+
+Owner explicitly requests publication of the reviewed calculator. Candidate0052b52 is combined with current main741340b; its unrelated SEO updates are preserved. The free-services conflict keeps the later owner-approved wording with only the calculated price. Local-only restriction is superseded for this release. DONE: prior basket47 tests and responsive browser checks; independent UI/API review found no code blockers. IN PROGRESS: exact-head release CI, production deployment and live checks including custom dimensions requiring private rates. NEXT ACTION: reuse PR232, verify checks, merge and validate live. No checkout/payment, legal/consent or advertising changes.
+
+## Live checkpoint — wall and ventilated facade, 4 October 2026
+
+Base ce4d9af (clean local branch before edits). DONE: direct-wall and ventilated-facade choices; wall uses no additional facade layer, ventilated facade uses full wall-to-cladding depth plus the existing rear gap. Shared gap is counted once and preserved between sizing modes, mount step, engineer/TXT brief and JSON. No change to basket price when only facade depth changes. Optional100mm example linked to the specific Mitsubishi model instruction; no universal clearance or bracket thickness invented. All calculation outputs are marked approximate. 47 focused tests and production build/type/lint passed. Browser mounting workflow320/390/1440 and automatic sizing390/1440 passed without axe/runtime/overflow failures; screenshot review completed. Local preview3158 updated; no production publication, real enquiry or change to consent/approved prices. Details and primary references: docs/baskets/mounting-selection-20261004.md. NEXT ACTION: owner reviews the local calculator; bracket structural design remains subject to verified unit/support data.
+
+## Live checkpoint — sizing and automatic basket estimate, 4 October 2026
+
+Base de0f85a (local visual preview, not published). Owner requests immediate sizing and calculation when the outdoor-unit envelope and clearances are known. DONE: block + six clearances automatically determine the quoting envelope; mode persists through save/import and exact brief; duplicate dimensional input removed. Server-only price adapter uses existing private rates and calibrated owner quantity tiers; coefficients/rates never returned. 37 focused tests, build/type/lint passed. Browser auto-sizing390/1440 and full workflow320/390/768/1440 passed with no axe/runtime/overflow failures. Independent review regressions fixed: legacy-pattern restoration, inner/outer labels, invalid draft mode switch. Preview3158 configured with existing private basis and local rate-limit salt. NEXT ACTION: owner reviews local calculator. No website publication; no new bearing-bracket price/load capacity inferred.
+
+## Live checkpoint — basket visual preview, 4 October 2026
+
+Base d12c47ea5e9e859b970ced22d619b13d82112575 (unchanged prior price-display candidate). Current redesign is local for owner review; not a published release. DONE: four-step light calculator, photorealistic open-top reference and reactive pattern/RAL model, keyboard inputs, specification import/export, 10-slot approved price eligibility, corrected common-bracket mounting description. Independent review findings corrected: invalid hidden settings, visible insufficient-space warning, exact pattern in exports and old-project imports, pattern-independent 10-slot preview. Build/lint, focused tests and responsive browser checks are recorded in docs/baskets/visual-preview-20261004.md. DONE: final production build, ESLint, all21 focused tests, four responsive browser runs and actual photo decode. Preview prepared for3158. NEXT ACTION: owner reviews local design; any later publication requires exact-commit checks and live verification. No change to legal/consent, advertising or other calculators; no fake real enquiry sent.
+
+## 2026-10-04 — Simplify customer price display
+Owner requests removal of base-price and quantity-tier displays. Preserved approved quantity calculation internally. Show preliminary result for supported 900×600×550 dimensions only; other dimensions retain engineer quote instead of misleading baseline. No invented custom-price formula. Build, lint, quantity boundary test passed; local preview updated.
+
 ## 2026-10-04 — Owner authorizes publication of basket calculator and free-services navigation
 Latest user explicitly requests publication, superseding local-only restriction for this basket/site change. Homepage and tools list share five service entries; basket SEO metadata updated. No checkout/payment enabled. Release pending exact-head tests and deployment verification.
 

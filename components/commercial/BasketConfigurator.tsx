@@ -1,492 +1,154 @@
 "use client";
 
-import { BasketGuide } from "./BasketGuide";
+import { useRef, useState } from "react";
+import { BasketAppearance } from "./BasketAppearance";
 import { BasketAcReference } from "./BasketAcReference";
-import { useState } from "react";
-import { defaultBasketDesign } from "@/lib/quote/basket-design";
+import { BasketFitFields } from "./BasketFitFields";
+import { BasketVolumePrice } from "./BasketVolumePrice";
+import { calculatedBasketSize, requiredBasketSpace } from "@/lib/quote/basket-fit";
+import { basketFitForSizing } from "@/lib/quote/basket-mounting";
+import { defaultBasketDesign, type BasketDesign } from "@/lib/quote/basket-design";
 import { BasketSpecification } from "./BasketSpecification";
 import type { BasketBrief } from "@/lib/quote/basket-brief";
 import { BasketDesignFields } from "./BasketDesignFields";
 import { AttributionLink } from "@/components/AttributionLink";
-import {
-  basketBriefHref,
-  basketBriefSummary,
-  basketColors,
-  basketScreens,
-  basketSizeExamples,
-  validBasketBrief,
-} from "@/lib/quote/basket-brief";
+import { basketBriefHref, basketBriefSummary, basketColors, basketSizeExamples, validBasketBrief } from "@/lib/quote/basket-brief";
+import styles from "./BasketConfigurator.module.css";
 
+const steps = [
+  { title: "Размеры", caption: "Габариты и количество", stage: 0 },
+  { title: "Исполнение", caption: "Рисунок и цвет", stage: 2 },
+  { title: "Крепление", caption: "Блок и фасад", stage: 1 },
+  { title: "Результат", caption: "Стоимость и задание", stage: 3 },
+];
 export function BasketConfigurator() {
   const [items, setItems] = useState<BasketBrief[]>([]);
   const [editing, setEditing] = useState<number | null>(null);
   const [saved, setSaved] = useState("");
   const [step, setStep] = useState(0);
-  const [design, setDesign] = useState(defaultBasketDesign);
-  const [dimensions, setDimensions] = useState({
-    width: "1000",
-    height: "700",
-    depth: "550",
-    quantity: "1",
-  });
+  const [design, setDesign] = useState<BasketDesign>(() => { const d = defaultBasketDesign(); return {...d, sizing:"block" as const, front:{...d.front,pattern:"wide-slots" as const}, side:{...d.side,pattern:"wide-slots" as const}}; });
+  const [dimensions, setDimensions] = useState({ width: "900", height: "600", depth: "550", quantity: "1" });
   const [ral, setRal] = useState("7024");
-  const screen =
-    design.front.pattern === "round" || design.front.pattern === "slots"
-      ? design.front.pattern
-      : "custom";
-  const input = {
-    width: Number(dimensions.width),
-    height: Number(dimensions.height),
-    depth: Number(dimensions.depth),
-    quantity: Number(dimensions.quantity),
-    ral,
-    screen,
-    design,
-  };
-  const valid =
-    Object.values(dimensions).every((value) => /^\d+$/.test(value)) &&
-    validBasketBrief(input);
+  const heading = useRef<HTMLDivElement>(null);
+  const screen = design.front.pattern;
+  const byBlock = design.sizing === "block";
+  const calculated = calculatedBasketSize(design.fit);
+  const selectedDimensions = byBlock ? {
+    width: calculated ? String(calculated.width) : "",
+    height: calculated ? String(calculated.height) : "",
+    depth: calculated ? String(calculated.depth) : "",
+    quantity: dimensions.quantity,
+  } : dimensions;
+  const input = { width: Number(selectedDimensions.width), height: Number(selectedDimensions.height), depth: Number(selectedDimensions.depth), quantity: Number(selectedDimensions.quantity), ral, screen, design };
+  const dimensionsValid = Object.values(selectedDimensions).every((v) => /^\d+$/.test(v) && Number(v) > 0 && Number(v) <= 10000);
+  const valid = dimensionsValid && validBasketBrief(input);
+  const requiredSpace = requiredBasketSpace(design.fit);
+  const tooSmall = !byBlock && requiredSpace && dimensionsValid && (input.width <= requiredSpace.width || input.height <= requiredSpace.height || input.depth <= requiredSpace.depth);
   const color = basketColors.find((c) => c.ral === ral)!;
   const href = valid ? basketBriefHref(input) : "";
-  const summary = valid
-    ? basketBriefSummary(new URLSearchParams(href.split("?")[1].split("#")[0]))!
-    : "";
-  const scale = valid
-    ? Math.min(275 / input.width, 220 / input.height, 110 / input.depth)
-    : 0.25;
-  const w = valid ? input.width * scale : 250,
-    h = valid ? input.height * scale : 175,
-    d = valid ? input.depth * scale * 0.65 : 70;
-  const x = 85,
-    y = 110;
+  const summary = valid ? basketBriefSummary(new URLSearchParams(href.split("?")[1].split("#")[0]))! : "";
+  function go(next: number) {
+    setStep(next);
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }
   function download() {
-    const url = URL.createObjectURL(
-      new Blob(["\uFEFF" + summary], { type: "text/plain;charset=utf-8" }),
-    );
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Задание-корзины.txt";
-    a.click();
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + summary], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a"); a.href = url; a.download = "Задание-корзины.txt"; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return (
-    <div
-      className="mt-8 grid overflow-hidden border border-white/15 lg:grid-cols-[1fr_1.05fr]"
-      data-basket-configurator
-    >
-      <header className="bg-[#eef0ed] p-5 text-[#25292c] sm:p-8 lg:col-span-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-[#9a3b00]">
-          Подбор корзины · 4 шага
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
-          От размеров блока — к понятному заданию
-        </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6">
-          Подберите размеры, крепление и оформление. Неизвестные данные можно
-          уточнить с инженером. В конце — спецификация для сохранения; цена
-          подтверждается после проверки комплектации.
-        </p>
+    <div className={styles.studio} data-basket-configurator>
+      <header className={styles.header}>
+        <div><p className={styles.eyebrow}>СТАЛЬ ПРОДУКТ / КОНФИГУРАТОР</p>
+          <h2>Ваша корзина.<br /><span>В деталях.</span></h2>
+          <p>Размеры, рисунок и цвет — соберите исполнение для своего фасада.</p>
+        </div>
+        <span className={styles.free}>Бесплатно · без регистрации</span>
       </header>
-      <nav
-        aria-label="Шаги подбора корзины"
-        className="flex flex-wrap gap-2 border-b border-white/15 bg-[#181c1f] p-4 lg:col-span-2"
-      >
-        {["Размеры и цвет", "Блок и крепление", "Перфорация", "Результат"].map(
-          (label, i) => (
-            <button
-              key={label}
-              type="button"
-              aria-current={step === i ? "step" : undefined}
-              onClick={() => setStep(i)}
-              className={`min-h-11 rounded px-3 py-2 text-sm ${step === i ? "bg-steel-orange-deep font-semibold" : "border border-white/25"}`}
-            >
-              {i + 1}. {label}
-            </button>
-          ),
-        )}
+      <nav aria-label="Шаги подбора корзины" className={styles.steps}>
+        {steps.map((s, i) => <button type="button" key={s.title} aria-current={step === i ? "step" : undefined} onClick={() => go(i)}>
+          <span className={styles.stepNumber}>{String(i + 1).padStart(2, "0")}</span>
+          <span><strong>{s.title}</strong><small>{s.caption}</small></span>
+        </button>)}
       </nav>
-      <div className="flex flex-col bg-[#eef0ed] p-5 text-[#25292c] sm:p-9">
-        <BasketGuide step={step} />
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-bold uppercase tracking-widest">
-            Эскиз вашего задания
-          </span>
-          <span className="border border-black/20 px-2 py-1 font-mono text-xs">
-            Ш × В × Г
-          </span>
-        </div>
-        <svg
-          viewBox="0 0 480 420"
-          role="img"
-          aria-label={`Условная схема корзины: ${valid ? `${input.width} на ${input.height} на ${input.depth} миллиметров` : "уточните размеры"}`}
-          className={`w-full max-h-80 ${step === 1 || step === 2 ? "hidden" : ""}`}
-        >
-          <defs>
-            <pattern
-              id="basket-round"
-              width="13"
-              height="13"
-              patternUnits="userSpaceOnUse"
-            >
-              <circle cx="6" cy="6" r="2.2" fill="#111" opacity=".7" />
-            </pattern>
-            <pattern
-              id="basket-slots"
-              width="17"
-              height="15"
-              patternUnits="userSpaceOnUse"
-            >
-              <rect
-                x="4"
-                y="4"
-                width="10"
-                height="3"
-                fill="#111"
-                opacity=".7"
-              />
-            </pattern>
-          </defs>
-          <path
-            d={`M${x},${y} l${d},${-d * 0.6} h${w} v${h} l${-d},${d * 0.6}Z`}
-            fill={color.hex}
-            stroke="#222"
-            strokeWidth="1.5"
-          />
-          <path
-            d={`M${x + w},${y} l${d},${-d * 0.6} v${h} l${-d},${d * 0.6}Z`}
-            fill="#000"
-            opacity=".22"
-          />
-          <rect
-            x={x}
-            y={y}
-            width={w}
-            height={h}
-            fill={color.hex}
-            stroke="#222"
-            strokeWidth="1.5"
-          />
-          {screen !== "custom" && (
-            <rect
-              x={x + 10}
-              y={y + 10}
-              width={Math.max(1, w - 20)}
-              height={Math.max(1, h - 20)}
-              fill={`url(#basket-${screen})`}
-            />
-          )}
-          <g stroke="#60686c" fill="none">
-            <path
-              d={`M${x},${y + h + 18} v15 m0,-7 h${w} m0,-8 v15 M${x - 18},${y} h-15 m7,0 v${h} m-7,0 h15`}
-            />
-          </g>
-          <g fill="#25292c" fontSize="16" fontFamily="monospace">
-            <text x={x + w / 2} y={y + h + 52} textAnchor="middle">
-              Ш {valid ? input.width : "—"}
-            </text>
-            <text
-              x="25"
-              y={y + h / 2}
-              textAnchor="middle"
-              transform={`rotate(-90 25 ${y + h / 2})`}
-            >
-              В {valid ? input.height : "—"}
-            </text>
-            <text x={x + w + d / 2} y={y - 25 - d * 0.3} textAnchor="middle">
-              Г {valid ? input.depth : "—"}
-            </text>
-          </g>
-        </svg>
-        <p className="text-sm leading-6">
-          Условная схема, не рабочий чертёж. Цвет на экране приблизительный.
-          Крепёж, зазоры и конструкцию согласуем отдельно.
-        </p>
-      </div>
-      <div className="bg-[#181c1f] p-5 sm:p-9">
-        <div hidden={step !== 0}>
-          <BasketAcReference
-            value={design.capacityClass}
-            onChange={(capacityClass) =>
-              setDesign({ ...design, capacityClass })
-            }
-            onApply={([width, height, depth]) =>
-              setDimensions({
-                ...dimensions,
-                width: String(width),
-                height: String(height),
-                depth: String(depth),
-              })
-            }
-          />
-          <h3 className="text-xl font-semibold">Задайте габариты корзины</h3>
-          <p
-            id="basket-size-help"
-            className="mt-2 text-sm leading-6 text-white/75"
-          >
-            Наружные размеры, мм. Можно изменить любой размер. Это задание
-            инженеру, не автоматическая проверка совместимости.
-          </p>
-          <div
-            className="mt-5 flex flex-wrap gap-2"
-            aria-label="Примеры габаритов"
-          >
-            {basketSizeExamples.map((size) => (
-              <button
-                type="button"
-                key={size.width}
-                onClick={() =>
-                  setDimensions({
-                    ...dimensions,
-                    width: String(size.width),
-                    height: String(size.height),
-                    depth: String(size.depth),
-                  })
-                }
-                className="min-h-11 border border-white/25 px-3 py-2 font-mono text-xs hover:border-steel-orange focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange"
-              >
-                {size.width} × {size.height} × {size.depth}
-              </button>
-            ))}
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-4">
-            {(
-              [
-                { key: "width", label: "Ширина, мм" },
-                { key: "height", label: "Высота, мм" },
-                { key: "depth", label: "Глубина, мм" },
-                { key: "quantity", label: "Количество, шт." },
-              ] as const
-            ).map((field) => (
-              <label
-                key={field.key}
-                className="text-sm text-white/85"
-                htmlFor={`basket-${field.key}`}
-              >
-                {field.label}
-                <input
-                  id={`basket-${field.key}`}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  pattern="[0-9]*"
-                  value={dimensions[field.key]}
-                  aria-describedby="basket-size-help"
-                  onChange={(e) =>
-                    setDimensions({
-                      ...dimensions,
-                      [field.key]: e.target.value,
-                    })
-                  }
-                  className="mt-2 block min-h-12 w-full border border-white/25 bg-[#0d1114] px-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange"
-                />
-              </label>
-            ))}
-          </div>
-          <label
-            className="mt-5 block text-sm text-white/85"
-            htmlFor="basket-screen"
-          >
-            Исполнение экрана
-            <select
-              id="basket-screen"
-              value={screen}
-              onChange={(e) => {
-                const pattern = e.target.value as "round" | "slots" | "custom";
-                setDesign({
-                  ...design,
-                  front: {
-                    ...design.front,
-                    pattern,
-                    pitch: Math.max(
-                      design.front.pitch,
-                      design.front.slotLength + 5,
-                    ),
-                  },
-                  side: {
-                    ...design.side,
-                    pattern,
-                    pitch: Math.max(
-                      design.side.pitch,
-                      design.side.slotLength + 5,
-                    ),
-                  },
-                });
-              }}
-              className="mt-2 block min-h-12 w-full border border-white/25 bg-[#0d1114] px-3 text-base text-white"
-            >
-              {Object.entries(basketScreens).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <fieldset className="mt-5">
-            <legend className="text-sm text-white/85">
-              Цвет: RAL {ral} · {color.name}
-            </legend>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {basketColors.map((c) => (
-                <button
-                  type="button"
-                  key={c.ral}
-                  aria-label={`RAL ${c.ral}, ${c.name}`}
-                  aria-pressed={ral === c.ral}
-                  onClick={() => setRal(c.ral)}
-                  className={`min-h-11 min-w-11 border-2 p-1 ${ral === c.ral ? "border-steel-orange" : "border-white/25"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
-                >
-                  <span
-                    className="block h-7 w-7"
-                    style={{ backgroundColor: c.hex }}
-                  />
-                </button>
-              ))}
+      <div className={styles.workspace}>
+        <aside className={styles.preview} aria-label="Визуализация корзины">
+          <div className={styles.previewInner}>
+
+            <BasketAppearance width={input.width} height={input.height} depth={input.depth} color={color.hex} ral={ral} design={design} />
+            <div className={styles.summaryChips}>
+              <span><small>{byBlock ? "Расчётный внутренний размер" : "Наружные габариты"}, Ш × В × Г</small><b>{dimensionsValid ? `${input.width} × ${input.height} × ${input.depth}` : "Уточните размеры"}<em>{dimensionsValid ? " мм" : ""}</em></b></span>
+              <span><small>Количество</small><b>{dimensionsValid ? input.quantity : "—"}<em> шт.</em></b></span>
             </div>
-          </fieldset>
-          <p className="mt-3 text-xs leading-5 text-white/70">
-            Нужен другой RAL или фактура? Укажите их в заявке. Покрытие
-            подтверждается по образцу.
-          </p>
-        </div>
-        <BasketDesignFields
-          step={step}
-          design={design}
-          onChange={setDesign}
-          width={input.width}
-          height={input.height}
-          depth={input.depth}
-          quantity={input.quantity}
-        />
-        <div className="mt-5 flex justify-between gap-3">
-          <button
-            type="button"
-            disabled={step === 0}
-            onClick={() => setStep(step - 1)}
-            className="min-h-11 px-3 disabled:opacity-40"
-          >
-            ← Назад
-          </button>
-          {step < 3 && (
-            <button
-              type="button"
-              onClick={() => {
-                setStep(step + 1);
-                document
-                  .querySelector("[data-basket-configurator] nav")
-                  ?.scrollIntoView({ block: "start" });
-              }}
-              className="min-h-11 border border-steel-orange px-5"
-            >
-              Далее →
-            </button>
-          )}
-        </div>
-        <div className="mt-6" aria-live="polite">
-          {valid ? (
-            <p className="font-mono text-sm">
-              {input.width} × {input.height} × {input.depth} мм ·{" "}
-              {input.quantity} шт.
-            </p>
-          ) : (
-            <p className="text-sm text-orange-200">
-              Введите целые положительные размеры и количество до 10 000. Это
-              предел формы, не производственный допуск.
-            </p>
-          )}
-        </div>
-        <div
-          className={
-            step === 3 || editing !== null
-              ? "mt-4 flex flex-col gap-3"
-              : "hidden"
-          }
-        >
-          <button
-            type="button"
-            disabled={!valid || (items.length >= 100 && editing === null)}
-            className="min-h-12 border border-steel-orange px-4 py-3 font-semibold disabled:opacity-40"
-            onClick={() => {
-              const value = structuredClone(input);
-              if (editing === null) {
-                setItems([...items, value]);
-                setSaved("Позиция добавлена в спецификацию.");
-              } else {
-                setItems(items.map((x, i) => (i === editing ? value : x)));
-                setEditing(null);
-                setSaved("Изменения позиции сохранены.");
-              }
-            }}
-          >
-            {editing === null
-              ? "Добавить в спецификацию"
-              : `Сохранить позицию ${editing + 1}`}
-          </button>
-          {editing !== null && (
-            <button
-              type="button"
-              className="min-h-11 underline"
-              onClick={() => {
-                setEditing(null);
-                setSaved("");
-              }}
-            >
-              Отменить редактирование позиции
-            </button>
-          )}
-          <p role="status" className="text-sm">
-            {saved}
-          </p>
-          {valid ? (
-            <AttributionLink
-              href={href}
-              className="clip-corner bg-steel-orange-deep px-5 py-4 text-center text-sm font-bold"
-            >
-              Передать параметры инженеру →
-            </AttributionLink>
-          ) : (
-            <button
-              disabled
-              className="bg-white/10 px-5 py-4 text-sm text-white/60"
-            >
-              Уточните параметры
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={!valid}
-            onClick={download}
-            className="min-h-11 border border-white/25 px-5 py-3 text-sm font-semibold disabled:opacity-50"
-          >
-            Скачать задание · TXT ↓
-          </button>
+            <p className={styles.studioNote}>Вид модели меняется вместе с параметрами. Расчёт приблизительный; размеры и крепление уточняются перед изготовлением.</p>
+          </div>
+        </aside>
+        <div className={styles.editor}>
+          <div ref={heading} tabIndex={-1} className={styles.editorHeading}>
+            <p className={styles.eyebrow}>ШАГ {step + 1} ИЗ 4</p>
+            <h3>{["Начнём с размера", "Придайте корзине характер", "Уточним установку", "Проверьте ваше задание"][step]}</h3>
+          </div>
+          <div hidden={step !== 0}>
+            <div className="mb-5 flex gap-2" role="group" aria-label="Способ определения размеров">
+              {([['block','По размерам блока'],['basket','Знаю размер корзины']] as const).map(([value,label])=><button key={value} type="button" aria-pressed={(byBlock?'block':'basket')===value} onClick={()=>{
+                const fit=basketFitForSizing(design,value);
+                setDesign({...design,sizing:value,fit,...(fit?{offset:fit.rear,blockWidth:fit.width??0,blockHeight:fit.height??0,blockDepth:fit.depth??0}:{})});
+              }} className={`min-h-12 flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${((byBlock?'block':'basket')===value)?'border-[#283431] bg-[#283431] text-white':'border-slate-300 bg-white text-slate-700'}`}>{label}</button>)}
+            </div>
+            {byBlock ? <BasketFitFields value={design.fit} onChange={fit=>setDesign({...design,fit,offset:fit.rear,blockWidth:fit.width??0,blockHeight:fit.height??0,blockDepth:fit.depth??0})}/> : <>
+            <p className={styles.intro}>Выберите ориентир или введите свои наружные размеры.</p>
+            <div className={styles.presets} aria-label="Примеры габаритов">
+              {basketSizeExamples.map((s, i) => <button type="button" key={s.width}
+                aria-pressed={input.width === s.width && input.height === s.height && input.depth === s.depth}
+                onClick={() => setDimensions({ ...dimensions, width: String(s.width), height: String(s.height), depth: String(s.depth) })}>
+                <span>{["Компактная", "Средняя", "Большая", "Увеличенная"][i]}</span><b>{s.width} × {s.height} × {s.depth}</b>
+              </button>)}
+            </div>
+            </>}
+            <div className={styles.inputs}>
+              {([{ key:"width",label:"Ширина, мм" },{ key:"height",label:"Высота, мм" },{ key:"depth",label:"Глубина, мм" },{ key:"quantity",label:"Количество, шт." }] as const).filter(field=>!byBlock||field.key==="quantity").map((field) => <label key={field.key} htmlFor={`basket-${field.key}`}>
+                {field.label}<input id={`basket-${field.key}`} type="text" inputMode="numeric" autoComplete="off" pattern="[0-9]*" value={dimensions[field.key]} aria-describedby={byBlock?undefined:"basket-size-help"} aria-invalid={!/^\d+$/.test(dimensions[field.key]) || Number(dimensions[field.key]) < 1 || Number(dimensions[field.key]) > 10000 || undefined} onChange={(e) => setDimensions({ ...dimensions, [field.key]:e.target.value })} />
+              </label>)}
+            </div>
+            {!byBlock && <><p id="basket-size-help" className={styles.help}>Ширина × высота × глубина, в миллиметрах. Размеры включают наружные панели; свободный объём внутри меньше.</p>
+            <details className={styles.reference}>
+              <summary>Не знаете размер? Подобрать по кондиционеру</summary>
+              <BasketAcReference value={design.capacityClass} onChange={(capacityClass) => setDesign({...design,capacityClass})} onApply={([width,height,depth]) => setDimensions({...dimensions,width:String(width),height:String(height),depth:String(depth)})}/>
+            </details></>}
+            {step === 0 && byBlock && dimensionsValid && <BasketVolumePrice {...input}/>}
+          </div>
+          {step === 1 && <fieldset className={styles.colors}>
+            <legend>Цвет покрытия <b>RAL {ral}</b></legend>
+            <div>{basketColors.map((c) => <button type="button" key={c.ral} aria-label={`RAL ${c.ral}, ${c.name}`} aria-pressed={ral === c.ral} onClick={() => setRal(c.ral)}><span style={{backgroundColor:c.hex}}/><small>{c.ral}</small></button>)}</div>
+            <p>{color.name}. Цвет экрана приблизительный; покрытие согласуется по образцу.</p>
+          </fieldset>}
+          <BasketDesignFields step={steps[step].stage} design={design} onChange={setDesign} width={input.width} height={input.height} depth={input.depth} quantity={input.quantity}/>
+          {step === 3 && tooSmall && <p className={styles.validation} role="alert">Корзину нужно увеличить: наружные размеры не вмещают необходимый свободный объём {requiredSpace.width} × {requiredSpace.height} × {requiredSpace.depth} мм. Исправьте размеры или передайте задание инженеру для подбора.</p>}
+          {!valid && <p className={styles.validation} role="status">{!dimensionsValid ? "Заполните размеры и количество. В режиме по блоку укажите все шесть отступов; если отступ не нужен — введите 0." : "Проверьте введённые параметры на шагах «Исполнение» и «Крепление»: размер отверстия должен быть меньше шага; числовые поля должны быть заполнены корректно."}</p>}
+          <div className={styles.navigation}>
+            <button type="button" disabled={step === 0} onClick={() => go(step - 1)}>← Назад</button>
+            {step < 3 && <button type="button" className={styles.primary} disabled={!dimensionsValid} onClick={() => go(step + 1)}>Далее: {steps[step + 1].title.toLowerCase()} →</button>}
+          </div>
+          {(step === 3 || editing !== null) && <div className={styles.actions}>
+            {valid ? <AttributionLink href={href} className={styles.primary}>Передать параметры инженеру →</AttributionLink> : <button disabled className={styles.primary}>Уточните параметры</button>}
+            <button type="button" disabled={!valid || (items.length >= 100 && editing === null)} onClick={() => {
+              const value=structuredClone(input);
+              if(editing===null){setItems([...items,value]);setSaved("Позиция добавлена в спецификацию.");}
+              else{setItems(items.map((x,i)=>i===editing?value:x));setEditing(null);setSaved("Изменения позиции сохранены.");}
+            }}>{editing===null?"Добавить в спецификацию":`Сохранить позицию ${editing+1}`}</button>
+            {editing!==null && <button type="button" onClick={()=>{setEditing(null);setSaved("");}}>Отменить редактирование позиции</button>}
+            <button type="button" disabled={!valid} onClick={download}>Скачать задание · TXT ↓</button>
+            <p role="status">{saved}</p>
+          </div>}
         </div>
       </div>
-      <BasketSpecification
-        items={items}
-        onChange={(next) => {
-          setItems(next);
-          setEditing(null);
-          setSaved("");
-        }}
-        onEdit={(v, i) => {
-          setDimensions({
-            width: String(v.width),
-            height: String(v.height),
-            depth: String(v.depth),
-            quantity: String(v.quantity),
-          });
-          setRal(v.ral);
-          setDesign(
-            v.design ? structuredClone(v.design) : defaultBasketDesign(),
-          );
-          setEditing(i);
-          setSaved("");
-          setStep(0);
-          document
-            .querySelector("[data-basket-configurator]")
-            ?.scrollIntoView({ block: "start" });
-        }}
-      />
+      <BasketSpecification items={items} onChange={(next)=>{setItems(next);setEditing(null);setSaved("");}} onEdit={(v,i)=>{
+        const fallback=defaultBasketDesign();
+        const pattern=v.screen as BasketDesign["front"]["pattern"];
+        const restored=v.design?structuredClone(v.design):{...fallback,front:{...fallback.front,pattern},side:{...fallback.side,pattern}};
+        setDimensions({width:String(v.width),height:String(v.height),depth:String(v.depth),quantity:String(v.quantity)});setRal(v.ral);setDesign(restored);setEditing(i);setSaved("");go(0);
+      }}/>
     </div>
   );
 }

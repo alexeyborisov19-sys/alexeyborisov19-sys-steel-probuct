@@ -36,12 +36,12 @@ export function BasketSpecification({
   return (
     <section
       aria-labelledby="basket-spec-title"
-      className="border-t border-white/20 bg-[#111519] p-5 sm:p-9 lg:col-span-2"
+      className="border-t border-slate-200 bg-[#f7f8f6] p-5 sm:p-9 lg:col-span-2"
     >
       <h3 id="basket-spec-title" className="text-xl font-semibold">
         Спецификация корзин
       </h3>
-      <p className="mt-2 text-sm text-white/75">
+      <p className="mt-2 text-sm text-slate-600">
         Добавляйте разные размеры и рисунки по одному. До 100 позиций. Сохраните
         файл, чтобы позднее открыть его здесь; данные не сохраняются
         автоматически.
@@ -49,7 +49,7 @@ export function BasketSpecification({
       <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
-          className="min-h-11 border border-white/25 px-4"
+          className="min-h-11 border border-slate-300 px-4"
           onClick={() => upload.current?.click()}
         >
           Открыть спецификацию
@@ -57,7 +57,7 @@ export function BasketSpecification({
         <button
           type="button"
           disabled={!items.length}
-          className="min-h-11 border border-white/25 px-4 disabled:opacity-40"
+          className="min-h-11 border border-slate-300 px-4 disabled:opacity-40"
           onClick={() =>
             download("Корзины.baskets.json", serializeBasketProject(items))
           }
@@ -67,7 +67,7 @@ export function BasketSpecification({
         <button
           type="button"
           disabled={!items.length}
-          className="min-h-11 border border-white/25 px-4 disabled:opacity-40"
+          className="min-h-11 border border-slate-300 px-4 disabled:opacity-40"
           onClick={() =>
             download(
               "Задание-корзины-все.txt",
@@ -128,7 +128,7 @@ export function BasketSpecification({
                   {["№", "Ш × В × Г, мм", "Количество", "RAL", "Действия"].map(
                     (x) => (
                       <th
-                        className="whitespace-nowrap border-b border-white/20 p-3"
+                        className="whitespace-nowrap border-b border-slate-200 p-3"
                         key={x}
                       >
                         {x}
@@ -143,6 +143,7 @@ export function BasketSpecification({
                     <td className="p-3">{i + 1}</td>
                     <td className="whitespace-nowrap p-3">
                       {x.width} × {x.height} × {x.depth}
+                      <span className="mt-1 block text-xs text-slate-600">{x.design?.sizing === "block" ? "внутренний расчётный" : "наружный"}</span>
                     </td>
                     <td className="p-3">{x.quantity}</td>
                     <td className="p-3">{x.ral}</td>
@@ -186,7 +187,7 @@ export function BasketSpecification({
           </p>
         </>
       ) : (
-        <p className="mt-4 text-white/70">
+        <p className="mt-4 text-slate-600">
           Задайте параметры выше и нажмите «Добавить в спецификацию».
         </p>
       )}

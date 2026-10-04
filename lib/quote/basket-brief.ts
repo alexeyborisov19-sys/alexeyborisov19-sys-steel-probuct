@@ -3,9 +3,13 @@ import {
   basketDesignSummary,
   type BasketDesign,
 } from "./basket-design";
+import { calculatedBasketSize } from "./basket-fit";
 export const basketScreens = {
+  "wide-slots": "10 длинных прорезей",
   round: "Круглая перфорация",
   slots: "Щелевая перфорация",
+  lamella: "Ламели",
+  solid: "Без перфорации",
   custom: "Рисунок по проекту",
 } as const;
 export const basketColors = [
@@ -35,7 +39,9 @@ export type BasketBrief = {
   design?: BasketDesign;
 };
 export function validBasketBrief(input: BasketBrief) {
+  const size = input.design?.sizing === "block" ? calculatedBasketSize(input.design.fit) : null;
   return (
+    (input.design?.sizing !== "block" || !!size && input.width === size.width && input.height === size.height && input.depth === size.depth) &&
     [input.width, input.height, input.depth, input.quantity].every(
       (n) => Number.isSafeInteger(n) && n > 0 && n <= 10000,
     ) &&
@@ -54,7 +60,7 @@ export function basketBriefHref(input: BasketBrief) {
     basketDepth: String(input.depth),
     basketQuantity: String(input.quantity),
     basketRal: input.ral,
-    basketScreen: input.screen,
+    basketScreen: input.design?.front.pattern ?? input.screen,
   });
   if (input.design) params.set("basketDesign", JSON.stringify(input.design));
   return `/contacts?${params}#contact-form`;
@@ -81,12 +87,14 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
       return null;
     }
   }
-  if (!validBasketBrief(input)) return null;
+  if (!validBasketBrief({ ...input, design })) return null;
   return [
     "Прошу рассчитать корзины для кондиционеров.",
-    `Предварительный наружный габарит (Ш × В × Г): ${input.width} × ${input.height} × ${input.depth} мм.`,
+    "Все расчёты приблизительные. Окончательные размеры, крепление и стоимость согласуются перед изготовлением.",
+    `${design?.sizing === "block" ? "Расчётный внутренний габарит по блоку и зазорам" : "Предварительный наружный габарит"} (Ш × В × Г): ${input.width} × ${input.height} × ${input.depth} мм.`,
+    ...(design?.sizing === "block" ? ["Наружные размеры с учётом панелей и отгибов уточняются по рабочему чертежу. Цена предварительная."] : []),
     `Количество: ${input.quantity} шт.`,
-    `Экран: ${basketScreens[input.screen as keyof typeof basketScreens]}.`,
+    `Экран: ${basketScreens[(design?.front.pattern ?? input.screen) as keyof typeof basketScreens]}.`,
     `Цвет: RAL ${input.ral}.`,
     ...(design ? [basketDesignSummary(design)] : []),
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",
