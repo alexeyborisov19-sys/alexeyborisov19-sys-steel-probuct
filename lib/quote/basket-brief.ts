@@ -1,3 +1,8 @@
+import {
+  validBasketDesign,
+  basketDesignSummary,
+  type BasketDesign,
+} from "./basket-design";
 export const basketScreens = {
   round: "Круглая перфорация",
   slots: "Щелевая перфорация",
@@ -27,6 +32,7 @@ export type BasketBrief = {
   quantity: number;
   ral: string;
   screen: string;
+  design?: BasketDesign;
 };
 export function validBasketBrief(input: BasketBrief) {
   return (
@@ -34,7 +40,8 @@ export function validBasketBrief(input: BasketBrief) {
       (n) => Number.isSafeInteger(n) && n > 0 && n <= 10000,
     ) &&
     basketColors.some((c) => c.ral === input.ral) &&
-    Object.hasOwn(basketScreens, input.screen)
+    Object.hasOwn(basketScreens, input.screen) &&
+    (input.design === undefined || validBasketDesign(input.design))
   );
 }
 export function basketBriefHref(input: BasketBrief) {
@@ -49,6 +56,7 @@ export function basketBriefHref(input: BasketBrief) {
     basketRal: input.ral,
     basketScreen: input.screen,
   });
+  if (input.design) params.set("basketDesign", JSON.stringify(input.design));
   return `/contacts?${params}#contact-form`;
 }
 export function basketBriefSummary(params: URLSearchParams): string | null {
@@ -61,6 +69,18 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
     ral: params.get("basketRal") ?? "",
     screen: params.get("basketScreen") ?? "",
   };
+  let design: BasketDesign | undefined;
+  if (params.has("basketDesign")) {
+    try {
+      const raw = params.get("basketDesign")!;
+      if (raw.length > 3000) return null;
+      const value: unknown = JSON.parse(raw);
+      if (!validBasketDesign(value)) return null;
+      design = value;
+    } catch {
+      return null;
+    }
+  }
   if (!validBasketBrief(input)) return null;
   return [
     "Прошу рассчитать корзины для кондиционеров.",
@@ -68,6 +88,7 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
     `Количество: ${input.quantity} шт.`,
     `Экран: ${basketScreens[input.screen as keyof typeof basketScreens]}.`,
     `Цвет: RAL ${input.ral}.`,
+    ...(design ? [basketDesignSummary(design)] : []),
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",
     "Модель наружного блока / основание / город объекта: уточню.",
   ].join("\n");

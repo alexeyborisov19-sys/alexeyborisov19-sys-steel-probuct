@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { defaultBasketDesign } from "@/lib/quote/basket-design";
+import { BasketDesignFields } from "./BasketDesignFields";
 import { AttributionLink } from "@/components/AttributionLink";
 import {
   basketBriefHref,
@@ -12,6 +14,8 @@ import {
 } from "@/lib/quote/basket-brief";
 
 export function BasketConfigurator() {
+  const [step, setStep] = useState(0);
+  const [design, setDesign] = useState(defaultBasketDesign);
   const [dimensions, setDimensions] = useState({
     width: "1000",
     height: "700",
@@ -19,7 +23,10 @@ export function BasketConfigurator() {
     quantity: "1",
   });
   const [ral, setRal] = useState("7024");
-  const [screen, setScreen] = useState("round");
+  const screen =
+    design.front.pattern === "round" || design.front.pattern === "slots"
+      ? design.front.pattern
+      : "custom";
   const input = {
     width: Number(dimensions.width),
     height: Number(dimensions.height),
@@ -27,6 +34,7 @@ export function BasketConfigurator() {
     quantity: Number(dimensions.quantity),
     ral,
     screen,
+    design,
   };
   const valid = validBasketBrief(input);
   const color = basketColors.find((c) => c.ral === ral)!;
@@ -57,6 +65,24 @@ export function BasketConfigurator() {
       className="mt-8 grid overflow-hidden border border-white/15 lg:grid-cols-[1fr_1.05fr]"
       data-basket-configurator
     >
+      <nav
+        aria-label="Шаги подбора корзины"
+        className="flex flex-wrap gap-2 border-b border-white/15 bg-[#181c1f] p-4 lg:col-span-2"
+      >
+        {["Размеры и цвет", "Блок и крепление", "Перфорация", "Результат"].map(
+          (label, i) => (
+            <button
+              key={label}
+              type="button"
+              aria-current={step === i ? "step" : undefined}
+              onClick={() => setStep(i)}
+              className={`min-h-11 rounded px-3 py-2 text-sm ${step === i ? "bg-steel-orange-deep font-semibold" : "border border-white/25"}`}
+            >
+              {i + 1}. {label}
+            </button>
+          ),
+        )}
+      </nav>
       <div className="flex flex-col bg-[#eef0ed] p-5 text-[#25292c] sm:p-9">
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-bold uppercase tracking-widest">
@@ -154,111 +180,165 @@ export function BasketConfigurator() {
         </p>
       </div>
       <div className="bg-[#181c1f] p-5 sm:p-9">
-        <h3 className="text-xl font-semibold">Задайте габариты корзины</h3>
-        <p
-          id="basket-size-help"
-          className="mt-2 text-sm leading-6 text-white/75"
-        >
-          Наружные размеры, мм. Можно изменить любой размер. Это задание
-          инженеру, не автоматическая проверка совместимости.
-        </p>
-        <div
-          className="mt-5 flex flex-wrap gap-2"
-          aria-label="Примеры габаритов"
-        >
-          {basketSizeExamples.map((size) => (
-            <button
-              type="button"
-              key={size.width}
-              onClick={() =>
-                setDimensions({
-                  ...dimensions,
-                  width: String(size.width),
-                  height: String(size.height),
-                  depth: String(size.depth),
-                })
-              }
-              className="min-h-11 border border-white/25 px-3 py-2 font-mono text-xs hover:border-steel-orange focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange"
-            >
-              {size.width} × {size.height} × {size.depth}
-            </button>
-          ))}
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-4">
-          {(
-            [
-              { key: "width", label: "Ширина, мм" },
-              { key: "height", label: "Высота, мм" },
-              { key: "depth", label: "Глубина, мм" },
-              { key: "quantity", label: "Количество, шт." },
-            ] as const
-          ).map((field) => (
-            <label
-              key={field.key}
-              className="text-sm text-white/85"
-              htmlFor={`basket-${field.key}`}
-            >
-              {field.label}
-              <input
-                id={`basket-${field.key}`}
-                type="number"
-                min="1"
-                max="10000"
-                step="1"
-                value={dimensions[field.key]}
-                aria-describedby="basket-size-help"
-                onChange={(e) =>
-                  setDimensions({ ...dimensions, [field.key]: e.target.value })
-                }
-                className="mt-2 block min-h-12 w-full border border-white/25 bg-[#0d1114] px-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange"
-              />
-            </label>
-          ))}
-        </div>
-        <label
-          className="mt-5 block text-sm text-white/85"
-          htmlFor="basket-screen"
-        >
-          Исполнение экрана
-          <select
-            id="basket-screen"
-            value={screen}
-            onChange={(e) => setScreen(e.target.value)}
-            className="mt-2 block min-h-12 w-full border border-white/25 bg-[#0d1114] px-3 text-base text-white"
+        <div hidden={step !== 0}>
+          <h3 className="text-xl font-semibold">Задайте габариты корзины</h3>
+          <p
+            id="basket-size-help"
+            className="mt-2 text-sm leading-6 text-white/75"
           >
-            {Object.entries(basketScreens).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset className="mt-5">
-          <legend className="text-sm text-white/85">
-            Цвет: RAL {ral} · {color.name}
-          </legend>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {basketColors.map((c) => (
+            Наружные размеры, мм. Можно изменить любой размер. Это задание
+            инженеру, не автоматическая проверка совместимости.
+          </p>
+          <div
+            className="mt-5 flex flex-wrap gap-2"
+            aria-label="Примеры габаритов"
+          >
+            {basketSizeExamples.map((size) => (
               <button
                 type="button"
-                key={c.ral}
-                aria-label={`RAL ${c.ral}, ${c.name}`}
-                aria-pressed={ral === c.ral}
-                onClick={() => setRal(c.ral)}
-                className={`min-h-11 min-w-11 border-2 p-1 ${ral === c.ral ? "border-steel-orange" : "border-white/25"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+                key={size.width}
+                onClick={() =>
+                  setDimensions({
+                    ...dimensions,
+                    width: String(size.width),
+                    height: String(size.height),
+                    depth: String(size.depth),
+                  })
+                }
+                className="min-h-11 border border-white/25 px-3 py-2 font-mono text-xs hover:border-steel-orange focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange"
               >
-                <span
-                  className="block h-7 w-7"
-                  style={{ backgroundColor: c.hex }}
-                />
+                {size.width} × {size.height} × {size.depth}
               </button>
             ))}
           </div>
-        </fieldset>
-        <p className="mt-3 text-xs leading-5 text-white/70">
-          Нужен другой RAL или фактура? Укажите их в заявке. Покрытие
-          подтверждается по образцу.
-        </p>
+          <div className="mt-5 grid grid-cols-2 gap-4">
+            {(
+              [
+                { key: "width", label: "Ширина, мм" },
+                { key: "height", label: "Высота, мм" },
+                { key: "depth", label: "Глубина, мм" },
+                { key: "quantity", label: "Количество, шт." },
+              ] as const
+            ).map((field) => (
+              <label
+                key={field.key}
+                className="text-sm text-white/85"
+                htmlFor={`basket-${field.key}`}
+              >
+                {field.label}
+                <input
+                  id={`basket-${field.key}`}
+                  type="number"
+                  min="1"
+                  max="10000"
+                  step="1"
+                  value={dimensions[field.key]}
+                  aria-describedby="basket-size-help"
+                  onChange={(e) =>
+                    setDimensions({
+                      ...dimensions,
+                      [field.key]: e.target.value,
+                    })
+                  }
+                  className="mt-2 block min-h-12 w-full border border-white/25 bg-[#0d1114] px-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange"
+                />
+              </label>
+            ))}
+          </div>
+          <label
+            className="mt-5 block text-sm text-white/85"
+            htmlFor="basket-screen"
+          >
+            Исполнение экрана
+            <select
+              id="basket-screen"
+              value={screen}
+              onChange={(e) => {
+                const pattern = e.target.value as "round" | "slots" | "custom";
+                setDesign({
+                  ...design,
+                  front: {
+                    ...design.front,
+                    pattern,
+                    pitch: Math.max(
+                      design.front.pitch,
+                      design.front.slotLength + 5,
+                    ),
+                  },
+                  side: {
+                    ...design.side,
+                    pattern,
+                    pitch: Math.max(
+                      design.side.pitch,
+                      design.side.slotLength + 5,
+                    ),
+                  },
+                });
+              }}
+              className="mt-2 block min-h-12 w-full border border-white/25 bg-[#0d1114] px-3 text-base text-white"
+            >
+              {Object.entries(basketScreens).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <fieldset className="mt-5">
+            <legend className="text-sm text-white/85">
+              Цвет: RAL {ral} · {color.name}
+            </legend>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {basketColors.map((c) => (
+                <button
+                  type="button"
+                  key={c.ral}
+                  aria-label={`RAL ${c.ral}, ${c.name}`}
+                  aria-pressed={ral === c.ral}
+                  onClick={() => setRal(c.ral)}
+                  className={`min-h-11 min-w-11 border-2 p-1 ${ral === c.ral ? "border-steel-orange" : "border-white/25"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+                >
+                  <span
+                    className="block h-7 w-7"
+                    style={{ backgroundColor: c.hex }}
+                  />
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <p className="mt-3 text-xs leading-5 text-white/70">
+            Нужен другой RAL или фактура? Укажите их в заявке. Покрытие
+            подтверждается по образцу.
+          </p>
+        </div>
+        <BasketDesignFields
+          step={step}
+          design={design}
+          onChange={setDesign}
+          width={input.width}
+          height={input.height}
+          depth={input.depth}
+          quantity={input.quantity}
+        />
+        <div className="mt-5 flex justify-between gap-3">
+          <button
+            type="button"
+            disabled={step === 0}
+            onClick={() => setStep(step - 1)}
+            className="min-h-11 px-3 disabled:opacity-40"
+          >
+            ← Назад
+          </button>
+          {step < 3 && (
+            <button
+              type="button"
+              onClick={() => setStep(step + 1)}
+              className="min-h-11 border border-steel-orange px-5"
+            >
+              Далее →
+            </button>
+          )}
+        </div>
         <div className="mt-6" aria-live="polite">
           {valid ? (
             <p className="font-mono text-sm">
