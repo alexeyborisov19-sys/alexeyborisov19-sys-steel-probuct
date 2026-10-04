@@ -4,7 +4,7 @@ export type ProjectPhoto = {
   src: string;
   alt: string;
   credit: string;
-  sourceUrl: string;
+  sourceUrl?: string;
 };
 
 export type ShowcaseProject = RealProject & {
@@ -62,6 +62,23 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://zao-vash-dom.ru/",
     },
   ],
+  "klovskiy": [
+    {
+      src: "/images/projects/klovskiy-1.webp",
+      alt: "ЖК «Кловский» в Смоленске: общий вид жилого дома со стороны двора",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · ЖК «Кловский»",
+    },
+    {
+      src: "/images/projects/klovskiy-2.webp",
+      alt: "ЖК «Кловский» в Смоленске: фрагмент зелёно-жёлтого фасада",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · ЖК «Кловский»",
+    },
+    {
+      src: "/images/projects/klovskiy-3.webp",
+      alt: "ЖК «Кловский» в Смоленске: жилой дом и помещения первого этажа",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · ЖК «Кловский»",
+    },
+  ],
   "shevchenko-6-smolensk": [
     {
       src: "/images/projects/shevchenko-6-smolensk-1.jpg",
@@ -98,28 +115,19 @@ const galleries: Record<string, ProjectPhoto[]> = {
   ],
   "odkb-novyy-korpus": [
     {
-      src: "/images/industries/medical.jpg",
-      alt: "Иллюстративный визуал медицинского объекта — фотография объекта открывается в источнике",
-      credit: "Иллюстративный визуал · фото объекта — «МК в Смоленске»",
-      sourceUrl: "https://www.mk-smolensk.ru/social/2026/03/12/vasiliy-anokhin-novyy-korpus-detskoy-oblastnoy-bolnicy-gotov-na-73.html",
+      src: "/images/projects/odkb-novyy-korpus-1.webp",
+      alt: "Новый корпус Смоленской областной детской клинической больницы: светлый фасад с зелёными акцентами",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · новый корпус детской областной больницы",
     },
     {
-      src: "/images/projects/odkb-novyy-korpus-2.jpg",
-      alt: "Монтаж фасадных элементов нового хирургического корпуса детской областной больницы",
-      credit: "«Смоленская газета»",
-      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
+      src: "/images/projects/odkb-novyy-korpus-2.webp",
+      alt: "Новый корпус Смоленской областной детской клинической больницы: фасад со стороны проезда",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · новый корпус детской областной больницы",
     },
     {
-      src: "/images/projects/odkb-novyy-korpus-3.jpg",
-      alt: "Новый корпус Смоленской областной детской клинической больницы — ход строительства в марте 2026 года",
-      credit: "«Смоленская газета», пресс-материалы объекта",
-      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
-    },
-    {
-      src: "/images/projects/odkb-novyy-korpus-4.jpg",
-      alt: "Фасад нового корпуса Смоленской областной детской клинической больницы — март 2026 года",
-      credit: "«Смоленская газета», пресс-материалы объекта",
-      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
+      src: "/images/projects/odkb-novyy-korpus-3.webp",
+      alt: "Новый корпус Смоленской областной детской клинической больницы: общий вид здания",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · новый корпус детской областной больницы",
     },
   ],
   "onkologicheskiy-dispanser": [

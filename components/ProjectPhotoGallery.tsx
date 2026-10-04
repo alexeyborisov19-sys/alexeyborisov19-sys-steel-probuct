@@ -33,17 +33,23 @@ export function ProjectPhotoGallery({ photos, className = "", tall = false }: Pr
                 fill
                 sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
                 priority={index === 0 && tall}
-                className="object-cover brightness-[.92]"
+                className="object-cover brightness-100"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#080b0d]/78 via-transparent to-transparent" />
-              <a
-                href={photo.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="absolute bottom-3 left-3 max-w-[calc(100%-6rem)] bg-black/72 px-3 py-2 text-[10px] leading-4 text-white/70 transition hover:text-white"
-              >
-                Источник: {photo.credit}&nbsp; ↗
-              </a>
+              {photo.sourceUrl ? (
+                <a
+                  href={photo.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="absolute bottom-3 left-3 max-w-[calc(100%-6rem)] bg-black/72 px-3 py-2 text-[10px] leading-4 text-white/70 transition hover:text-white"
+                >
+                  Источник: {photo.credit}&nbsp; ↗
+                </a>
+              ) : (
+                <span className="absolute bottom-3 left-3 max-w-[calc(100%-6rem)] bg-black/72 px-3 py-2 text-[10px] leading-4 text-white/70">
+                  {photo.credit}
+                </span>
+              )}
               {photos.length > 1 ? (
                 <span className="absolute bottom-3 right-3 bg-steel-orange px-2.5 py-2 text-[10px] font-bold tabular-nums text-white">
                   {index + 1}/{photos.length}
