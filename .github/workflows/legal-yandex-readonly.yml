@@ -18,8 +18,9 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
+      - run: google-chrome --version
       - name: Full mobile and desktop audit with intercepted submissions
         env:
+          BROWSER_CHANNEL: chrome
           BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
         run: node scripts/audit-browser.mjs
