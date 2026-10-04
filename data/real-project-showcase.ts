@@ -4,7 +4,7 @@ export type ProjectPhoto = {
   src: string;
   alt: string;
   credit: string;
-  sourceUrl?: string;
+  sourceUrl: string;
 };
 
 export type ShowcaseProject = RealProject & {
@@ -66,17 +66,20 @@ const galleries: Record<string, ProjectPhoto[]> = {
     {
       src: "/images/projects/klovskiy-1.webp",
       alt: "ЖК «Кловский» в Смоленске: общий вид жилого дома со стороны двора",
-      credit: "Фото предоставлено для портфолио «Сталь Продукт» · ЖК «Кловский»",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · официальный сайт проекта",
+      sourceUrl: "https://xn----dtbkkfcbbh4a8a.xn--p1ai/",
     },
     {
       src: "/images/projects/klovskiy-2.webp",
       alt: "ЖК «Кловский» в Смоленске: фрагмент зелёно-жёлтого фасада",
-      credit: "Фото предоставлено для портфолио «Сталь Продукт» · ЖК «Кловский»",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · официальный сайт проекта",
+      sourceUrl: "https://xn----dtbkkfcbbh4a8a.xn--p1ai/",
     },
     {
       src: "/images/projects/klovskiy-3.webp",
       alt: "ЖК «Кловский» в Смоленске: жилой дом и помещения первого этажа",
-      credit: "Фото предоставлено для портфолио «Сталь Продукт» · ЖК «Кловский»",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · официальный сайт проекта",
+      sourceUrl: "https://xn----dtbkkfcbbh4a8a.xn--p1ai/",
     },
   ],
   "shevchenko-6-smolensk": [
@@ -117,17 +120,20 @@ const galleries: Record<string, ProjectPhoto[]> = {
     {
       src: "/images/projects/odkb-novyy-korpus-1.webp",
       alt: "Новый корпус Смоленской областной детской клинической больницы: светлый фасад с зелёными акцентами",
-      credit: "Фото предоставлено для портфолио «Сталь Продукт» · новый корпус детской областной больницы",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · официальный материал об объекте",
+      sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
     },
     {
       src: "/images/projects/odkb-novyy-korpus-2.webp",
       alt: "Новый корпус Смоленской областной детской клинической больницы: фасад со стороны проезда",
-      credit: "Фото предоставлено для портфолио «Сталь Продукт» · новый корпус детской областной больницы",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · официальный материал об объекте",
+      sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
     },
     {
       src: "/images/projects/odkb-novyy-korpus-3.webp",
       alt: "Новый корпус Смоленской областной детской клинической больницы: общий вид здания",
-      credit: "Фото предоставлено для портфолио «Сталь Продукт» · новый корпус детской областной больницы",
+      credit: "Фото предоставлено для портфолио «Сталь Продукт» · официальный материал об объекте",
+      sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
     },
   ],
   "onkologicheskiy-dispanser": [
