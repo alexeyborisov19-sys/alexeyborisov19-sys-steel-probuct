@@ -89,7 +89,7 @@ const nextConfig: NextConfig = {
         // domain in search results. Preserve the path and permanently redirect
         // every request to the canonical production host.
         source: "/:path*",
-        has: [{ type: "host", value: "saquapequoke.beget.app" }],
+        has: [{ type: "host", value: "(?:www\\.)?saquapequoke\\.beget\\.app" }],
         destination: "https://www.steelprodukt.ru/:path*",
         permanent: true,
       },
