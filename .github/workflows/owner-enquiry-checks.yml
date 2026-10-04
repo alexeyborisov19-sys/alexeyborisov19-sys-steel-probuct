@@ -40,6 +40,9 @@ jobs:
           recipients=[a.lower() for _,a in email.utils.getaddresses([env.get('QUOTE_RECIPIENT','')])]
           allowed={'info@steelprodukt.ru','alexeyborisov19@gmail.com'}
           assert recipients and set(recipients)<=allowed,'Unexpected destination: no test is authorized to other recipients'
+          path=pathlib.Path(env.get('QUOTE_STORAGE_PATH') or '.data/quote-leads')
+          if not path.is_absolute():path=app/path
+          assert not any(str(json.loads(f.read_text()).get('company','')).startswith('QA20261004-0930') for f in path.glob('*.json') if not f.is_symlink()),'TEST records already exist: never replay automatically'
           print('QUOTE_RECIPIENTS='+json.dumps(recipients))
           print('CRM_FLAGS='+json.dumps({k:env.get(k)=='true' for k in ['BITRIX_INTEGRATION_ENABLED','BITRIX_DATA_TRANSFER_APPROVED']}))
           try:
@@ -47,5 +50,69 @@ jobs:
               assert config.user.lower()=='info@steelprodukt.ru'
               with ns['ReadOnlyMailbox'](config) as box:print('IMAP_READ_ONLY=OK')
           except Exception as e:print('IMAP_READ_ONLY='+type(e).__name__)
+          PYTHON
+          REMOTE
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Check all public enquiry navigation paths with intercepted submissions
+        run: node scripts/audit-attribution.mjs
+        env:
+          BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
+      - name: Send three owner-authorized TEST leads and test validation
+        run: node scripts/owner-enquiry-checks.mjs
+      - name: Verify TEST storage and actual inbox receipt
+        if: always()
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          sudo -n python3 - "$APP_PATH" <<'PYTHON'
+          import sys,pathlib,json,runpy,hashlib,time,email
+          from email import policy
+          app=pathlib.Path(sys.argv[1]); ns=runpy.run_path(str(app/'scripts/mail-readonly.py'))
+          env=ns['read_env'](str(app/'.env.production'));marker='QA20261004-0930'
+          def root(key,default):
+              p=pathlib.Path(env.get(key) or default)
+              return p if p.is_absolute() else app/p
+          records=[]
+          for f in root('QUOTE_STORAGE_PATH','.data/quote-leads').glob('*.json'):
+              if f.is_symlink():continue
+              r=json.loads(f.read_text())
+              if str(r.get('company','')).startswith(marker):records.append(r)
+          print('TEST_RECORDS='+json.dumps([{'id':r['requestId'],'scenario':r['company'],'createdAt':r['createdAt'],'delivery':r['delivery'],'files':len(r['files']),'consentAudit':r['consentAudit'],'utm_source':r.get('attribution',{}).get('utm_source'),'utm_campaign':r.get('attribution',{}).get('utm_campaign')} for r in records]))
+          config=ns['ImapConfig'].from_env(env);inbox=[]
+          for attempt in range(3):
+              inbox=[]
+              with ns['ReadOnlyMailbox'](config) as box:
+                  typ,data=box._client().uid('search',None,'SUBJECT',marker)
+                  assert typ=='OK'
+                  for uid in (data[0] or b'').split():
+                      typ,parts=box._client().uid('fetch',uid,'(BODY.PEEK[])')
+                      assert typ=='OK'
+                      msg=email.message_from_bytes(ns['collect_fetch_bytes'](parts),policy=policy.default)
+                      subject=str(msg['Subject'])
+                      match=next((r for r in records if r['requestId'] in subject),None)
+                      if not match:continue
+                      attachments=[part.get_payload(decode=True) or b'' for part in msg.walk() if part.get_content_disposition()=='attachment']
+                      hashes=sorted(hashlib.sha256(x).hexdigest() for x in attachments)
+                      expected=sorted(hashlib.sha256((root('UPLOAD_QUARANTINE_PATH','.data/quarantine')/match['requestId']/x['storageId']).read_bytes()).hexdigest() for x in match['files'])
+                      inbox.append({'id':match['requestId'],'attachments':len(attachments),'attachmentHashesMatch':hashes==expected,'markedAsTest':marker in subject,'replyToPresent':bool(msg.get('Reply-To'))})
+              if len(inbox)>=len(records):break
+              time.sleep(15)
+          print('TEST_INBOX='+json.dumps(inbox))
+          assert len(records)==3,'Expected exactly three TEST records; do not automatically resend'
+          assert all(r['delivery']=='email' and r['consentAudit']=='recorded' for r in records)
+          assert len(inbox)==3 and all(x['attachmentHashesMatch'] for x in inbox),'Inbox receipt or attachment mismatch'
+          print('DELIVERY_VERIFIED=3 of 3 test leads in INBOX; no CRM calls')
           PYTHON
           REMOTE
