@@ -98,7 +98,8 @@ try {
     await root.getByText("Что проверяет инженер",{exact:true}).click();
     await expect(root.getByRole("img",{name:"Инженерно-конструкторский центр Сталь Продукт",exact:true})).toBeVisible();
     await expect.poll(()=>root.locator("img").evaluateAll(images=>images.every(img=>img.complete && img.naturalWidth>0))).toBe(true);
-    await expect(root.getByRole("region", {name:"Цена базовой корзины"})).toContainText("Цена меняется в зависимости от количества");
+    await expect(root.getByRole("region", {name:"Цена базовой корзины"})).toHaveCount(0);
+    await expect(root.getByText("Цены по количеству", {exact:true})).toHaveCount(0);
     const link = root.getByRole("link", {
       name: "Передать параметры инженеру →",
       exact: true,

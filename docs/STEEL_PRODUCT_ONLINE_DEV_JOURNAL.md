@@ -1,3 +1,6 @@
+## 2026-10-04 — Simplify customer price display
+Owner requests removal of base-price and quantity-tier displays. Preserved approved quantity calculation internally. Show preliminary result for supported 900×600×550 dimensions only; other dimensions retain engineer quote instead of misleading baseline. No invented custom-price formula. Build, lint, quantity boundary test passed; local preview updated.
+
 ## 2026-10-04 — Owner authorizes publication of basket calculator and free-services navigation
 Latest user explicitly requests publication, superseding local-only restriction for this basket/site change. Homepage and tools list share five service entries; basket SEO metadata updated. No checkout/payment enabled. Release pending exact-head tests and deployment verification.
 
