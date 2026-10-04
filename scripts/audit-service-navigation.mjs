@@ -61,7 +61,10 @@ try {
     const enquiryLinks = page.locator('main a[href*="/contacts"][href*="contact-form"]');
     assert.ok(await enquiryLinks.count() >= 3, `Expected all enquiry links on ${path}`);
     for (const link of await enquiryLinks.all()) {
-      await expect(link).toHaveAttribute('href', '/contacts?utm_campaign=commercial-check&yclid=456#contact-form');
+      await expect.poll(async () => {
+        const target = new URL(await link.getAttribute('href'), base);
+        return [target.pathname, target.searchParams.get('utm_campaign'), target.searchParams.get('yclid'), target.hash];
+      }).toEqual(['/contacts', 'commercial-check', '456', '#contact-form']);
     }
     results.push({ path, width: 390, enquiryLinks: await enquiryLinks.count(), attribution: true });
     await context.close();
