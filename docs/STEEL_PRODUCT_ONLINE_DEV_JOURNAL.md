@@ -1,3 +1,7 @@
+## Live checkpoint — basket visual preview, 4 October 2026
+
+Base d12c47ea5e9e859b970ced22d619b13d82112575 (unchanged prior price-display candidate). Current redesign is local for owner review; not a published release. DONE: four-step light calculator, photorealistic open-top reference and reactive pattern/RAL model, keyboard inputs, specification import/export, 10-slot approved price eligibility, corrected common-bracket mounting description. Independent review findings corrected: invalid hidden settings, visible insufficient-space warning, exact pattern in exports and old-project imports, pattern-independent 10-slot preview. Build/lint, focused tests and responsive browser checks are recorded in docs/baskets/visual-preview-20261004.md. DONE: final production build, ESLint, all21 focused tests, four responsive browser runs and actual photo decode. Preview prepared for3158. NEXT ACTION: owner reviews local design; any later publication requires exact-commit checks and live verification. No change to legal/consent, advertising or other calculators; no fake real enquiry sent.
+
 ## 2026-10-04 — Simplify customer price display
 Owner requests removal of base-price and quantity-tier displays. Preserved approved quantity calculation internally. Show preliminary result for supported 900×600×550 dimensions only; other dimensions retain engineer quote instead of misleading baseline. No invented custom-price formula. Build, lint, quantity boundary test passed; local preview updated.
 

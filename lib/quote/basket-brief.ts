@@ -4,8 +4,11 @@ import {
   type BasketDesign,
 } from "./basket-design";
 export const basketScreens = {
+  "wide-slots": "10 длинных прорезей",
   round: "Круглая перфорация",
   slots: "Щелевая перфорация",
+  lamella: "Ламели",
+  solid: "Без перфорации",
   custom: "Рисунок по проекту",
 } as const;
 export const basketColors = [
@@ -54,7 +57,7 @@ export function basketBriefHref(input: BasketBrief) {
     basketDepth: String(input.depth),
     basketQuantity: String(input.quantity),
     basketRal: input.ral,
-    basketScreen: input.screen,
+    basketScreen: input.design?.front.pattern ?? input.screen,
   });
   if (input.design) params.set("basketDesign", JSON.stringify(input.design));
   return `/contacts?${params}#contact-form`;
@@ -86,7 +89,7 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
     "Прошу рассчитать корзины для кондиционеров.",
     `Предварительный наружный габарит (Ш × В × Г): ${input.width} × ${input.height} × ${input.depth} мм.`,
     `Количество: ${input.quantity} шт.`,
-    `Экран: ${basketScreens[input.screen as keyof typeof basketScreens]}.`,
+    `Экран: ${basketScreens[(design?.front.pattern ?? input.screen) as keyof typeof basketScreens]}.`,
     `Цвет: RAL ${input.ral}.`,
     ...(design ? [basketDesignSummary(design)] : []),
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",

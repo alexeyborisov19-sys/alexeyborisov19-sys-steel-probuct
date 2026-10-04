@@ -1,3 +1,4 @@
+import { validBasketDesign, type BasketDesign } from "./basket-design";
 /** Owner-approved final prices for the basic painted 900×600×550 basket, 2026-10-04.
  * No second commercial uplift. Other constructions need a separate quote.
  */
@@ -14,4 +15,11 @@ export function basketVolumePrice(quantity: number) {
     (t) => quantity >= t.min && quantity <= t.max,
   )!;
   return { unit: tier.price, total: tier.price * quantity };
+}
+
+/** Owner confirmed 10 long slots per panel on 2026-10-04. Other shapes/supports are not priced by this agreement. */
+export function basketConfiguredPrice(input: {quantity:number; width:number; height:number; depth:number; design:BasketDesign}) {
+  if(input.width !== 900 || input.height !== 600 || input.depth !== 550 || !validBasketDesign(input.design)) return null;
+  if(input.design.mount !== "existing" || input.design.front.pattern !== "wide-slots" || input.design.side.pattern !== "wide-slots") return null;
+  return basketVolumePrice(input.quantity);
 }

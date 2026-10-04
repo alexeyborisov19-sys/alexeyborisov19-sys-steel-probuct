@@ -60,7 +60,7 @@ function clean(items: unknown): BasketBrief[] {
       depth,
       quantity,
       ral,
-      screen,
+      screen: design?.front.pattern ?? screen,
       ...(design ? { design } : {}),
     };
   });

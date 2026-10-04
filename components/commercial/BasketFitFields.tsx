@@ -15,11 +15,11 @@ export function BasketFitFields({
 }) {
   const fit = value ?? emptyBasketFit();
   return (
-    <details className="mt-5 border border-white/25 p-4">
+    <details className="mt-5 border border-slate-300 p-4">
       <summary className="cursor-pointer font-semibold">
         Точный подбор: установка целиком и зазоры
       </summary>
-      <p className="mt-3 text-sm text-white/75">
+      <p className="mt-3 text-sm text-slate-600">
         Измерьте общий объём блока с трубками, клапанами, опорами и другими
         выступающими частями, без запаса. Если глубину измеряли от стены, не
         прибавляйте уже включённое расстояние второй раз. Зазоры берите из
@@ -37,7 +37,7 @@ export function BasketFitFields({
               min={["width", "height", "depth"].includes(k) ? 1 : 0}
               max={10000}
               placeholder="Уточнить"
-              className="mt-2 min-h-12 w-full border border-white/25 bg-[#0d1114] px-3 text-base"
+              className="mt-2 min-h-12 w-full border border-slate-300 bg-white px-3 text-base"
               onValue={(v) => onChange({ ...fit, [k]: v })}
             />
           </label>
@@ -65,7 +65,7 @@ export function BasketFitResult({
       depth <= required.depth);
   return (
     <section
-      className="mt-5 border border-white/25 p-4"
+      className="mt-5 border border-slate-300 p-4"
       aria-label="Проверка свободного пространства"
     >
       <h4 className="font-semibold">Размеры: что проверено</h4>
@@ -78,19 +78,19 @@ export function BasketFitResult({
             </b>
             .
           </p>
-          <p className="mt-2 text-orange-200">
+          <p className="mt-2 text-amber-800">
             {tooSmall
               ? "Выбранную корзину нужно увеличить: её наружный размер не больше требуемого свободного объёма хотя бы по одной оси."
               : "Предварительно наружные размеры больше требуемого объёма. Совместимость ещё не подтверждена: проверьте внутренние размеры с учётом каркаса и панелей."}
           </p>
         </>
       ) : (
-        <p className="mt-2 text-white/75">
+        <p className="mt-2 text-slate-600">
           Недостаточно данных для точного подбора. На шаге «Блок и крепление»
           укажите всю установку и зазоры. Класс мощности даёт только ориентир.
         </p>
       )}
-      <p className="mt-2 text-sm text-white/75">
+      <p className="mt-2 text-sm text-slate-600">
         Воздухообмен, доступ к клапанам и съёмным панелям, опоры и анкеры
         проверяются отдельно.
       </p>

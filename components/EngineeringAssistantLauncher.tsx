@@ -52,8 +52,8 @@ function LauncherButton({ loading = false, onClick }: { loading?: boolean; onCli
 export function EngineeringAssistantLauncher() {
   const [activated, setActivated] = useState(false);
   const pathname = usePathname();
-  // The CAD workspace has its own engineer handoff; a floating launcher obscures its controls.
-  if (pathname === "/online-order" || pathname?.startsWith("/internal/")) return null;
+  // Configurators have their own engineer handoff; a floating launcher obscures their controls.
+  if (pathname === "/products/korziny-dlya-konditsionerov" || pathname === "/online-order" || pathname?.startsWith("/internal/")) return null;
   if (!activated) return <LauncherButton onClick={() => setActivated(true)} />;
   return (
     <Suspense fallback={<LauncherButton loading />}>

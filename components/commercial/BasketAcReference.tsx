@@ -11,71 +11,38 @@ export function BasketAcReference({
 }) {
   const item = basketAcClasses.find((x) => x.code === value);
   return (
-    <section
-      className="mb-6 border border-white/25 p-4"
-      aria-label="Ориентир по мощности кондиционера"
-    >
-      <label className="block font-semibold">
+    <section className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-800 sm:p-5" aria-label="Ориентир по мощности кондиционера">
+      <label className="block text-sm font-semibold">
         Класс кондиционера
-        <select aria-label="Класс кондиционера"
+        <select
+          aria-label="Класс кондиционера"
           value={value ?? ""}
-          onChange={(e) =>
-            onChange(e.target.value ? Number(e.target.value) : undefined)
-          }
-          className="mt-2 min-h-12 w-full bg-[#0d1114] border border-white/25 px-3"
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
+          className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-800 focus:border-steel-orange focus:outline-none focus:ring-2 focus:ring-steel-orange/20"
         >
           <option value="">Не знаю / другая мощность — размеры вручную</option>
-          {basketAcClasses.map((x) => (
-            <option key={x.code} value={x.code}>
-              {x.code} — около {x.kw} кВт холода
-            </option>
-          ))}
+          {basketAcClasses.map((x) => <option key={x.code} value={x.code}>{x.code} — около {x.kw} кВт холода</option>)}
         </select>
       </label>
-      <p className="mt-3 text-sm text-white/75">
-        7, 9, 12 и т. д. — условный класс в тысячах БТЕ/ч (BTU/h). Киловатты
-        здесь — холодопроизводительность, не расход электричества. Единого
-        стандарта габаритов нет. Встречаются также классы 28, 30, 48 и другие —
-        для них укажите размеры по паспорту.
-      </p>
       {item && (
-        <div className="mt-4 space-y-3 text-sm">
-          <p>
-            <b>Ориентир наружного блока: ≈ {item.block} мм</b> (Ш × В × Г).
-            Пример: {item.model}; другие модели этого класса отличаются.{" "}
-            <a
-              className="underline"
-              href={item.source}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Каталог производителя
-            </a>
-            .
-          </p>
-          <p>
-            <b>
-              Для предварительного подбора: корзина {item.basket.join(" × ")} мм
-            </b>{" "}
-            по наружным габаритам. Это рекомендация для начала проверки, а не
-            подтверждённая совместимость.
-          </p>
-          <button
-            type="button"
-            className="min-h-11 border border-steel-orange px-4 py-2"
-            onClick={() => onApply(item.basket)}
-          >
+        <div className="mt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Ориентир для корзины · Ш × В × Г</p>
+          <p className="mt-1 text-xl font-semibold tracking-tight">{item.basket.join(" × ")} <span className="text-sm font-normal text-slate-600">мм</span></p>
+          <button type="button" className="mt-3 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold transition hover:border-steel-orange hover:bg-orange-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-orange" onClick={() => onApply(item.basket)}>
             Подставить размер корзины
           </button>
         </div>
       )}
-      <p className="mt-3 text-sm text-orange-200">
-        Обязательно перепроверьте точную модель, размеры с выступающими частями,
-        внутренний просвет корзины, зазоры по инструкции, доступ к обслуживанию
-        и вентиляцию через панели. При необходимости нужна корзина большего или
-        индивидуального размера. Примерные габариты не заполняют поля точных
-        размеров блока.
-      </p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">Размеры ориентировочные. Обязательно сверьте точную модель блока, выступающие части, зазоры и вентиляцию по его инструкции.</p>
+      <details className="mt-3 border-t border-slate-200 pt-3">
+        <summary className="cursor-pointer text-sm font-medium text-slate-700">Как пользоваться ориентиром</summary>
+        <div className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
+          <p>7, 9, 12 и т. д. — условный класс в тысячах БТЕ/ч (BTU/h). Киловатты здесь — холодопроизводительность, не расход электричества. Единого стандарта габаритов нет. Для классов 28, 30, 48 и других укажите размеры по паспорту.</p>
+          {item && <p><b className="text-slate-800">Ориентир наружного блока: ≈ {item.block} мм</b> (Ш × В × Г). Пример: {item.model}; другие модели этого класса отличаются. <a className="underline underline-offset-4 hover:text-slate-950" href={item.source} target="_blank" rel="noreferrer">Каталог производителя</a>.</p>}
+          <p>Предложенный размер корзины указан по наружным габаритам. Он помогает начать подбор и не подтверждает совместимость. Проверьте внутренний просвет, доступ к обслуживанию и требования производителя: может понадобиться большая или индивидуальная корзина.</p>
+          <p>Примерные габариты не заполняют поля точных размеров блока.</p>
+        </div>
+      </details>
     </section>
   );
 }

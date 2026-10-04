@@ -58,3 +58,16 @@ test("approximate capacity class survives save without replacing exact block dim
   assert.equal(loaded.design?.blockWidth,0);
   assert.throws(()=>serializeBasketProject([{...item,design:{...design,capacityClass:999}}]));
 });
+
+test("wide-slot specifications survive save/import and normalize legacy short names", () => {
+  const design = defaultBasketDesign();
+  design.front.pattern = "wide-slots";
+  design.side.pattern = "wide-slots";
+  const current = { ...item, screen: "wide-slots", design };
+  assert.deepEqual(parseBasketProject(serializeBasketProject([current])), [current]);
+  const legacy = { kind: "steel-basket-specification", version: 1, items: [{ ...current, screen: "custom" }] };
+  const [loaded] = parseBasketProject(JSON.stringify(legacy));
+  assert.equal(loaded.screen, "wide-slots");
+  assert.equal(loaded.design?.front.pattern, "wide-slots");
+  assert.equal(loaded.design?.side.pattern, "wide-slots");
+});
