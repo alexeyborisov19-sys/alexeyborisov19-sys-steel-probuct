@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 20
     env:
       NEXT_TELEMETRY_DISABLED: '1'
+      BROWSER_CHANNEL: chrome
       NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
       NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
     steps:
@@ -32,7 +33,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - run: google-chrome --version
       - name: Check rendered service and article navigation
         run: |
           npm start -- --port 3020 > /tmp/service-navigation.log 2>&1 &
