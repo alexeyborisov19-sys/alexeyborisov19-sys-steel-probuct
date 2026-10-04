@@ -1,4 +1,4 @@
-name: Yandex excluded pages follow-up
+name: Public SEO crawl
 on:
   push:
     branches: [audit/legal-yandex-20261004]
@@ -6,12 +6,15 @@ on:
 permissions:
   contents: read
 jobs:
-  yandex:
+  crawl:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m pip install --quiet requests
-      - name: Read indexing and commercial queries
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Crawl public pages and legacy URLs
         env:
-          YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
-        run: python3 scripts/yandex-followup.py
+          SEO_AUDIT_BASE_URL: https://www.steelprodukt.ru
+        run: npm run seo:audit
