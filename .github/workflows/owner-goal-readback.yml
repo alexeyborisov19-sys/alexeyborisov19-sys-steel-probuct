@@ -1,0 +1,38 @@
+name: Check assistant handoff and TEST goal report
+on:
+  push:
+    paths:
+      - '.github/workflows/owner-goal-readback.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/audit-assistant-enquiry.mjs
+      - name: Read real TEST goal in Metrika reports
+        if: always()
+        env:
+          YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+          YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          let token=(process.env.YM_TOKEN||process.env.YANDEX_OAUTH_TOKEN||'').trim().replace(/^OAuth\s+/i,'').replace(/^Bearer\s+/i,'');
+          const match=token.match(/(?:^|[#?&])access_token=([^&#\s]+)/i);if(match)token=decodeURIComponent(match[1]);
+          for(let i=0;i<4;i++){
+            const p=new URLSearchParams({ids:'112542227',date1:'2026-10-04',date2:'2026-10-04',metrics:'ym:s:visits,ym:s:goal612680821reaches,ym:s:goal612680841reaches',filters:"ym:s:UTMCampaign=='QA20261004-0930'",accuracy:'full'});
+            const r=await fetch('https://api-metrika.yandex.net/stat/v1/data?'+p,{headers:{Authorization:'OAuth '+token},signal:AbortSignal.timeout(30000)});
+            const j=await r.json();console.log('TEST_GOAL_REPORT',JSON.stringify({checkedAt:new Date().toISOString(),http:r.status,query:j.query,totals:j.totals,sampled:j.sampled,errors:j.errors}));
+            if(!r.ok||j.totals?.[1]>0)break;
+            if(i<3)await new Promise(r=>setTimeout(r,45000));
+          }
+          NODE
