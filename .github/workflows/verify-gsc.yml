@@ -1,4 +1,4 @@
-name: Verify GSC service account
+name: Read Google search evidence
 on:
   push:
     branches: [audit/gsc-connection-20261004]
@@ -10,32 +10,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: python3 -m pip install --quiet google-auth requests
-      - name: Check service account and Search Console API
+      - name: Read search metrics and index status
         env:
           GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
         run: |
           python3 - <<'PY'
-          import os,json,sys
+          import os,json,datetime
+          from urllib.parse import quote
           from google.oauth2 import service_account
           from google.auth.transport.requests import AuthorizedSession
-          try:
-            info=json.loads(os.environ.get('GSC_SERVICE_ACCOUNT_JSON',''))
-            assert info.get('client_email')=='steelprodukt-gsc@steelprodukt-seo.iam.gserviceaccount.com'
-            assert info.get('token_uri')=='https://oauth2.googleapis.com/token'
-            credentials=service_account.Credentials.from_service_account_info(info,scopes=['https://www.googleapis.com/auth/webmasters'])
-            session=AuthorizedSession(credentials)
-            r=session.get('https://www.googleapis.com/webmasters/v3/sites',timeout=30)
-            print('GSC_SA_HTTP='+str(r.status_code))
-            r.raise_for_status()
-            matches=[s for s in r.json().get('siteEntry',[]) if s.get('siteUrl')=='https://www.steelprodukt.ru/']
-            print('GSC_SA_ACCESS='+json.dumps(matches))
-            assert matches,'Property unavailable'
-            from urllib.parse import quote
-            r=session.get('https://www.googleapis.com/webmasters/v3/sites/'+quote(matches[0]['siteUrl'],safe='')+'/sitemaps',timeout=30)
-            print('GSC_SA_SITEMAPS_HTTP='+str(r.status_code))
-            r.raise_for_status()
-            print('GSC_SA_CHECK=SUCCESS')
-          except Exception as e:
-            print('GSC_SA_CHECK=FAILED type='+type(e).__name__)
-            sys.exit(1)
+          info=json.loads(os.environ['GSC_SERVICE_ACCOUNT_JSON'])
+          assert info['client_email']=='steelprodukt-gsc@steelprodukt-seo.iam.gserviceaccount.com'
+          assert info['token_uri']=='https://oauth2.googleapis.com/token'
+          s=AuthorizedSession(service_account.Credentials.from_service_account_info(info,scopes=['https://www.googleapis.com/auth/webmasters.readonly']))
+          site='https://www.steelprodukt.ru/'
+          base='https://www.googleapis.com/webmasters/v3/sites/'+quote(site,safe='')
+          def out(k,v): print('AUDIT '+k+' '+json.dumps(v,ensure_ascii=False))
+          def query(a,b,dim=[],extra={}):
+           r=s.post(base+'/searchAnalytics/query',json=dict(startDate=a,endDate=b,dimensions=dim,type='web',dataState='final',rowLimit=25000,**extra),timeout=60)
+           r.raise_for_status()
+           return r.json()
+          daily=query('2026-09-01','2026-10-03',['date'])
+          out('daily',daily)
+          dates=[r['keys'][0] for r in daily.get('rows',[])]
+          if dates:
+           end=datetime.date.fromisoformat(max(dates))
+           for name,offset in [('latest7',0),('previous7',7),('previous14_21',14)]:
+            b=end-datetime.timedelta(days=offset);a=b-datetime.timedelta(days=6)
+            for country in ['', 'rus']:
+             extra={} if not country else {'dimensionFilterGroups':[{'filters':[{'dimension':'country','operator':'equals','expression':country}]}]}
+             out(name+country,dict(start=str(a),end=str(b),data=query(str(a),str(b),extra=extra)))
+           out('pages28',query(str(end-datetime.timedelta(days=27)),str(end),['page']))
+          r=s.get(base+'/sitemaps',timeout=30);r.raise_for_status();out('sitemaps',r.json())
+          for path in ['', 'products','products/metallokassety','services','contacts']:
+           r=s.post('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',json={'inspectionUrl':site+path,'siteUrl':site,'languageCode':'ru-RU'},timeout=60)
+           out('inspection',{'path':path,'http':r.status_code,'result':r.json()})
+          
           PY
