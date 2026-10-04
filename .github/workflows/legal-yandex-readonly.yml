@@ -1,4 +1,4 @@
-name: Verify published service navigation
+name: Full published browser recheck
 on:
   push:
     branches: [audit/legal-yandex-20261004]
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  verify:
+  browser:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -19,27 +19,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: Wait for published guide section
-        run: |
-          python3 - <<'PY'
-          import urllib.request,time
-          for attempt in range(90):
-              try:
-                  html=urllib.request.urlopen('https://www.steelprodukt.ru/production/gibka-listovogo-metalla',timeout=20).read().decode()
-                  if 'aria-labelledby="service-guides"' in html:
-                      print('Published service guides found')
-                      break
-              except Exception as e:
-                  print(type(e).__name__)
-              time.sleep(5)
-          else:
-              raise SystemExit('Expected release not found')
-          PY
-      - name: Browser check against production without submissions
+      - name: Full mobile and desktop audit with intercepted submissions
         env:
           BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
-        run: node scripts/audit-service-navigation.mjs
-      - name: Crawl production
-        env:
-          SEO_AUDIT_BASE_URL: https://www.steelprodukt.ru
-        run: npm run seo:audit
+        run: node scripts/audit-browser.mjs
