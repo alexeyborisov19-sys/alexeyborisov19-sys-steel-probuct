@@ -14,8 +14,14 @@ def get(url,t,params=None):
     r.raise_for_status()
     return r.json()
 
-yw=token('YW_TOKEN')
-uid=get('https://api.webmaster.yandex.net/v4/user',yw)['user_id']
+yw=None;uid=None
+for source in ['YW_TOKEN','YANDEX_OAUTH_TOKEN','YD_TOKEN','YM_TOKEN']:
+    candidate=token(source)
+    if not candidate:continue
+    r=requests.get('https://api.webmaster.yandex.net/v4/user',headers={'Authorization':'OAuth '+candidate},timeout=30)
+    out('WEBMASTER_ACCESS',{'source':source,'http':r.status_code})
+    if r.ok:yw=candidate;uid=r.json()['user_id'];break
+assert uid is not None,'No authorized Webmaster token available'
 root=f'https://api.webmaster.yandex.net/v4/user/{uid}/hosts'
 hosts=get(root,yw)['hosts']
 h=next(h for h in hosts if h.get('ascii_host_url','').rstrip('/')=='https://www.steelprodukt.ru')
