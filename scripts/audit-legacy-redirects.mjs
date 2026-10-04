@@ -1,3 +1,5 @@
+import { request } from "node:http";
+
 const baseUrl = (process.env.SEO_AUDIT_BASE_URL ?? "http://127.0.0.1:3011").replace(/\/$/, "");
 const canonicalOrigin = "https://www.steelprodukt.ru";
 
@@ -59,12 +61,24 @@ for (const [source, destination] of legacyRedirects) {
 for (const host of ["saquapequoke.beget.app", "www.saquapequoke.beget.app"]) {
   const path = "/products/metallokassety?utm_source=seo_redirect_check";
   const local = ["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname);
-  const response = await fetch(`${local ? baseUrl : `https://${host}`}${path}`, {
-    redirect: "manual",
-    ...(local ? { headers: { host } } : {}),
-  });
-  if (response.status !== 308 || response.headers.get("location") !== `${canonicalOrigin}${path}`) {
-    errors.push(`${host}: expected permanent canonical redirect preserving path and query, got ${response.status} ${response.headers.get("location")}`);
+  // Node fetch replaces a custom Host header; use the HTTP client for local
+  // virtual-host checks so the built Next server receives the intended host.
+  const result = local
+    ? await new Promise((resolve, reject) => {
+      const req = request(`${baseUrl}${path}`, { headers: { host } }, (response) => {
+        response.resume();
+        resolve({ status: response.statusCode, location: response.headers.location });
+      });
+      req.on("error", reject);
+      req.setTimeout(15000, () => req.destroy(new Error("Host redirect check timed out")));
+      req.end();
+    })
+    : await fetch(`https://${host}${path}`, { redirect: "manual" }).then((response) => ({
+      status: response.status,
+      location: response.headers.get("location"),
+    }));
+  if (result.status !== 308 || result.location !== `${canonicalOrigin}${path}`) {
+    errors.push(`${host}: expected permanent canonical redirect preserving path and query, got ${result.status} ${result.location}`);
   }
 }
 
