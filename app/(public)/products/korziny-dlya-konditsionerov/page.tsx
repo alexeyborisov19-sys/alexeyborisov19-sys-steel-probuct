@@ -6,8 +6,8 @@ import { createPageMetadata } from "@/lib/seo";
 const landing = commercialProductLandingBySlug["korziny-dlya-konditsionerov"];
 
 export const metadata: Metadata = createPageMetadata({
-  title: landing.seoTitle,
-  description: landing.metaDescription,
+  title: "Корзины для кондиционеров: подбор и цена",
+  description: "Бесплатный подбор корзины для кондиционера: класс блока, размеры, зазоры, перфорация и RAL. Цена базовой корзины с окраской зависит от количества. Сохраните спецификацию и отправьте инженеру.",
   path: `/products/${landing.slug}`,
   image: landing.image,
   keywords: landing.keywords,

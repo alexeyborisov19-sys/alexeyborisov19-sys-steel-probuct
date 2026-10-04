@@ -1,7 +1,11 @@
 "use client";
 
+import { BasketGuide } from "./BasketGuide";
+import { BasketAcReference } from "./BasketAcReference";
 import { useState } from "react";
 import { defaultBasketDesign } from "@/lib/quote/basket-design";
+import { BasketSpecification } from "./BasketSpecification";
+import type { BasketBrief } from "@/lib/quote/basket-brief";
 import { BasketDesignFields } from "./BasketDesignFields";
 import { AttributionLink } from "@/components/AttributionLink";
 import {
@@ -14,6 +18,9 @@ import {
 } from "@/lib/quote/basket-brief";
 
 export function BasketConfigurator() {
+  const [items, setItems] = useState<BasketBrief[]>([]);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [saved, setSaved] = useState("");
   const [step, setStep] = useState(0);
   const [design, setDesign] = useState(defaultBasketDesign);
   const [dimensions, setDimensions] = useState({
@@ -36,7 +43,9 @@ export function BasketConfigurator() {
     screen,
     design,
   };
-  const valid = validBasketBrief(input);
+  const valid =
+    Object.values(dimensions).every((value) => /^\d+$/.test(value)) &&
+    validBasketBrief(input);
   const color = basketColors.find((c) => c.ral === ral)!;
   const href = valid ? basketBriefHref(input) : "";
   const summary = valid
@@ -65,6 +74,19 @@ export function BasketConfigurator() {
       className="mt-8 grid overflow-hidden border border-white/15 lg:grid-cols-[1fr_1.05fr]"
       data-basket-configurator
     >
+      <header className="bg-[#eef0ed] p-5 text-[#25292c] sm:p-8 lg:col-span-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-[#9a3b00]">
+          Подбор корзины · 4 шага
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
+          От размеров блока — к понятному заданию
+        </h2>
+        <p className="mt-3 max-w-3xl text-sm leading-6">
+          Подберите размеры, крепление и оформление. Неизвестные данные можно
+          уточнить с инженером. В конце — спецификация для сохранения; цена
+          подтверждается после проверки комплектации.
+        </p>
+      </header>
       <nav
         aria-label="Шаги подбора корзины"
         className="flex flex-wrap gap-2 border-b border-white/15 bg-[#181c1f] p-4 lg:col-span-2"
@@ -84,6 +106,7 @@ export function BasketConfigurator() {
         )}
       </nav>
       <div className="flex flex-col bg-[#eef0ed] p-5 text-[#25292c] sm:p-9">
+        <BasketGuide step={step} />
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-bold uppercase tracking-widest">
             Эскиз вашего задания
@@ -96,7 +119,7 @@ export function BasketConfigurator() {
           viewBox="0 0 480 420"
           role="img"
           aria-label={`Условная схема корзины: ${valid ? `${input.width} на ${input.height} на ${input.depth} миллиметров` : "уточните размеры"}`}
-          className="my-auto w-full"
+          className={`w-full max-h-80 ${step === 1 || step === 2 ? "hidden" : ""}`}
         >
           <defs>
             <pattern
@@ -181,6 +204,20 @@ export function BasketConfigurator() {
       </div>
       <div className="bg-[#181c1f] p-5 sm:p-9">
         <div hidden={step !== 0}>
+          <BasketAcReference
+            value={design.capacityClass}
+            onChange={(capacityClass) =>
+              setDesign({ ...design, capacityClass })
+            }
+            onApply={([width, height, depth]) =>
+              setDimensions({
+                ...dimensions,
+                width: String(width),
+                height: String(height),
+                depth: String(depth),
+              })
+            }
+          />
           <h3 className="text-xl font-semibold">Задайте габариты корзины</h3>
           <p
             id="basket-size-help"
@@ -228,10 +265,10 @@ export function BasketConfigurator() {
                 {field.label}
                 <input
                   id={`basket-${field.key}`}
-                  type="number"
-                  min="1"
-                  max="10000"
-                  step="1"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  pattern="[0-9]*"
                   value={dimensions[field.key]}
                   aria-describedby="basket-size-help"
                   onChange={(e) =>
@@ -332,7 +369,12 @@ export function BasketConfigurator() {
           {step < 3 && (
             <button
               type="button"
-              onClick={() => setStep(step + 1)}
+              onClick={() => {
+                setStep(step + 1);
+                document
+                  .querySelector("[data-basket-configurator] nav")
+                  ?.scrollIntoView({ block: "start" });
+              }}
               className="min-h-11 border border-steel-orange px-5"
             >
               Далее →
@@ -352,7 +394,48 @@ export function BasketConfigurator() {
             </p>
           )}
         </div>
-        <div className="mt-4 flex flex-col gap-3">
+        <div
+          className={
+            step === 3 || editing !== null
+              ? "mt-4 flex flex-col gap-3"
+              : "hidden"
+          }
+        >
+          <button
+            type="button"
+            disabled={!valid || (items.length >= 100 && editing === null)}
+            className="min-h-12 border border-steel-orange px-4 py-3 font-semibold disabled:opacity-40"
+            onClick={() => {
+              const value = structuredClone(input);
+              if (editing === null) {
+                setItems([...items, value]);
+                setSaved("Позиция добавлена в спецификацию.");
+              } else {
+                setItems(items.map((x, i) => (i === editing ? value : x)));
+                setEditing(null);
+                setSaved("Изменения позиции сохранены.");
+              }
+            }}
+          >
+            {editing === null
+              ? "Добавить в спецификацию"
+              : `Сохранить позицию ${editing + 1}`}
+          </button>
+          {editing !== null && (
+            <button
+              type="button"
+              className="min-h-11 underline"
+              onClick={() => {
+                setEditing(null);
+                setSaved("");
+              }}
+            >
+              Отменить редактирование позиции
+            </button>
+          )}
+          <p role="status" className="text-sm">
+            {saved}
+          </p>
           {valid ? (
             <AttributionLink
               href={href}
@@ -378,6 +461,32 @@ export function BasketConfigurator() {
           </button>
         </div>
       </div>
+      <BasketSpecification
+        items={items}
+        onChange={(next) => {
+          setItems(next);
+          setEditing(null);
+          setSaved("");
+        }}
+        onEdit={(v, i) => {
+          setDimensions({
+            width: String(v.width),
+            height: String(v.height),
+            depth: String(v.depth),
+            quantity: String(v.quantity),
+          });
+          setRal(v.ral);
+          setDesign(
+            v.design ? structuredClone(v.design) : defaultBasketDesign(),
+          );
+          setEditing(i);
+          setSaved("");
+          setStep(0);
+          document
+            .querySelector("[data-basket-configurator]")
+            ?.scrollIntoView({ block: "start" });
+        }}
+      />
     </div>
   );
 }

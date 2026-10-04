@@ -1,4 +1,9 @@
 "use client";
+import { BasketVolumePrice } from "./BasketVolumePrice";
+import { BasketCutComparison } from "./BasketCutComparison";
+import { BasketFitFields, BasketFitResult } from "./BasketFitFields";
+import { BasketNumberInput } from "./BasketNumberInput";
+import { basketReference } from "@/lib/quote/basket-reference";
 import {
   type BasketDesign,
   type PanelPattern,
@@ -39,24 +44,18 @@ export function BasketDesignFields({
     return (
       <label className="text-sm" key={key}>
         {label}
-        <input
+        <BasketNumberInput
           className={control}
-          type="number"
-          min="0"
+          min={0}
           max={max}
-          value={design[key] ?? ""}
-          placeholder="Неизвестно"
-          onChange={(e) =>
-            onChange({
-              ...design,
-              [key]:
-                e.target.value === ""
-                  ? key === "facade" || key === "offset"
-                    ? null
-                    : 0
-                  : Number(e.target.value),
-            })
+          value={
+            design[key] === 0 && key !== "facade" && key !== "offset"
+              ? null
+              : design[key]
           }
+          emptyValue={key === "facade" || key === "offset" ? null : 0}
+          placeholder="Неизвестно"
+          onValue={(value) => onChange({ ...design, [key]: value })}
         />
       </label>
     );
@@ -107,19 +106,27 @@ export function BasketDesignFields({
               .map((f) => (
                 <label key={f.key} className="text-sm">
                   {f.label}
-                  <input
+                  <BasketNumberInput
                     className={control}
-                    type="number"
                     value={p[f.key]}
                     min={f.key === "margin" ? 0 : 1}
-                    onChange={(e) =>
+                    max={
+                      f.key === "diameter"
+                        ? 500
+                        : f.key === "pitch"
+                          ? 2000
+                          : 1000
+                    }
+                    onValue={(value) =>
                       set({
-                        [f.key]: Number(e.target.value),
-                        ...(f.key === "diameter"
+                        [f.key]: value ?? NaN,
+                        ...(f.key === "diameter" && Number.isFinite(value)
                           ? {
                               slotLength: Math.max(
-                                p.slotLength,
-                                Number(e.target.value),
+                                Number.isFinite(p.slotLength)
+                                  ? p.slotLength
+                                  : 0,
+                                value!,
                               ),
                             }
                           : {}),
@@ -168,6 +175,10 @@ export function BasketDesignFields({
           {number("facade", "Толщина фасада от стены, мм", 2000)}
           {number("offset", "Отступ от облицовки, мм", 2000)}
         </div>
+        <BasketFitFields
+          value={design.fit}
+          onChange={(fit) => onChange({ ...design, fit })}
+        />
         <p className="mt-4 text-sm text-white/75">
           Несущая стена → фасад → отступ → корзина. Сумма первых двух расстояний
           не равна полной длине кронштейна. Сечение, толщину и анкеры подбираем
@@ -266,6 +277,50 @@ export function BasketDesignFields({
           Проверьте размеры и рисунок: шаг должен быть больше отверстия.
         </p>
       )}
+      <BasketCutComparison
+        design={design}
+        width={width}
+        height={height}
+        depth={depth}
+        quantity={quantity}
+      />
+      <BasketFitResult
+        fit={design.fit}
+        width={width}
+        height={height}
+        depth={depth}
+      />
+      <details className="mt-5 border border-white/20 p-4">
+        <summary className="cursor-pointer font-semibold">
+          Состав производственного образца 1180 × 630 × 510 мм
+        </summary>
+        <p className="mt-3 text-sm text-white/75">
+          По сборочному чертежу. Это образец состава, а не подтверждение
+          пригодности для выбранного блока или фасада. У каждого элемента своя
+          толщина; при изменении размеров и крепления состав пересматривается.
+        </p>
+        <ul className="mt-3 space-y-2 text-sm">
+          {basketReference.parts.map((part) => (
+            <li key={part.name}>
+              {part.name}: {part.quantity} шт. · оцинкованная сталь{" "}
+              {part.thicknessMm} мм
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-sm text-white/75">
+          Крепёж по сборке:{" "}
+          {basketReference.fasteners
+            .map((p) => `${p.name} — ${p.quantity} шт.`)
+            .join("; ")}
+          . Анкеры основания подбираются отдельно.
+        </p>
+      </details>
+      <BasketVolumePrice
+        quantity={quantity}
+        width={width}
+        height={height}
+        depth={depth}
+      />
       <div className="mt-5 border border-steel-orange/50 p-4">
         <b>Стоимость — после проверки комплектации</b>
         <p className="mt-2 text-sm text-white/75">

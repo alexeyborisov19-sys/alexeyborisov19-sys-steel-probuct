@@ -1,3 +1,4 @@
+import { validBasketFit, basketFitSummary, type BasketFit } from "./basket-fit";
 /** Geometry of a user-defined rectangular panel field, not a shop flat pattern. */
 export const panelPatterns = {
   round: "Круглые отверстия",
@@ -15,6 +16,8 @@ export type PanelPattern = {
 };
 export type BasketDesign = {
   version: 1;
+  capacityClass?: number;
+  fit?: BasketFit;
   blockWidth: number;
   blockHeight: number;
   blockDepth: number;
@@ -75,6 +78,9 @@ export function validBasketDesign(v: unknown): v is BasketDesign {
   const d = v as BasketDesign;
   return (
     d.version === 1 &&
+    (d.fit === undefined || validBasketFit(d.fit)) &&
+    (d.capacityClass === undefined ||
+      [7, 9, 12, 18, 24, 36].includes(d.capacityClass)) &&
     [d.blockWidth, d.blockHeight, d.blockDepth].every((n) =>
       bounded(n, 0, 10000),
     ) &&
@@ -132,9 +138,15 @@ export function basketDesignSummary(d: BasketDesign) {
   const panel = (p: PanelPattern) =>
     `${panelPatterns[p.pattern]}; отверстие ${p.diameter} мм${p.pattern === "slots" ? `, длина ${p.slotLength} мм` : ""}; шаг ${p.pitch} мм; поле от края ${p.margin} мм`;
   return [
+    ...(d.capacityClass
+      ? [
+          `Класс кондиционера: ${d.capacityClass} тыс. БТЕ/ч; подбор корзины предварительный. Размеры конкретной модели и зазоры обязательно перепроверить.`,
+        ]
+      : []),
     `Блок (Ш × В × Г): ${d.blockWidth || "неизвестно"} × ${d.blockHeight || "неизвестно"} × ${d.blockDepth || "неизвестно"} мм; масса: ${d.mass ? `${d.mass} кг` : "неизвестна"}.`,
     `Фасад от несущей стены: ${d.facade === null ? "неизвестно" : `${d.facade} мм`}; отступ от облицовки: ${d.offset === null ? "неизвестно" : `${d.offset} мм`} (эти значения не равны полной длине кронштейна).`,
     `Опоры блока: ${d.mount === "existing" ? "существующие; нужны крепления экрана" : d.mount === "bearing" ? "нужны несущие кронштейны" : "тип необходимо уточнить"}.`,
+    basketFitSummary(d.fit),
     "Толщина кронштейнов: требуется подбор по проверенной конструкции, основанию и нагрузкам.",
     `Передняя панель: ${panel(d.front)}.`,
     `Боковые панели: ${panel(d.side)}.`,
