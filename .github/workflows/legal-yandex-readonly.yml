@@ -1,4 +1,4 @@
-name: Legal integrity and Yandex evidence
+name: Yandex excluded pages follow-up
 on:
   push:
     branches: [audit/legal-yandex-20261004]
@@ -11,10 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m pip install --quiet requests
-      - name: Read Yandex evidence
+      - name: Read indexing and commercial queries
         env:
-          YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
           YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
-          YW_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
-          YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
-        run: python3 scripts/legal-yandex-readonly.py
+        run: python3 scripts/yandex-followup.py
