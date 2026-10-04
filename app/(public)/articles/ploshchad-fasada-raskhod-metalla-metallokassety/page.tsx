@@ -24,7 +24,7 @@ export const metadata: Metadata = createPageMetadata({
   ],
   openGraphType: "article",
   publishedTime: "2026-09-12",
-  modifiedTime: "2026-09-12",
+  modifiedTime: "2026-10-04",
 });
 
 const faqItems = [
@@ -52,7 +52,7 @@ export default function FacadeAreaMetalConsumptionArticle() {
           path,
           image: "/images/web/hero-main.webp",
           datePublished: "2026-09-12",
-          dateModified: "2026-09-12",
+          dateModified: "2026-10-04",
           citations: ["/documents/katalog-fasadnyh-resheniy-stal-produkt.pdf"],
         }),
         faqSchema(faqItems),
