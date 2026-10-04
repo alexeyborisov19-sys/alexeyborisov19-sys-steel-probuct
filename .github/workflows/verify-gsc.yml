@@ -1,4 +1,4 @@
-name: Verify GSC connection
+name: Verify GSC service account
 on:
   push:
     branches: [audit/gsc-connection-20261004]
@@ -9,27 +9,33 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify Google access without exposing credentials
+      - run: python3 -m pip install --quiet google-auth requests
+      - name: Check service account and Search Console API
         env:
-          GSC_CLIENT_ID: ${{ secrets.GSC_CLIENT_ID }}
-          GSC_CLIENT_SECRET: ${{ secrets.GSC_CLIENT_SECRET }}
-          GSC_REFRESH_TOKEN: ${{ secrets.GSC_REFRESH_TOKEN }}
+          GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
         run: |
           python3 - <<'PY'
-          import os,json,urllib.request,urllib.parse,urllib.error
-          names=['GSC_CLIENT_ID','GSC_CLIENT_SECRET','GSC_REFRESH_TOKEN']
-          assert all(os.environ.get(n,'').strip() for n in names),'Missing GSC secret'
-          data=urllib.parse.urlencode(dict(client_id=os.environ[names[0]].strip(),client_secret=os.environ[names[1]].strip(),refresh_token=os.environ[names[2]].strip(),grant_type='refresh_token')).encode()
+          import os,json,sys
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import AuthorizedSession
           try:
-            with urllib.request.urlopen(urllib.request.Request('https://oauth2.googleapis.com/token',data=data),timeout=30) as r:
-              token=json.load(r)['access_token']
-            req=urllib.request.Request('https://www.googleapis.com/webmasters/v3/sites',headers={'Authorization':'Bearer '+token})
-            with urllib.request.urlopen(req,timeout=30) as r:
-              sites=json.load(r).get('siteEntry',[])
-            matches=[s for s in sites if s.get('siteUrl')=='https://www.steelprodukt.ru/']
-            print('GSC_CONNECTION='+json.dumps({'ok':bool(matches),'sites':matches}))
-            assert matches,'Target property missing'
-          except urllib.error.HTTPError as e:
-            print('GSC_CONNECTION_HTTP_ERROR='+str(e.code))
-            raise SystemExit(1)
+            info=json.loads(os.environ.get('GSC_SERVICE_ACCOUNT_JSON',''))
+            assert info.get('client_email')=='steelprodukt-gsc@steelprodukt-seo.iam.gserviceaccount.com'
+            assert info.get('token_uri')=='https://oauth2.googleapis.com/token'
+            credentials=service_account.Credentials.from_service_account_info(info,scopes=['https://www.googleapis.com/auth/webmasters'])
+            session=AuthorizedSession(credentials)
+            r=session.get('https://www.googleapis.com/webmasters/v3/sites',timeout=30)
+            print('GSC_SA_HTTP='+str(r.status_code))
+            r.raise_for_status()
+            matches=[s for s in r.json().get('siteEntry',[]) if s.get('siteUrl')=='https://www.steelprodukt.ru/']
+            print('GSC_SA_ACCESS='+json.dumps(matches))
+            assert matches,'Property unavailable'
+            from urllib.parse import quote
+            r=session.get('https://www.googleapis.com/webmasters/v3/sites/'+quote(matches[0]['siteUrl'],safe='')+'/sitemaps',timeout=30)
+            print('GSC_SA_SITEMAPS_HTTP='+str(r.status_code))
+            r.raise_for_status()
+            print('GSC_SA_CHECK=SUCCESS')
+          except Exception as e:
+            print('GSC_SA_CHECK=FAILED type='+type(e).__name__)
+            sys.exit(1)
           PY
