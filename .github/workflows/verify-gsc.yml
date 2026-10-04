@@ -1,0 +1,35 @@
+name: Verify GSC connection
+on:
+  push:
+    branches: [audit/gsc-connection-20261004]
+    paths: [.github/workflows/verify-gsc.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Google access without exposing credentials
+        env:
+          GSC_CLIENT_ID: ${{ secrets.GSC_CLIENT_ID }}
+          GSC_CLIENT_SECRET: ${{ secrets.GSC_CLIENT_SECRET }}
+          GSC_REFRESH_TOKEN: ${{ secrets.GSC_REFRESH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request,urllib.parse,urllib.error
+          names=['GSC_CLIENT_ID','GSC_CLIENT_SECRET','GSC_REFRESH_TOKEN']
+          assert all(os.environ.get(n,'').strip() for n in names),'Missing GSC secret'
+          data=urllib.parse.urlencode(dict(client_id=os.environ[names[0]].strip(),client_secret=os.environ[names[1]].strip(),refresh_token=os.environ[names[2]].strip(),grant_type='refresh_token')).encode()
+          try:
+            with urllib.request.urlopen(urllib.request.Request('https://oauth2.googleapis.com/token',data=data),timeout=30) as r:
+              token=json.load(r)['access_token']
+            req=urllib.request.Request('https://www.googleapis.com/webmasters/v3/sites',headers={'Authorization':'Bearer '+token})
+            with urllib.request.urlopen(req,timeout=30) as r:
+              sites=json.load(r).get('siteEntry',[])
+            matches=[s for s in sites if s.get('siteUrl')=='https://www.steelprodukt.ru/']
+            print('GSC_CONNECTION='+json.dumps({'ok':bool(matches),'sites':matches}))
+            assert matches,'Target property missing'
+          except urllib.error.HTTPError as e:
+            print('GSC_CONNECTION_HTTP_ERROR='+str(e.code))
+            raise SystemExit(1)
+          PY
