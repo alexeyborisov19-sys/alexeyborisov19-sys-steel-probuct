@@ -1,0 +1,77 @@
+name: Submit verified public sitemap
+on:
+  push:
+    branches: [audit/gsc-connection-20261004]
+    paths: [.github/workflows/submit-gsc-sitemap-once.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: python3 -m pip install --quiet google-auth requests
+      - name: Verify published catalog and submit sitemap
+        env:
+          GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python3 - <<'PY'
+          import os,json,xml.etree.ElementTree as ET,requests
+          from urllib.parse import quote,urlparse
+          from html.parser import HTMLParser
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import AuthorizedSession
+          info=json.loads(os.environ['GSC_SERVICE_ACCOUNT_JSON'])
+          assert info['client_email']=='steelprodukt-gsc@steelprodukt-seo.iam.gserviceaccount.com'
+          assert info['token_uri']=='https://oauth2.googleapis.com/token'
+          s=AuthorizedSession(service_account.Credentials.from_service_account_info(info,scopes=['https://www.googleapis.com/auth/webmasters']))
+          site='https://www.steelprodukt.ru/'
+          base='https://www.googleapis.com/webmasters/v3/sites/'+quote(site,safe='')
+          def out(k,v): print('GOOGLE '+k+' '+json.dumps(v,ensure_ascii=False))
+          class JsonLdParser(HTMLParser):
+           def __init__(self): super().__init__();self.active=False;self.buffer='';self.nodes=[]
+           def handle_starttag(self,t,a):
+            if t=='script' and dict(a).get('type')=='application/ld+json':self.active=True;self.buffer=''
+           def handle_data(self,d):
+            if self.active:self.buffer+=d
+           def handle_endtag(self,t):
+            if t=='script' and self.active:self.nodes.append(json.loads(self.buffer));self.active=False
+          r=requests.get(site+'products/metallokassety',timeout=30);r.raise_for_status()
+          p=JsonLdParser();p.feed(r.text)
+          def flatten(x):
+           if isinstance(x,list):
+            for v in x:yield from flatten(v)
+           elif isinstance(x,dict):
+            yield x
+            for v in x.values():yield from flatten(v)
+          nodes=list(flatten(p.nodes))
+          assert not any(n.get('@type')=='ProductGroup' for n in nodes),'Old catalog markup still live'
+          lists=[n for n in nodes if n.get('@type')=='ItemList']
+          assert any(n.get('numberOfItems')==4 for n in lists),'Expected four cassette series'
+          out('LIVE_CATALOG',{'http':r.status_code,'itemLists':lists})
+          for host in ['saquapequoke.beget.app','www.saquapequoke.beget.app']:
+           path='products/metallokassety?utm_source=seo_redirect_check'
+           r=requests.get('https://'+host+'/'+path,allow_redirects=False,timeout=30)
+           assert r.status_code in [301,308] and r.headers.get('Location')==site+path,(host,r.status_code,r.headers.get('Location'))
+           out('HOST_REDIRECT',{'host':host,'status':r.status_code,'location':r.headers.get('Location')})
+          url=site+'sitemap.xml'
+          r=requests.get(url,timeout=30);r.raise_for_status()
+          root=ET.fromstring(r.content)
+          urls=[n.text for n in root.findall('{*}url/{*}loc')]
+          assert len(urls)==len(set(urls)) and len(urls)>=90
+          assert all(u.startswith(site) and not urlparse(u).query for u in urls)
+          assert site+'products/metallokassety' in urls
+          out('SITEMAP_VALID',{'count':len(urls)})
+          r=s.put(base+'/sitemaps/'+quote(url,safe=''),timeout=30)
+          out('SITEMAP_SUBMIT',{'http':r.status_code})
+          r.raise_for_status()
+          r=s.get(base+'/sitemaps',timeout=30);r.raise_for_status();out('SITEMAPS_AFTER',r.json())
+          r=s.post(base+'/searchAnalytics/query',json={'startDate':'2026-09-23','endDate':'2026-10-04','dimensions':['date'],'type':'web','dataState':'all'},timeout=60)
+          r.raise_for_status();out('FRESH_DAILY',r.json())
+          for path in ['production','production/gibka-listovogo-metalla','production/svarka-i-sborka-metalloizdeliy','products/korziny-dlya-konditsionerov','products/metallicheskie-korpusa','products/metallokassety-premium']:
+           if site+path not in urls:
+            out('SKIP_NOT_IN_SITEMAP',path);continue
+           r=s.post('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',json={'inspectionUrl':site+path,'siteUrl':site,'languageCode':'ru-RU'},timeout=60)
+           r.raise_for_status();d=r.json()['inspectionResult']
+           out('INDEX',{'path':path,'index':d.get('indexStatusResult'),'richResults':d.get('richResultsResult')})
+          
+          PY
