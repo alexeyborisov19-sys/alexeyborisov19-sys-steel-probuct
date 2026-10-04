@@ -1,0 +1,44 @@
+name: Service navigation quality
+on:
+  pull_request:
+    paths:
+      - 'app/(public)/production/**'
+      - 'app/(public)/articles/**'
+      - 'components/InnerHero.tsx'
+      - 'data/article-editorial.ts'
+      - 'data/article-quality-rewrites.ts'
+      - 'scripts/audit-service-navigation.mjs'
+      - '.github/workflows/service-navigation-quality.yml'
+  push:
+    branches: [fix/yandex-quality-20261004]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+      NEXT_PUBLIC_YM_COUNTER_ID: '112542227'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Check rendered service and article navigation
+        run: |
+          npm start -- --port 3020 > /tmp/service-navigation.log 2>&1 &
+          trap 'kill $! 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3020/ > /dev/null; then break; fi
+            sleep 2
+          done
+          node scripts/audit-service-navigation.mjs

@@ -1,3 +1,4 @@
+import { articles } from "@/data/articles";
 import { CustomerResources } from "@/components/commercial/CustomerResources";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -43,6 +44,7 @@ export default async function ProductionServicePage({
   if (!service) notFound();
 
   const path = `/production/${service.slug}`;
+  const guides = articles.filter((article) => article.related.href === path);
 
   return (
     <>
@@ -224,6 +226,30 @@ export default async function ProductionServicePage({
             </div>
           </div>
         </section>
+
+        {guides.length > 0 && (
+          <section className="border-t border-white/10 bg-[#101519] py-12 sm:py-16" aria-labelledby="service-guides">
+            <div className="container">
+              <p className="eyebrow">Подготовка заказа</p>
+              <h2 id="service-guides" className="mt-3 text-2xl font-semibold sm:text-3xl">
+                {service.shortTitle}: практические рекомендации
+              </h2>
+              <p className="mt-4 max-w-3xl text-base leading-7 text-white/75">
+                Материалы помогут подготовить исходные данные и согласовать требования к изделию.
+              </p>
+              <ul className="mt-7 grid gap-4 md:grid-cols-2">
+                {guides.map((article) => (
+                  <li key={article.slug}>
+                    <AttributionLink href={`/articles/${article.slug}`} className="block h-full border border-white/20 p-6 transition hover:border-steel-orange focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-steel-orange">
+                      <h3 className="text-lg font-semibold leading-7">{article.title}</h3>
+                      <span className="mt-4 inline-block text-sm font-semibold text-steel-orange">Читать рекомендации →</span>
+                    </AttributionLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
 
         <FaqSection items={service.faq} title={`Вопросы: ${service.shortTitle.toLowerCase()}`} />
 

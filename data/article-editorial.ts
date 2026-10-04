@@ -694,7 +694,7 @@ export const additionalEngineeringArticles: Article[] = [
       "Проверка первой детали и партии",
       "Сборочный чертёж или сопрягаемые элементы",
     ],
-    related: { label: "Посмотреть гибочный участок", href: "/production" },
+    related: { label: "Гибка листового металла в Смоленске", href: "/production/gibka-listovogo-metalla" },
   },
   {
     slug: "lazernaya-rezka-listovogo-metalla-kachestvo-reza",
