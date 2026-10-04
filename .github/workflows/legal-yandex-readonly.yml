@@ -1,4 +1,4 @@
-name: Full published browser recheck
+name: Verify published commercial attribution
 on:
   push:
     branches: [audit/legal-yandex-20261004]
@@ -6,21 +6,49 @@ on:
 permissions:
   contents: read
 jobs:
-  browser:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      BROWSER_CHANNEL: chrome
+      BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 342c62abcad9cb6876c1664ced7f7eb17ea17a7f
+          ref: 951c26e22b0a95aa3e20bd3f1a227dcc0a2a885e
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: google-chrome --version
-      - name: Full mobile and desktop audit with intercepted submissions
+      - name: Wait for published pricing CTA fix
+        run: |
+          node --input-type=module - <<'JS'
+          import {chromium} from '@playwright/test';
+          const browser=await chromium.launch({channel:'chrome'});
+          try {
+            const context=await browser.newContext();
+            await context.route('**/*', route => {
+              const r=route.request();
+              if (!['GET','HEAD'].includes(r.method()) || new URL(r.url()).hostname!=='www.steelprodukt.ru') return route.abort();
+              return route.continue();
+            });
+            const page=await context.newPage();
+            let found=false;
+            for(let attempt=0;attempt<90;attempt++){
+              await page.goto('https://www.steelprodukt.ru/products/metallicheskie-korpusa?utm_campaign=release_check', {waitUntil:'networkidle'});
+              const href=await page.getByRole('link',{name:'Передать данные на расчёт',exact:false}).getAttribute('href');
+              if(href.includes('utm_campaign=release_check')){found=true;break;}
+              await page.waitForTimeout(5000);
+            }
+            if(!found)throw new Error('Published CTA fix not found');
+            console.log('Published pricing CTA preserves attribution');
+          } finally {await browser.close();}
+          JS
+      - name: Browser navigation on production without submissions
+        run: node scripts/audit-service-navigation.mjs
+      - name: Production SEO crawl
         env:
-          BROWSER_CHANNEL: chrome
-          BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
-        run: node scripts/audit-browser.mjs
+          SEO_AUDIT_BASE_URL: https://www.steelprodukt.ru
+        run: npm run seo:audit
