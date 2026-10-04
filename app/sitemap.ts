@@ -50,7 +50,7 @@ const staticModifiedAt: Record<string, Date> = {
   "/articles/metall-dlya-goroda-proekty-stal-produkt": new Date("2026-09-12T00:00:00.000Z"),
   "/calculator-metallokassety": new Date("2026-09-28T00:00:00.000Z"),
   "/online-order": new Date("2026-09-28T00:00:00.000Z"),
-  "/products/metallokassety": new Date("2026-10-03T00:00:00.000Z"),
+  "/products/metallokassety": new Date("2026-10-04T00:00:00.000Z"),
   "/products/metallokassety/bim": new Date("2026-09-28T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
   "/products/korziny-dlya-konditsionerov": new Date("2026-10-03T00:00:00.000Z"),

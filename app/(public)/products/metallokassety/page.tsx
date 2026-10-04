@@ -8,7 +8,7 @@ import { MetalCassetteCalculator } from "@/components/MetalCassetteCalculator";
 import { ManufacturingProofSection } from "@/components/ManufacturingProofSection";
 import { ProductCard } from "@/components/ProductCard";
 import { metalCassetteSpecs, productBySlug } from "@/data/products";
-import { faqSchema, productGroupSchema } from "@/lib/schema";
+import { faqSchema, itemListSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -66,12 +66,14 @@ export default function MetalCassetteCollectionPage() {
   return (
     <>
       <JsonLd data={[
-        productGroupSchema({
+        itemListSchema({
           name: "Фасадные металлокассеты «Сталь Продукт»",
           description: "Фасадные металлокассеты открытого и закрытого типа, объёмные и перфорированные решения, изготовление по проектным размерам.",
           path: "/products/metallokassety",
-          groupId: "steelprodukt-metallokassety",
-          products: cassetteProducts,
+          items: cassetteProducts.map((product) => ({
+            name: product.title,
+            path: `/products/${product.slug}`,
+          })),
         }),
         faqSchema(faqItems),
       ]} />
