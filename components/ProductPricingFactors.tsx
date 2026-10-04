@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AttributionLink as Link } from "./AttributionLink";
 
 const pricingFactors = [
   { title: "Материал и толщина", text: "Марка и толщина листа влияют на расход металла, технологический маршрут и трудоёмкость изготовления." },

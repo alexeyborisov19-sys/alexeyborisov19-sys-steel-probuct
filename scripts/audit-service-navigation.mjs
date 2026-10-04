@@ -48,7 +48,7 @@ try {
       await context.close();
     }
   }
-  for (const path of ['/products/metallicheskie-korpusa', '/products/korziny-dlya-konditsionerov', '/products/ventilyacionnye-reshetki', '/products/zakladnye-detali', '/solutions/industry', '/solutions/climate', '/solutions/custom', '/solutions/engineering']) {
+  for (const path of ['/products/dobornye-elementy', '/products/metallicheskie-korpusa', '/products/korziny-dlya-konditsionerov', '/products/ventilyacionnye-reshetki', '/products/zakladnye-detali', '/solutions/industry', '/solutions/climate', '/solutions/custom', '/solutions/engineering']) {
     const context = await browser.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
     await context.route('**/*', route => {
       const request = route.request();
@@ -57,6 +57,7 @@ try {
     });
     const page = await context.newPage();
     await page.goto(`${base}${path}?utm_campaign=commercial-check&yclid=456`, { waitUntil: 'networkidle' });
+    console.log('Checking all enquiry links: ' + path);
     const enquiryLinks = page.locator('main a[href*="/contacts"][href*="contact-form"]');
     assert.ok(await enquiryLinks.count() >= 3, `Expected all enquiry links on ${path}`);
     for (const link of await enquiryLinks.all()) {
