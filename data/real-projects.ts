@@ -1,4 +1,4 @@
-export type RealProjectCategory = "residential" | "medical" | "education";
+export type RealProjectCategory = "residential" | "commercial" | "medical" | "education";
 
 export type RealProject = {
   slug: string;
@@ -21,6 +21,7 @@ export type RealProject = {
 
 const localProjectVisuals: Record<RealProjectCategory, string> = {
   residential: "/images/industries/residential.jpg",
+  commercial: "/images/industries/shopping-center.jpg",
   medical: "/images/industries/medical.jpg",
   education: "/images/industries/educational.jpg",
 };
@@ -141,6 +142,21 @@ export const realProjects: RealProject[] = [
     sourceLabel: "ЕРЗ.РФ",
   },
   {
+    slug: "kutuzova-12-1",
+    title: "Торговый центр на ул. Кутузова, 12/1",
+    city: "Смоленск",
+    category: "commercial",
+    categoryLabel: "Коммерческие объекты",
+    image: "/images/projects/kutuzova-12-1-1.jpg",
+    imageAlt: "Торговый центр на улице Кутузова, 12/1 в Смоленске с фасадом из металлокассет",
+    imageCredit: "Материал для портфолио «Сталь Продукт»",
+    imageSourceUrl: "https://2gis.ru/smolensk/search/%D0%9A%D1%83%D1%82%D1%83%D0%B7%D0%BE%D0%B2%D0%B0%2012%2F1",
+    supply: ["металлокассеты"],
+    description: "Торговый объект в Смоленске по адресу ул. Кутузова, 12/1. «Сталь Продукт» выполнил поставку металлокассет для объекта. В карточке используются актуальные фотографии, переданные для портфолио «Сталь Продукт».",
+    sourceUrl: "https://2gis.ru/smolensk/search/%D0%9A%D1%83%D1%82%D1%83%D0%B7%D0%BE%D0%B2%D0%B0%2012%2F1",
+    sourceLabel: "2ГИС — адрес объекта",
+  },
+  {
     slug: "odkb-novyy-korpus",
     title: "Новый корпус Смоленской областной детской клинической больницы",
     city: "Смоленск",
@@ -236,6 +252,7 @@ export const realProjects: RealProject[] = [
 
 export const projectCategoryLabels: Record<RealProjectCategory, string> = {
   residential: "Жилая застройка",
+  commercial: "Коммерческие объекты",
   medical: "Медицина",
   education: "Образование",
 };
