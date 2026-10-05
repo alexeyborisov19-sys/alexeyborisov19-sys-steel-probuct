@@ -72,20 +72,6 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://2gis.ru/smolensk/search/%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%A8%D0%B5%D0%B2%D1%87%D0%B5%D0%BD%D0%BA%D0%BE%2C%206",
     },
   ],
-  "smolenskaya-oblastnaya-klinicheskaya-bolnitsa": [
-    {
-      src: "/images/projects/smolenskaya-oblastnaya-klinicheskaya-bolnitsa-1.jpg",
-      alt: "Смоленская областная клиническая больница: фасад корпуса с названием учреждения",
-      credit: "Сталь Продукт",
-      sourceUrl: "https://www.admin-smolensk.ru/novosti/news/vrio-gubernatora-vasilij-anohin-oznakomilsya-s-rabotoj-oblastnyh-uchrezhdenij-zdravoohraneniya/",
-    },
-    {
-      src: "/images/projects/smolenskaya-oblastnaya-klinicheskaya-bolnitsa-2.jpg",
-      alt: "Корпус Смоленской областной клинической больницы со стороны улицы",
-      credit: "Сталь Продукт",
-      sourceUrl: "https://www.admin-smolensk.ru/novosti/news/vrio-gubernatora-vasilij-anohin-oznakomilsya-s-rabotoj-oblastnyh-uchrezhdenij-zdravoohraneniya/",
-    },
-  ],
   "odkb-novyy-korpus": [
     {
       src: "/images/projects/odkb-novyy-korpus-1.webp",
