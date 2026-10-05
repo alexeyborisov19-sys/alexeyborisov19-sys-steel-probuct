@@ -92,6 +92,14 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://erzrf.ru/novostroyki/zhk-dom-po-ul-1-ja-vostochnaja-5-25149483001",
     },
   ],
+  "smolstrom-marii-oktyabrskoy": [
+    {
+      src: "/images/projects/smolstrom-marii-oktyabrskoy-1.jpg",
+      alt: "Жилой комплекс по улице Марии Октябрьской в Смоленске: фасад с металлокассетами и кронштейнами для кондиционеров",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://yandex.ru/realty/smolensk/kupit/kvartira/novostroyki/site-zhiloj-dom-po-ul-marii-oktyabrskoj-4086636",
+    },
+  ],
   "kutuzova-12-1": [
     {
       src: "/images/projects/kutuzova-12-1-1.jpg",
