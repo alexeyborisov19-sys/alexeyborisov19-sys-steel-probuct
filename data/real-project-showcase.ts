@@ -32,6 +32,20 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://zao-vash-dom.ru/",
     },
   ],
+  "unity-development": [
+    {
+      src: "/images/projects/unity-marshal-koneva-34-1.png",
+      alt: "Апарт-комплекс ЮНИТИ 2.0 на проезде Маршала Конева, 34: общий вид фасада",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://unity-groups.ru/unity",
+    },
+    {
+      src: "/images/projects/unity-marshal-koneva-34-2.png",
+      alt: "Апарт-комплекс ЮНИТИ 2.0 на проезде Маршала Конева, 34: фасад и входная группа",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://unity-groups.ru/unity",
+    },
+  ],
   "klovskiy": [
     {
       src: "/images/projects/klovskiy-1.webp",
