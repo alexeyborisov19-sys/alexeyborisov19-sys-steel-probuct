@@ -1,0 +1,47 @@
+name: Import Unity Koneva photos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-unity-koneva.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch edited project photos
+        run: |
+          set -euo pipefail
+          mkdir -p public/images/projects
+          python - <<'PY'
+          import urllib.request
+          files = [
+              ("https://photoshop-api.adobe.io/v2/short-url/urn:aaid:ps:US:a45aaa07-7275-4ae7-8176-7f9518024a0d",
+               "public/images/projects/unity-marshal-koneva-34-1.png"),
+              ("https://photoshop-api.adobe.io/v2/short-url/urn:aaid:ps:US:997eb216-0c5a-4fa8-88a1-505d801fa893",
+               "public/images/projects/unity-marshal-koneva-34-2.png"),
+          ]
+          for url, target in files:
+              urllib.request.urlretrieve(url, target)
+          PY
+          test $(stat -c%s public/images/projects/unity-marshal-koneva-34-1.png) -gt 100000
+          test $(stat -c%s public/images/projects/unity-marshal-koneva-34-2.png) -gt 100000
+          file public/images/projects/unity-marshal-koneva-34-1.png | grep -qi 'PNG image'
+          file public/images/projects/unity-marshal-koneva-34-2.png | grep -qi 'PNG image'
+      - name: Commit photos
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/images/projects/unity-marshal-koneva-34-*.png
+          if git diff --cached --quiet; then
+            echo "No Unity photo changes to commit."
+            exit 0
+          fi
+          git commit -m "Add Unity Koneva project photos"
+          git push origin HEAD:main
