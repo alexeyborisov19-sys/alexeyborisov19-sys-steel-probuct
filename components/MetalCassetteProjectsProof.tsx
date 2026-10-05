@@ -14,6 +14,7 @@ const projects = slugs.map((slug) => realProjectsShowcase.find((project) => proj
 
 const categoryVisual = {
   residential: "/images/industries/residential.jpg",
+  commercial: "/images/industries/shopping-center.jpg",
   medical: "/images/industries/medical.jpg",
   education: "/images/industries/educational.jpg",
 } as const;
