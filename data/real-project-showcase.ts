@@ -72,6 +72,26 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://2gis.ru/smolensk/search/%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%A8%D0%B5%D0%B2%D1%87%D0%B5%D0%BD%D0%BA%D0%BE%2C%206",
     },
   ],
+  "vostokstroy-vostochnaya-5": [
+    {
+      src: "/images/projects/vostokstroy-vostochnaya-5-1.png",
+      alt: "Жилой дом на улице 1-я Восточная, 5 в Смоленске: общий вид со стороны двора",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://erzrf.ru/novostroyki/zhk-dom-po-ul-1-ja-vostochnaja-5-25149483001",
+    },
+    {
+      src: "/images/projects/vostokstroy-vostochnaya-5-2.png",
+      alt: "Жилой дом на улице 1-я Восточная, 5 в Смоленске: фасад с бело-бежевыми и оранжевыми акцентами",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://erzrf.ru/novostroyki/zhk-dom-po-ul-1-ja-vostochnaja-5-25149483001",
+    },
+    {
+      src: "/images/projects/vostokstroy-vostochnaya-5-3.png",
+      alt: "Жилой дом на улице 1-я Восточная, 5 в Смоленске: вид фасада и коммерческих помещений первого этажа",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://erzrf.ru/novostroyki/zhk-dom-po-ul-1-ja-vostochnaja-5-25149483001",
+    },
+  ],
   "odkb-novyy-korpus": [
     {
       src: "/images/projects/odkb-novyy-korpus-1.webp",
