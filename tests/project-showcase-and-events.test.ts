@@ -46,7 +46,12 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   assert.equal(smolstrom.photos.length, 1);
   assert.doesNotMatch(smolstrom.photos[0].credit, /Иллюстративный визуал/);
 
-  for (const project of [unity, feniks]) {
+  assert.ok(unity);
+  assert.equal(unity.photos.length, 2);
+  assert.deepEqual(unity.supply, ["металлокассеты", "все виды доборных элементов", "корзины для кондиционеров"]);
+  assert.doesNotMatch(unity.photos[0].credit, /Иллюстративный визуал/);
+
+  for (const project of [feniks]) {
     assert.ok(project);
     assert.equal(project.photos.length, 1);
     assert.match(project.photos[0].credit, /Иллюстративный визуал/);
