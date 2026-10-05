@@ -146,7 +146,7 @@ export const realProjects: RealProject[] = [
     city: "Смоленск",
     category: "medical",
     categoryLabel: "Медицина",
-    image: "/images/projects/odkb-novyy-korpus-1.webp",
+    image: "/images/projects/odkb-novyy-korpus-1.jpg",
     imageAlt: "Новый корпус Смоленской областной детской клинической больницы с современным фасадом",
     imageCredit: "Фото предоставлено для портфолио «Сталь Продукт»",
     imageSourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
