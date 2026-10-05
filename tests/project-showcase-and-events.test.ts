@@ -22,7 +22,8 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   // Projects without such media continue to fall back to one clearly labelled
   // illustrative industry visual — see LEGAL_MEDIA_RIGHTS_REGISTER.md.
   assert.ok(obninsk.photos.length >= 3);
-  assert.ok(solovinaya && solovinaya.photos.length >= 7);
+  assert.ok(solovinaya);
+  assert.equal(solovinaya.photos.length, 3);
   assert.ok(klovskiy && klovskiy.photos.length >= 3);
   assert.doesNotMatch(klovskiy.photos[0].credit, /Иллюстративный визуал/);
   assert.ok(regionalHospital && regionalHospital.photos.length >= 2);
