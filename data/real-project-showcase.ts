@@ -92,6 +92,26 @@ const galleries: Record<string, ProjectPhoto[]> = {
       sourceUrl: "https://erzrf.ru/novostroyki/zhk-dom-po-ul-1-ja-vostochnaja-5-25149483001",
     },
   ],
+  "kutuzova-12-1": [
+    {
+      src: "/images/projects/kutuzova-12-1-1.jpg",
+      alt: "Торговый центр на улице Кутузова, 12/1 в Смоленске: общий вид фасада",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://2gis.ru/smolensk/search/%D0%9A%D1%83%D1%82%D1%83%D0%B7%D0%BE%D0%B2%D0%B0%2012%2F1",
+    },
+    {
+      src: "/images/projects/kutuzova-12-1-2.jpg",
+      alt: "Торговый центр на улице Кутузова, 12/1 в Смоленске: входная группа и металлокассеты фасада",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://2gis.ru/smolensk/search/%D0%9A%D1%83%D1%82%D1%83%D0%B7%D0%BE%D0%B2%D0%B0%2012%2F1",
+    },
+    {
+      src: "/images/projects/kutuzova-12-1-3.jpg",
+      alt: "Торговый центр на улице Кутузова, 12/1 в Смоленске: боковой фасад с облицовкой из металлокассет",
+      credit: "Материал для портфолио «Сталь Продукт»",
+      sourceUrl: "https://2gis.ru/smolensk/search/%D0%9A%D1%83%D1%82%D1%83%D0%B7%D0%BE%D0%B2%D0%B0%2012%2F1",
+    },
+  ],
   "odkb-novyy-korpus": [
     {
       src: "/images/projects/odkb-novyy-korpus-1.jpg",
