@@ -8,7 +8,6 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   const solovinaya = realProjectsShowcase.find((project) => project.slug === "solovinaya-roshcha");
   const klovskiy = realProjectsShowcase.find((project) => project.slug === "klovskiy");
   const unity = realProjectsShowcase.find((project) => project.slug === "unity-development");
-  const regionalHospital = realProjectsShowcase.find((project) => project.slug === "smolenskaya-oblastnaya-klinicheskaya-bolnitsa");
   const odkb = realProjectsShowcase.find((project) => project.slug === "odkb-novyy-korpus");
   const oncology = realProjectsShowcase.find((project) => project.slug === "onkologicheskiy-dispanser");
   const feniks = realProjectsShowcase.find((project) => project.slug === "feniks-pechersk");
@@ -26,7 +25,6 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   assert.equal(solovinaya.photos.length, 3);
   assert.ok(klovskiy && klovskiy.photos.length >= 3);
   assert.doesNotMatch(klovskiy.photos[0].credit, /Иллюстративный визуал/);
-  assert.ok(regionalHospital && regionalHospital.photos.length >= 2);
   assert.ok(odkb);
   assert.equal(odkb.photos.length, 3);
   assert.doesNotMatch(odkb.photos[0].credit, /Иллюстративный визуал/);
@@ -37,6 +35,7 @@ test("verified project showcase includes correctly identified Obninsk medical pr
     assert.equal(project.photos.length, 1);
     assert.match(project.photos[0].credit, /Иллюстративный визуал/);
   }
+  assert.equal(realProjectsShowcase.some((project) => project.slug === "smolenskaya-oblastnaya-klinicheskaya-bolnitsa"), false);
   assert.equal(realProjectsShowcase.some((project) => project.slug === "kb-8-fmba-obninsk"), false);
 });
 
