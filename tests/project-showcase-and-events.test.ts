@@ -12,6 +12,7 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   const oncology = realProjectsShowcase.find((project) => project.slug === "onkologicheskiy-dispanser");
   const feniks = realProjectsShowcase.find((project) => project.slug === "feniks-pechersk");
   const vostok5 = realProjectsShowcase.find((project) => project.slug === "vostokstroy-vostochnaya-5");
+  const kutuzova = realProjectsShowcase.find((project) => project.slug === "kutuzova-12-1");
 
   assert.ok(obninsk);
   assert.equal(obninsk.title, "МРНЦ им. А. Ф. Цыба");
@@ -33,6 +34,11 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   assert.ok(vostok5);
   assert.equal(vostok5.photos.length, 3);
   assert.doesNotMatch(vostok5.photos[0].credit, /Иллюстративный визуал/);
+  assert.ok(kutuzova);
+  assert.equal(kutuzova.category, "commercial");
+  assert.deepEqual(kutuzova.supply, ["металлокассеты"]);
+  assert.equal(kutuzova.photos.length, 3);
+  assert.doesNotMatch(kutuzova.photos[0].credit, /Иллюстративный визуал/);
 
   for (const project of [unity, feniks]) {
     assert.ok(project);
