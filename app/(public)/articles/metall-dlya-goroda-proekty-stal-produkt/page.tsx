@@ -52,6 +52,7 @@ const selectedProjects = selectedSlugs.map((slug) => realProjects.find((project)
 
 const sectionNames: Record<RealProjectCategory, string> = {
   residential: "Жилая застройка",
+  commercial: "Коммерческие объекты",
   medical: "Медицина",
   education: "Образование",
 };
