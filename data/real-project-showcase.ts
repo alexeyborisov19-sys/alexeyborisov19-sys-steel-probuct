@@ -135,12 +135,6 @@ const galleries: Record<string, ProjectPhoto[]> = {
       credit: "Фото предоставлено для портфолио «Сталь Продукт» · официальный материал об объекте",
       sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
     },
-    {
-      src: "/images/projects/odkb-novyy-korpus-4.jpg",
-      alt: "Фасад нового корпуса Смоленской областной детской клинической больницы — этап строительства",
-      credit: "«Смоленская газета», пресс-материалы объекта",
-      sourceUrl: "https://smolgazeta.ru/daylynews/135816-vasiliy-anohin-smolenskaya-detskaya.html",
-    },
   ],
   "onkologicheskiy-dispanser": [
     {
