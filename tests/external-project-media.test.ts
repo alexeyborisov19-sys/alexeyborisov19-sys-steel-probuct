@@ -75,7 +75,7 @@ test("retired third-party media hosts stay out of Next image and CSP config", ()
 test("project gallery renders photo sources with visible attribution", () => {
   assert.match(gallerySource, /src=\{photo\.src\}/);
   assert.match(gallerySource, /href=\{photo\.sourceUrl\}/);
-  assert.match(gallerySource, /Источник: \{photo\.credit\}/);
+  assert.match(gallerySource, /Фото: \{photo\.credit\}/);
 });
 
 test("JSON-LD removes third-party image URLs before serialization", () => {
