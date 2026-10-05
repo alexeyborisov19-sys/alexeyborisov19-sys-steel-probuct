@@ -11,7 +11,7 @@ import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
   title: "Реализованные объекты и поставки",
-  description: "Реальные объекты, для которых под брендом «Сталь Продукт» поставлялись металлокассеты, вентиляционные решётки, кронштейны, корпуса и другие изделия из листового металла.",
+  description: "Реальные жилые, коммерческие, медицинские и образовательные объекты, для которых под брендом «Сталь Продукт» поставлялись металлокассеты и другие изделия из листового металла.",
   path: "/projects",
   image: "/images/industries/residential.jpg",
   keywords: [
@@ -25,7 +25,7 @@ export const metadata: Metadata = createPageMetadata({
   ],
 });
 
-const categories: RealProjectCategory[] = ["residential", "medical", "education"];
+const categories: RealProjectCategory[] = ["residential", "commercial", "medical", "education"];
 
 const portfolioSchema = {
   "@context": "https://schema.org",
@@ -54,7 +54,7 @@ export default function ProjectsPage() {
         path="/projects"
         eyebrow="Реальные поставки"
         title="Реализованные объекты и поставки"
-        description="Жилые кварталы, больницы, школы и общественные объекты, для которых под брендом «Сталь Продукт» изготавливались и поставлялись изделия из листового металла."
+        description="Жилые кварталы, торговые объекты, больницы, школы и другие здания, для которых под брендом «Сталь Продукт» изготавливались и поставлялись изделия из листового металла."
         image="/images/industries/residential.jpg"
         imageAlt="Изделия из листового металла для строительных объектов"
       >
