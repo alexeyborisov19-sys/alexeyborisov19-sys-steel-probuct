@@ -33,6 +33,7 @@ export function ProjectPhotoGallery({ photos, className = "", tall = false }: Pr
                 fill
                 sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
                 priority={index === 0 && tall}
+                quality={92}
                 className="object-cover brightness-100"
               />
               {photos.length > 1 ? (
