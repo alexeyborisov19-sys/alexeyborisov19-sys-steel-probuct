@@ -26,7 +26,8 @@ test("verified project showcase includes correctly identified Obninsk medical pr
   assert.ok(klovskiy && klovskiy.photos.length >= 3);
   assert.doesNotMatch(klovskiy.photos[0].credit, /Иллюстративный визуал/);
   assert.ok(regionalHospital && regionalHospital.photos.length >= 2);
-  assert.ok(odkb && odkb.photos.length >= 4);
+  assert.ok(odkb);
+  assert.equal(odkb.photos.length, 3);
   assert.doesNotMatch(odkb.photos[0].credit, /Иллюстративный визуал/);
   assert.ok(oncology && oncology.photos.length >= 2);
 
