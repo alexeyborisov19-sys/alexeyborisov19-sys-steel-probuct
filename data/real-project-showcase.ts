@@ -94,19 +94,19 @@ const galleries: Record<string, ProjectPhoto[]> = {
   ],
   "odkb-novyy-korpus": [
     {
-      src: "/images/projects/odkb-novyy-korpus-1.webp",
+      src: "/images/projects/odkb-novyy-korpus-1.jpg",
       alt: "Новый корпус Смоленской областной детской клинической больницы: светлый фасад с зелёными акцентами",
       credit: "Материал для портфолио «Сталь Продукт»",
       sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
     },
     {
-      src: "/images/projects/odkb-novyy-korpus-2.webp",
+      src: "/images/projects/odkb-novyy-korpus-2.jpg",
       alt: "Новый корпус Смоленской областной детской клинической больницы: фасад со стороны проезда",
       credit: "Материал для портфолио «Сталь Продукт»",
       sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
     },
     {
-      src: "/images/projects/odkb-novyy-korpus-3.webp",
+      src: "/images/projects/odkb-novyy-korpus-3.jpg",
       alt: "Новый корпус Смоленской областной детской клинической больницы: общий вид здания",
       credit: "Материал для портфолио «Сталь Продукт»",
       sourceUrl: "https://kapstr.admin-smolensk.ru/news/novyj-korpus-detskoj-oblastnoj-bolnicy-gotovnost-80/",
