@@ -1,4 +1,4 @@
-name: Install reviewed employee calculator release
+name: Publish repaired employee calculator 0.1.1
 on:
   workflow_dispatch:
     inputs:
@@ -24,24 +24,20 @@ jobs:
           set -euo pipefail
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{64}$ ]]
           mkdir -m 700 package
-          gh release download employee-windows-0.1.0 --repo "$GITHUB_REPOSITORY" --pattern 'SteelProdukt-Employee-0.1.0-x64.exe' --dir package
-          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.0-x64.exe | sha256sum --check
-      - name: Prepare private settings and server access
+          gh release download employee-windows-0.1.1 --repo "$GITHUB_REPOSITORY" --pattern 'SteelProdukt-Employee-0.1.1-x64.exe' --dir package
+          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.1-x64.exe | sha256sum --check
+      - name: Prepare server access
         env:
-          INITIAL_SETTINGS: ${{ secrets.STEEL_EMPLOYEE_INITIAL_SETTINGS }}
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
           BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          test -n "$INITIAL_SETTINGS"
           umask 077
-          printf '%s' "$INITIAL_SETTINGS" > package/settings.json
-          python3 -c 'import json; v=json.load(open("package/settings.json")); assert set(v)=={"commercial","operations","metalMarketUpliftPct"}'
           install -m 700 -d ~/.ssh
           printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-      - name: Install isolated files and enable employee activation
+      - name: Publish installer and update release metadata
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -62,26 +58,32 @@ jobs:
           . ./.env.production
           set +a
           test -f "$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH"
-          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.0-x64.exe" | sha256sum --check
+          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.1-x64.exe" | sha256sum --check
           export EMPLOYEE_ROOT=/var/lib/steelprodukt/employee-app
           install -d -m 700 -o nodejs -g nodejs "$EMPLOYEE_ROOT"
-          install -m 600 -o nodejs -g nodejs "$STAGE/settings.json" "$EMPLOYEE_ROOT/settings.json"
-          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.0-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.0-x64.exe"
+          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.1-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.1-x64.exe"
           python3 - <<'PY'
           import os,json,pathlib
-          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.0-x64.exe'
-          (root/'release.json').write_text(json.dumps(dict(version='0.1.0',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
-          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-install').write_text(old)
-          values={'STEEL_EMPLOYEE_ACTIVATION_ENABLED':'true','STEEL_EMPLOYEE_REGISTRY_PATH':str(root/'registry.sqlite'),'STEEL_EMPLOYEE_BASIS_PATH':os.environ['STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH'],'STEEL_EMPLOYEE_SETTINGS_PATH':str(root/'settings.json'),'STEEL_EMPLOYEE_RELEASE_PATH':str(root/'release.json'),'STEEL_EMPLOYEE_INSTALLER_PATH':str(root/name)}
+          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.1-x64.exe'
+          (root/'release-before-0.1.1.json').write_bytes((root/'release.json').read_bytes())
+          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.1',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
+          (root/'release.json.next').replace(root/'release.json')
+          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.1').write_text(old)
+          values={'STEEL_EMPLOYEE_INSTALLER_PATH':str(root/name)}
           lines=[line for line in old.splitlines() if line.split('=',1)[0] not in values]
           env.write_text('\n'.join(lines+[k+'='+v for k,v in values.items()])+'\n')
           PY
           chown nodejs:nodejs "$EMPLOYEE_ROOT/release.json"
-          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/environment-before-install" .env.production
-          sudo -iu nodejs bash -lc "cd '$APP_PATH' && pm2 restart ecosystem.config.cjs --env production --update-env"
+          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.1.json" "$EMPLOYEE_ROOT/environment-before-0.1.1" .env.production
+          chmod 755 "$STAGE"
+          printf 'cd %q\npm2 restart ecosystem.config.cjs --env production --update-env\n' "$APP_PATH" > "$STAGE/restart.sh"
+          chmod 644 "$STAGE/restart.sh"
+          sudo -iu nodejs bash "$STAGE/restart.sh"
           for attempt in 1 2 3 4 5; do
             if curl --silent --fail http://127.0.0.1:3000/ > /dev/null; then break; fi
             sleep 2
           done
-          sudo -iu nodejs bash -lc "cd '$APP_PATH' && node --env-file=.env.production --import tsx scripts/verify-employee-release.ts"
+          printf 'cd %q\nnode --env-file=.env.production --import tsx scripts/verify-employee-release.ts\n' "$APP_PATH" > "$STAGE/verify.sh"
+          chmod 644 "$STAGE/verify.sh"
+          sudo -iu nodejs bash "$STAGE/verify.sh"
           REMOTE
