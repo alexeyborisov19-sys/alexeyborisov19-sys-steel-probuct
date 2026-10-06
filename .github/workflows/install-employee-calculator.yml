@@ -1,4 +1,4 @@
-name: Publish repaired employee calculator 0.1.1
+name: Publish repaired employee calculator 0.1.2
 on:
   workflow_dispatch:
     inputs:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch reviewed installer from private draft release
+      - name: Fetch reviewed installer from private release
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SHA: ${{ inputs.sha256 }}
@@ -24,8 +24,8 @@ jobs:
           set -euo pipefail
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{64}$ ]]
           mkdir -m 700 package
-          gh release download employee-windows-0.1.1 --repo "$GITHUB_REPOSITORY" --pattern 'SteelProdukt-Employee-0.1.1-x64.exe' --dir package
-          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.1-x64.exe | sha256sum --check
+          gh release download employee-windows-0.1.2 --repo "$GITHUB_REPOSITORY" --pattern 'SteelProdukt-Employee-0.1.2-x64.exe' --dir package
+          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.2-x64.exe | sha256sum --check
       - name: Prepare server access
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -58,23 +58,23 @@ jobs:
           . ./.env.production
           set +a
           test -f "$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH"
-          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.1-x64.exe" | sha256sum --check
+          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.2-x64.exe" | sha256sum --check
           export EMPLOYEE_ROOT=/var/lib/steelprodukt/employee-app
           install -d -m 700 -o nodejs -g nodejs "$EMPLOYEE_ROOT"
-          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.1-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.1-x64.exe"
+          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.2-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.2-x64.exe"
           python3 - <<'PY'
           import os,json,pathlib
-          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.1-x64.exe'
-          (root/'release-before-0.1.1.json').write_bytes((root/'release.json').read_bytes())
-          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.1',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
+          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.2-x64.exe'
+          (root/'release-before-0.1.2.json').write_bytes((root/'release.json').read_bytes())
+          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.2',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
           (root/'release.json.next').replace(root/'release.json')
-          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.1').write_text(old)
+          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.2').write_text(old)
           values={'STEEL_EMPLOYEE_INSTALLER_PATH':str(root/name)}
           lines=[line for line in old.splitlines() if line.split('=',1)[0] not in values]
           env.write_text('\n'.join(lines+[k+'='+v for k,v in values.items()])+'\n')
           PY
           chown nodejs:nodejs "$EMPLOYEE_ROOT/release.json"
-          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.1.json" "$EMPLOYEE_ROOT/environment-before-0.1.1" .env.production
+          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.2.json" "$EMPLOYEE_ROOT/environment-before-0.1.2" .env.production
           chmod 755 "$STAGE"
           printf 'cd %q\npm2 restart ecosystem.config.cjs --env production --update-env\n' "$APP_PATH" > "$STAGE/restart.sh"
           chmod 644 "$STAGE/restart.sh"
