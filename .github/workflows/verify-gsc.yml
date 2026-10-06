@@ -8,42 +8,129 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - run: python3 -m pip install --quiet google-auth requests
-      - name: Read search metrics and index status
+      - name: Read Google index and public technical signals without changing site
         env:
           GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
         run: |
           python3 - <<'PY'
-          import os,json,datetime
-          from urllib.parse import quote
+          import os,json,datetime,time,collections,concurrent.futures,xml.etree.ElementTree as ET
+          from urllib.parse import quote,urlparse
+          from html.parser import HTMLParser
+          import requests
           from google.oauth2 import service_account
           from google.auth.transport.requests import AuthorizedSession
-          info=json.loads(os.environ['GSC_SERVICE_ACCOUNT_JSON'])
-          assert info['client_email']=='steelprodukt-gsc@steelprodukt-seo.iam.gserviceaccount.com'
-          assert info['token_uri']=='https://oauth2.googleapis.com/token'
-          s=AuthorizedSession(service_account.Credentials.from_service_account_info(info,scopes=['https://www.googleapis.com/auth/webmasters.readonly']))
-          site='https://www.steelprodukt.ru/'
-          base='https://www.googleapis.com/webmasters/v3/sites/'+quote(site,safe='')
-          def out(k,v): print('AUDIT '+k+' '+json.dumps(v,ensure_ascii=False))
-          def query(a,b,dim=[],extra={}):
-           r=s.post(base+'/searchAnalytics/query',json=dict(startDate=a,endDate=b,dimensions=dim,type='web',dataState='final',rowLimit=25000,**extra),timeout=60)
-           r.raise_for_status()
-           return r.json()
-          daily=query('2026-09-01','2026-10-03',['date'])
-          out('daily',daily)
-          dates=[r['keys'][0] for r in daily.get('rows',[])]
-          if dates:
-           end=datetime.date.fromisoformat(max(dates))
-           for name,offset in [('latest7',0),('previous7',7),('previous14_21',14)]:
-            b=end-datetime.timedelta(days=offset);a=b-datetime.timedelta(days=6)
-            for country in ['', 'rus']:
-             extra={} if not country else {'dimensionFilterGroups':[{'filters':[{'dimension':'country','operator':'equals','expression':country}]}]}
-             out(name+country,dict(start=str(a),end=str(b),data=query(str(a),str(b),extra=extra)))
-           out('pages28',query(str(end-datetime.timedelta(days=27)),str(end),['page']))
-          r=s.get(base+'/sitemaps',timeout=30);r.raise_for_status();out('sitemaps',r.json())
-          for path in ['', 'products','products/metallokassety','services','contacts']:
-           r=s.post('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',json={'inspectionUrl':site+path,'siteUrl':site,'languageCode':'ru-RU'},timeout=60)
-           out('inspection',{'path':path,'http':r.status_code,'result':r.json()})
-          
+          SITE='https://www.steelprodukt.ru/'
+          def out(k,v):
+              print('GSC_AUDIT '+k+' '+json.dumps(v,ensure_ascii=False),flush=True)
+          raw=os.environ.get('GSC_SERVICE_ACCOUNT_JSON','')
+          if not raw:
+              raise SystemExit('GSC_SERVICE_ACCOUNT_JSON is unavailable; no credentials printed')
+          info=json.loads(raw)
+          assert info.get('type')=='service_account'
+          assert info.get('project_id')=='steelprodukt-seo'
+          assert info.get('client_email')=='steelprodukt-gsc@steelprodukt-seo.iam.gserviceaccount.com'
+          assert info.get('token_uri')=='https://oauth2.googleapis.com/token'
+          credentials=service_account.Credentials.from_service_account_info(info,scopes=['https://www.googleapis.com/auth/webmasters.readonly'])
+          google=AuthorizedSession(credentials)
+          base='https://www.googleapis.com/webmasters/v3/sites/'+quote(SITE,safe='')
+          report={'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'property':SITE,'auth':{},'sitemap':{},'public':{},'technical':[],'inspections':[]}
+          r=google.get(base,timeout=45)
+          report['auth']={'http':r.status_code,'project':info['project_id'],'account':info['client_email']}
+          if r.ok: report['auth']['property']=r.json()
+          out('AUTH',report['auth'])
+          r.raise_for_status()
+          priority=['','products','production','services','customers','customers/requirements','customers/materials','customers/order-and-delivery','tools','products/akvilon','products/metallokassety/bim','products/metallokassety','production/gibka-listovogo-metalla','production/svarka-i-sborka-metalloizdeliy','products/korziny-dlya-konditsionerov','products/metallicheskie-korpusa','products/metallokassety-premium','contacts']
+          sitemap_urls=[]
+          try:
+              r=requests.get(SITE+'sitemap.xml',timeout=45)
+              report['sitemap']['liveHttp']=r.status_code
+              r.raise_for_status()
+              root=ET.fromstring(r.content)
+              sitemap_urls=[n.text.strip() for n in root.findall('{*}url/{*}loc') if n.text]
+              assert all(u.startswith(SITE) and urlparse(u).netloc=='www.steelprodukt.ru' for u in sitemap_urls),'Unexpected sitemap host'
+              assert len(sitemap_urls)<=300,'Safety limit exceeded'
+              report['sitemap'].update({'urlCount':len(sitemap_urls),'uniqueUrlCount':len(set(sitemap_urls)),'urls':sitemap_urls})
+          except Exception as e:
+              report['sitemap']['liveError']=type(e).__name__
+          r=google.get(base+'/sitemaps',timeout=45)
+          report['sitemap']['googleHttp']=r.status_code
+          report['sitemap']['google']=r.json()
+          out('SITEMAP',{k:v for k,v in report['sitemap'].items() if k!='urls'})
+          urls=list(dict.fromkeys([SITE+p for p in priority]+sitemap_urls))
+          try:
+              r=requests.get(SITE+'robots.txt',timeout=30)
+              report['public']['robots']={'http':r.status_code,'body':r.text[:18000]}
+          except Exception as e: report['public']['robots']={'error':type(e).__name__}
+          report['public']['redirects']=[]
+          for u in ['http://steelprodukt.ru/','http://www.steelprodukt.ru/','https://steelprodukt.ru/','https://saquapequoke.beget.app/products/metallokassety','https://www.saquapequoke.beget.app/products/metallokassety']:
+              try:
+                  r=requests.get(u,allow_redirects=False,timeout=20)
+                  report['public']['redirects'].append({'url':u,'http':r.status_code,'location':r.headers.get('Location')})
+              except Exception as e: report['public']['redirects'].append({'url':u,'error':type(e).__name__})
+          out('PUBLIC',report['public'])
+          class Signals(HTMLParser):
+              def __init__(self):
+                  super().__init__();self.canonical=[];self.robots=[];self.title='';self.in_title=False;self.h1Count=0
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  if tag=='link' and 'canonical' in a.get('rel','').lower().split():self.canonical.append(a.get('href',''))
+                  if tag=='meta' and a.get('name','').lower() in ['robots','googlebot']:self.robots.append(a.get('content',''))
+                  if tag=='title':self.in_title=True
+                  if tag=='h1':self.h1Count+=1
+              def handle_endtag(self,tag):
+                  if tag=='title':self.in_title=False
+              def handle_data(self,data):
+                  if self.in_title:self.title+=data
+          def technical(u):
+              d={'url':u,'path':urlparse(u).path,'inSitemap':u in sitemap_urls}
+              try:
+                  r=requests.get(u,timeout=35,headers={'User-Agent':'SteelproduktReadOnlySEOAudit/1.0'},allow_redirects=False)
+                  d.update({'http':r.status_code,'location':r.headers.get('Location'),'xRobotsTag':r.headers.get('X-Robots-Tag'),'contentType':r.headers.get('Content-Type')})
+                  if r.status_code==200 and 'text/html' in r.headers.get('Content-Type',''):
+                      p=Signals();p.feed(r.text)
+                      d.update({'canonical':p.canonical,'robots':p.robots,'title':p.title,'h1Count':p.h1Count,'bytes':len(r.content)})
+              except Exception as e:d['error']=type(e).__name__
+              return d
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+              report['technical']=list(pool.map(technical,urls))
+          for u in urls:
+              item={'url':u,'path':urlparse(u).path,'inSitemap':u in sitemap_urls}
+              try:
+                  for attempt in range(3):
+                      r=google.post('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',json={'inspectionUrl':u,'siteUrl':SITE,'languageCode':'ru-RU'},timeout=45)
+                      if r.status_code not in (429,500,502,503,504):break
+                      time.sleep(2**attempt)
+                  item['http']=r.status_code
+                  if r.ok:
+                      result=r.json().get('inspectionResult',{})
+                      item['index']=result.get('indexStatusResult',{})
+                      item['richResults']=result.get('richResultsResult',{})
+                      item['inspectionResultLink']=result.get('inspectionResultLink')
+                  else:item['error']=r.json().get('error',{}).get('message','API error')
+              except Exception as e:item['error']=type(e).__name__
+              report['inspections'].append(item)
+              if u in [SITE+p for p in priority] or item.get('index',{}).get('verdict')!='PASS':
+                  out('INDEX',{'path':item['path'],'http':item.get('http'),'index':item.get('index'),'error':item.get('error')})
+          def fault(d):
+              return d.get('inSitemap') and (d.get('http')!=200 or d.get('canonical')!=[d['url']] or 'noindex' in (' '.join(d.get('robots',[]))+' '+str(d.get('xRobotsTag',''))).lower())
+          faults=[d for d in report['technical'] if fault(d)]
+          summary={'checkedAt':report['checkedAt'],'sitemapUrls':len(sitemap_urls),'inspected':len(report['inspections']),'apiErrors':sum(x.get('http')!=200 for x in report['inspections']),'verdicts':dict(collections.Counter(x.get('index',{}).get('verdict','API_ERROR') for x in report['inspections'])),'sitemapVerdicts':dict(collections.Counter(x.get('index',{}).get('verdict','API_ERROR') for x in report['inspections'] if x['inSitemap'])),'technicalFaults':faults,'richResultIssues':[{'path':x['path'],'verdict':x['richResults'].get('verdict'),'details':x['richResults'].get('detectedItems',[])} for x in report['inspections'] if x.get('richResults',{}).get('verdict') in ('FAIL','PARTIAL')]}
+          report['summary']=summary
+          with open('gsc-audit.json','w',encoding='utf-8') as f:json.dump(report,f,ensure_ascii=False,indent=2)
+          with open('gsc-summary.json','w',encoding='utf-8') as f:json.dump(summary,f,ensure_ascii=False,indent=2)
+          out('SUMMARY',{k:v for k,v in summary.items() if k!='richResultIssues'})
+          out('RICH_ISSUE_PATHS',[x['path'] for x in summary['richResultIssues']])
           PY
+      - name: Save read-only audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gsc-index-audit
+          path: |
+            gsc-audit.json
+            gsc-summary.json
+          retention-days: 7
+          if-no-files-found: warn
