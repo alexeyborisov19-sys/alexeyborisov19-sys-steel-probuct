@@ -11,7 +11,7 @@ async function main(){
   const bootstrap=await request({action:'bootstrap',token});assert.equal(bootstrap.status,200);const initial=await bootstrap.json();assert(initial.basis?.rateBook&&initial.settings?.operations&&initial.settings?.commercial);
   const release=await request({action:'release',token});assert.equal(release.status,200);const metadata=(await release.json()).release;assert(metadata?.sha256);
   const download=await request({action:'download',token});assert.equal(download.status,200);assert.equal(download.headers.get('cache-control'),'private, no-store');
-  const hash=createHash('sha256');let bytes=0;for await(const chunk of download.body!){hash.update(chunk);bytes+=chunk.length}assert.equal(bytes,metadata.bytes);assert.equal(hash.digest('hex'),metadata.sha256);
+  const hash=createHash('sha256');let bytes=0;assert(download.body);const reader=download.body.getReader();try{for(;;){const {done,value}=await reader.read();if(done)break;hash.update(value);bytes+=value.length}}finally{reader.releaseLock()}assert.equal(bytes,metadata.bytes);assert.equal(hash.digest('hex'),metadata.sha256);
   const raw=await fetch(metadata.url);assert.equal(raw.status,404);
   const form=await fetch('https://www.steelprodukt.ru/api/employee-app/installer',{method:'POST',headers:{Origin:'https://www.steelprodukt.ru','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code:license.code}),redirect:'manual'});assert.equal(form.status,200);await form.body?.cancel();
  }finally{registry.revoke('license',license.id,'release-verification');registry.close()}
