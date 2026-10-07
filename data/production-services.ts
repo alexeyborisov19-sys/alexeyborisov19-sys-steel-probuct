@@ -286,7 +286,7 @@ export const productionServices: ProductionService[] = [
     slug: "gibka-listovogo-metalla",
     title: "Гибка листового металла на ЧПУ в Смоленске",
     serviceCity: "Смоленск",
-    seoTitle: "Гибка листового металла на ЧПУ в Смоленске — расчёт по чертежу",
+    seoTitle: "Гибка листового металла на ЧПУ в Смоленске",
     shortTitle: "Гибка",
     eyebrow: "Формообразование деталей",
     description:
@@ -393,7 +393,7 @@ export const productionServices: ProductionService[] = [
     slug: "svarka-i-sborka-metalloizdeliy",
     title: "Сварка и сборка металлоизделий в Смоленске",
     serviceCity: "Смоленск",
-    seoTitle: "Сварка и сборка металлоизделий в Смоленске по чертежам",
+    seoTitle: "Сварка и сборка металлоизделий в Смоленске",
     shortTitle: "Сварка и сборка",
     eyebrow: "Сборочное производство",
     description:
