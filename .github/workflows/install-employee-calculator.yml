@@ -7,7 +7,7 @@ on:
         required: true
         type: string
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: steelprodukt-production
   cancel-in-progress: false
@@ -16,17 +16,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch reviewed installer from private release
+      - name: Fetch reviewed installer from private delivery branch
         env:
-          GH_TOKEN: ${{ github.token }}
+          EMPLOYEE_DOWNLOAD_DEPLOY_KEY: ${{ secrets.EMPLOYEE_DOWNLOAD_DEPLOY_KEY }}
           EXPECTED_SHA: ${{ inputs.sha256 }}
         run: |
           set -euo pipefail
+          umask 077
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{64}$ ]]
-          # Draft assets are visible only to authenticated repository writers, even in a public repository.
-          test "$(gh release view employee-windows-0.1.4 --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true
-          mkdir -m 700 package
-          gh release download employee-windows-0.1.4 --repo "$GITHUB_REPOSITORY" --pattern 'SteelProdukt-Employee-0.1.4-x64.exe' --dir package
+          mkdir -m 700 delivery-ssh package
+          trap 'rm -rf delivery-ssh package-source' EXIT
+          printf '%s' "$EMPLOYEE_DOWNLOAD_DEPLOY_KEY" > delivery-ssh/key
+          ssh-keyscan -H github.com > delivery-ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $PWD/delivery-ssh/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$PWD/delivery-ssh/known_hosts"
+          git clone --depth 1 --single-branch --branch delivery/employee-0.1.4 --filter=blob:none --no-checkout git@github.com:alexeyborisov19-sys/steelprodukt-employee-desktop.git package-source
+          git -C package-source sparse-checkout set deliveries/0.1.4
+          git -C package-source checkout
+          cp package-source/deliveries/0.1.4/SteelProdukt-Employee-0.1.4-x64.exe package/
           printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.4-x64.exe | sha256sum --check
       - name: Prepare server access
         env:
