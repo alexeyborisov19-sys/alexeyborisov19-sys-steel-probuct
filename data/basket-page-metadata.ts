@@ -5,8 +5,8 @@ import { createPageMetadata } from "@/lib/seo";
 const landing = commercialProductLandingBySlug["korziny-dlya-konditsionerov"];
 
 export const basketPageMetadata: Metadata = createPageMetadata({
-  title: "Корзины для кондиционеров: подбор и цена",
-  description: "Подбор корзины для кондиционера: размеры, зазоры, перфорация и RAL. Подготовка задания на расчёт стоимости. Бесплатное сохранение спецификации.",
+  title: "Фасадные корзины для кондиционеров от производителя — расчёт",
+  description: "Фасадные корзины и экраны для кондиционеров по проекту: размеры под наружный блок, перфорация, RAL и кронштейны. Подготовьте спецификацию для расчёта.",
   path: `/products/${landing.slug}`,
   image: landing.image,
   keywords: landing.keywords,
