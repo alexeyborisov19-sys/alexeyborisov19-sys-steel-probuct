@@ -616,3 +616,8 @@ Added branded introductory hierarchy and contextual help for all four steps, lig
 ## 2026-10-04 — Owner-approved volume pricing
 Owner approved painted basic 900×600×550 basket: 1–10=7300,11–49=6700,50–99=6100,100+=5600 RUB/unit, final amounts without additional16.5%. Added tier calculation and quantity footnote on result. Other dimensions explicitly show baseline reference, not a quote for custom geometry; patterns/support changes subject to confirmation. No assumption of combined discounts across unlike specification items. Local only.
 Release verification:1524 local tests and lint passed; homepage/tools5service links and basket browser audits passed390/1440. SEO check uses explicit preview URL. Exact remote commit CI and live deployment still pending.
+
+## 2026-10-07 — Internal employee update audit
+Baseline HEAD 2d8993b. Owner authorizes internal Windows repair, full functional verification and updates inside the application; explicitly prohibits public installer distribution. Public download path has been blocked at the reverse proxy. IN PROGRESS: token/device-authenticated download action; no public calculator/pricing changes. NEXT ACTION: verify positive, revoked and anonymous download cases and Windows updater integration.
+
+Closed download portal uses the existing employee activation code without consuming a device slot; updater uses token/device credentials. Codes stay out of URLs and access logs. Registry throttles requests and honors licence revocation. Public raw download paths remain blocked. Local full suite: 1554/1554, typecheck and scoped lint passed. Windows release audit remains in progress; do not publish a candidate until the exact final build passes.
