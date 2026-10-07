@@ -1,0 +1,59 @@
+name: Verify live CTR production metadata
+
+on:
+  push:
+    branches: [audit/gsc-connection-20261004]
+    paths: [.github/workflows/live-ctr-production-verify.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read live production metadata
+        run: |
+          node <<'NODE'
+          const pages = [
+            ["/products/metallokassety", "Фасадные металлокассеты — расчёт по проекту", "Передайте проект для расчёта."],
+            ["/production/gibka-listovogo-metalla", "Гибка листового металла на ЧПУ в Смоленске", "Передайте чертёж, материал и количество для расчёта."],
+            ["/production/svarka-i-sborka-metalloizdeliy", "Сварка и сборка металлоизделий в Смоленске", "корпуса, шкафы, кожухи и рамы"],
+            ["/production/poroshkovaya-okraska-metalla", "Порошковая окраска металла в Смоленске по RAL", "Расчёт по габаритам и количеству."],
+            ["/products/metallicheskie-korpusa", "Металлические корпуса на заказ по чертежам", "КД, STEP, DXF и чертежам"],
+            ["/products/korziny-dlya-konditsionerov", "Фасадные корзины для кондиционеров — расчёт", "Подготовьте спецификацию для расчёта."],
+            ["/products/akvilon", "Аквилон для оконных откосов и фасада", "изготовление по размерам узла"],
+            ["/production", "Производство металлоизделий по чертежам", "От образца до серии."]
+          ];
+          const decode = s => s.replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#x27;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+          function metaDescription(html) {
+            const tags = html.match(/<meta\s+[^>]*>/gi) || [];
+            for (const tag of tags) {
+              if (!/name=["']description["']/i.test(tag)) continue;
+              const m = tag.match(/content=["']([^"']*)["']/i);
+              if (m) return decode(m[1]);
+            }
+            return "";
+          }
+          for (const [path, expectedTitle, expectedDescriptionPart] of pages) {
+            const url = "https://www.steelprodukt.ru" + path + "?ctr_verify=a1239d48";
+            const r = await fetch(url, {headers: {"user-agent":"SteelProduktLiveCTRVerify/1.0","cache-control":"no-cache"}});
+            if (!r.ok) throw new Error(path + " HTTP " + r.status);
+            const html = await r.text();
+            const tm = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+            const title = tm ? decode(tm[1].replace(/\s+/g," ").trim()) : "";
+            const description = metaDescription(html);
+            const canonical = (html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i) || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i) || [])[1] || "";
+            console.log("LIVE_CTR_PAGE "+JSON.stringify({path,status:r.status,title,description,canonical},null,0));
+            if (!title.startsWith(expectedTitle)) throw new Error(path + " title mismatch: " + title);
+            if (!description.includes(expectedDescriptionPart)) throw new Error(path + " description mismatch: " + description);
+            if (!canonical.includes("https://www.steelprodukt.ru"+path)) throw new Error(path + " canonical mismatch: " + canonical);
+            if (path === "/products/korziny-dlya-konditsionerov") {
+              const count = (html.match(/href=["'][^"']*\/contacts[^"']*#contact-form[^"']*["']/gi) || []).length;
+              console.log("LIVE_CTR_BASKET_CONTACT_LINKS "+count);
+              if (count < 3) throw new Error("basket contact links " + count);
+            }
+          }
+          console.log("LIVE_CTR_VERIFY PASS");
+          NODE
