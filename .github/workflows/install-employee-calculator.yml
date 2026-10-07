@@ -26,7 +26,7 @@ jobs:
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{64}$ ]]
           mkdir -m 700 delivery-ssh package
           trap 'rm -rf delivery-ssh package-source' EXIT
-          printf '%s' "$EMPLOYEE_DOWNLOAD_DEPLOY_KEY" > delivery-ssh/key
+          printf '%s\n' "$EMPLOYEE_DOWNLOAD_DEPLOY_KEY" > delivery-ssh/key
           ssh-keyscan -H github.com > delivery-ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i $PWD/delivery-ssh/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$PWD/delivery-ssh/known_hosts"
           git clone --depth 1 --single-branch --branch delivery/employee-0.1.4 --filter=blob:none --no-checkout git@github.com:alexeyborisov19-sys/steelprodukt-employee-desktop.git package-source
