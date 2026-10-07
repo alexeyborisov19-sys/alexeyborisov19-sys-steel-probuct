@@ -1,3 +1,4 @@
+import {employeeInstallerResponse} from '@/lib/server/employee-app/installer';
 import {parseCalculationSettings} from '@/lib/employee-app/settings';
 import {readFile} from 'node:fs/promises';
 import {isAbsolute} from 'node:path';
@@ -23,8 +24,9 @@ export async function POST(request:NextRequest){
    registry.limit('code:'+body.code.slice(0,64));
    return pdSafeJson({ok:true,...registry.activate(body.code,body.deviceId),checkAfterSeconds:300});
   }
-  if((body.action==='check'||body.action==='bootstrap'||body.action==='release')&&typeof body.token==='string'){
+  if((body.action==='check'||body.action==='bootstrap'||body.action==='release'||body.action==='download')&&typeof body.token==='string'){
    if(!registry.check(body.token,body.deviceId))return pdSafeError('ACCESS_REVOKED',403);
+   if(body.action==='download')return await employeeInstallerResponse();
    if(body.action==='release'){
     const path=process.env.STEEL_EMPLOYEE_RELEASE_PATH;
     if(!path||!isAbsolute(path))return pdSafeJson({ok:true,release:null});

@@ -38,6 +38,11 @@ export class EmployeeRegistry {
       if (row.count > maximum) throw new ActivationError('RATE_LIMIT');
     } catch(e) { if (this.db.isTransaction) this.db.exec('ROLLBACK'); throw e; }
   }
+  canDownload(code:string) {
+    if(!/^[A-Za-z0-9_-]{32}$/.test(code))return false;
+    const row=this.db.prepare('SELECT disabled FROM licenses WHERE code_hash=?').get(hash(code)) as {disabled:number}|undefined;
+    return Boolean(row && row.disabled===0);
+  }
   activate(code: string, deviceId: string) {
     if (!/^[A-Za-z0-9_-]{32}$/.test(code) || !/^[a-f0-9-]{36}$/.test(deviceId)) throw new ActivationError('ACTIVATION_DENIED');
     this.db.exec('BEGIN IMMEDIATE');
