@@ -1,31 +1,12 @@
-name: Publish repaired employee calculator 0.1.3
+name: Withdraw public employee installer
 on:
   workflow_dispatch:
-    inputs:
-      sha256:
-        description: SHA256 of the reviewed Windows installer
-        required: true
-        type: string
 permissions:
   contents: read
-concurrency:
-  group: steelprodukt-production
-  cancel-in-progress: false
 jobs:
-  install:
+  withdraw:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Fetch reviewed installer from private release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_SHA: ${{ inputs.sha256 }}
-        run: |
-          set -euo pipefail
-          [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{64}$ ]]
-          mkdir -m 700 package
-          gh release download employee-windows-0.1.3 --repo "$GITHUB_REPOSITORY" --pattern 'SteelProdukt-Employee-0.1.3-x64.exe' --dir package
-          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.3-x64.exe | sha256sum --check
       - name: Prepare server access
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -37,53 +18,26 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-      - name: Publish installer and update release metadata
+      - name: Disable public installer download
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
           BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
           BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
-          EXPECTED_SHA: ${{ inputs.sha256 }}
         run: |
           set -euo pipefail
-          remote="/tmp/steel-employee-${GITHUB_RUN_ID}"
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "mkdir -m 700 '$remote'"
-          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" package/* "$BEGET_USER@$BEGET_HOST:$remote/"
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' STAGE='$remote' EXPECTED_SHA='$EXPECTED_SHA' bash -s" <<'REMOTE'
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' bash -s" <<'REMOTE'
           set -euo pipefail
-          trap 'rm -rf -- "$STAGE"' EXIT
           cd "$APP_PATH"
-          test -f app/api/employee-app/activation/route.ts
-          set -a
-          . ./.env.production
-          set +a
-          test -f "$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH"
-          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.3-x64.exe" | sha256sum --check
-          export EMPLOYEE_ROOT=/var/lib/steelprodukt/employee-app
-          install -d -m 700 -o nodejs -g nodejs "$EMPLOYEE_ROOT"
-          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.3-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.3-x64.exe"
-          python3 - <<'PY'
-          import os,json,pathlib
-          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.3-x64.exe'
-          (root/'release-before-0.1.3.json').write_bytes((root/'release.json').read_bytes())
-          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.3',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
-          (root/'release.json.next').replace(root/'release.json')
-          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.3').write_text(old)
-          values={'STEEL_EMPLOYEE_INSTALLER_PATH':str(root/name)}
-          lines=[line for line in old.splitlines() if line.split('=',1)[0] not in values]
-          env.write_text('\n'.join(lines+[k+'='+v for k,v in values.items()])+'\n')
-          PY
-          chown nodejs:nodejs "$EMPLOYEE_ROOT/release.json"
-          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.3.json" "$EMPLOYEE_ROOT/environment-before-0.1.3" .env.production
-          chmod 755 "$STAGE"
-          printf 'cd %q\npm2 restart ecosystem.config.cjs --env production --update-env\n' "$APP_PATH" > "$STAGE/restart.sh"
-          chmod 644 "$STAGE/restart.sh"
-          sudo -iu nodejs bash "$STAGE/restart.sh"
-          for attempt in 1 2 3 4 5; do
-            if curl --silent --fail http://127.0.0.1:3000/ > /dev/null; then break; fi
-            sleep 2
-          done
-          printf 'cd %q\nnode --env-file=.env.production --import tsx scripts/verify-employee-release.ts\n' "$APP_PATH" > "$STAGE/verify.sh"
-          chmod 644 "$STAGE/verify.sh"
-          sudo -iu nodejs bash "$STAGE/verify.sh"
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          p=Path('.env.production');lines=p.read_text().splitlines()
+          p.write_text('\n'.join(x for x in lines if x.split('=',1)[0]!='STEEL_EMPLOYEE_INSTALLER_PATH')+'\nSTEEL_EMPLOYEE_INSTALLER_PATH=\n')
+          PYTHON
+          chmod 600 .env.production
+          script=$(mktemp /tmp/steel-withdraw-XXXXXX)
+          printf 'cd %q\npm2 restart ecosystem.config.cjs --env production --update-env\n' "$APP_PATH" > "$script"
+          chmod 644 "$script"
+          sudo -iu nodejs bash "$script"
+          rm "$script"
           REMOTE
