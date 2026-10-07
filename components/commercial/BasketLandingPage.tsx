@@ -1,4 +1,5 @@
 import { CustomerResources } from "@/components/commercial/CustomerResources";
+import { AttributionLink } from "@/components/AttributionLink";
 import Image from "next/image";
 import Link from "next/link";
 import { PageLayout } from "@/components/PageLayout";
@@ -80,6 +81,12 @@ export function BasketLandingPage() {
               title="Начните с размеров. Остальное согласуем."
               text="Выберите пример или введите свой наружный габарит. Сохраните задание либо передайте параметры инженеру — они автоматически появятся в заявке."
             />
+            <AttributionLink
+              href="/contacts#contact-form"
+              className="mt-6 inline-flex min-h-11 items-center font-semibold text-steel-orange underline underline-offset-4"
+            >
+              Передать размеры и проект на расчёт →
+            </AttributionLink>
             <BasketConfigurator />
             <details className="mt-5 border border-white/20 p-5">
               <summary className="cursor-pointer py-1 font-semibold">
@@ -341,6 +348,12 @@ export function BasketLandingPage() {
                 </article>
               ))}
             </div>
+            <AttributionLink
+              href="/contacts#contact-form"
+              className="mt-8 inline-flex min-h-12 items-center bg-steel-orange-deep px-6 py-4 text-sm font-bold uppercase"
+            >
+              Передать спецификацию на расчёт →
+            </AttributionLink>
           </div>
         </section>
         <FaqSection items={faq} title="Вопросы о корзинах для кондиционеров" />
