@@ -66,14 +66,18 @@ export function InternalShell({
         </div>
       </header>
       <div className={`mx-auto grid max-w-[1500px] gap-6 px-5 py-6 lg:px-8 ${passwordRestricted ? "" : "lg:grid-cols-[260px_minmax(0,1fr)]"}`}>
-        {!passwordRestricted ? <aside className="self-start border border-white/10 bg-[#111519] lg:sticky lg:top-6">
+        {!passwordRestricted ? <aside
+          aria-label="Разделы закрытой системы"
+          tabIndex={0}
+          className="self-start border border-white/10 bg-[#111519] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ea5b0c] lg:sticky lg:top-6 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto lg:overscroll-y-contain lg:[scroll-behavior:auto] lg:[scrollbar-gutter:stable]"
+        >
           <nav aria-label="Служебная навигация" className="p-3">
             {mainNavigation.map(([label, href, permission]) => hasPdPermission(user.role, permission) ? (
-              <Link key={href} href={href} prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition hover:bg-white/5 hover:text-[#ea5b0c]">
+              <Link key={href} href={href} prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition-colors hover:bg-white/5 hover:text-[#ea5b0c]">
                 {label}
               </Link>
             ) : null)}
-            <Link href="/internal/personal-data/profile" prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition hover:bg-white/5 hover:text-[#ea5b0c]">Профиль</Link>
+            <Link href="/internal/personal-data/profile" prefetch={false} className="block border-b border-white/8 px-3 py-3 text-xs font-semibold transition-colors hover:bg-white/5 hover:text-[#ea5b0c]">Профиль</Link>
           </nav>
         </aside> : null}
         <main className="min-w-0">{children}</main>
