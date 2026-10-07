@@ -17,9 +17,9 @@ import { createPageMetadata } from "@/lib/seo";
 import { faqSchema, itemListSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Производство изделий из листового металла",
+  title: "Производство металлоизделий по чертежам",
   description:
-    `Инженерно-конструкторский центр и своё производство: ${productionEquipment.laserComplexes} лазерных и ${productionEquipment.pressBrakes} листогибочных комплекса, панельгиб, ${productionEquipment.weldingStations} сварочных поста, ${productionEquipment.powderCoatingBooths} камеры окраски. От КД до партии.`,
+    `Производство металлоизделий по КД, DXF, DWG и STEP: инженерная подготовка, лазерная резка, гибка, сварка, сборка, порошковая окраска, контроль и упаковка. От образца до серии.`,
   path: "/production",
   image: "/images/real-production/workshop-team.jpg",
   keywords: semanticKeywords.production,
