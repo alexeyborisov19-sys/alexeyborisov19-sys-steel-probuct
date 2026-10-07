@@ -117,7 +117,7 @@ export const commercialProductLandings: CommercialProductLanding[] = [
     slug: "metallicheskie-korpusa",
     eyebrow: "Решения для промышленности",
     title: "Корпуса из листового металла на заказ",
-    seoTitle: "Металлические корпуса по чертежам и STEP",
+    seoTitle: "Металлические корпуса на заказ по чертежам",
     metaDescription: "Металлические корпуса, шкафы и кожухи по КД, STEP, DXF и чертежам: опытный образец, лазерная резка, гибка, сварка, окраска и серийное производство.",
     description: "Изготавливаем корпуса, шкафы, панели и кожухи из листового металла по документации заказчика — от опытного образца до повторяемой серии.",
     image: "/images/web/solution-industry.jpg",
