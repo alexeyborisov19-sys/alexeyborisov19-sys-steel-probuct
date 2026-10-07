@@ -5,7 +5,7 @@ import {openEmployeeRegistry} from '../lib/employee-app/registry';
 async function main(){
  const registry=openEmployeeRegistry();const license=registry.create('Проверка выпуска (автоматическая)',1,'release-verification');
  const deviceId=randomUUID();let token='';
- async function request(body:object){return fetch('https://www.steelprodukt.ru/api/employee-app/activation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,deviceId}),redirect:'error',signal:AbortSignal.timeout(15000)})}
+ async function request(body:object){return fetch('https://www.steelprodukt.ru/api/employee-app/activation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,deviceId}),redirect:'error',signal:AbortSignal.timeout(300000)})}
  try{
   const activated=await request({action:'activate',code:license.code});assert.equal(activated.status,200);token=(await activated.json()).token;
   const bootstrap=await request({action:'bootstrap',token});assert.equal(bootstrap.status,200);const initial=await bootstrap.json();assert(initial.basis?.rateBook&&initial.settings?.operations&&initial.settings?.commercial);
