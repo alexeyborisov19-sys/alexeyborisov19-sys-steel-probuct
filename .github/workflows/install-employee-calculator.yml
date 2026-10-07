@@ -7,7 +7,7 @@ on:
         required: true
         type: string
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: steelprodukt-production
   cancel-in-progress: false
@@ -23,6 +23,8 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{64}$ ]]
+          # Draft assets are visible only to authenticated repository writers, even in a public repository.
+          test "$(gh release view employee-windows-0.1.4 --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true
           mkdir -m 700 package
           gh release download employee-windows-0.1.4 --repo "$GITHUB_REPOSITORY" --pattern 'SteelProdukt-Employee-0.1.4-x64.exe' --dir package
           printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.4-x64.exe | sha256sum --check
