@@ -40,4 +40,22 @@ jobs:
           chmod 644 "$script"
           sudo -iu nodejs bash "$script"
           rm "$script"
+          python3 - <<'NGINX'
+          from pathlib import Path
+          import re,subprocess
+          changed=[]
+          for link in Path('/etc/nginx/sites-enabled').glob('*'):
+              p=link.resolve();text=p.read_text()
+              if 'steelprodukt.ru' not in text or 'location ^~ /downloads/employee/' in text: continue
+              updated,count=re.subn(r'(\s*location\s+/\s*\{)', '\n    location ^~ /downloads/employee/ { return 404; }\n'+r'\1', text)
+              if not count: continue
+              changed.append((p,text));p.write_text(updated)
+          if not changed: raise RuntimeError('Download location not found; no configuration changed')
+          test=subprocess.run(['nginx','-t'],capture_output=True)
+          if test.returncode:
+              for p,text in changed:p.write_text(text)
+              raise RuntimeError('Nginx validation failed; original configuration restored')
+          subprocess.run(['systemctl','reload','nginx'],check=True)
+          print('Public employee downloads blocked at reverse proxy')
+          NGINX
           REMOTE
