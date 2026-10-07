@@ -12,7 +12,7 @@ import { faqSchema, itemListSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Фасадные металлокассеты от производителя — расчёт по проекту",
+  title: "Фасадные металлокассеты — расчёт по проекту",
   description: "Фасадные металлокассеты открытого и закрытого типа, угловые, 3D и перфорированные. Изготовление по раскладке, размерам и RAL. Передайте проект для расчёта.",
   path: "/products/metallokassety",
   keywords: [
