@@ -67,7 +67,11 @@ jobs:
           if not by:
               print('YANDEX_VISIBILITY_ERROR no history rows')
               raise SystemExit(4)
-          latest=datetime.date.fromisoformat(max(by))
+          populated=[d for d,x in by.items() if float(x.get('TOTAL_SHOWS') or 0)>0 or x.get('AVG_SHOW_POSITION') is not None]
+          if not populated:
+              print('YANDEX_VISIBILITY_ERROR no populated history rows')
+              raise SystemExit(5)
+          latest=datetime.date.fromisoformat(max(populated))
           cur_start=latest-datetime.timedelta(days=6)
           prev_end=cur_start-datetime.timedelta(days=1)
           prev_start=prev_end-datetime.timedelta(days=6)
