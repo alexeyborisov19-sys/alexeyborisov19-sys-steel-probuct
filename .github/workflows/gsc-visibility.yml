@@ -1,0 +1,109 @@
+name: Google Search visibility read-only
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/gsc-connection-20261004]
+    paths: [.github/workflows/gsc-visibility.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - run: python3 -m pip install --quiet google-auth requests
+      - name: Read Google Search Console performance
+        env:
+          GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python3 - <<'PY'
+          import os, json, datetime
+          from urllib.parse import quote
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import AuthorizedSession
+
+          SITE='https://www.steelprodukt.ru/'
+          info=json.loads(os.environ['GSC_SERVICE_ACCOUNT_JSON'])
+          creds=service_account.Credentials.from_service_account_info(
+              info, scopes=['https://www.googleapis.com/auth/webmasters.readonly']
+          )
+          session=AuthorizedSession(creds)
+          endpoint='https://www.googleapis.com/webmasters/v3/sites/'+quote(SITE,safe='')+'/searchAnalytics/query'
+
+          def q(body):
+              r=session.post(endpoint,json=body,timeout=(8,30))
+              print('HTTP',r.status_code,flush=True)
+              r.raise_for_status()
+              return r.json()
+
+          today=datetime.date.today()
+          start=today-datetime.timedelta(days=40)
+          daily=q({
+              'startDate':start.isoformat(),'endDate':today.isoformat(),
+              'dimensions':['date'],'rowLimit':1000,'dataState':'all'
+          }).get('rows',[])
+          if not daily:
+              print('GSC_VISIBILITY_ERROR no rows',flush=True)
+              raise SystemExit(2)
+
+          dates=sorted(datetime.date.fromisoformat(r['keys'][0]) for r in daily if r.get('keys'))
+          latest=dates[-1]
+          cur_start=latest-datetime.timedelta(days=6)
+          prev_end=cur_start-datetime.timedelta(days=1)
+          prev_start=prev_end-datetime.timedelta(days=6)
+
+          def total(a,b):
+              rows=q({'startDate':a.isoformat(),'endDate':b.isoformat(),'rowLimit':1,'dataState':'all'}).get('rows',[])
+              if not rows:
+                  return {'clicks':0,'impressions':0,'ctr':0,'position':None}
+              r=rows[0]
+              return {k:r.get(k) for k in ['clicks','impressions','ctr','position']}
+
+          cur=total(cur_start,latest)
+          prev=total(prev_start,prev_end)
+          def pct(a,b):
+              if b in (0,None): return None
+              return (a-b)/b*100
+          delta={
+              'clicks_pct':pct(cur['clicks'],prev['clicks']),
+              'impressions_pct':pct(cur['impressions'],prev['impressions']),
+              'ctr_pct':pct(cur['ctr'],prev['ctr']),
+              'position_change': None if cur['position'] is None or prev['position'] is None else cur['position']-prev['position']
+          }
+
+          top_queries=q({
+              'startDate':cur_start.isoformat(),'endDate':latest.isoformat(),
+              'dimensions':['query'],'rowLimit':50,'dataState':'all'
+          }).get('rows',[])
+          top_pages=q({
+              'startDate':cur_start.isoformat(),'endDate':latest.isoformat(),
+              'dimensions':['page'],'rowLimit':30,'dataState':'all'
+          }).get('rows',[])
+
+          daily_out=[]
+          for r in daily:
+              d=datetime.date.fromisoformat(r['keys'][0])
+              if prev_start <= d <= latest:
+                  daily_out.append({'date':r['keys'][0],'clicks':r.get('clicks',0),'impressions':r.get('impressions',0),'ctr':r.get('ctr',0),'position':r.get('position')})
+
+          def compact(rows,keyname):
+              out=[]
+              for r in rows:
+                  out.append({keyname:r.get('keys',[None])[0],'clicks':r.get('clicks',0),'impressions':r.get('impressions',0),'ctr':r.get('ctr',0),'position':r.get('position')})
+              return out
+
+          print('GSC_VISIBILITY_META '+json.dumps({
+              'property':SITE,'latestAvailableDate':latest.isoformat(),
+              'current':[cur_start.isoformat(),latest.isoformat()],
+              'previous':[prev_start.isoformat(),prev_end.isoformat()]
+          },ensure_ascii=False),flush=True)
+          print('GSC_VISIBILITY_CURRENT '+json.dumps(cur,ensure_ascii=False),flush=True)
+          print('GSC_VISIBILITY_PREVIOUS '+json.dumps(prev,ensure_ascii=False),flush=True)
+          print('GSC_VISIBILITY_DELTA '+json.dumps(delta,ensure_ascii=False),flush=True)
+          print('GSC_VISIBILITY_DAILY '+json.dumps(daily_out,ensure_ascii=False),flush=True)
+          print('GSC_VISIBILITY_TOP_QUERIES '+json.dumps(compact(top_queries,'query'),ensure_ascii=False),flush=True)
+          print('GSC_VISIBILITY_TOP_PAGES '+json.dumps(compact(top_pages,'page'),ensure_ascii=False),flush=True)
+          PY
