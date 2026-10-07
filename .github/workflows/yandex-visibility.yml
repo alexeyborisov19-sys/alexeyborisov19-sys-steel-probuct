@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 6
     env:
       YW_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
       YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
     steps:
       - run: python3 -m pip install --quiet requests
@@ -29,7 +31,7 @@ jobs:
               m=re.search(r'(?:^|[#?&])access_token=([^&#\s]+)',v,re.I)
               return urllib.parse.unquote(m.group(1)) if m else v
 
-          token=norm(os.getenv('YW_TOKEN') or os.getenv('YANDEX_OAUTH_TOKEN'))
+          token=norm(os.getenv('YW_TOKEN') or os.getenv('YANDEX_OAUTH_TOKEN') or os.getenv('YD_TOKEN') or os.getenv('YM_TOKEN'))
           if not token:
               print('YANDEX_VISIBILITY_ERROR missing token')
               raise SystemExit(2)
