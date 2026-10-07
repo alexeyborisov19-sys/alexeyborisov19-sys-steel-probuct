@@ -1,0 +1,109 @@
+name: Yandex Search visibility read-only
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/gsc-connection-20261004]
+    paths: [.github/workflows/yandex-visibility.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      YW_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+      YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+    steps:
+      - run: python3 -m pip install --quiet requests
+      - name: Read Yandex Webmaster search performance
+        run: |
+          python3 - <<'PY'
+          import os, re, json, datetime, urllib.parse, requests
+
+          def norm(v):
+              v=(v or '').strip()
+              v=re.sub(r'^(OAuth|Bearer)\s+','',v,flags=re.I)
+              m=re.search(r'(?:^|[#?&])access_token=([^&#\s]+)',v,re.I)
+              return urllib.parse.unquote(m.group(1)) if m else v
+
+          token=norm(os.getenv('YW_TOKEN') or os.getenv('YANDEX_OAUTH_TOKEN'))
+          if not token:
+              print('YANDEX_VISIBILITY_ERROR missing token')
+              raise SystemExit(2)
+          h={'Authorization':'OAuth '+token,'Accept':'application/json'}
+          def get(url,params=None):
+              r=requests.get(url,headers=h,params=params,timeout=(8,30))
+              print('HTTP',r.status_code,flush=True)
+              r.raise_for_status()
+              return r.json()
+
+          user=get('https://api.webmaster.yandex.net/v4/user')
+          uid=user['user_id']
+          hosts=get(f'https://api.webmaster.yandex.net/v4/user/{uid}/hosts').get('hosts',[])
+          host=next((x for x in hosts if 'steelprodukt.ru' in (x.get('unicode_host_url') or x.get('ascii_host_url') or '')),None)
+          if not host:
+              print('YANDEX_VISIBILITY_ERROR host not found')
+              raise SystemExit(3)
+          hid=urllib.parse.quote(host['host_id'],safe='')
+          base=f'https://api.webmaster.yandex.net/v4/user/{uid}/hosts/{hid}'
+
+          today=datetime.date.today()
+          start=today-datetime.timedelta(days=35)
+          hist=get(base+'/search-queries/all/history',{
+              'date_from':start.isoformat(),'date_to':today.isoformat(),
+              'query_indicator':['TOTAL_SHOWS','TOTAL_CLICKS','AVG_SHOW_POSITION']
+          })
+          inds=hist.get('indicators',{})
+          by={}
+          for name,arr in inds.items():
+              for p in arr or []:
+                  d=str(p.get('date',''))[:10]
+                  if d: by.setdefault(d,{})[name]=p.get('value')
+          if not by:
+              print('YANDEX_VISIBILITY_ERROR no history rows')
+              raise SystemExit(4)
+          latest=datetime.date.fromisoformat(max(by))
+          cur_start=latest-datetime.timedelta(days=6)
+          prev_end=cur_start-datetime.timedelta(days=1)
+          prev_start=prev_end-datetime.timedelta(days=6)
+
+          def agg(a,b):
+              days=[]
+              d=a
+              while d<=b:
+                  x=by.get(d.isoformat(),{})
+                  shows=float(x.get('TOTAL_SHOWS') or 0)
+                  clicks=float(x.get('TOTAL_CLICKS') or 0)
+                  pos=x.get('AVG_SHOW_POSITION')
+                  pos=float(pos) if pos is not None else None
+                  days.append({'date':d.isoformat(),'shows':shows,'clicks':clicks,'position':pos})
+                  d+=datetime.timedelta(days=1)
+              shows=sum(x['shows'] for x in days); clicks=sum(x['clicks'] for x in days)
+              weighted=sum(x['position']*x['shows'] for x in days if x['position'] is not None)
+              wshows=sum(x['shows'] for x in days if x['position'] is not None)
+              return {'shows':shows,'clicks':clicks,'ctr':clicks/shows if shows else 0,'position':weighted/wshows if wshows else None,'days':days}
+
+          cur=agg(cur_start,latest); prev=agg(prev_start,prev_end)
+          def pct(a,b):
+              return None if not b else (a-b)/b*100
+          delta={'shows_pct':pct(cur['shows'],prev['shows']),'clicks_pct':pct(cur['clicks'],prev['clicks']),'ctr_pct':pct(cur['ctr'],prev['ctr']),'position_change':None if cur['position'] is None or prev['position'] is None else cur['position']-prev['position']}
+
+          popular=get(base+'/search-queries/popular',{
+              'date_from':cur_start.isoformat(),'date_to':latest.isoformat(),
+              'order_by':'TOTAL_SHOWS','query_indicator':['TOTAL_SHOWS','TOTAL_CLICKS','AVG_SHOW_POSITION'],'limit':500
+          })
+          rows=popular.get('queries',[])
+          top500={'availableQueries':popular.get('count'),'returnedQueries':len(rows),
+                  'shows':sum(float((x.get('indicators') or {}).get('TOTAL_SHOWS') or 0) for x in rows),
+                  'clicks':sum(float((x.get('indicators') or {}).get('TOTAL_CLICKS') or 0) for x in rows)}
+
+          print('YANDEX_VISIBILITY_META '+json.dumps({'host':host.get('unicode_host_url') or host.get('ascii_host_url'),'latestAvailableDate':latest.isoformat(),'current':[cur_start.isoformat(),latest.isoformat()],'previous':[prev_start.isoformat(),prev_end.isoformat()]},ensure_ascii=False),flush=True)
+          print('YANDEX_VISIBILITY_CURRENT '+json.dumps({k:v for k,v in cur.items() if k!='days'},ensure_ascii=False),flush=True)
+          print('YANDEX_VISIBILITY_PREVIOUS '+json.dumps({k:v for k,v in prev.items() if k!='days'},ensure_ascii=False),flush=True)
+          print('YANDEX_VISIBILITY_DELTA '+json.dumps(delta,ensure_ascii=False),flush=True)
+          print('YANDEX_VISIBILITY_DAILY '+json.dumps(prev['days']+cur['days'],ensure_ascii=False),flush=True)
+          print('YANDEX_VISIBILITY_TOP500 '+json.dumps(top500,ensure_ascii=False),flush=True)
+          PY
