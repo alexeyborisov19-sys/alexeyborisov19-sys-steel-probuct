@@ -43,7 +43,7 @@ jobs:
           start=today-datetime.timedelta(days=40)
           daily=q({
               'startDate':start.isoformat(),'endDate':today.isoformat(),
-              'dimensions':['date'],'rowLimit':1000,'dataState':'all'
+              'dimensions':['date'],'rowLimit':1000,'dataState':'final'
           }).get('rows',[])
           if not daily:
               print('GSC_VISIBILITY_ERROR no rows',flush=True)
@@ -56,7 +56,7 @@ jobs:
           prev_start=prev_end-datetime.timedelta(days=6)
 
           def total(a,b):
-              rows=q({'startDate':a.isoformat(),'endDate':b.isoformat(),'rowLimit':1,'dataState':'all'}).get('rows',[])
+              rows=q({'startDate':a.isoformat(),'endDate':b.isoformat(),'rowLimit':1,'dataState':'final'}).get('rows',[])
               if not rows:
                   return {'clicks':0,'impressions':0,'ctr':0,'position':None}
               r=rows[0]
@@ -76,11 +76,11 @@ jobs:
 
           top_queries=q({
               'startDate':cur_start.isoformat(),'endDate':latest.isoformat(),
-              'dimensions':['query'],'rowLimit':50,'dataState':'all'
+              'dimensions':['query'],'rowLimit':50,'dataState':'final'
           }).get('rows',[])
           top_pages=q({
               'startDate':cur_start.isoformat(),'endDate':latest.isoformat(),
-              'dimensions':['page'],'rowLimit':30,'dataState':'all'
+              'dimensions':['page'],'rowLimit':30,'dataState':'final'
           }).get('rows',[])
 
           daily_out=[]
