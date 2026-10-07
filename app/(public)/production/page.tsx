@@ -17,7 +17,7 @@ import { createPageMetadata } from "@/lib/seo";
 import { faqSchema, itemListSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Производство металлоизделий по чертежам — полный цикл",
+  title: "Производство металлоизделий по чертежам",
   description:
     `Производство металлоизделий по КД, DXF, DWG и STEP: инженерная подготовка, лазерная резка, гибка, сварка, сборка, порошковая окраска, контроль и упаковка. От образца до серии.`,
   path: "/production",
