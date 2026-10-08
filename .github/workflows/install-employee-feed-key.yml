@@ -28,4 +28,22 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$FEED_KEY" =~ ^[a-f0-9]{64}$ ]]
-          printf '%s' "$FEED_KEY" | ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' python3 -c 'import os,sys,pathlib; p=pathlib.Path(os.environ["APP_PATH"])/".env.production"; key=sys.stdin.read(); lines=[x for x in p.read_text().splitlines() if not x.startswith("STEEL_EMPLOYEE_DISTRIBUTION_KEY=")];p.write_text("\n".join(lines+["STEEL_EMPLOYEE_DISTRIBUTION_KEY="+key])+"\n");os.chmod(p,0o600)'"
+          umask 077
+          keyfile=$(mktemp)
+          trap 'rm -f "$keyfile"' EXIT
+          printf '%s' "$FEED_KEY" > "$keyfile"
+          remote="/tmp/steel-feed-${GITHUB_RUN_ID}"
+          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -P "$BEGET_SSH_PORT" "$keyfile" "$BEGET_USER@$BEGET_HOST:$remote"
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' KEYFILE='$remote' bash -s" <<'REMOTE'
+          set -euo pipefail
+          trap 'rm -f "$KEYFILE"' EXIT
+          python3 - <<'PYCODE'
+          import os,pathlib
+          p=pathlib.Path(os.environ['APP_PATH'])/'.env.production'
+          key=pathlib.Path(os.environ['KEYFILE']).read_text()
+          assert len(key)==64 and all(c in '0123456789abcdef' for c in key)
+          lines=[x for x in p.read_text().splitlines() if not x.startswith('STEEL_EMPLOYEE_DISTRIBUTION_KEY=')]
+          p.write_text('\n'.join(lines+['STEEL_EMPLOYEE_DISTRIBUTION_KEY='+key])+'\n')
+          os.chmod(p,0o600)
+          PYCODE
+          REMOTE
