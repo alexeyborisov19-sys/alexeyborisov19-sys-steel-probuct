@@ -1,0 +1,31 @@
+name: Configure private employee update feed
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+      - name: Configure distribution feed credential
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_APP_PATH: ${{ secrets.BEGET_APP_PATH }}
+          FEED_KEY: ${{ secrets.STEEL_EMPLOYEE_DISTRIBUTION_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$FEED_KEY" =~ ^[a-f0-9]{64}$ ]]
+          printf '%s' "$FEED_KEY" | ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" "APP_PATH='$BEGET_APP_PATH' python3 -c 'import os,sys,pathlib; p=pathlib.Path(os.environ["APP_PATH"])/".env.production"; key=sys.stdin.read(); lines=[x for x in p.read_text().splitlines() if not x.startswith("STEEL_EMPLOYEE_DISTRIBUTION_KEY=")];p.write_text("\n".join(lines+["STEEL_EMPLOYEE_DISTRIBUTION_KEY="+key])+"\n");os.chmod(p,0o600)'"
