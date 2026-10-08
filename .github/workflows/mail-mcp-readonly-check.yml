@@ -1,0 +1,28 @@
+name: Private Mail.ru MCP read-only checks
+
+on:
+  pull_request:
+    paths:
+      - 'integrations/mailru-mcp/**'
+      - 'scripts/mail-readonly.py'
+      - '.github/workflows/mail-mcp-readonly-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Unit and MCP tool safety checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install private MCP test dependencies (no secrets)
+        run: python -m pip install -r integrations/mailru-mcp/requirements.txt
+      - name: Compile source
+        run: python -m compileall -q integrations/mailru-mcp scripts/mail-readonly.py
+      - name: Test strict read-only bridge and MCP discovery (mock mailbox)
+        run: python -m unittest discover -s integrations/mailru-mcp -p 'test_*.py' -v
