@@ -1,4 +1,4 @@
-name: Publish protected employee calculator 0.1.7
+name: Publish protected employee calculator 0.1.8
 on:
   workflow_dispatch:
     inputs:
@@ -29,11 +29,11 @@ jobs:
           printf '%s\n' "$EMPLOYEE_DOWNLOAD_DEPLOY_KEY" > delivery-ssh/key
           ssh-keyscan -H github.com > delivery-ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i $PWD/delivery-ssh/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$PWD/delivery-ssh/known_hosts"
-          git clone --depth 1 --single-branch --branch delivery/employee-0.1.7 --filter=blob:none --no-checkout git@github.com:alexeyborisov19-sys/steelprodukt-employee-desktop.git package-source
-          git -C package-source sparse-checkout set deliveries/0.1.7
+          git clone --depth 1 --single-branch --branch delivery/employee-0.1.8 --filter=blob:none --no-checkout git@github.com:alexeyborisov19-sys/steelprodukt-employee-desktop.git package-source
+          git -C package-source sparse-checkout set deliveries/0.1.8
           git -C package-source checkout
-          cp package-source/deliveries/0.1.7/SteelProdukt-Employee-0.1.7-x64.exe package/
-          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.7-x64.exe | sha256sum --check
+          cp package-source/deliveries/0.1.8/SteelProdukt-Employee-0.1.8-x64.exe package/
+          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.8-x64.exe | sha256sum --check
       - name: Prepare server access
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -67,23 +67,23 @@ jobs:
           . ./.env.production
           set +a
           test -f "$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH"
-          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.7-x64.exe" | sha256sum --check
+          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.8-x64.exe" | sha256sum --check
           export EMPLOYEE_ROOT=/var/lib/steelprodukt/employee-app
           install -d -m 700 -o nodejs -g nodejs "$EMPLOYEE_ROOT"
-          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.7-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.7-x64.exe"
+          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.8-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.8-x64.exe"
           python3 - <<'PY'
           import os,json,pathlib
-          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.7-x64.exe'
-          (root/'release-before-0.1.7.json').write_bytes((root/'release.json').read_bytes())
-          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.7',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
+          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.8-x64.exe'
+          (root/'release-before-0.1.8.json').write_bytes((root/'release.json').read_bytes())
+          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.8',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
           (root/'release.json.next').replace(root/'release.json')
-          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.7').write_text(old)
+          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.8').write_text(old)
           values={'STEEL_EMPLOYEE_INSTALLER_PATH':'','STEEL_EMPLOYEE_UPDATE_FILE':str(root/name)}
           lines=[line for line in old.splitlines() if line.split('=',1)[0] not in values]
           env.write_text('\n'.join(lines+[k+'='+v for k,v in values.items()])+'\n')
           PY
           chown nodejs:nodejs "$EMPLOYEE_ROOT/release.json"
-          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.7.json" "$EMPLOYEE_ROOT/environment-before-0.1.7" .env.production
+          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.8.json" "$EMPLOYEE_ROOT/environment-before-0.1.8" .env.production
           chmod 755 "$STAGE"
           printf 'cd %q\npm2 restart ecosystem.config.cjs --env production --update-env\n' "$APP_PATH" > "$STAGE/restart.sh"
           chmod 644 "$STAGE/restart.sh"
