@@ -38,6 +38,8 @@ test("rendered clearance diagram exposes dimensional data and never emits invali
   assert.match(html, /Задний 30/);
   assert.match(html, /Передний 200/);
   assert.doesNotMatch(html, /NaN|Infinity/);
+  assert.doesNotMatch(html, /<\/dd><small>/, "definition details must contain their supplementary text");
+  assert.match(html, /<small>Расчёт корзины: 950 мм<\/small><\/dd>/);
   const unknown = drawing({ ...input, design: { ...input.design!, fit: { ...input.design!.fit!, rear: null } } });
   assert.match(unknown, /Разместим блок на схеме/);
   assert.doesNotMatch(unknown, /требуемый свободный объём 950/);

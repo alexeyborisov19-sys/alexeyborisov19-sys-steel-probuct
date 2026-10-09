@@ -103,7 +103,8 @@
 .clearanceDimensions dt { font-size:11px; color:#526658; }
 .clearanceDimensions dd { font-size:16px; font-weight:650; margin-top:5px; }
 .clearanceDimensions dd span { display:block; font-size:10px; font-weight:400; color:#526658; margin-top:3px; }
-.clearanceDimensions small { display:block; font-size:10px; color:#526658; line-height:1.6; margin-top:6px; }
+.clearanceDimensions small {
+  font-weight: 400; display:block; font-size:10px; color:#526658; line-height:1.6; margin-top:6px; }
 .drawingNote { font-size:11px; color:#526658; line-height:1.7; padding:12px 18px; }
 .drawingNote+.drawingNote { padding-top:0; }
 .drawingEmpty { padding:22px; text-align:center; }

@@ -62,7 +62,7 @@ export function BasketClearanceView({ input }: { input: BasketBrief }) {
       </svg>
       <div className={styles.drawingLegend}><span><i />Наружный блок, условно</span><span><i />Требуемый свободный объём</span><span><i />Сервисная сторона: {basketServiceSides[service].toLowerCase()}</span></div>
       <dl className={styles.clearanceDimensions}>
-        {geometry!.axes.map(axis => <div key={axis.key}><dt>{axis.label}</dt><dd>{number(axis.requiredMm)} <span>мм внутри</span></dd><small>{geometry!.inner ? "Расчёт корзины" : "Наружный размер"}: {number(axis.selectedMm)} мм</small></div>)}
+        {geometry!.axes.map(axis => <div key={axis.key}><dt>{axis.label}</dt><dd>{number(axis.requiredMm)} <span>мм внутри</span><small>{geometry!.inner ? "Расчёт корзины" : "Наружный размер"}: {number(axis.selectedMm)} мм</small></dd></div>)}
       </dl>
       <p className={styles.drawingNote}>Схема показывает габариты и заданные отступы. Панели, опоры и трассы условны; внутренний просвет и воздухообмен ещё не проверены. Верх корзины открыт.</p>
       {geometry!.wallToBlockRearMm !== null && <p className={styles.drawingNote}>От несущей стены до задней стенки блока: {number(geometry!.wallToBlockRearMm)} мм. Слой фасада не прибавлен к габариту корзины.</p>}
