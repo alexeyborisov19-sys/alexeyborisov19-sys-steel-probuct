@@ -16,6 +16,8 @@ on:
       - 'tests/*basket*'
       - 'tests/*cassette*'
       - 'scripts/audit-product-configurators.mjs'
+      - 'scripts/generate-ifc-validation-fixtures.ts'
+      - 'scripts/validate-cassette-ifc.py'
       - '.github/workflows/product-configurator-quality.yml'
   workflow_dispatch:
 permissions:
@@ -57,5 +59,33 @@ jobs:
         with:
           name: product-configurator-browser-evidence
           path: output/product-configurators/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  validate-ifc:
+    name: Independent IFC4 schema and geometry
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install isolated pinned validator from official PyPI
+        run: python -m pip install --index-url https://pypi.org/simple ifcopenshell==0.8.5
+      - name: Generate synthetic coordination models
+        run: node --import tsx scripts/generate-ifc-validation-fixtures.ts
+      - name: Validate parser, EXPRESS schema, units, panels, positions and stable identities
+        run: python scripts/validate-cassette-ifc.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cassette-ifc-validation-evidence
+          path: output/ifc-validation/
           if-no-files-found: ignore
           retention-days: 7

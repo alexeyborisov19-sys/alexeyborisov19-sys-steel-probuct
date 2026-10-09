@@ -47,7 +47,7 @@ export function createCassetteLayoutIfc(value: CassetteProject): string {
       // X: width; Y: shallow sheet envelope; Z: elevation height. Each edge belongs to two triangles.
       const vertices = [[0,0,0],[w,0,0],[w,0,h],[0,0,h],[0,t,0],[w,t,0],[w,t,h],[0,t,h]];
       const triangles = [[1,2,3],[1,3,4],[5,8,7],[5,7,6],[1,5,6],[1,6,2],[2,6,7],[2,7,3],[3,7,8],[3,8,4],[4,8,5],[4,5,1]];
-      const coords = add(`IFCCARTESIANPOINTLIST3D((${vertices.map(v=>`(${v.map(n).join(',')})`).join(',')}),$)`);
+      const coords = add(`IFCCARTESIANPOINTLIST3D((${vertices.map(v=>`(${v.map(n).join(',')})`).join(',')}))`);
       const mesh = add(`IFCTRIANGULATEDFACESET(${coords},$,.T.,(${triangles.map(face=>`(${face.join(',')})`).join(',')}),$)`);
       const representation = add(`IFCSHAPEREPRESENTATION(${context},'Body','Tessellation',(${mesh}))`);
       const shape = add(`IFCPRODUCTDEFINITIONSHAPE($,$,(${representation}))`);

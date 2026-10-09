@@ -75,7 +75,7 @@ export function createCassetteIfc(p: CassetteBimInput): string {
   const w = p.widthMm, h = p.heightMm, d = p.depthMm, t = p.thicknessMm;
   function makeShape(hex?: string) {
   const solids = cassetteGeometry(p).map(solid => {
-    const coords=add(`IFCCARTESIANPOINTLIST3D((${solid.vertices.map(v=>`(${v.map(num).join(",")})`).join(",")}),$)`);
+    const coords=add(`IFCCARTESIANPOINTLIST3D((${solid.vertices.map(v=>`(${v.map(num).join(",")})`).join(",")}))`);
     const triangles=solid.faces.flatMap(face=>Array.from({length:face.length-2},(_,i)=>[face[0]+1,face[i+1]+1,face[i+2]+1]));
     return add(`IFCTRIANGULATEDFACESET(${coords},$,.T.,(${triangles.map(t=>`(${t.join(",")})`).join(",")}),$)`);
   });

@@ -28,7 +28,7 @@ test('nonrectangular opening panel is reported as omitted rather than filled in 
 });
 test('layout IFC boxes are closed, nondegenerate and outward facing',()=>{
  const ifc=createCassetteLayoutIfc(project);
- const vertices = [...ifc.matchAll(/=IFCCARTESIANPOINTLIST3D\(\((.*?)\),\$\)/g)].map(m=>JSON.parse(`[${m[1].replaceAll('(','[').replaceAll(')',']').replace(/\.(?=[,\]])/g,'.0')}]`) as number[][]);
+ const vertices = [...ifc.matchAll(/=IFCCARTESIANPOINTLIST3D\(\((.*?)\)\);/g)].map(m=>JSON.parse(`[${m[1].replaceAll('(','[').replaceAll(')',']').replace(/\.(?=[,\]])/g,'.0')}]`) as number[][]);
  const faces=[...ifc.matchAll(/=IFCTRIANGULATEDFACESET\(#\d+,\$,\.T\.,\((.*?)\),\$\)/g)].map(m=>JSON.parse(`[${m[1].replaceAll('(','[').replaceAll(')',']')}]`) as number[][]);
  assert.equal(vertices.length,4);assert.equal(faces.length,4);
  for(let index=0;index<vertices.length;index++) {
@@ -45,4 +45,10 @@ test('layout IFC rejects duplicate elevation IDs and malicious content is escape
  assert.throws(()=>createCassetteLayoutIfc({...project,elevations:[project.elevations[0],project.elevations[0]]}));
  const result=createCassetteLayoutIfc({...project,name:"К'01\\);#999=FAKE"});
  assert.match(result,/\\X2\\005C\\X0\\/); assert.ok(result.includes("''01")); assert.ok(!/^#999=FAKE/m.test(result));
+});
+
+test('layout IFC4 point lists retain the single CoordList schema argument',()=>{
+ const lines=createCassetteLayoutIfc(project).split('\n').filter(line=>line.includes('=IFCCARTESIANPOINTLIST3D('));
+ assert.equal(lines.length,4);
+ for(const line of lines) { assert.match(line,/\)\)\);$/); assert.doesNotMatch(line,/\),\$\);$/); }
 });

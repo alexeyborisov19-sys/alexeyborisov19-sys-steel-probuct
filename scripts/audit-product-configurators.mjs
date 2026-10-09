@@ -26,7 +26,11 @@ async function open(page,path) {
   if(await decline.isVisible()) await decline.click();
 }
 async function check(page,name,width,errors) {
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({path:`${output}/${name}-${width}.png`,fullPage:true});
+  const workspace = page.locator(name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name === 'baskets' ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : 'section[aria-label="Файл проекта"]');
+  await workspace.evaluate(element => window.scrollTo(0, Math.max(0, element.getBoundingClientRect().top + window.scrollY - 80)));
+  await page.screenshot({path:`${output}/${name}-${width}-workspace.png`});
   const a11y=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
   results.push({name,width,overflow,errors:[...errors],violations:a11y.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))});
@@ -70,6 +74,10 @@ try {
   await expect(page.locator('#cassette-elevation-width')).toHaveValue('2020');
   await editor.locator('input[type=file]').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{')});
   await expect(editor.getByRole('alert')).toBeVisible();await expect(page.locator('#cassette-elevation-width')).toHaveValue('2020');
+  page.once('dialog',dialog=>dialog.accept());
+  await editor.locator('input[type=file]').setInputFiles({name:'project.json',mimeType:'application/json',buffer:Buffer.from(saved)});
+  await expect(editor.getByRole('alert')).toHaveCount(0);
+  await editor.locator('svg').screenshot({path:`${output}/cassettes-${width}-diagram.png`});
   await check(page,'cassettes',width,errors);
 
   await open(page,'/products/metallokassety/bim');
@@ -84,7 +92,7 @@ try {
 
   await open(page,'/products/korziny-dlya-konditsionerov#selection');
   const basket=page.locator('[data-basket-configurator]');
-  const item={width:1000,height:700,depth:550,quantity:3,ral:'7024',screen:'round',design:defaultBasketDesign(),review:{...defaultBasketReview(),mark:'QA-01',equipment:'User supplied sample',requiredServiceMm:400,availableServiceMm:399}};
+  const item={width:950,height:550,depth:530,quantity:3,ral:'7024',screen:'round',design:{...defaultBasketDesign(),sizing:'block',fit:{width:800,height:500,depth:300,left:50,right:100,top:50,bottom:0,front:200,rear:30}},review:{...defaultBasketReview(),mark:'QA-01',equipment:'User supplied sample',requiredServiceMm:400,availableServiceMm:399}};
   await basket.getByLabel('Файл спецификации корзин',{exact:true}).setInputFiles({name:'basket.json',mimeType:'application/json',buffer:Buffer.from(serializeBasketProject([item]))});
   await basket.getByRole('button',{name:'Изменить позицию 1',exact:true}).click();
   await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Крепление/}).click();
@@ -96,6 +104,10 @@ try {
   await basket.getByRole('checkbox',{name:'Выбрать позицию 1',exact:true}).check();
   const subset=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить выбранные',exact:true})));
   assert.equal(subset.items.length,1);assert.equal(subset.items[0].review.availableServiceMm,400);
+  await basket.getByRole('button',{name:'Блок и зазоры',exact:true}).click();
+  const clearance=basket.getByRole('region',{name:'Блок и зазоры по вашим данным'});
+  await expect(clearance).toContainText('Задний 30');await expect(clearance).toContainText('Передний 200');
+  await clearance.screenshot({path:`${output}/baskets-${width}-diagram.png`});
   await check(page,'baskets',width,errors);
 
   await open(page,'/online-order');const controls=page.getByRole('region',{name:'Файл проекта'});

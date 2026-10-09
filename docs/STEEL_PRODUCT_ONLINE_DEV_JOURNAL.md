@@ -1,3 +1,7 @@
+## PR249 browser and IFC follow-up — 9 October 2026
+
+Draft head `d8ef61f` passed the8 new390/1440 browser flows, full lint/type/tests/build, and the24-page generic browser audit. Broader verification correctly exposed an old cassette attribution scenario that assumed the quick-price view was the default. The test now explicitly exercises both price and layout handoffs, preserving all URL/multipart campaign checks. Independent IFC4 schema review also found the pre-existing point-list serializer used a newer-schema optional argument; both detailed and layout exporters now use IFC4's single CoordList argument. Added17 synthetic fixtures and isolated pinned IfcOpenShell0.8.5 parser/EXPRESS/units/count/position/identity validation in CI. NEXT ACTION: run exact updated-head checks and inspect legible workspace/diagram screenshots; production deployment remains unauthorized.
+
 ## Draft review authorized — 9 October 2026
 
 Owner explicitly authorizes a separate GitHub branch and draft PR for the verified calculator candidate and real-browser CI. Fresh remote main is still `ba873d70`; paused PR247/214 remain separate. This supersedes the local-only restriction solely for this draft review. NEXT ACTION: verify exact-head CI and intercepted desktop/mobile journeys, inspect screenshots, repair within-scope failures. Merge, auto-merge, production deployment, real submissions and new credentials remain unauthorized. External IFC consumer/schema validation remains unverified.

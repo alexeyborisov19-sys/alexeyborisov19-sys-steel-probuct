@@ -22,3 +22,9 @@ test('BIM import rejects malformed, future, oversized and invalid geometry witho
  assert.throws(()=>parseCassetteBimProject(' '.repeat(300001)));
  for(const patch of [{mark:7},{panelColours:{'200:0':{ral:'RAL 7016',hex:'#383e42'}}},{profile:'constructor'},{projectId:''}]) assert.throws(()=>parseCassetteBimProject(JSON.stringify({schemaVersion:1,kind:'steelprodukt-cassette-bim',input:{...input,...patch}})));
 });
+
+test('detailed IFC4 point lists have only CoordList, without the later-schema TagList slot',()=>{
+ const lines=createCassetteIfc(input).split('\n').filter(line=>line.includes('=IFCCARTESIANPOINTLIST3D('));
+ assert.ok(lines.length>0);
+ for(const line of lines) { assert.match(line,/\)\)\);$/); assert.doesNotMatch(line,/\),\$\);$/); }
+});

@@ -13,7 +13,8 @@ const cases = [
   { name: "hero calculator", path: "/", steps: ["hero-calculator", "Связаться с инженером"] },
   { name: 'header contacts', path: '/products/metallokassety', steps: ['header-contacts'] },
   { name: 'production through online calculator', path: '/production/lazernaya-rezka-metalla', steps: ['Рассчитать изделие онлайн →', 'Передайте исходные данные инженеру'] },
-  { name: 'cassette calculator handoff', path: '/calculator-metallokassety', steps: [/Передать расчёт инженеру/], source: 'calculator-metallokassety' },
+  { name: 'cassette calculator handoff', path: '/calculator-metallokassety', steps: ['cassette-quick-mode', /Передать расчёт инженеру/], source: 'calculator-metallokassety', inputArea: '100' },
+  { name: 'cassette layout handoff', path: '/calculator-metallokassety', steps: ['Открыть обращение инженеру →'], source: 'cassette-elevation-project' },
   { name: 'home through calculator', path: '/', steps: ['showcase', 'Связаться с инженером'] },
   { name: 'footer product to contacts', path: '/', steps: ['footer-product', 'Получить расчёт инженера'] },
 ];
@@ -40,6 +41,10 @@ try {
         const decline = page.getByRole('button', { name: 'Продолжить без аналитики', exact: true });
         if (await decline.isVisible()) await decline.click();
         for (const step of scenario.steps) {
+          if (step === 'cassette-quick-mode') {
+            await page.getByRole('button', { name: 'Быстрая оценка цены', exact: true }).click();
+            continue;
+          }
           let link;
           if (step === 'hero-engineer' || step === 'hero-calculator') {
             link = page.locator('main > section').first().locator(step === 'hero-engineer' ? 'a[href*="/contacts"]' : 'a[href*="/online-order"]');
@@ -66,7 +71,8 @@ try {
         assert.equal(url.pathname, '/contacts');
         if (scenario.source) {
           assert.equal(url.searchParams.get('source'), scenario.source);
-          assert.equal(url.searchParams.get('inputArea'), '100');
+          if (scenario.inputArea) assert.equal(url.searchParams.get('inputArea'), scenario.inputArea);
+          else assert.equal(url.searchParams.has('inputArea'), false);
           assert.equal(url.hash, '#contact-form');
         }
         const form = page.locator('#quote-request-form');
