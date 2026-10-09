@@ -1,0 +1,76 @@
+name: Remove approved phone-click priority only
+on:
+  push:
+    branches: [fix/direct-phone-priority-20261009]
+    paths: [".github/workflows/direct-remove-phone-priority-20261009.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: approved-direct-phone-priority-714391927
+  cancel-in-progress: false
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+      YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
+    steps:
+      - name: Remove only phone click from priority and verify all other settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/phone-priority.mjs <<'NODE'
+          import assert from "node:assert/strict";
+          const campaignId=714391927, phoneGoal=666575171, counterId=112542227;
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const ym=String(process.env.YM_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token||!ym)throw Error("Existing authorized token missing");
+          const h={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};if(login)h["Client-Login"]=login;
+          const print=(k,v)=>console.log(k+" "+JSON.stringify(v));
+          async function request(service,body){
+           assert(["campaigns","adgroups"].includes(service));
+           if(body.method!=="get"){
+            assert.equal(service,"campaigns");assert.equal(body.method,"update");
+            assert.deepEqual(Object.keys(body.params),["Campaigns"]);assert.equal(body.params.Campaigns.length,1);
+            const c=body.params.Campaigns[0];assert.equal(c.Id,campaignId);assert.deepEqual(Object.keys(c),["Id","UnifiedCampaign"]);
+            assert.deepEqual(Object.keys(c.UnifiedCampaign),["PriorityGoals"]);
+           }
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers:h,body:JSON.stringify(body),signal:AbortSignal.timeout(45000)});
+           const b=await r.json();if(!r.ok||b.error)throw Error("Direct API "+r.status+" "+JSON.stringify(b.error||{}));return b.result;
+          }
+          async function read(){
+           const result=await request("campaigns",{method:"get",params:{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","Type","State","Status","Currency","DailyBudget","NegativeKeywords","TimeTargeting"],UnifiedCampaignFieldNames:["BiddingStrategy","PriorityGoals","CounterIds","AttributionModel","Settings","TrackingParams"]}});
+           assert.equal(result.Campaigns.length,1);return result.Campaigns[0];
+          }
+          async function geo(){const r=await request("adgroups",{method:"get",params:{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","RegionIds"],Page:{Limit:1000,Offset:0}}});assert(!r.LimitedBy);return r.AdGroups.sort((a,b)=>a.Id-b.Id);}
+          async function metrikaPhone(){const r=await fetch("https://api-metrika.yandex.net/management/v1/counter/"+counterId+"/goals",{headers:{Authorization:"OAuth "+ym},signal:AbortSignal.timeout(45000)});if(!r.ok)throw Error("Cannot verify phone diagnostic goal "+r.status);const b=await r.json();const goal=b.goals.find(g=>g.id===phoneGoal);assert(goal);assert(goal.conditions.some(c=>c.url==="phone_click"));return {id:goal.id,name:goal.name,type:goal.type,status:goal.status,conditions:goal.conditions};}
+          const before=await read(), beforeGeo=await geo(), beforePhone=await metrikaPhone();
+          print("BEFORE",before);print("PHONE_DIAGNOSTIC_BEFORE",beforePhone);
+          assert.equal(before.Currency,"RUB");assert.equal(before.State,"ON");
+          assert.equal(before.UnifiedCampaign.BiddingStrategy.Search.BiddingStrategyType,"WB_MAXIMUM_CLICKS");
+          assert.equal(before.UnifiedCampaign.BiddingStrategy.Search.WbMaximumClicks.WeeklySpendLimit,4800000000);
+          assert.equal(before.UnifiedCampaign.BiddingStrategy.Network.BiddingStrategyType,"SERVING_OFF");
+          const goals=before.UnifiedCampaign.PriorityGoals.Items;
+          assert.deepEqual(goals.filter(g=>g.GoalId!==phoneGoal).map(g=>g.GoalId).sort(),[612680809,612680821]);
+          assert(goals.every(g=>[612680809,612680821,phoneGoal].includes(g.GoalId)));
+          const keep=goals.filter(g=>g.GoalId!==phoneGoal);
+          const expected=structuredClone(before);expected.UnifiedCampaign.PriorityGoals.Items=keep;
+          if(goals.some(g=>g.GoalId===phoneGoal)){
+           const item={Id:campaignId,UnifiedCampaign:{PriorityGoals:{Items:keep.map(g=>({...g,Operation:"SET"}))}}};
+           print("EXACT_UPDATE",{Campaigns:[item]});
+           const result=await request("campaigns",{method:"update",params:{Campaigns:[item]}});
+           print("UPDATE_RESULT",result);
+           assert.equal(result.UpdateResults?.length,1);assert.equal(result.UpdateResults[0].Id,campaignId);assert(!result.UpdateResults[0].Errors?.length);
+          }else print("ALREADY_APPLIED",true);
+          let after;
+          for(let n=0;n<8;n++){after=await read();if(!after.UnifiedCampaign.PriorityGoals.Items.some(g=>g.GoalId===phoneGoal))break;await new Promise(r=>setTimeout(r,2500));}
+          assert.deepEqual(after,expected);
+          assert.deepEqual(await geo(),beforeGeo);assert.deepEqual(await metrikaPhone(),beforePhone);
+          print("AFTER",after);
+          print("VERIFIED",{campaignId,phone_removed_from_priority:true,phone_diagnostic_retained:true,other_goals_values_unchanged:true,budget_strategy_currency_settings_geo_unchanged:true,weekly_budget_rub:4800});
+          NODE
+          node --check /tmp/phone-priority.mjs
+          node /tmp/phone-priority.mjs
