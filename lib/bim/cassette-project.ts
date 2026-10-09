@@ -1,3 +1,4 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 import { validateCassetteBim, type CassetteBimInput } from './cassette';
 export const BIM_PROJECT_MAX_BYTES = 300_000;
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -34,7 +35,7 @@ export function parseCassetteBimProject(text: string): CassetteBimInput {
   return input;
 }
 export function serializeCassetteBimProject(input: CassetteBimInput): string {
-  const data = JSON.stringify({schemaVersion:1,kind:'steelprodukt-cassette-bim',input}, null, 2);
+  const data = JSON.stringify({schemaVersion:1,kind:'steelprodukt-cassette-bim',input,notice:PRODUCT_CALCULATION_NOTICE}, null, 2);
   parseCassetteBimProject(data);
   return data;
 }

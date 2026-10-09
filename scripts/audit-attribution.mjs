@@ -13,8 +13,8 @@ const cases = [
   { name: "hero calculator", path: "/", steps: ["hero-calculator", "Связаться с инженером"] },
   { name: 'header contacts', path: '/products/metallokassety', steps: ['header-contacts'] },
   { name: 'production through online calculator', path: '/production/lazernaya-rezka-metalla', steps: ['Рассчитать изделие онлайн →', 'Передайте исходные данные инженеру'] },
-  { name: 'cassette calculator handoff', path: '/calculator-metallokassety', steps: ['cassette-quick-mode', /Передать расчёт инженеру/], source: 'calculator-metallokassety', inputArea: '100' },
-  { name: 'cassette layout handoff', path: '/calculator-metallokassety', steps: ['Открыть обращение инженеру →'], source: 'cassette-elevation-project' },
+  { name: 'cassette calculator handoff', path: '/calculator-metallokassety', steps: ['cassette-quick-mode', /Передать специалисту/], source: 'calculator-metallokassety', inputArea: '100' },
+  { name: 'cassette layout handoff', path: '/calculator-metallokassety', steps: ['cassette-project-result', 'Передать специалисту'], source: 'cassette-elevation-project' },
   { name: 'home through calculator', path: '/', steps: ['showcase', 'Связаться с инженером'] },
   { name: 'footer product to contacts', path: '/', steps: ['footer-product', 'Получить расчёт инженера'] },
 ];
@@ -41,6 +41,10 @@ try {
         const decline = page.getByRole('button', { name: 'Продолжить без аналитики', exact: true });
         if (await decline.isVisible()) await decline.click();
         for (const step of scenario.steps) {
+          if (step === 'cassette-project-result') {
+            await page.getByRole('button', { name: '4. Итог', exact: true }).click();
+            continue;
+          }
           if (step === 'cassette-quick-mode') {
             await page.getByRole('button', { name: 'Быстрая оценка цены', exact: true }).click();
             continue;

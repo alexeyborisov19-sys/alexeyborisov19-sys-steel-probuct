@@ -1,3 +1,4 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 import { createEmptyProject, normalizeCadFormat, type InstantQuoteProject, type ManufacturingOperation, type OperationInputs, type PartConfiguration } from './domain';
 import { createManualSheetDxf, manualHoleGroups, readManualSheetDxf, validateManualSheet, type ManualSheetInput } from './manual-sheet';
 import { addPartToProject } from './project';
@@ -10,6 +11,7 @@ const INPUT_LIMITS = { bendCount: 500, countersinkCount: 100_000, weldLengthM: 5
 export type CadAttachmentManifest = { fileName: string; sizeBytes: number; lastModified: number; sha256: string };
 export type CadProjectSource = { kind: 'manual'; fileName: string; input: ManualSheetInput } | { kind: 'cad'; attachment: CadAttachmentManifest };
 export type CadProjectFile = {
+  notice?: string;
   format: 'steel-product-cad-project'; schemaVersion: 1; title: string; revision: number; savedAt: string; activePosition: number;
   positions: { configuration: PartConfiguration; source: CadProjectSource }[];
 };
@@ -68,8 +70,9 @@ function source(value: unknown): CadProjectSource {
   return { kind: 'cad', attachment: { fileName: fileName(attachment.fileName), sizeBytes: number(attachment.sizeBytes, 1, MAX_CAD_FILE_BYTES, true), lastModified: number(attachment.lastModified, 0, Number.MAX_SAFE_INTEGER, true), sha256: attachment.sha256 } };
 }
 function validate(value: unknown): CadProjectFile {
-  const root = object(value, ['format', 'schemaVersion', 'title', 'revision', 'savedAt', 'activePosition', 'positions']);
+  const root = object(value, ['format', 'schemaVersion', 'title', 'revision', 'savedAt', 'activePosition', 'positions', 'notice']);
   if (root.format !== 'steel-product-cad-project') invalid('Это не файл проекта CAD-калькулятора Сталь-Продукт.');
+  if (root.notice !== undefined && root.notice !== PRODUCT_CALCULATION_NOTICE) invalid('Статус проекта не поддерживается.');
   if (root.schemaVersion !== 1) invalid('Эта версия файла проекта не поддерживается. Текущий проект не изменён.');
   if (!Array.isArray(root.positions) || root.positions.length < 1 || root.positions.length > 5) invalid('В проекте должно быть от 1 до 5 позиций.');
   const savedAt = text(root.savedAt, 30);
@@ -80,7 +83,7 @@ function validate(value: unknown): CadProjectFile {
   });
   const totalBytes = positions.reduce((sum, position) => sum + (position.source.kind === 'cad' ? position.source.attachment.sizeBytes : new TextEncoder().encode(createManualSheetDxf(position.source.input)).byteLength), 0);
   if (totalBytes > MAX_CAD_PROJECT_BYTES) invalid('Исходные файлы проекта превышают общий лимит 100 МБ.');
-  return { format: 'steel-product-cad-project', schemaVersion: 1, title: text(root.title, 120), revision: number(root.revision, 1, 1_000_000_000, true), savedAt, activePosition: number(root.activePosition, 0, positions.length - 1, true), positions };
+  return { notice: PRODUCT_CALCULATION_NOTICE, format: 'steel-product-cad-project', schemaVersion: 1, title: text(root.title, 120), revision: number(root.revision, 1, 1_000_000_000, true), savedAt, activePosition: number(root.activePosition, 0, positions.length - 1, true), positions };
 }
 
 export function parseCadProjectFile(raw: string): CadProjectFile {

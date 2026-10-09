@@ -159,7 +159,7 @@ export const products: Product[] = [
       { label: "Изготовление", value: "Гибка на станках с ЧПУ по картам раскроя конкретного объекта" },
     ],
     technicalImage: "/images/products/technical/otlivy-i-otsechki.webp",
-    sourceSheet: "/images/products/catalog-sheets/page-07.png",
+    sourceSheet: "/images/products/catalog-sheets/page-09.png",
     related: ["otkosy-dlya-okon", "akvilon", "metallokassety-standart"],
   },
   {

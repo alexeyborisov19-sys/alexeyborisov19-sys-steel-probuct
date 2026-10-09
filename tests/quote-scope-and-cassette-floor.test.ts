@@ -61,5 +61,6 @@ test("a quotation that needs holes cannot become a plain rectangular cutting quo
 test("cassette screen renders the common notice next to the result", async () => {
   const source = await readFile("components/MetalCassetteCalculator.tsx", "utf8");
   assert.match(source, /\{CALCULATION_DISCLAIMER\}/);
-  assert.match(source, /итоговая ставка не может быть ниже базовой/);
+  assert.doesNotMatch(source, /id="price-per-m2"|Принятая цена|Сбросить к базовой/);
+  // The server-floor behavior remains covered above; customer UI exposes only the result.
 });

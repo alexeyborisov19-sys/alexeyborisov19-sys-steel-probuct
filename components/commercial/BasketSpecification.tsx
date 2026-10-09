@@ -1,4 +1,5 @@
 "use client";
+import { basketAcDimensionDisclaimer } from "@/lib/quote/basket-ac-reference";
 import { useRef, useState } from "react";
 import { type BasketBrief, basketBriefText, basketScreens } from "@/lib/quote/basket-brief";
 import { serializeBasketProject, parseBasketProject, MAX_BASKET_POSITIONS, MAX_BASKET_PROJECT_BYTES } from "@/lib/quote/basket-project";
@@ -69,6 +70,7 @@ export function BasketSpecification({ items, onChange, onEdit, editing = null }:
               <div className={styles.specRowTitle}><h4>{item.review?.mark || `Корзина ${index + 1}`}</h4><span>{item.quantity} шт.</span></div>
               <p className={styles.specSize}>{item.width} × {item.height} × {item.depth} мм <span>{item.design?.sizing === "block" ? "внутренний расчётный" : "наружный"}</span></p>
               <p>{item.review?.equipment || "Модель наружного блока не указана"}</p>
+              {(item.design?.acReference || item.design?.capacityClass) && <p className={styles.referenceWarning}>{basketAcDimensionDisclaimer}.</p>}
               <div className={styles.specTags}><span>RAL {item.ral}</span><span>Передняя: {basketScreens[(item.design?.front.pattern ?? item.screen) as keyof typeof basketScreens]}</span><span>Боковые: {basketScreens[(item.design?.side.pattern ?? item.screen) as keyof typeof basketScreens]}</span></div>
               <p className={styles.specReviewStatus} data-conflict={conflicts || undefined}>{conflicts ? "Есть несоответствие" : issues ? `Нужно уточнить: ${issues}` : "Входные данные указаны"} · Проверка инженером обязательна</p>
               <div className={styles.specItemActions}>

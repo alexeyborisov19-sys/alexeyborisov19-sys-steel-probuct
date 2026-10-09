@@ -1,3 +1,5 @@
+import { validBasketWallAssembly, basketWallAssemblySummary, type BasketWallAssembly } from "./basket-wall-assembly";
+import { validBasketAcReference, basketAcReferenceSummary, basketAcDimensionDisclaimer, type BasketAcAppliedReference } from "./basket-ac-reference";
 import { validBasketFit, basketFitSummary, type BasketFit } from "./basket-fit";
 import { basketMountingDimensions } from "./basket-mounting";
 /** Geometry of a user-defined rectangular panel field, not a shop flat pattern. */
@@ -21,6 +23,8 @@ export type BasketDesign = {
   sizing?: "basket" | "block";
   wallKind?: "wall" | "ventilated" | "unknown";
   capacityClass?: number;
+  acReference?: BasketAcAppliedReference;
+  wallAssembly?: BasketWallAssembly;
   fit?: BasketFit;
   blockWidth: number;
   blockHeight: number;
@@ -82,6 +86,8 @@ export function validBasketDesign(v: unknown): v is BasketDesign {
   const d = v as BasketDesign;
   return (
     d.version === 1 &&
+    (d.wallAssembly === undefined || validBasketWallAssembly(d.wallAssembly)) &&
+    (d.acReference === undefined || validBasketAcReference(d.acReference)) &&
     (d.sizing === undefined || d.sizing === "basket" || d.sizing === "block") &&
     (d.wallKind === undefined || ["wall", "ventilated", "unknown"].includes(d.wallKind)) &&
     (d.fit === undefined || validBasketFit(d.fit)) &&
@@ -149,6 +155,9 @@ export function basketDesignSummary(d: BasketDesign) {
     p.pattern === "wide-slots" ? "10 длинных продолговатых прорезей по ширине панели; ширина отверстий и краевые отступы уточняются по чертежу" :
     `${panelPatterns[p.pattern]}; отверстие ${p.diameter} мм${p.pattern === "slots" ? `, длина ${p.slotLength} мм` : ""}; шаг ${p.pitch} мм; поле от края ${p.margin} мм`;
   return [
+    basketAcDimensionDisclaimer + ".",
+    basketWallAssemblySummary(d.wallAssembly),
+    ...(d.acReference ? [basketAcReferenceSummary(d.acReference)] : []),
     ...(d.capacityClass
       ? [
           `Класс кондиционера: ${d.capacityClass} тыс. БТЕ/ч; подбор корзины предварительный. Размеры конкретной модели и зазоры обязательно перепроверить.`,

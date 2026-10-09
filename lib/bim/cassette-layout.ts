@@ -1,7 +1,8 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 import { buildCassetteElevation, normalizeCassetteProject, type CassetteProject } from '../cassette-project/model';
 import { ifcString, stableIfcGuid } from './ifc-identity';
 
-export const cassetteLayoutScope = 'Координационная раскладка: замкнутые плоские габариты лиц кассет, без бортов, замков, крепежа, подсистемы и монтажа. Непрямоугольные участки у проёмов не моделируются; см. полную CSV-ведомость. Не для изготовления или расчёта нагрузок.';
+export const cassetteLayoutScope = PRODUCT_CALCULATION_NOTICE + ". " + 'Координационная раскладка: замкнутые плоские габариты лиц кассет, без бортов, замков, крепежа, подсистемы и монтажа. Непрямоугольные участки у проёмов не моделируются; см. полную CSV-ведомость. Не для изготовления или расчёта нагрузок.';
 
 export function cassetteLayoutExportSummary(value: CassetteProject) {
   const project = normalizeCassetteProject(value);

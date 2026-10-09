@@ -28,7 +28,7 @@ async function open(page,path) {
 async function check(page,name,width,errors) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({path:`${output}/${name}-${width}.png`,fullPage:true});
-  const workspace = page.locator(name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name === 'baskets' ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : 'section[aria-label="Файл проекта"]');
+  const workspace = page.locator(name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name.startsWith('baskets') ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : 'section[aria-label="Файл проекта"]');
   await workspace.evaluate(element => window.scrollTo(0, Math.max(0, element.getBoundingClientRect().top + window.scrollY - 80)));
   await page.screenshot({path:`${output}/${name}-${width}-workspace.png`});
   const a11y=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
@@ -59,15 +59,20 @@ try {
   });
   await open(page,'/calculator-metallokassety');
   const editor=page.getByTestId('cassette-project-editor');
-  for(const [key,value] of [['elevation-width','2020'],['elevation-height','1020'],['face-width','1000'],['face-height','500'],['joint-x','20'],['joint-y','20']]) await page.locator(`#cassette-${key}`).fill(value);
+  for(const [key,value] of [['elevation-width','2020'],['elevation-height','1020']]) await page.locator(`#cassette-${key}`).fill(value);
+  await editor.getByRole('button',{name:'2. Кассеты',exact:true}).click();
+  for(const [key,value] of [['face-width','1000'],['face-height','500'],['joint-x','20'],['joint-y','20']]) await page.locator(`#cassette-${key}`).fill(value);
   await expect(editor).toContainText('2 рядов × 2 колонок');
+  await editor.getByRole('button',{name:'3. Проёмы',exact:true}).click();
   await editor.getByRole('button',{name:'+ Прямоугольный проём',exact:true}).click();
   for(const [key,value] of [['widthMm','200'],['heightMm','200'],['xMm','100'],['yMm','100']]) await page.locator(`#cassette-opening-O1-${key}`).fill(value);
+  await editor.getByRole('button',{name:'4. Итог',exact:true}).click();
   await expect(editor).toContainText('IFC: 3 прямоугольных лиц; 1 непрямоугольных');
   const saved=await downloaded(page,editor.getByRole('button',{name:'Сохранить проект JSON',exact:true}));
   const ifc=await downloaded(page,editor.getByRole('button',{name:'IFC раскладки (упрощённый)',exact:true}));
   assert.equal((ifc.match(/=IFCPLATE\(/g)||[]).length,3);
   const csv=await downloaded(page,editor.getByRole('button',{name:'Ведомость CSV',exact:true}));assert.ok(csv.includes('Нужна КД')||csv.includes('нужна КД'));
+  await editor.getByRole('button',{name:'1. Фасад',exact:true}).click();
   await page.locator('#cassette-elevation-width').fill('2500');
   page.once('dialog',dialog=>dialog.accept());
   await editor.locator('input[type=file]').setInputFiles({name:'project.json',mimeType:'application/json',buffer:Buffer.from(saved)});
@@ -77,6 +82,10 @@ try {
   page.once('dialog',dialog=>dialog.accept());
   await editor.locator('input[type=file]').setInputFiles({name:'project.json',mimeType:'application/json',buffer:Buffer.from(saved)});
   await expect(editor.getByRole('alert')).toHaveCount(0);
+  await editor.getByRole('button',{name:'Чертёж 2D',exact:true}).click();
+  await expect(editor.getByRole('button',{name:'Чертёж 2D',exact:true})).toHaveAttribute('aria-pressed','true');
+  await editor.locator('svg').screenshot({path:`${output}/cassettes-${width}-technical.png`});
+  await editor.getByRole('button',{name:'Перспектива',exact:true}).click();
   await editor.locator('svg').screenshot({path:`${output}/cassettes-${width}-diagram.png`});
   await check(page,'cassettes',width,errors);
 
@@ -88,14 +97,63 @@ try {
   await page.getByRole('button',{name:'Заменить раскладку',exact:true}).click();
   const secondIfc=await downloaded(page,page.getByRole('button',{name:'Скачать IFC',exact:true}));
   const ids=s=>[...s.matchAll(/=IFCPLATE\('([^']+)'/g)].map(m=>m[1]);assert.deepEqual(ids(firstIfc),ids(secondIfc));
+  const inspection=page.getByTestId('cassette-bim-inspection');
+  await expect(inspection.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
+  await inspection.screenshot({path:`${output}/bim-${width}-single.png`});
+  await page.getByRole('button',{name:'Соседние',exact:true}).click();
+  await expect(inspection).toHaveAttribute('data-inspection-mode','neighbours');
+  await expect(inspection.locator('svg')).toHaveAttribute('data-solid-instances','2');
+  await expect(inspection).toContainText('Узел зацепления и крепёж не подтверждены');
+  await expect(inspection.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
+  await inspection.screenshot({path:`${output}/bim-${width}-neighbours.png`});
+  await page.getByText('Ракурс и расположение',{exact:true}).click();
+  await page.getByLabel('Расположение соседних кассет',{exact:true}).selectOption('vertical');
+  await page.getByRole('button',{name:'Разнесённо',exact:true}).click();
+  await expect(inspection).toHaveAttribute('data-inspection-mode','exploded');
+  await inspection.screenshot({path:`${output}/bim-${width}-exploded.png`});
+  await page.getByRole('button',{name:'Одна кассета',exact:true}).click();
+  await page.getByText('Ракурс и расположение',{exact:true}).click();
   await check(page,'bim',width,errors);
+  const contextLoss=await inspection.locator('canvas').evaluate(canvas=>{
+    const gl=canvas.getContext('webgl'), extension=gl?.getExtension('WEBGL_lose_context');
+    if(!extension) return false;
+    extension.loseContext(); return true;
+  });
+  if(contextLoss) {
+    await expect(inspection.locator('canvas')).toHaveAttribute('data-depth-renderer','unavailable');
+    await expect(inspection).toContainText('Упрощённый показ поверхностей');
+    await expect(inspection.locator('[data-inspection-part]').first()).toBeVisible();
+  }
+
 
   await open(page,'/products/korziny-dlya-konditsionerov#selection');
   const basket=page.locator('[data-basket-configurator]');
+  await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
+  for(const [name,value] of [['Ширина, мм','1110'],['Высота, мм','710'],['Глубина, мм','610'],['Количество, шт.','4']]) await basket.getByLabel(name,{exact:true}).fill(value);
+  await basket.getByRole('button',{name:'Добавить в спецификацию',exact:true}).click();
+  const known=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить файл',exact:true})));
+  assert.deepEqual([known.items[0].width,known.items[0].height,known.items[0].depth,known.items[0].quantity],[1110,710,610,4]);
+  await check(page,'baskets-known',width,errors);
+  await basket.getByRole('button',{name:'Подобрать по кондиционеру',exact:true}).click();
+  await basket.getByText('Подобрать ориентир по мощности кондиционера',{exact:true}).click();
+  await basket.getByLabel('Класс кондиционера',{exact:true}).selectOption('9');
+  await basket.getByRole('button',{name:'Подставить ориентировочные размеры блока',exact:true}).click();
+  await expect(basket.getByLabel('Ширина всей установки, мм',{exact:true})).toHaveValue('722');
+  await expect(basket).toContainText('Предварительный эскиз: зазоры нужно уточнить');
+  await check(page,'baskets-preliminary',width,errors);
+  await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
+  await expect(basket.getByLabel('Ширина, мм',{exact:true})).toHaveValue('1110');
+  await expect(basket.getByLabel('Высота, мм',{exact:true})).toHaveValue('710');
+  await basket.getByRole('button',{name:'Удалить позицию 1',exact:true}).click();
   const item={width:950,height:550,depth:530,quantity:3,ral:'7024',screen:'round',design:{...defaultBasketDesign(),sizing:'block',fit:{width:800,height:500,depth:300,left:50,right:100,top:50,bottom:0,front:200,rear:30}},review:{...defaultBasketReview(),mark:'QA-01',equipment:'User supplied sample',requiredServiceMm:400,availableServiceMm:399}};
   await basket.getByLabel('Файл спецификации корзин',{exact:true}).setInputFiles({name:'basket.json',mimeType:'application/json',buffer:Buffer.from(serializeBasketProject([item]))});
   await basket.getByRole('button',{name:'Изменить позицию 1',exact:true}).click();
   await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Крепление/}).click();
+  await basket.getByText('Уточнить состав стены и утепление',{exact:true}).click();
+  await basket.getByLabel('Несущая основа',{exact:true}).selectOption('concrete');
+  await basket.getByLabel('Утепление',{exact:true}).selectOption('yes');
+  await basket.getByLabel('Толщина утеплителя, мм',{exact:true}).fill('150');
+  await basket.getByText('Сервисный доступ и данные блока',{exact:true}).click();
   await expect(basket).toContainText('Для обслуживания не хватает 1 мм');
   await basket.getByLabel('Есть на объекте, мм',{exact:true}).fill('400');
   await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Результат/}).click();
@@ -103,7 +161,7 @@ try {
   await basket.getByRole('button',{name:'Копировать позицию 1',exact:true}).click();
   await basket.getByRole('checkbox',{name:'Выбрать позицию 1',exact:true}).check();
   const subset=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить выбранные',exact:true})));
-  assert.equal(subset.items.length,1);assert.equal(subset.items[0].review.availableServiceMm,400);
+  assert.equal(subset.items.length,1);assert.equal(subset.items[0].review.availableServiceMm,400);assert.equal(subset.items[0].design.wallAssembly.insulationThicknessMm,150);assert.equal(subset.items[0].design.wallAssembly.structuralBase,'concrete');
   await basket.getByRole('button',{name:'Блок и зазоры',exact:true}).click();
   const clearance=basket.getByRole('region',{name:'Блок и зазоры по вашим данным'});
   await expect(clearance).toContainText('Задний 30');await expect(clearance).toContainText('Передний 200');
@@ -117,7 +175,8 @@ try {
   const manualResponse=await manualAnalysis; assert.equal(manualResponse.status(),200,'Restored manual source must be reanalyzed');
   const manualPayload=await manualResponse.json();assert.equal(manualPayload.ok,true);assert.ok(manualPayload.preview?.drawing);
   await expect(page.getByText('Предпросмотр недоступен',{exact:true})).toHaveCount(0);
-  await expect(page.getByText(/Модель распознана/)).toBeVisible();
+  await expect(page.getByRole('img',{name:'2D CAD preview',exact:true})).toBeVisible();
+  await expect(page.getByText(/Фактический контур, развёртка после гибки и расположение отверстий не подтверждены/)).toBeVisible();
   await expect(controls).toContainText('Не прикреплены исходные CAD: 1');await expect(page.locator('#cad-project-title')).toHaveValue('QA local project');
   const attachment=controls.getByLabel('Исходный CAD позиции 2: fixture.dxf',{exact:true});
   await attachment.setInputFiles({name:'fixture.dxf',mimeType:'application/dxf',buffer:Buffer.from(cad.toString().replace('400','401'))});

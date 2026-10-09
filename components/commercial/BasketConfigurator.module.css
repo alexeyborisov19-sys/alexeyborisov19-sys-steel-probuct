@@ -12,7 +12,7 @@
 .header h2 span {color:var(--muted);}
 .header p:last-child {color:var(--muted);font-size:15px;max-width:510px;line-height:1.7;}
 .free {font-size:12px;white-space:nowrap;padding:9px 12px;border:1px solid var(--line);border-radius:20px;margin-top:3px;}
-.steps {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0 24px;border-bottom:1px solid var(--line);}
+.steps {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0 24px;border-bottom:1px solid var(--line);}
 .steps button {display:flex;align-items:center;gap:12px;padding:22px 14px;text-align:left;border-bottom:3px solid transparent;border-radius:0;}
 .steps button[aria-current] {border-color:var(--accent);background:#fff7f0;}
 .stepNumber {font-size:13px;color:var(--muted);width:30px;height:30px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;flex-shrink:0;}
@@ -150,3 +150,18 @@
 .specEmpty p { font-size:13px; line-height:1.7; margin-top:10px; color:var(--muted); max-width:650px; }
 @media(max-width:1023px) { .specList { grid-template-columns:1fr; } .reviewList { margin-inline:-4px; } .reviewList button { max-width:66px; } }
 @media(max-width:767px) { .specification { padding:24px 20px; } .specMetrics { grid-template-columns:1fr 1fr; } .specMetrics>div { border-bottom:1px solid #d6ded7; } .specMetrics>div:nth-child(2) { border-right:0; } .specMetrics>div:nth-child(3) { border-bottom:0; } .specMetrics>div:last-child { border:0; } .specActions { display:grid; grid-template-columns:1fr; } .specList>li { padding:14px; gap:10px; } .specSelection { gap:6px 16px; } .reviewShortcut { flex-wrap:wrap; } .reviewList button { max-width:70px; } }
+
+/* Keep the product beside the current task, rather than stretching to its full height. */
+.preview { align-self:start; grid-column:1; grid-row:1; }
+.editor { grid-column:2; grid-row:1; }
+.previewInner { position:static; padding:24px; }
+.previewInner > section > section > svg { height:clamp(230px,25vw,330px); max-height:330px; }
+.editorHeading .intro { margin-bottom:20px; }
+.powerReference { margin:18px 0; border:1px solid #c8d4ca; border-radius:10px; padding:6px 14px; background:#f6f8f3; }
+.powerReference > summary { font-size:14px; font-weight:600; line-height:1.5; }
+.powerReference > section { border:0; padding:10px 0 14px; }
+.referenceWarning { margin:16px 0; border-left:3px solid #b35b26; background:#fff6ec; padding:12px; font-size:13px; line-height:1.7; color:#87431e; }
+@media(min-width:1024px) and (min-height:900px) { .preview { position:sticky; top:100px; } }
+@media(max-width:767px) { .previewInner { padding:16px; }.previewInner > section > section > svg { height:240px; max-height:240px; }.summaryChips { gap:10px; }.summaryChips b { font-size:14px; }.powerReference { padding-inline:12px; } }
+
+@media(max-width:767px) { .workspace { flex-direction:column; }.preview { border-top:1px solid var(--line); border-bottom:0; }.header { padding:22px 20px; }.header h2 { font-size:30px; margin:10px 0; }.header p:last-child { font-size:14px; }.free { margin-top:10px; }.editorHeading h3 { font-size:22px; } }

@@ -1,4 +1,5 @@
 "use client";
+import { basketAcDimensionDisclaimer } from "@/lib/quote/basket-ac-reference";
 import { useId, useState } from "react";
 import type { BasketBrief } from "@/lib/quote/basket-brief";
 import { basketClearanceGeometry, basketServiceSides } from "@/lib/quote/basket-review";
@@ -64,6 +65,7 @@ export function BasketClearanceView({ input }: { input: BasketBrief }) {
       <dl className={styles.clearanceDimensions}>
         {geometry!.axes.map(axis => <div key={axis.key}><dt>{axis.label}</dt><dd>{number(axis.requiredMm)} <span>мм внутри</span><small>{geometry!.inner ? "Расчёт корзины" : "Наружный размер"}: {number(axis.selectedMm)} мм</small></dd></div>)}
       </dl>
+      <p className={styles.drawingNote}>{basketAcDimensionDisclaimer}.</p>
       <p className={styles.drawingNote}>Схема показывает габариты и заданные отступы. Панели, опоры и трассы условны; внутренний просвет и воздухообмен ещё не проверены. Верх корзины открыт.</p>
       {geometry!.wallToBlockRearMm !== null && <p className={styles.drawingNote}>От несущей стены до задней стенки блока: {number(geometry!.wallToBlockRearMm)} мм. Слой фасада не прибавлен к габариту корзины.</p>}
     </> : <div className={styles.drawingEmpty}><svg viewBox="0 0 200 100" aria-hidden="true"><rect x="25" y="10" width="150" height="80" fill="none" stroke="#91a29a" strokeDasharray="5 4" /><rect x="50" y="25" width="100" height="50" rx="3" fill="#e5ede8" stroke="#61776b" /></svg><strong>Разместим блок на схеме</strong><p>Укажите три размера установки и все шесть отступов на шаге «Размеры». Неизвестные расстояния не подставляются автоматически.</p></div>}

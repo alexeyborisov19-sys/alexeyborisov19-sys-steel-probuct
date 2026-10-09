@@ -1,3 +1,4 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 import { stableIfcGuid } from "./ifc-identity";
 import { cassetteGeometry, cassetteMinimumJoint, cassetteFaceWidth, cassetteProfiles, cassetteSource, type CassetteProfile } from "./cassette-geometry";
 /** Architectural coordination geometry, not a manufacturing unfolding or certified facade system. */
@@ -10,7 +11,7 @@ export type CassetteBimInput = {
   /** Stable row:column keys (zero based). */
   panelColours?: Record<string, { ral: string; hex: string }>;
 };
-export const bimScope = "Координационная модель. ОТ и ЗТ — геометрия из STEP, угловая — упрощённая по чертежу. Изменение ширины и высоты адаптирует центральную часть; борта и толщина сохраняются. Крепёж и подсистема не входят; узел стыковки требует согласования. Не для изготовления или расчёта нагрузок.";
+export const bimScope = PRODUCT_CALCULATION_NOTICE + ". " + "Координационная модель. ОТ и ЗТ — геометрия из STEP, угловая — упрощённая по чертежу. Изменение ширины и высоты адаптирует центральную часть; борта и толщина сохраняются. Крепёж и подсистема не входят; узел стыковки требует согласования. Не для изготовления или расчёта нагрузок.";
 export function validateCassetteBim(p: CassetteBimInput): string[] {
   const errors: string[] = [];
   if (p.projectId !== undefined && !/^[A-Za-z0-9_-]{1,80}$/.test(p.projectId)) errors.push("Некорректный идентификатор проекта.");

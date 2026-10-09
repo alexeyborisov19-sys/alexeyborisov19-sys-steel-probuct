@@ -1,4 +1,5 @@
 "use client";
+import { PRODUCT_CALCULATION_NOTICE } from "@/lib/product-calculation-notice";
 
 import { useRef, useState } from "react";
 import { BIM_PROJECT_MAX_BYTES, parseCassetteBimProject, serializeCassetteBimProject } from "@/lib/bim/cassette-project";
@@ -167,7 +168,7 @@ export function CassetteBimConfigurator() {
       </section>
     </div>
     <div className={styles.notice} role="status" aria-live="polite">{notice || "Выберите цвет и нажмите «Применить». Просмотр палитры не меняет окраску кассет."}</div>
-    <section className={styles.download} id="bim-download" aria-labelledby="bim-download-title"><div><p className={styles.eyebrow}>Готово к экспорту</p><h2 id="bim-download-title">Модель и спецификация</h2><p>Назначенные RAL сохранятся у каждой кассеты.</p></div><div className={styles.downloadButtons}><button type="button" className={styles.darkButton} onClick={() => download("ifc")} disabled={!valid}>Скачать IFC</button><button type="button" className={styles.secondary} onClick={() => download("csv")} disabled={!valid}>Спецификация CSV</button></div></section>
+    <section className={styles.download} id="bim-download" aria-labelledby="bim-download-title"><div><p className={styles.eyebrow}>Готово к экспорту</p><h2 id="bim-download-title">Модель и спецификация</h2><p>{PRODUCT_CALCULATION_NOTICE}.</p></div><div className={styles.downloadButtons}><button type="button" className={styles.darkButton} onClick={() => download("ifc")} disabled={!valid}>Скачать IFC</button><button type="button" className={styles.secondary} onClick={() => download("csv")} disabled={!valid}>Спецификация CSV</button></div></section>
     <section className={styles.projectFiles} aria-labelledby="bim-project-title">
       <h2 id="bim-project-title">Сохранить и продолжить проект</h2>
       <p>JSON сохраняет размеры, раскладку, цвета и постоянные идентификаторы кассет. Файл остаётся у вас; загрузка здесь не отправляет его на сервер.</p>

@@ -1,3 +1,5 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
+import { basketAcDimensionDisclaimer } from "./basket-ac-reference";
 import {
   validBasketDesign,
   basketDesignSummary,
@@ -93,13 +95,14 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
   if (!validBasketBrief({ ...input, design })) return null;
   return [
     "Прошу рассчитать корзины для кондиционеров.",
+    PRODUCT_CALCULATION_NOTICE + ".",
     "Все расчёты приблизительные. Окончательные размеры, крепление и стоимость согласуются перед изготовлением.",
     `${design?.sizing === "block" ? "Расчётный внутренний габарит по блоку и зазорам" : "Предварительный наружный габарит"} (Ш × В × Г): ${input.width} × ${input.height} × ${input.depth} мм.`,
     ...(design?.sizing === "block" ? ["Наружные размеры с учётом панелей и отгибов уточняются по рабочему чертежу. Цена предварительная."] : []),
     `Количество: ${input.quantity} шт.`,
     `Экран: ${basketScreens[(design?.front.pattern ?? input.screen) as keyof typeof basketScreens]}.`,
     `Цвет: RAL ${input.ral}.`,
-    ...(design ? [basketDesignSummary(design)] : []),
+    ...(design ? [basketDesignSummary(design)] : [basketAcDimensionDisclaimer + "."]),
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",
     "Модель наружного блока / основание / город объекта: уточню.",
   ].join("\n");

@@ -1,3 +1,15 @@
+## Detailed inspection follow-up
+
+The owner-source open/closed parts can be viewed alone, as two preliminary face-pitch neighbours, or separated as whole panels for inspection. Neither neighbouring mode asserts an approved engagement node; the missing joint sections remain required. The corner profile remains a single, explicitly simplified drawing-based part. Existing geometry and IFC exports are unchanged. Native WebGL depth testing resolves opaque surface occlusion; source fold/outline edges are rendered without tessellation diagonals. A labelled SVG fallback is available if the graphics context is unavailable. Browser evidence must establish real rendered pixels, not only numerical geometry tests.
+
+# Current visual follow-up
+
+The current draft adds minimal stepwise cassette/basket interfaces and geometry-derived perspective views, two basket entry paths, source-qualified optional AC dimensions, explicit unknown clearances, and facade descriptors that do not double-count insulation. All customer outputs carry the requested preliminary notice. A cassette budget now follows the actual panel-face schedule; it is not complete manufacturing cost, and unpriced nonstandard work remains explicit. Customer screens and briefs show final results and textual assumptions, without rate arithmetic.
+
+Current local integrated suite:1646 passed; independent data/export review:131 passed. Lint/typecheck passed. The retried local production build passed after an environment transport interruption. Exact updated-head CI and screenshot review remain outstanding after the final inspection-view change. Earlier candidate notes below are historical. Independent IFC4 parser/EXPRESS validation passed17 synthetic fixtures on earlier heads, but Revit import and approved cassette joint engagement remain unverified. Production release is not authorized.
+
+---
+
 # Calculator project upgrade: local candidate
 
 Base: `ba873d70be57ad62b4f5e85b39a9d10f7df56062`. Scope is requested product calculation/BIM improvement; production publication is not authorized. The owner has approved a separate branch and draft PR for exact-head CI and browser review.

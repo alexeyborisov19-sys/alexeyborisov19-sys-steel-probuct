@@ -1,3 +1,4 @@
+import { basketAcDimensionDisclaimer } from "./basket-ac-reference";
 import type { BasketBrief } from "./basket-brief";
 import { requiredBasketSpace, type BasketFit } from "./basket-fit";
 import { basketMountingDimensions } from "./basket-mounting";
@@ -66,7 +67,7 @@ export function basketReview(input: BasketBrief): BasketReviewCheck[] {
   const geometryConflict = geometry && geometry.axes.some(axis => geometry.inner ? axis.selectedMm !== Math.ceil(axis.requiredMm) : axis.differenceMm <= 0);
   return [
     { id: "equipment", title: "Модель наружного блока", state: r?.equipment.trim() ? "supplied" : "missing", detail: r?.equipment.trim() || "Перепишите обозначение из паспорта или с шильдика.", step: 0 },
-    { id: "dimensions", title: "Габариты всей установки", state: dimensionsKnown ? "supplied" : "missing", detail: dimensionsKnown ? `${fit!.width} × ${fit!.height} × ${fit!.depth} мм, по данным заказчика.` : "Нужны ширина, высота и глубина с выступающими частями.", step: 0 },
+    { id: "dimensions", title: "Габариты всей установки", state: d?.acReference ? "review" : dimensionsKnown ? "supplied" : "missing", detail: d?.acReference ? basketAcDimensionDisclaimer + ". Исходный пример: " + d.acReference.model + "." : dimensionsKnown ? `${fit!.width} × ${fit!.height} × ${fit!.depth} мм, по данным заказчика.` : "Нужны ширина, высота и глубина с выступающими частями.", step: 0 },
     { id: "clearances", title: "Шесть отступов от блока", state: gaps.length ? "missing" : "supplied", detail: gaps.length ? `Осталось указать отступов: ${gaps.length}. Пустое поле не равно нулю.` : "Числа указаны. Соответствие инструкции проверяет инженер.", step: 0 },
     { id: "clearance-source", title: "Источник требований к зазорам", state: r?.clearanceSource.trim() ? "supplied" : "missing", detail: r?.clearanceSource.trim() || "Укажите документ и страницу. Универсальные зазоры не назначаются.", step: 0 },
     { id: "geometry", title: "Сопоставление объёма и корзины", state: !geometry ? "missing" : geometryConflict ? "conflict" : geometry.inner ? "supplied" : "review", detail: !geometry ? "Для сопоставления нужны корректные габариты и все отступы." : geometryConflict ? "Размер корзины не соответствует требуемому объёму. Проверьте выбранные размеры и зазоры." : geometry.inner ? "Внутренний расчётный объём равен сумме габаритов и отступов с округлением вверх. Наружные размеры уточняются." : "Наружный размер больше требуемого объёма. Внутренний просвет ещё нужно проверить по чертежу.", step: 0 },

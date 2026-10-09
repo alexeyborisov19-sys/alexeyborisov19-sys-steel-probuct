@@ -1,6 +1,7 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 /** Millimetre face-layout model. Application bounds are not manufacturing limits. */
 export const CASSETTE_PROJECT_LIMITS = { elevations: 20, openings: 40, cellsPerElevation: 2000, cellsPerProject: 10000, dimensionMm: 1000000, fileBytes: 1000000 } as const;
-export const CASSETTE_PROJECT_SCOPE = "Координационная раскладка лицевых поверхностей; не разрешение на изготовление. Подсистема, крепёж, откосы, угловые элементы и монтаж не входят. Размеры бортов, развёртки, замковые узлы, допустимые размеры и нагрузочные расчёты проверяет инженер.";
+export const CASSETTE_PROJECT_SCOPE = PRODUCT_CALCULATION_NOTICE + ". " + "Координационная раскладка лицевых поверхностей; не разрешение на изготовление. Подсистема, крепёж, откосы, угловые элементы и монтаж не входят. Размеры бортов, развёртки, замковые узлы, допустимые размеры и нагрузочные расчёты проверяет инженер.";
 export type CassetteRect = { xMm: number; yMm: number; widthMm: number; heightMm: number };
 export type CassetteOpening = CassetteRect & { id: string; name: string };
 export type CassetteElevation = {

@@ -1,3 +1,6 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
+import { cleanBasketWallAssembly } from "./basket-wall-assembly";
+import { basketAcReference, basketAcDimensionDisclaimer } from "./basket-ac-reference";
 import { fitLabels, type BasketFit } from "./basket-fit";
 import { validBasketBrief, type BasketBrief } from "./basket-brief";
 import { cleanBasketReview } from "./basket-review";
@@ -20,6 +23,8 @@ function clean(items: unknown): BasketBrief[] {
     const design = v.design
       ? {
           version: 1 as const,
+          ...(v.design.wallAssembly ? { wallAssembly: cleanBasketWallAssembly(v.design.wallAssembly) } : {}),
+          ...(v.design.acReference ? { acReference: basketAcReference(v.design.acReference.code) } : {}),
           ...(v.design.sizing ? { sizing: v.design.sizing } : {}),
           ...(v.design.wallKind ? { wallKind: v.design.wallKind } : {}),
           blockWidth: v.design.blockWidth,
@@ -72,7 +77,7 @@ function clean(items: unknown): BasketBrief[] {
 }
 export function serializeBasketProject(items: BasketBrief[]) {
   return JSON.stringify(
-    { kind: "steel-basket-specification", version: 2, items: clean(items) },
+    { kind: "steel-basket-specification", version: 2, notice: PRODUCT_CALCULATION_NOTICE, dimensionDisclaimer: basketAcDimensionDisclaimer, items: clean(items) },
     null,
     2,
   );
