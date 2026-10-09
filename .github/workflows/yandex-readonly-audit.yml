@@ -26,7 +26,7 @@ jobs:
           const parse=t=>JSON.parse(t.replace(/(:\s*|,\s*|\[\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));
           function print(label,value){ console.log(label+" "+JSON.stringify(value));}
           async function direct(service,params){
-           if(!["campaigns","adgroups","keywords"].includes(service)) throw Error("Read-only service denied");
+           if(!["campaigns","adgroups","keywords","ads"].includes(service)) throw Error("Read-only service denied");
            const h={Authorization:"Bearer "+yd,"Content-Type":"application/json","Accept-Language":"ru"};if(login)h["Client-Login"]=login;
            const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers:h,body:JSON.stringify({method:"get",params}),signal:AbortSignal.timeout(45000)});
            const t=await r.text();let b;try{b=parse(t)}catch{b={invalid_json:true}}
@@ -41,7 +41,8 @@ jobs:
           const campaigns=await paged("campaigns",{SelectionCriteria:{},FieldNames:["Id","Name","State","Status","Currency","DailyBudget","NegativeKeywords","TimeTargeting"],UnifiedCampaignFieldNames:["CounterIds","AttributionModel","PriorityGoals","Settings","BiddingStrategy","TrackingParams"]},"Campaigns");
           print("CAMPAIGNS",campaigns);
           print("ADGROUPS",await paged("adgroups",{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:["Id","Name","CampaignId","Status","Type","RegionIds","NegativeKeywords","TrackingParams"]},"AdGroups"));
-          print("KEYWORDS",await paged("keywords",{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:["Id","Keyword","AdGroupId","CampaignId","State","Status","ServingStatus","Bid","ContextBid","AutotargetingCategories"]},"Keywords"));
+          print("KEYWORDS",await paged("keywords",{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:["Id","Keyword","AdGroupId","CampaignId","State","Status","ServingStatus","Bid","ContextBid","AutotargetingCategories"],AutotargetingSettingsCategoriesFieldNames:["Exact","Narrow","Alternative","Accessory","Broader"],AutotargetingSettingsBrandOptionsFieldNames:["WithoutBrands","WithAdvertiserBrand","WithCompetitorsBrand"]},"Keywords"));
+          print("ADS",await paged("ads",{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:["Id","CampaignId","AdGroupId","State","Status","Type"],ResponsiveAdFieldNames:["Href"],TextAdFieldNames:["Href","Title","Text"]},"Ads"));
           const goalsRes=await fetch("https://api-metrika.yandex.net/management/v1/counter/"+counter+"/goals",{headers:{Authorization:"OAuth "+ym},signal:AbortSignal.timeout(45000)});
           let goals=[];if(goalsRes.ok){goals=(await goalsRes.json()).goals||[];print("GOALS",goals.map(g=>({id:g.id,name:g.name,type:g.type,status:g.status,conditions:g.conditions})));}else print("GOALS_ERROR",{status:goalsRes.status});
           const important=goals.filter(g=>[612680821,612680809,666575171].includes(g.id)||g.conditions?.some(c=>["assistant_lead_success","ym-submit-leadform"].includes(c.url))).map(g=>g.id);
@@ -66,11 +67,10 @@ jobs:
            }print("DIRECT_REPORT_PENDING",{kind,dates});
           }
           await report("CAMPAIGN_PERFORMANCE_REPORT",["Date","CampaignId","Impressions","Clicks","Cost","Conversions"],["2026-10-02","2026-10-08"],important);
-          await report("SEARCH_QUERY_PERFORMANCE_REPORT",["Query","CampaignId","AdGroupId","Keyword","MatchType","Impressions","Clicks","Cost","Conversions"],["2026-10-02","2026-10-08"],important);
+          await report("SEARCH_QUERY_PERFORMANCE_REPORT",["Query","CampaignId","AdGroupId","Criteria","MatchType","Impressions","Clicks","Cost","Conversions"],["2026-10-02","2026-10-08"],important);
           await report("CRITERIA_PERFORMANCE_REPORT",["CampaignId","AdGroupId","CriteriaId","Criteria","Impressions","Clicks","Cost","Conversions"],["2026-10-02","2026-10-08"],important);
           await report("CAMPAIGN_PERFORMANCE_REPORT",["Date","CampaignId","Impressions","Clicks","Cost","Conversions"],["2026-10-09","2026-10-09"],important);
           print("READ_ONLY_COMPLETE",true);
-          
-          NODE
+                    NODE
           node --check /tmp/read-only-conversion-audit.mjs
           node /tmp/read-only-conversion-audit.mjs
