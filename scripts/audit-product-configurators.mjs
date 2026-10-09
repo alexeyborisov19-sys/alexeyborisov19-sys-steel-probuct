@@ -8,7 +8,7 @@ import { defaultBasketDesign } from '../lib/quote/basket-design.ts';
 import { defaultBasketReview } from '../lib/quote/basket-review.ts';
 import { serializeBasketProject } from '../lib/quote/basket-project.ts';
 
-const base = process.env.CONFIGURATOR_AUDIT_BASE_URL || 'http://127.0.0.1:3106';
+const base = process.env.CONFIGURATOR_AUDIT_BASE_URL || 'http://localhost:3106';
 const origin = new URL(base).origin;
 assert.ok(['127.0.0.1','localhost','[::1]'].includes(new URL(base).hostname), 'Use a local candidate only');
 const output = 'output/product-configurators';

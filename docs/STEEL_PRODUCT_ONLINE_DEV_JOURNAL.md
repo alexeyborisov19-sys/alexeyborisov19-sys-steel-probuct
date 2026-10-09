@@ -1,3 +1,7 @@
+## PR249 local-origin alignment — 9 October 2026
+
+The strengthened CAD gate at `6b72b9ce` correctly failed on HTTP403 rather than accepting a missing preview. Installed Next15 normalizes loopback127.0.0.1 to localhost in NextURL; the browser origin still used127.0.0.1, so the unchanged same-origin protection rejected the request. The isolated server, browser and SEO target now consistently use localhost. No Origin header is forged and no security check is bypassed or weakened. NEXT ACTION: repeat exact-head CI with successful CAD reanalysis assertions retained.
+
 ## PR249 visual evidence correction — 9 October 2026
 
 Live checkpoint: `622c0c07` passed the eight responsive project audits and the independent IFC4 parser/EXPRESS checks on17 fixtures. Independent geometry review passed34 focused tests plus winding/degeneracy checks. Actual screenshot inspection found a test-environment gap: CAD parameter restoration passed while preview analysis failed because the production-mode CI server lacked IP_HASH_SALT. Added a clearly synthetic CI-only salt and required successful server response/drawing for both regenerated manual input and the matching original CAD. Production security is unchanged. NEXT ACTION: rerun exact-head complete CI and inspect corrected CAD screenshots before handoff. IFC consumer applications such as Revit remain unverified; merge/deploy unauthorized.
