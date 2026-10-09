@@ -59,6 +59,13 @@ try {
   });
   await open(page,'/calculator-metallokassety');
   const editor=page.getByTestId('cassette-project-editor');
+  if(width===390) {
+    const start=await editor.boundingBox(), input=await page.locator('#cassette-elevation-width').boundingBox();
+    assert.ok(start && input && input.y-start.y < 600,'Mobile cassette dimensions must precede the long preview');
+    await editor.evaluate(element=>window.scrollTo(0,Math.max(0,element.getBoundingClientRect().top+scrollY-40)));
+    await page.screenshot({path:`${output}/cassettes-${width}-initial.png`});
+  }
+
   for(const [key,value] of [['elevation-width','2020'],['elevation-height','1020']]) await page.locator(`#cassette-${key}`).fill(value);
   await editor.getByRole('button',{name:'2. Кассеты',exact:true}).click();
   for(const [key,value] of [['face-width','1000'],['face-height','500'],['joint-x','20'],['joint-y','20']]) await page.locator(`#cassette-${key}`).fill(value);
@@ -84,6 +91,8 @@ try {
   await expect(editor.getByRole('alert')).toHaveCount(0);
   await editor.getByRole('button',{name:'Чертёж 2D',exact:true}).click();
   await expect(editor.getByRole('button',{name:'Чертёж 2D',exact:true})).toHaveAttribute('aria-pressed','true');
+  await editor.locator('[data-panel-id]').first().click();
+  await expect(editor.locator('[data-selected-label]').first()).toBeVisible();
   await editor.locator('svg').screenshot({path:`${output}/cassettes-${width}-technical.png`});
   await editor.getByRole('button',{name:'Перспектива',exact:true}).click();
   await editor.locator('svg').screenshot({path:`${output}/cassettes-${width}-diagram.png`});
@@ -131,7 +140,7 @@ try {
   await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
   for(const [name,value] of [['Ширина, мм','1110'],['Высота, мм','710'],['Глубина, мм','610'],['Количество, шт.','4']]) await basket.getByLabel(name,{exact:true}).fill(value);
   await basket.getByRole('button',{name:'Добавить в спецификацию',exact:true}).click();
-  const known=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить файл',exact:true})));
+  const known=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить все · JSON',exact:true})));
   assert.deepEqual([known.items[0].width,known.items[0].height,known.items[0].depth,known.items[0].quantity],[1110,710,610,4]);
   await check(page,'baskets-known',width,errors);
   await basket.getByRole('button',{name:'Подобрать по кондиционеру',exact:true}).click();

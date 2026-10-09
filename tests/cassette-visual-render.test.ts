@@ -45,6 +45,19 @@ test("editor starts with only facade controls and a perspective, with technical 
   assert.doesNotMatch(html, /NaN|Infinity/);
 });
 
+test("mobile entry presents dimensions before the model and collapses optional facade details", () => {
+  const html = editor();
+  assert.ok(html.indexOf('id="cassette-elevation-width"') < html.indexOf('data-cassette-view="perspective"'));
+  assert.ok(html.indexOf('id="cassette-elevation-height"') < html.indexOf('id="cassette-elevation-name"'));
+  assert.match(html, /<nav aria-label="Шаги проекта металлокассет" class="grid grid-cols-4/);
+  const details = html.match(/<details[^>]*><summary[^>]*>Название фасада и подсказки<\/summary>[\s\S]*?<\/details>/)?.[0];
+  assert.ok(details);
+  assert.doesNotMatch(details, /<details[^>]* open=/);
+  assert.match(details, /id="cassette-elevation-name"/);
+  assert.match(details, /Удалить фасад/);
+  assert.equal((html.match(/id="cassette-elevation-width"/g) ?? []).length, 1);
+});
+
 test("workspace uses readable HTML dimensions and explicitly limited neutral shading", () => {
   const elevation = example(), layout = buildCassetteElevation(elevation, "example");
   const html = workspace({ elevation, layout, selected: null, onSelect() {}, review: true });
@@ -77,6 +90,23 @@ test("perspective retains every true remainder and opening while adding no inven
   for (const polygon of html.match(/<polygon data-face-rectangle="true"[^>]*>/g) ?? []) assert.doesNotMatch(polygon, /stroke=/);
   assert.match(html, /stroke="#ffb27c"/);
   assert.doesNotMatch(html, /NaN|Infinity/);
+});
+
+test("2D retains bounded selected and opening labels without mobile blanket hiding", () => {
+  const elevation = example();
+  elevation.openings = [{ id: "O1", name: "Окно", xMm: 100, yMm: 100, widthMm: 200, heightMm: 200 }];
+  const layout = buildCassetteElevation(elevation, "example");
+  const props = { elevation, layout, selectedId: layout.panels[1].id, onSelect() {}, showMarks: true, view: "plan" };
+  const html = drawing(props);
+  const selected = html.match(/<text data-selected-label[^>]*>[\s\S]*?<\/text>/)?.[0];
+  assert.ok(selected);
+  assert.doesNotMatch(selected, /hidden/);
+  assert.ok(selected.includes(layout.panels[1].mark));
+  assert.match(html, /<text data-opening-label="O1"[^>]*>O1<\/text>/);
+  assert.doesNotMatch(drawing({ ...props, view: "perspective" }), /data-selected-label|data-opening-label/);
+  assert.doesNotMatch(drawing({ ...props, showMarks: false }), /data-selected-label/);
+  elevation.openings[0] = { ...elevation.openings[0], widthMm: 1, heightMm: 1 };
+  assert.doesNotMatch(drawing({ ...props, elevation }), /data-opening-label/);
 });
 
 test("a fully removed face has no manufactured-looking fill in either view", () => {

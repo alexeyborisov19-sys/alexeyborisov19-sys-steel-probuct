@@ -54,13 +54,13 @@ export function BasketMountingFields({ design, onChange }: { design: BasketDesig
     <details className="mt-4 rounded-lg border border-slate-200 p-3">
       <summary className="text-sm font-semibold text-slate-800">Уточнить состав стены и утепление</summary>
       <label className="mt-3 block text-sm font-medium text-slate-700">Несущая основа
-        <select className={control} value={assembly.structuralBase} onChange={e => setAssembly({structuralBase:e.target.value as BasketWallAssembly["structuralBase"]})}>{Object.entries(basketStructuralBases).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <select aria-label="Несущая основа" className={control} value={assembly.structuralBase} onChange={e => setAssembly({structuralBase:e.target.value as BasketWallAssembly["structuralBase"]})}>{Object.entries(basketStructuralBases).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
       </label>
       <label className="mt-3 block text-sm font-medium text-slate-700">Наружная отделка
-        <select className={control} value={assembly.finish} onChange={e => setAssembly({finish:e.target.value as BasketWallAssembly["finish"]})}>{Object.entries(basketFacadeFinishes).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <select aria-label="Наружная отделка" className={control} value={assembly.finish} onChange={e => setAssembly({finish:e.target.value as BasketWallAssembly["finish"]})}>{Object.entries(basketFacadeFinishes).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
       </label>
       <label className="mt-3 block text-sm font-medium text-slate-700">Утепление
-        <select className={control} value={assembly.insulation} onChange={e => setAssembly({insulation:e.target.value as BasketWallAssembly["insulation"], ...(e.target.value === "no" ? {insulationThicknessMm:null} : {})})}><option value="unknown">Пока неизвестно</option><option value="yes">Есть утеплитель</option><option value="no">Без утепления</option></select>
+        <select aria-label="Утепление" className={control} value={assembly.insulation} onChange={e => setAssembly({insulation:e.target.value as BasketWallAssembly["insulation"], ...(e.target.value === "no" ? {insulationThicknessMm:null} : {})})}><option value="unknown">Пока неизвестно</option><option value="yes">Есть утеплитель</option><option value="no">Без утепления</option></select>
       </label>
       {assembly.insulation === "yes" && <label className="mt-3 block text-sm font-medium text-slate-700">Толщина утеплителя, мм<BasketNumberInput className={control} value={assembly.insulationThicknessMm} emptyValue={null} min={0} max={2000} placeholder="По проекту фасада" onValue={insulationThicknessMm => setAssembly({insulationThicknessMm})}/></label>}
       <p className="mt-3 text-xs leading-5 text-slate-600">Утеплитель — часть общего слоя от стены до облицовки. Эти сведения не определяют анкеры или несущую способность.</p>

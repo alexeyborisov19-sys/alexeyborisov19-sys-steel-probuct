@@ -15,12 +15,12 @@ export function CassetteVisualWorkspace({ elevation, layout, selected, onSelect,
   function selectPanel(id: string | null) { onSelect(id); setInspectorOpen(true); }
   const [showStatuses, setShowStatuses] = useState(false), [showMarks, setShowMarks] = useState(true);
   return <section className="min-w-0" aria-label="Предпросмотр фасада">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-white/60">Ваш фасад</p><h3 className="mt-1 break-words text-xl font-semibold">{elevation.name}</h3><p className="mt-2 text-sm text-white/75">{layout.rows} рядов × {layout.columns} колонок · {layout.summary.quantity} позиций с остатком лица</p></div>
-      <span className="border border-white/15 px-3 py-2 text-sm tabular-nums text-white/80">{number.format(elevation.widthMm)} × {number.format(elevation.heightMm)} мм</span>
+    <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
+      <div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-wider text-white/60 sm:block">Ваш фасад</p><h3 className="break-words text-lg font-semibold sm:mt-1 sm:text-xl">{elevation.name}</h3><p className="mt-1 text-sm text-white/75 sm:mt-2">{layout.rows} рядов × {layout.columns} колонок · {layout.summary.quantity} позиций с остатком лица</p></div>
+      <span className="text-sm tabular-nums text-white/80 sm:border sm:border-white/15 sm:px-3 sm:py-2">{number.format(elevation.widthMm)} × {number.format(elevation.heightMm)} мм</span>
     </div>
-    <div className="mt-5 overflow-hidden border border-white/15 bg-[#10171d]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 p-3">
+    <div className="mt-3 overflow-hidden border border-white/15 bg-[#10171d] sm:mt-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 p-2 sm:p-3">
         <div className="flex w-full gap-2 sm:w-auto" role="group" aria-label="Вид раскладки">
           <button type="button" aria-pressed={view === "perspective"} className={`${viewButton} ${view === "perspective" ? "border-steel-orange bg-steel-orange/10 text-orange-200" : "border-white/20 text-white/75 hover:border-white/50"}`} onClick={() => setView("perspective")}>Перспектива</button>
           <button type="button" aria-pressed={view === "plan"} className={`${viewButton} ${view === "plan" ? "border-steel-orange bg-steel-orange/10 text-orange-200" : "border-white/20 text-white/75 hover:border-white/50"}`} onClick={() => setView("plan")}>Чертёж 2D</button>

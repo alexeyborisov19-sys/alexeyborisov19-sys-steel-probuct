@@ -168,3 +168,13 @@ test("actual inspection SVG has accessible source descriptions and explicit unco
   }
 });
 
+
+test("single-part camera framing avoids wide mobile letterboxing without changing geometry", () => {
+  const single = compiled.exports.view({ input: input(), mode: 'single' });
+  const neighbours = compiled.exports.view({ input: input(), mode: 'neighbours' });
+  const frame = single.match(/viewBox="([^"]+)"/)?.[1].split(' ').map(Number);
+  assert.ok(frame && frame[2] < 600 && frame[2] >= 420);
+  assert.equal(frame[3], 560);
+  assert.match(single, /aspect-ratio:[^;]+;height:auto/);
+  assert.match(neighbours, /viewBox="0 0 900 560"/);
+});

@@ -33,6 +33,10 @@ export function CassetteInspectionView({ input, colour = '#a8b5b9', mode = 'sing
   }, [geometry, input, effectiveMode, axis, yaw, pitch]);
   if (!scene.result) return <p role="alert" className="mt-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm leading-6 text-red-900">Предпросмотр скрыт. {scene.error}</p>;
   const projected = scene.result;
+  const xs = projected.polygons.flatMap(poly => poly.points.map(point => point[0]));
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const frameWidth = effectiveMode === 'single' ? Math.min(900, Math.max(420, maxX - minX + 100)) : 900;
+  const frameX = Math.max(0, Math.min(900 - frameWidth, (minX + maxX - frameWidth) / 2));
   const seam = cassetteInspectionSeam(input, axis).map(point => projected.project(point));
   const dx = seam[1][0] - seam[0][0], dy = seam[1][1] - seam[0][1], length = Math.hypot(dx, dy);
   let normal = length > 1e-9 ? [-dy / length, dx / length] : [0, -1];
@@ -46,7 +50,7 @@ export function CassetteInspectionView({ input, colour = '#a8b5b9', mode = 'sing
       <div><h4 className="font-semibold text-[#182a30]">{modeTitles[effectiveMode]}</h4><p>Лицо {number.format(input.widthMm)} × {number.format(input.heightMm)} мм · борт {number.format(input.depthMm)} мм</p></div>
       {effectiveMode !== 'single' ? <p className="rounded-md border border-[#a7b9bf] bg-white px-3 py-1 text-[#253c45]">{effectiveMode === 'exploded' ? 'Шов до разноса' : 'Шов между лицами'}: {number.format(input.jointMm)} мм</p> : null}
     </figcaption>
-    <svg role="img" aria-labelledby={`${prefix}-title`} aria-describedby={`${prefix}-description`} viewBox={projected.viewBox} className="block h-[300px] w-full rounded-xl border border-[#b7c7cd] bg-[#e3eaed] sm:h-[430px] xl:h-[500px]" data-solid-instances={projected.instances.length}>
+    <svg role="img" aria-labelledby={`${prefix}-title`} aria-describedby={`${prefix}-description`} viewBox={`${frameX} 0 ${frameWidth} 560`} style={{ aspectRatio: `${frameWidth} / 560`, height: 'auto' }} className="block max-h-[560px] w-full rounded-xl border border-[#b7c7cd] bg-[#e3eaed]" data-solid-instances={projected.instances.length}>
       <title id={`${prefix}-title`}>{`${input.profile ? cassetteProfiles[input.profile].label : 'Кассета'}: ${modeTitles[effectiveMode]}`}</title>
       <desc id={`${prefix}-description`}>{source} {effectiveMode === 'single' ? 'Одна цельная кассета с исходными бортами и толщиной.' : `${axis === 'horizontal' ? 'Два экземпляра по горизонтали.' : 'Два экземпляра по вертикали.'} Шов ${input.jointMm} мм задан между лицевыми габаритами. ${coordinationNotice}`} {effectiveMode === 'exploded' ? 'Цельные кассеты разнесены для осмотра. Визуальное расстояние условное и не является монтажным зазором.' : ''}</desc>
       <defs><linearGradient id={`${prefix}-background`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#f5f8f9" /><stop offset="1" stopColor="#d8e3e7" /></linearGradient><radialGradient id={`${prefix}-shadow`}><stop stopColor="#536b76" stopOpacity=".2" /><stop offset="1" stopColor="#536b76" stopOpacity="0" /></radialGradient></defs>
@@ -65,7 +69,7 @@ export function CassetteInspectionView({ input, colour = '#a8b5b9', mode = 'sing
       </g> : null}
       {effectiveMode === 'exploded' && second ? <line aria-hidden="true" data-illustrative-separation="true" x1={projected.project(centre)[0]} y1={projected.project(centre)[1]} x2={projected.project([centre[0], centre[1], second.offset[2]])[0]} y2={projected.project([centre[0], centre[1], second.offset[2]])[1]} stroke="#476878" strokeDasharray="6 6" strokeWidth="1" vectorEffect="non-scaling-stroke" /> : null}
     </svg>
-    {!depthReady ? <p className="mt-2 text-xs text-[#63747b]">Упрощённый показ поверхностей. Для проверки формы используйте исходную модель IFC.</p> : null}
+    {!depthReady ? <p className="mt-2 text-xs text-[#52636b]">Упрощённый показ поверхностей. Для проверки формы используйте исходную модель IFC.</p> : null}
     <p className="mt-3 text-sm leading-6 text-[#4d6066]">{source} Геометрия деталей совпадает с IFC; ракурс и разнос меняют только показ.</p>
     {input.profile === 'corner' ? <p className="mt-2 text-sm leading-6 text-[#6b4e20]">Показана одна угловая кассета. Узел её примыкания не подтверждён исходными моделями.</p> : null}
     {effectiveMode !== 'single' ? <p className="mt-2 rounded-lg border border-[#dac69f] bg-[#fff9ed] px-3 py-2 text-sm leading-6 text-[#674a1e]">{coordinationNotice} {effectiveMode === 'exploded' ? 'Разнос условный, только для осмотра; это не монтажный зазор.' : 'Шов измеряется между лицевыми габаритами, а не между бортами.'}</p> : null}
@@ -83,11 +87,11 @@ export function CassetteBimShapePreview({ input, colour = '#a8b5b9' }: { input: 
     <details className="mt-3 rounded-lg border border-[#ccd7dc] bg-white px-4 py-1"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-[#354b54] focus-visible:outline focus-visible:outline-[#cf5c22]">Ракурс и расположение</summary>
       <div className="mb-4 space-y-4">
         <div role="group" aria-label="Ракурс кассеты" className="flex flex-wrap gap-2">{([['Лицо', 0, 0], ['Обратная сторона', 180, 0], ['Объёмный вид', 145, 20], ['Профиль', 90, 0]] as const).map(([label, y, p]) => <button key={label} type="button" aria-pressed={yaw === y && pitch === p} onClick={() => { setYaw(y); setPitch(p); }} className={`${buttonClass} ${yaw === y && pitch === p ? 'border-[#cf5c22] bg-[#fff0e5] text-[#803309]' : 'border-[#bac8ce] text-[#354b54] hover:border-[#526d79]'}`}>{label}</button>)}</div>
-        {canPair && effectiveMode !== 'single' ? <label className="block text-sm text-[#354b54]">Расположение соседних кассет<select value={axis} onChange={event => setAxis(event.target.value as CassetteInspectionAxis)} className="mt-2 min-h-11 w-full max-w-sm rounded-md border border-[#bac8ce] bg-white px-3 text-base"><option value="horizontal">По горизонтали</option><option value="vertical">По вертикали</option></select></label> : null}
+        {canPair && effectiveMode !== 'single' ? <label className="block text-sm text-[#354b54]">Расположение соседних кассет<select aria-label="Расположение соседних кассет" value={axis} onChange={event => setAxis(event.target.value as CassetteInspectionAxis)} className="mt-2 min-h-11 w-full max-w-sm rounded-md border border-[#bac8ce] bg-white px-3 text-base"><option value="horizontal">По горизонтали</option><option value="vertical">По вертикали</option></select></label> : null}
         <div className="grid gap-3 sm:grid-cols-2"><label className="block text-sm text-[#354b54]">Поворот модели<input type="range" min="0" max="360" value={yaw} onChange={event => setYaw(Number(event.target.value))} className="mt-2 block min-h-11 w-full accent-[#cf5c22]" /></label><label className="block text-sm text-[#354b54]">Наклон модели<input type="range" min="-80" max="80" value={pitch} onChange={event => setPitch(Number(event.target.value))} className="mt-2 block min-h-11 w-full accent-[#cf5c22]" /></label></div>
-        <p className="text-sm leading-6 text-[#63747b]">В режимах с соседними деталями показаны два экземпляра текущей кассеты. Количество в проекте не меняется. Цвет на экране приблизительный.</p>
+        <p className="text-sm leading-6 text-[#52636b]">В режимах с соседними деталями показаны два экземпляра текущей кассеты. Количество в проекте не меняется. Цвет на экране приблизительный.</p>
       </div>
     </details>
-    <p className="mt-3 text-sm leading-6 text-[#63747b]">{PRODUCT_CALCULATION_NOTICE}</p>
+    <p className="mt-3 text-sm leading-6 text-[#52636b]">{PRODUCT_CALCULATION_NOTICE}</p>
   </section>;
 }
