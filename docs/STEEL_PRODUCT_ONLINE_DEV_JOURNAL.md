@@ -1,3 +1,7 @@
+## PR249 visual evidence correction — 9 October 2026
+
+Live checkpoint: `622c0c07` passed the eight responsive project audits and the independent IFC4 parser/EXPRESS checks on17 fixtures. Independent geometry review passed34 focused tests plus winding/degeneracy checks. Actual screenshot inspection found a test-environment gap: CAD parameter restoration passed while preview analysis failed because the production-mode CI server lacked IP_HASH_SALT. Added a clearly synthetic CI-only salt and required successful server response/drawing for both regenerated manual input and the matching original CAD. Production security is unchanged. NEXT ACTION: rerun exact-head complete CI and inspect corrected CAD screenshots before handoff. IFC consumer applications such as Revit remain unverified; merge/deploy unauthorized.
+
 ## PR249 CI correction checkpoint — 9 October 2026
 
 Live checkpoint: draft `c72d26f` retains the reviewed package and IFC4 point-list correction. Alpha CI passed; broader verification is still running. Expanded real-browser coverage found invalid definition-list grouping in the populated basket clearance diagram; supplementary text is now inside its definition detail, with a regression that failed before the correction. The independent IFC EXPRESS validator required pytest, so CI now installs pinned pytest8.4.2 alongside IfcOpenShell0.8.5. No schema checks have been removed. NEXT ACTION: verify exact updated-head CI, resolve any actual validator findings, and inspect final desktop/mobile screenshots. Merge and deployment remain unauthorized.

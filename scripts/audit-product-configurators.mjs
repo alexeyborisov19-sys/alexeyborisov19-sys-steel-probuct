@@ -112,12 +112,20 @@ try {
 
   await open(page,'/online-order');const controls=page.getByRole('region',{name:'Файл проекта'});
   await controls.getByLabel('Импорт JSON проекта',{exact:true}).setInputFiles({name:'cad-project.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(cadProject))});
+  const manualAnalysis=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/online-order/cad/analyze' && response.request().method()==='POST');
   await controls.getByRole('button',{name:'Открыть этот проект',exact:true}).click();
+  const manualResponse=await manualAnalysis; assert.equal(manualResponse.status(),200,'Restored manual source must be reanalyzed');
+  const manualPayload=await manualResponse.json();assert.equal(manualPayload.ok,true);assert.ok(manualPayload.preview?.drawing);
+  await expect(page.getByText('Предпросмотр недоступен',{exact:true})).toHaveCount(0);
+  await expect(page.getByText(/Модель распознана/)).toBeVisible();
   await expect(controls).toContainText('Не прикреплены исходные CAD: 1');await expect(page.locator('#cad-project-title')).toHaveValue('QA local project');
   const attachment=controls.getByLabel('Исходный CAD позиции 2: fixture.dxf',{exact:true});
   await attachment.setInputFiles({name:'fixture.dxf',mimeType:'application/dxf',buffer:Buffer.from(cad.toString().replace('400','401'))});
   await expect(controls.getByRole('alert')).toContainText('Содержимое CAD отличается');
+  const cadAnalysis=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/online-order/cad/analyze' && response.request().method()==='POST');
   await attachment.setInputFiles({name:'fixture.dxf',mimeType:'application/dxf',buffer:cad});
+  const cadResponse=await cadAnalysis;assert.equal(cadResponse.status(),200,'Matching original CAD must be reanalyzed');
+  const cadPayload=await cadResponse.json();assert.equal(cadPayload.ok,true);assert.ok(cadPayload.preview?.drawing);
   await expect(controls).not.toContainText('Не прикреплены исходные CAD:');
   const restored=JSON.parse(await downloaded(page,controls.getByRole('button',{name:'Скачать проект',exact:true})));
   assert.equal(restored.positions.length,2);assert.equal(restored.positions[0].configuration.quantity,25);assert.ok(!JSON.stringify(restored).includes('calculationId'));

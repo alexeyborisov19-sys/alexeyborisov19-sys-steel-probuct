@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: '1'
+      # Synthetic local runner identity only; never a production secret.
+      IP_HASH_SALT: 'configurator-ci-synthetic-local-only'
       NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
       BROWSER_CHANNEL: chrome
       CONFIGURATOR_AUDIT_BASE_URL: http://127.0.0.1:3106
