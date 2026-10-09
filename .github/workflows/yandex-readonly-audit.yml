@@ -1,58 +1,76 @@
-# One-off matched aggregate report; dedicated branch only. No site or ad-setting writes.
 name: Yandex read-only audit
 on:
-  workflow_dispatch:
   push:
-    branches: [report/matched-yandex-20261009]
+    branches: [report/direct-conversion-audit-20261009]
     paths: [".github/workflows/yandex-readonly-audit.yml"]
 permissions:
   contents: read
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       YM_TOKEN: ${{ secrets.YANDEX_METRIKA_OAUTH_TOKEN }}
       YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
-      YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
       YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
-      RUN_MATCHED_REPORT: '1'
-      MATCHED_DIRECT_ONLY: '1'
     steps:
-      - name: Read matched Direct and Metrika aggregates
+      - name: Read campaign budget goals targeting and search query reports
         shell: bash
         run: |
-          cat > /tmp/matched-report.mjs <<'NODE'
-          import { writeFileSync } from 'node:fs';
-          export const config = Object.freeze({date1:'2026-10-02',date2:'2026-10-08',campaign:714391927,counter:112542227,goal:612680821,timezone:'+03:00',attribution:'last'});
-          export function normToken(raw='') { let v=String(raw).trim().replace(/^(OAuth|Bearer)\s+/i,''); const m=v.match(/(?:^|[#?&])access_token=([^&#\s]+)/i); if(m) { try {v=decodeURIComponent(m[1]);} catch {v=m[1];} } return v.trim(); }
-          export function directSpec() {return {params:{SelectionCriteria:{DateFrom:config.date1,DateTo:config.date2,Filter:[{Field:'CampaignId',Operator:'EQUALS',Values:[String(config.campaign)]}]},FieldNames:['Date','CampaignId','Clicks','Conversions'],Goals:[String(config.goal)],AttributionModels:['LC'],ReportName:'Matched SteelProdukt 20261002-20261008 goal612680821 LC',ReportType:'CAMPAIGN_PERFORMANCE_REPORT',DateRangeType:'CUSTOM_DATE',Format:'TSV',IncludeVAT:'NO',IncludeDiscount:'NO'}};}
-          export function metrikaParams(kind) { const ad=kind==='clicks'; const prefix=ad?'ym:ad:':'ym:s:'; const dimension=prefix+'last'+(ad?'DirectOrder':'DirectClickOrder'); return {ids:String(config.counter),date1:config.date1,date2:config.date2,timezone:config.timezone,attribution:'last',accuracy:'full',dimensions:dimension,filters:`${dimension}=='${config.campaign}'`,metrics:[...(ad?[prefix+'clicks']:[]),prefix+'visits',prefix+'goal'+config.goal+'reaches',prefix+'goal'+config.goal+'visits'].join(','),limit:'100',lang:'en'}; }
-          const pick=(o,keys)=>Object.fromEntries(keys.filter(k=>o?.[k]!==undefined).map(k=>[k,o[k]]));
-          export function errorInfo(r) {return {status:r.status,error_code:Number.isFinite(Number(r.body?.error?.error_code??r.body?.code))?Number(r.body?.error?.error_code??r.body?.code):null,body_omitted:true};}
-          export function summarizeMetrika(r,params) { if(r.status!==200||!Array.isArray(r.body?.totals))return {requested:params,...errorInfo(r),totals:null}; const b=r.body;return {status:r.status,requested:params,response_query:pick(b.query,['ids','date1','date2','timezone','attribution','accuracy','dimensions','metrics','filters','limit','offset']),...pick(b,['total_rows','sampled','sample_share','sample_size','sample_space','data_lag','contains_sensitive_data','totals']),rows:(b.data||[]).map(x=>({campaign_ids:(x.dimensions||[]).map(d=>d.id),metrics:x.metrics})),generated_at:new Date().toISOString()}; }
-          export function parseDirect(text) {
-            const lines=text.trim().split(/\r?\n/);
-            const expected=['Date','CampaignId','Clicks',`Conversions_${config.goal}_LC`];
-            if(lines[0]!==expected.join('\t')) return {error:'UNEXPECTED_TSV_HEADER',totals:null};
-            const rows=[];
-            for(const line of lines.slice(1)) {
-              if(!line.trim()) continue;
-              const v=line.split('\t');
-              if(v.length!==4 || !/^\d{4}-\d{2}-\d{2}$/.test(v[0]) || v[0]<config.date1 || v[0]>config.date2 || v[1]!==String(config.campaign) || !/^\d+$/.test(v[2]) || !/^(?:\d+(?:\.\d+)?|--)$/.test(v[3])) return {error:'UNEXPECTED_TSV_ROW',totals:null,safe_diagnostic_rows:lines.slice(1).map(l=>l.split('\t').map(v=>/^[0-9.\-]+$/.test(v)?v:'[unexpected text omitted]'))};
-              rows.push({date:v[0],campaign_id:Number(v[1]),clicks:Number(v[2]),selected_goal_converted_visits:v[3]==='--'?null:Number(v[3]),conversion_raw:v[3]});
-            }
-            return {fields:expected,rows,totals:{clicks:rows.reduce((s,r)=>s+r.clicks,0),selected_goal_converted_visits:rows.some(r=>r.selected_goal_converted_visits===null)?null:rows.reduce((s,r)=>s+r.selected_goal_converted_visits,0)}};
+          set -euo pipefail
+          cat > /tmp/read-only-conversion-audit.mjs <<'NODE'
+          const campaign=714391927, counter=112542227;
+          const norm=s=>String(s||"").trim().replace(/^(OAuth|Bearer)\s+/i,"");
+          const yd=norm(process.env.YD_TOKEN), ym=norm(process.env.YM_TOKEN), login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const parse=t=>JSON.parse(t.replace(/(:\s*|,\s*|\[\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));
+          function print(label,value){ console.log(label+" "+JSON.stringify(value));}
+          async function direct(service,params){
+           if(!["campaigns","adgroups","keywords"].includes(service)) throw Error("Read-only service denied");
+           const h={Authorization:"Bearer "+yd,"Content-Type":"application/json","Accept-Language":"ru"};if(login)h["Client-Login"]=login;
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers:h,body:JSON.stringify({method:"get",params}),signal:AbortSignal.timeout(45000)});
+           const t=await r.text();let b;try{b=parse(t)}catch{b={invalid_json:true}}
+           if(!r.ok||b.error){print(service+"_ERROR",{status:r.status,error:b.error});return null}return b.result;
           }
-          export async function request(url,token,{direct=false,body,headers={}}={},fetcher=fetch) {if(!token)return {status:0,body:{code:'MISSING_TOKEN'}};try{const r=await fetcher(url,{method:body?'POST':'GET',headers:{Authorization:`${direct?'Bearer':'OAuth'} ${token}`,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(30000)});const raw=await r.text();let parsed;try{parsed=JSON.parse(raw);}catch{parsed=null;}return {status:r.status,body:parsed,raw,request_id:r.headers.get('requestId'),retry_in:r.headers.get('retryIn')};}catch{return {status:0,body:{code:'NETWORK_ERROR'}};}}
-          export async function main(env=process.env) {const ym=normToken(env.YM_TOKEN||env.YANDEX_OAUTH_TOKEN),yd=normToken(env.YD_TOKEN||env.YANDEX_OAUTH_TOKEN);const login=String(env.YD_CLIENT_LOGIN||'').trim();const report={generated_at:new Date().toISOString(),parameters:config,timezone_policy:{direct:'Europe/Moscow; fixed by Direct reporting service',metrika_requested:config.timezone},queries:{direct:directSpec()},limits:['Direct reports conversions by attributed click date; Metrika visit reports use visit date. Equal calendar periods cannot remove this difference.','Clicks, visits, goal reaches and converted visits are different units; multiple clicks can be one visit and one visit can contain repeated goal reaches.','These aggregates cannot establish lost leads or isolate consent blocking, page abandonment, ad blockers or robot filtering.','Counter settings below are current settings, not historical configuration. No advertising or website settings were changed.']};
-          if(env.MATCHED_DIRECT_ONLY!=='1') {
-          const counter=await request(`https://api-metrika.yandex.net/management/v1/counter/${config.counter}?field=filters,goals`,ym);if(counter.status===200&&counter.body?.counter){const c=counter.body.counter;report.counter={status:200,...pick(c,['id','time_zone_name','time_zone_offset','filter_robots','code_status']),filters:Array.isArray(c.filters)?c.filters.map(f=>({...pick(f,['id','attr','type','action','status','with_subdomains']),match_value_present:Boolean(f.value||f.start_ip||f.end_ip),match_value_omitted:true})):null,selected_goal:(c.goals||[]).filter(g=>g.id===config.goal).map(g=>({...pick(g,['id','name','type']),conditions:(g.conditions||[]).map(v=>pick(v,['type','url']))}))};}else report.counter=errorInfo(counter);
-          for(const kind of ['summary','clicks']){const p=metrikaParams(kind);const actual={...p,...(kind==='clicks'&&login?{direct_client_logins:login}:{})};const r=await request('https://api-metrika.yandex.net/stat/v1/data?'+new URLSearchParams(actual),ym);report['metrika_'+kind]=summarizeMetrika(r,p);report['metrika_'+kind].direct_client_login_supplied=kind==='clicks'&&Boolean(login);}
+          async function paged(service,params,key){
+           const out=[];for(let offset=0;offset<20000;){const r=await direct(service,{...params,Page:{Limit:1000,Offset:offset}});if(!r)return out;
+           out.push(...(r[key]||[]));if(!r.LimitedBy)return out;offset=r.LimitedBy;}
+           print(service+"_TRUNCATED",true);return out;
           }
-          const headers={'Accept-Language':'en',processingMode:'auto',skipReportHeader:'true',skipReportSummary:'true',...(login?{'Client-Login':login}:{})};let d;const attempts=[];for(let i=0;i<12;i++){d=await request('https://api.direct.yandex.com/json/v501/reports',yd,{direct:true,body:directSpec(),headers});attempts.push({status:d.status,request_id:d.request_id});if(![201,202].includes(d.status))break;await new Promise(r=>setTimeout(r,Math.min(30,Math.max(2,Number(d.retry_in)||5))*1000));}report.direct={status:d.status,attempts,...(d.status===200?parseDirect(d.raw):{...errorInfo(d),totals:null})};
-          // Only this narrow allowlisted aggregate object is ever logged. No raw API errors, headers, tokens or client logins.
-          const output=JSON.stringify(report,null,2);writeFileSync('/tmp/matched-report.json',output);console.log('MATCHED_REPORT_BEGIN\n'+output+'\nMATCHED_REPORT_END');return report;}
-          if(process.env.RUN_MATCHED_REPORT==='1') await main();
+          print("REPORT_METADATA",{generated_at:new Date().toISOString(),mode:"READ_ONLY",campaign,counter,money_units:"Direct settings in millionths of RUB; report cost in RUB without VAT",postrelease_caution:"October 9 is incomplete and includes traffic before the 19:04 UTC merge; not a clean post-release cohort"});
+          const campaigns=await paged("campaigns",{SelectionCriteria:{},FieldNames:["Id","Name","State","Status","Currency","DailyBudget","NegativeKeywords","TimeTargeting"],UnifiedCampaignFieldNames:["CounterIds","AttributionModel","PriorityGoals","Settings","BiddingStrategy","TrackingParams"]},"Campaigns");
+          print("CAMPAIGNS",campaigns);
+          print("ADGROUPS",await paged("adgroups",{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:["Id","Name","CampaignId","Status","Type","RegionIds","NegativeKeywords","TrackingParams"]},"AdGroups"));
+          print("KEYWORDS",await paged("keywords",{SelectionCriteria:{CampaignIds:[campaign]},FieldNames:["Id","Keyword","AdGroupId","CampaignId","State","Status","ServingStatus","Bid","ContextBid","AutotargetingCategories"]},"Keywords"));
+          const goalsRes=await fetch("https://api-metrika.yandex.net/management/v1/counter/"+counter+"/goals",{headers:{Authorization:"OAuth "+ym},signal:AbortSignal.timeout(45000)});
+          let goals=[];if(goalsRes.ok){goals=(await goalsRes.json()).goals||[];print("GOALS",goals.map(g=>({id:g.id,name:g.name,type:g.type,status:g.status,conditions:g.conditions})));}else print("GOALS_ERROR",{status:goalsRes.status});
+          const important=goals.filter(g=>[612680821,612680809,666575171].includes(g.id)||g.conditions?.some(c=>["assistant_lead_success","ym-submit-leadform"].includes(c.url))).map(g=>g.id);
+          for(const dates of [["2026-10-02","2026-10-08"],["2026-10-09","2026-10-09"]]){
+           const u=new URL("https://api-metrika.yandex.net/stat/v1/data");
+           const metrics=["ym:s:visits",...important.flatMap(id=>["ym:s:goal"+id+"reaches","ym:s:goal"+id+"visits"])];
+           for(const [k,v]of Object.entries({ids:String(counter),date1:dates[0],date2:dates[1],timezone:"+03:00",attribution:"last",accuracy:"full",dimensions:"ym:s:lastDirectClickOrder",filters:"ym:s:lastDirectClickOrder=='"+campaign+"'",metrics:metrics.join(","),limit:"100"}))u.searchParams.set(k,v);
+           const r=await fetch(u,{headers:{Authorization:"OAuth "+ym},signal:AbortSignal.timeout(45000)});
+           if(r.ok){const b=await r.json();print("METRIKA_GOALS",{dates,metrics,totals:b.totals,sampled:b.sampled,data_lag:b.data_lag});}else print("METRIKA_GOALS_ERROR",{dates,status:r.status});
+          }
+          async function report(kind,fields,dates,goals=[]){
+           const p={SelectionCriteria:{DateFrom:dates[0],DateTo:dates[1],Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:[String(campaign)]}]},FieldNames:fields,ReportName:"Readonly optimization "+kind+" "+dates.join("-")+" "+(goals.length?"goals":"base"),ReportType:kind,DateRangeType:"CUSTOM_DATE",Format:"TSV",IncludeVAT:"NO",IncludeDiscount:"NO"};
+           if(goals.length){p.Goals=goals.map(String);p.AttributionModels=["LC"];}
+           const headers={Authorization:"Bearer "+yd,"Content-Type":"application/json","Accept-Language":"ru",processingMode:"auto",returnMoneyInMicros:"false",skipReportHeader:"true",skipReportSummary:"true"};if(login)headers["Client-Login"]=login;
+           for(let attempt=0;attempt<8;attempt++){
+           const r=await fetch("https://api.direct.yandex.com/json/v501/reports",{method:"POST",headers,body:JSON.stringify({params:p}),signal:AbortSignal.timeout(60000)});const t=await r.text();
+           if(r.status===201||r.status===202){await sleep(Math.min(30000,Math.max(1000,Number(r.headers.get("retryIn")||5)*1000)));continue;}
+           if(!r.ok){print("DIRECT_REPORT_ERROR",{kind,dates,status:r.status,error:t.slice(0,1500)});return;}
+           const lines=t.trim().split(/\r?\n/);let redacted=0;
+           const safe=lines.filter((line,i)=>{if(!i)return true;if(/[\w.+-]+@[\w.-]+\.\w+|\+?\d[\d ()-]{9,}\d/.test(line.split("\t")[0])&&kind==="SEARCH_QUERY_PERFORMANCE_REPORT"){redacted++;return false;}return true;});
+           print("DIRECT_REPORT",{kind,dates,goals,redacted_rows:redacted,total_rows:lines.length-1,tsv:safe.join("\n")});return;
+           }print("DIRECT_REPORT_PENDING",{kind,dates});
+          }
+          await report("CAMPAIGN_PERFORMANCE_REPORT",["Date","CampaignId","Impressions","Clicks","Cost","Conversions"],["2026-10-02","2026-10-08"],important);
+          await report("SEARCH_QUERY_PERFORMANCE_REPORT",["Query","CampaignId","AdGroupId","Keyword","MatchType","Impressions","Clicks","Cost","Conversions"],["2026-10-02","2026-10-08"],important);
+          await report("CRITERIA_PERFORMANCE_REPORT",["CampaignId","AdGroupId","CriteriaId","Criteria","Impressions","Clicks","Cost","Conversions"],["2026-10-02","2026-10-08"],important);
+          await report("CAMPAIGN_PERFORMANCE_REPORT",["Date","CampaignId","Impressions","Clicks","Cost","Conversions"],["2026-10-09","2026-10-09"],important);
+          print("READ_ONLY_COMPLETE",true);
+          
           NODE
-          node /tmp/matched-report.mjs
+          node --check /tmp/read-only-conversion-audit.mjs
+          node /tmp/read-only-conversion-audit.mjs
