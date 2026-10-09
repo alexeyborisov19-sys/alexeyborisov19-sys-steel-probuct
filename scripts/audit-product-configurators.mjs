@@ -28,7 +28,7 @@ async function open(page,path) {
 async function check(page,name,width,errors) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({path:`${output}/${name}-${width}.png`,fullPage:true});
-  const workspace = page.locator(name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name.startsWith('baskets') ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : 'section[aria-label="Файл проекта"]');
+  const workspace = page.locator(name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name.startsWith('baskets') ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : name === 'trim' ? '[data-testid="trim-bim-workspace"]' : 'section[aria-label="Файл проекта"]');
   await workspace.evaluate(element => window.scrollTo(0, Math.max(0, element.getBoundingClientRect().top + window.scrollY - 80)));
   await page.screenshot({path:`${output}/${name}-${width}-workspace.png`});
   const a11y=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
@@ -138,6 +138,11 @@ try {
   await open(page,'/products/korziny-dlya-konditsionerov#selection');
   const basket=page.locator('[data-basket-configurator]');
   await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
+  if(width===390) {
+    const start=await basket.boundingBox(), input=await basket.getByLabel('Ширина, мм',{exact:true}).boundingBox();
+    assert.ok(start && input && input.y-start.y < 550,'Mobile basket dimensions must precede repeated introductory copy');
+  }
+
   for(const [name,value] of [['Ширина, мм','1110'],['Высота, мм','710'],['Глубина, мм','610'],['Количество, шт.','4']]) await basket.getByLabel(name,{exact:true}).fill(value);
   await basket.getByRole('button',{name:'Добавить в спецификацию',exact:true}).click();
   const known=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить все · JSON',exact:true})));
@@ -149,6 +154,7 @@ try {
   await basket.getByRole('button',{name:'Подставить ориентировочные размеры блока',exact:true}).click();
   await expect(basket.getByLabel('Ширина всей установки, мм',{exact:true})).toHaveValue('722');
   await expect(basket).toContainText('Предварительный эскиз: зазоры нужно уточнить');
+  await basket.getByText('Подобрать ориентир по мощности кондиционера',{exact:true}).click();
   await check(page,'baskets-preliminary',width,errors);
   await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
   await expect(basket.getByLabel('Ширина, мм',{exact:true})).toHaveValue('1110');
@@ -176,6 +182,53 @@ try {
   await expect(clearance).toContainText('Задний 30');await expect(clearance).toContainText('Передний 200');
   await clearance.screenshot({path:`${output}/baskets-${width}-diagram.png`});
   await check(page,'baskets',width,errors);
+
+  await open(page,'/products/dobornye-elementy/bim');
+  const trim=page.getByTestId('trim-bim-workspace');
+  await expect(trim.getByRole('button',{name:'Модель IFC4',exact:true})).toBeDisabled();
+  for(const label of ['A · наружная высота полки, мм','B · наружная ширина полки, мм','H · длина профиля, мм','T · толщина, мм']) await expect(trim.getByLabel(label,{exact:true})).toHaveValue('');
+  if(width===390) {
+    const start=await trim.boundingBox(), input=await trim.getByLabel('A · наружная высота полки, мм',{exact:true}).boundingBox();
+    assert.ok(start && input && input.y-start.y < 650,'Trim dimensions must be reachable before source-sheet details');
+  }
+  for(const [label,value] of [['A · наружная высота полки, мм','50'],['B · наружная ширина полки, мм','100'],['H · длина профиля, мм','1000'],['T · толщина, мм','1']]) await trim.getByLabel(label,{exact:true}).fill(value);
+  await expect(trim.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
+  await trim.getByLabel('T · толщина, мм',{exact:true}).fill('0.001');
+  await expect(trim.getByRole('button',{name:'Модель IFC4',exact:true})).toBeDisabled();
+  await expect(trim).toContainText('Введите размеры с шагом 0,01 мм');
+  await trim.getByLabel('T · толщина, мм',{exact:true}).fill('1');
+  await expect(trim.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
+
+  const trimJson=await downloaded(page,trim.getByRole('button',{name:'Проект JSON',exact:true}));
+  const trimProject=JSON.parse(trimJson);
+  assert.deepEqual(trimProject.project.dimensionsMm,{A:50,B:100,H:1000,T:1});
+  assert.equal(trimProject.project.mark,'Элемент 1');assert.ok(trimProject.source.image.startsWith('https://www.steelprodukt.ru/'));
+  const trimIfc=await downloaded(page,trim.getByRole('button',{name:'Модель IFC4',exact:true}));
+  assert.equal((trimIfc.match(/=IFCBUILDINGELEMENTPROXY\(/g)||[]).length,1);
+  const trimCsv=await downloaded(page,trim.getByRole('button',{name:'Спецификация CSV',exact:true}));assert.ok(trimCsv.includes('A_mm')&&trimCsv.includes(trimProject.notice));
+  const trimBrief=await downloaded(page,trim.getByRole('button',{name:'Передать специалисту',exact:true}));assert.ok(trimBrief.includes(trimProject.notice));
+  await trim.getByLabel('A · наружная высота полки, мм',{exact:true}).fill('75');
+  const trimUpload=trim.getByLabel('Восстановить проект JSON, до 16 КБ',{exact:true});
+  await trimUpload.setInputFiles({name:'trim.json',mimeType:'application/json',buffer:Buffer.from(trimJson)});
+  await expect(trim.getByLabel('A · наружная высота полки, мм',{exact:true})).toHaveValue('50');
+  const trimRoundtrip=JSON.parse(await downloaded(page,trim.getByRole('button',{name:'Проект JSON',exact:true})));assert.deepEqual(trimRoundtrip,trimProject);
+  const unsupported=structuredClone(trimProject);unsupported.project.templateId='sill';
+  await trimUpload.setInputFiles({name:'unsupported.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(unsupported))});
+  await expect(trim.getByRole('status').last()).toContainText('пока недоступен');
+  await expect(trim.getByLabel('A · наружная высота полки, мм',{exact:true})).toHaveValue('50');
+  await trimUpload.setInputFiles({name:'trim.json',mimeType:'application/json',buffer:Buffer.from(trimJson)});
+  await trim.getByRole('img',{name:'Трёхмерная модель той же геометрии, которая экспортируется в IFC',exact:true}).screenshot({path:`${output}/trim-${width}-solid.png`});
+  await check(page,'trim',width,errors);
+  const trimContextLoss=await trim.locator('canvas').evaluate(canvas=>{
+    const extension=canvas.getContext('webgl')?.getExtension('WEBGL_lose_context');
+    if(!extension) return false;extension.loseContext();return true;
+  });
+  if(trimContextLoss) {
+    await expect(trim.locator('canvas')).toHaveAttribute('data-depth-renderer','unavailable');
+    await expect(trim.getByText(/Показан запасной каркас/)).toBeVisible();
+    await trim.getByRole('img',{name:'Трёхмерная модель той же геометрии, которая экспортируется в IFC',exact:true}).screenshot({path:`${output}/trim-${width}-fallback.png`});
+  }
+
 
   await open(page,'/online-order');const controls=page.getByRole('region',{name:'Файл проекта'});
   await controls.getByLabel('Импорт JSON проекта',{exact:true}).setInputFiles({name:'cad-project.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(cadProject))});

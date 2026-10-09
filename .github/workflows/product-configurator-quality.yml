@@ -8,6 +8,11 @@ on:
       - 'components/MetalCassetteCalculator.tsx'
       - 'components/CassetteBim*'
       - 'components/CassetteDepthSurface.tsx'
+      - 'components/TrimBimConfigurator.tsx'
+      - 'data/trim-bim-catalog.ts'
+      - 'app/(public)/products/dobornye-elementy/bim/**'
+      - 'scripts/*trim-ifc*'
+      - 'tests/trim-bim.test.ts'
       - 'components/commercial/Basket*'
       - 'lib/cassette-project/**'
       - 'lib/bim/**'
@@ -83,12 +88,18 @@ jobs:
         run: python -m pip install --index-url https://pypi.org/simple ifcopenshell==0.8.5 pytest==8.4.2
       - name: Generate synthetic coordination models
         run: node --import tsx scripts/generate-ifc-validation-fixtures.ts
+      - name: Generate source-parameter trim fixtures
+        run: node --import tsx scripts/generate-trim-ifc-fixtures.ts
+      - name: Validate source-parameter trim schema and solids
+        run: python scripts/validate-trim-ifc.py
       - name: Validate parser, EXPRESS schema, units, panels, positions and stable identities
         run: python scripts/validate-cassette-ifc.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: cassette-ifc-validation-evidence
-          path: output/ifc-validation/
+          path: |
+            output/ifc-validation/
+            output/trim-ifc-validation/
           if-no-files-found: ignore
           retention-days: 7
