@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { AttributionLink as Link } from "@/components/AttributionLink";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/Footer";

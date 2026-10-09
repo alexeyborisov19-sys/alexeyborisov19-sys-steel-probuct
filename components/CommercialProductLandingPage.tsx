@@ -56,11 +56,11 @@ export function CommercialProductLandingPage({ landing }: { landing: CommercialP
       title={landing.title}
       description={landing.description}
       image={landing.image}
-      imageAlt={`${landing.title} — производство «Сталь Продукт»`}
+      imageAlt={landing.imageAlt}
     >
       <section className="bg-[#0c1013] py-14 sm:py-20">
         <div className="container grid gap-8 xl:grid-cols-[.94fr_1.06fr] xl:items-start">
-          <div className="border-l-2 border-steel-orange pl-5"><p className="text-lg font-semibold leading-relaxed text-white/90">{landing.introduction}</p></div>
+          <div className="border-l-2 border-steel-orange pl-5"><p className="text-lg font-semibold leading-relaxed text-white/90">{landing.introduction}</p>{landing.imageCaption && <p className="mt-4 text-sm leading-6 text-white/70">{landing.imageCaption}</p>}</div>
           <div className="grid gap-3 sm:grid-cols-3">{landing.highlights.map((item, index) => <article key={item.title} className="border border-white/12 bg-[#111519] p-5"><span className="font-mono text-xl font-bold text-steel-orange">0{index + 1}</span><h2 className="mt-6 text-base font-semibold uppercase leading-tight">{item.title}</h2><p className="mt-3 text-sm leading-relaxed text-white/58">{item.text}</p></article>)}</div>
         </div>
       </section>
@@ -97,7 +97,12 @@ export function CommercialProductLandingPage({ landing }: { landing: CommercialP
       <ProductPricingFactors productTitle={landing.title} showInputs={false} />
 
       <section className="border-y border-white/10 bg-[#101112] py-14 sm:py-20">
-        <div className="container grid gap-10 xl:grid-cols-[1fr_.9fr]"><div><p className="eyebrow">Для расчёта</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Что передать в работу</h2><ul className="mt-7 grid gap-3 sm:grid-cols-2">{landing.requirements.map((item) => <li key={item} className="border-b border-white/10 pb-3 text-sm leading-relaxed text-white/78"><span className="mr-2 text-steel-orange">•</span>{item}</li>)}</ul></div><aside className="border border-white/12 bg-[#141719] p-6 sm:p-8"><p className="eyebrow">Исходные данные</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Можно начать с неполного комплекта</h3><p className="mt-4 text-sm leading-relaxed text-white/60">Принимаем PDF, DXF, DWG, STEP, спецификации, эскизы и фотографии. Если данных недостаточно, сформируем перечень уточнений до расчёта.</p><AttributionLink href="/contacts#contact-form" className="clip-corner mt-7 inline-block bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase">Передать исходные данные&nbsp; →</AttributionLink></aside></div>
+        <div className="container grid gap-10 xl:grid-cols-[1fr_.9fr]"><div><p className="eyebrow">Для расчёта</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">Что передать в работу</h2><ul className="mt-7 grid gap-3 sm:grid-cols-2">{landing.requirements.map((item) => <li key={item} className="border-b border-white/10 pb-3 text-sm leading-relaxed text-white/78"><span className="mr-2 text-steel-orange">•</span>{item}</li>)}</ul></div><aside className="border border-white/12 bg-[#141719] p-6 sm:p-8"><p className="eyebrow">Исходные данные</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Можно начать с неполного комплекта</h3><p className="mt-4 text-sm leading-relaxed text-white/60">Принимаем PDF, DXF, DWG, STEP, спецификации, эскизы и фотографии. Если данных недостаточно, сформируем перечень уточнений до расчёта.</p><AttributionLink href="/contacts#contact-form" className="clip-corner mt-7 inline-block bg-steel-orange-deep px-6 py-4 text-xs font-bold uppercase">Передать исходные данные&nbsp; →</AttributionLink>
+          <nav aria-label="Подготовка заказа" className="mt-5 flex flex-col items-start gap-2">
+            <AttributionLink href="/customers/requirements" className="inline-flex min-h-11 items-center text-sm font-semibold text-steel-orange underline underline-offset-4">Требования к чертежам и файлам</AttributionLink>
+            <AttributionLink href="/customers/order-and-delivery" className="inline-flex min-h-11 items-center text-sm font-semibold text-steel-orange underline underline-offset-4">Как согласовать заказ и отгрузку</AttributionLink>
+          </nav>
+        </aside></div>
       </section>
 
       <section className="bg-[#0c1013] py-14 sm:py-20"><div className="container"><div className="flex flex-col justify-between gap-5 border-b border-white/12 pb-5 sm:flex-row sm:items-end"><div><p className="eyebrow">Порядок работы</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">От данных до партии</h2></div><AttributionLink href="/contacts#contact-form" className="text-xs font-bold uppercase text-steel-orange">Получить расчёт&nbsp; →</AttributionLink></div><div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{landing.process.map((step, index) => <article key={step.title} className="border border-white/12 bg-[#111519] p-6"><span className="font-mono text-2xl font-bold text-steel-orange">0{index + 1}</span><h3 className="mt-7 text-lg font-semibold uppercase leading-tight">{step.title}</h3><p className="mt-4 text-sm leading-relaxed text-white/60">{step.text}</p></article>)}</div></div></section>

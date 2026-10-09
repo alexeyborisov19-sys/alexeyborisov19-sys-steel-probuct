@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AttributionLink as Link } from "./AttributionLink";
 
 import { Footer } from "./Footer";
 import { Header } from "./Header";

@@ -61,7 +61,7 @@ export function BasketLandingPage() {
         title="Корзины для кондиционеров под ваш фасад"
         description="От одной корзины до комплекта на здание. Согласуем размеры, экран, цвет и крепление — изготовим и подготовим партию к отгрузке."
         image="/images/web/solution-climate.jpg"
-        imageAlt="Вариант размещения перфорированных корзин на фасаде"
+        imageAlt={landing.imageAlt}
       >
         <LandingNav
           items={[
@@ -79,8 +79,9 @@ export function BasketLandingPage() {
             <SectionHeading
               eyebrow="01 / Подбор под задачу"
               title="Начните с размеров. Остальное согласуем."
-              text="Выберите пример или введите свой наружный габарит. Сохраните задание либо передайте параметры инженеру — они автоматически появятся в заявке."
+              text="Укажите размеры наружного блока и зазоры по его инструкции или выберите режим «Знаю размер корзины». Сохраните задание либо передайте параметры инженеру — они автоматически появятся в заявке."
             />
+            <p className="mt-4 text-sm leading-6 text-white/70">{landing.imageCaption}</p>
             <AttributionLink
               href="/contacts#contact-form"
               className="mt-6 inline-flex min-h-11 items-center font-semibold text-steel-orange underline underline-offset-4"
