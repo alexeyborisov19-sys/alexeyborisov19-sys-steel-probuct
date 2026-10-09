@@ -4,14 +4,24 @@ on:
     paths:
       - 'app/(public)/production/**'
       - 'app/(public)/articles/**'
+      - 'app/(public)/products/**'
       - 'components/InnerHero.tsx'
+      - 'components/AttributionLink.tsx'
+      - 'components/QuoteRequestForm.tsx'
+      - 'components/PageLayout.tsx'
+      - 'components/commercial/BasketLandingPage.tsx'
       - 'components/CommercialProductLandingPage.tsx'
       - 'components/SolutionDetailPage.tsx'
       - 'components/ProductPricingFactors.tsx'
       - 'components/ProductCollectionPage.tsx'
       - 'data/article-editorial.ts'
       - 'data/article-quality-rewrites.ts'
+      - 'data/commercial-product-landings.ts'
+      - 'lib/attribution-link.ts'
+      - 'tests/attribution-link.test.ts'
+      - 'tests/commercial-content-clarity.test.ts'
       - 'scripts/audit-service-navigation.mjs'
+      - 'scripts/audit-commercial-quality.mjs'
       - '.github/workflows/service-navigation-quality.yml'
   push:
     branches: [fix/yandex-quality-20261004]
@@ -47,3 +57,4 @@ jobs:
             sleep 2
           done
           node scripts/audit-service-navigation.mjs
+          node scripts/audit-commercial-quality.mjs
