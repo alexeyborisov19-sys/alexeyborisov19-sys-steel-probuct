@@ -1,9 +1,11 @@
 "use client";
 import { AttributionLink } from "@/components/AttributionLink";
 import { CalculatorLogo } from "@/components/CalculatorLogo";
+import { CassetteProjectEditor } from "@/components/cassette-project/CassetteProjectEditor";
 
 import { useEffect, useMemo, useState } from "react";
 import { CALCULATION_DISCLAIMER } from "@/lib/instant-quote/client-labels";
+import { getDefaultMetalCassetteRate } from "@/lib/metal-cassette-estimate";
 
 type Mode = "area" | "wall";
 type CassetteType = "open" | "closed";
@@ -19,16 +21,12 @@ const thicknesses: Array<{ value: Thickness; label: string }> = [
   { value: "0.65", label: "0,65" }, { value: "0.7", label: "0,7" },
   { value: "1.0", label: "1,0" }, { value: "1.2", label: "1,2" },
 ];
-const defaultRates: Record<CassetteType, Record<Thickness, number>> = {
-  open: { "0.65": 1730, "0.7": 1764, "1.0": 2074, "1.2": 2300 },
-  closed: { "0.65": 1984, "0.7": 2023, "1.0": 2378, "1.2": 2637 },
-};
 const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 function numeric(value: string) { return Number(value.trim().replace(/\s+/g, "").replace(",", ".")); }
-function defaultRate(type: CassetteType, thickness: Thickness) { return defaultRates[type][thickness]; }
+function defaultRate(type: CassetteType, thickness: Thickness) { return getDefaultMetalCassetteRate(type, thickness); }
 
-export function MetalCassetteCalculator() {
+function MetalCassetteQuickEstimate() {
   const [mode, setMode] = useState<Mode>("area");
   const [type, setType] = useState<CassetteType>("open");
   const [thickness, setThickness] = useState<Thickness>("0.7");
@@ -213,4 +211,19 @@ export function MetalCassetteCalculator() {
       </div>
     </section>
   );
+}
+
+
+export function MetalCassetteCalculator() {
+  const [view, setView] = useState<"project" | "estimate">("project");
+  return <div className="mt-12 sm:mt-16">
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <CalculatorLogo />
+      <div className="flex max-w-full flex-wrap gap-2" aria-label="Режим калькулятора металлокассет">
+        {([ ["project", "Проект и раскладка"], ["estimate", "Быстрая оценка цены"] ] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} aria-controls={`cassette-view-${key}`} onClick={() => setView(key)} className={`min-h-12 border px-4 py-3 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${view === key ? "border-steel-orange bg-steel-orange text-black" : "border-white/25 text-white/80 hover:border-steel-orange"}`}>{label}</button>)}
+      </div>
+    </div>
+    <div id="cassette-view-project" hidden={view !== "project"}><CassetteProjectEditor /></div>
+    <div id="cassette-view-estimate" hidden={view !== "estimate"}><p className="border border-white/15 bg-[#101417] p-4 text-sm leading-7 text-white/75">Быстрая оценка по типовым допущениям. Она не использует проектную раскладку и не является ценой её ведомости. Базовая ставка и проверка цены выполняются действующим серверным калькулятором.</p><MetalCassetteQuickEstimate /></div>
+  </div>;
 }

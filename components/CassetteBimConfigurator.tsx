@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { BIM_PROJECT_MAX_BYTES, parseCassetteBimProject, serializeCassetteBimProject } from "@/lib/bim/cassette-project";
 import { trackLeadEvent } from "@/lib/analytics";
 import { bimScope, cassetteBimSummary, createCassetteCsv, createCassetteIfc, validateCassetteBim, type CassetteBimInput } from "@/lib/bim/cassette";
 import { filterRalPalette, ralFamilies, ralPalette } from "@/lib/bim/ral-palette";
@@ -14,7 +15,9 @@ type Colours = NonNullable<CassetteBimInput["panelColours"]>;
 const format = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 3 });
 
 export function CassetteBimConfigurator() {
-  const [p, setP] = useState(initial);
+  const [p, setP] = useState<CassetteBimInput>(() => ({...initial, projectId: crypto.randomUUID()}));
+  const importEpoch = useRef(0);
+  const [pendingProject, setPendingProject] = useState<CassetteBimInput | null>(null);
   function chooseProfile(profile:CassetteProfile,thickness=.7) {
     const base={...p,...cassetteProfiles[profile],profile,thicknessMm:profile==='corner'?1:thickness};
     const source=cassetteSource(base);
@@ -67,13 +70,35 @@ export function CassetteBimConfigurator() {
     setScope("selected");
     setSelected(activeKeys.filter(key => Number(key.split(":")[axis === "row" ? 0 : 1]) === index));
   }
-  function download(kind: "ifc" | "csv") {
+  function exportInput(): CassetteBimInput {
+    return {...p, panelColours: Object.fromEntries(Object.entries(p.panelColours || {}).filter(([key]) => activeKeys.includes(key)))};
+  }
+  async function readProject(file?: File) {
+    const epoch = ++importEpoch.current;
+    setPendingProject(null);
+    if (!file) return;
     try {
-      const content = kind === "ifc" ? createCassetteIfc(p) : createCassetteCsv(p);
+      if (file.size > BIM_PROJECT_MAX_BYTES) throw new Error("Файл проекта превышает 300 КБ.");
+      const restored = parseCassetteBimProject(await file.text());
+      if (epoch !== importEpoch.current) return;
+      setPendingProject(restored); setNotice("Проект прочитан. Подтвердите замену текущей раскладки ниже.");
+    } catch (error) {
+      if (epoch === importEpoch.current) setNotice(error instanceof Error ? error.message : "Не удалось прочитать проект.");
+    }
+  }
+  function restoreProject() {
+    if (!pendingProject) return;
+    setP(pendingProject); setPendingProject(null); setSelected([]); setScope("all"); setHistory([]);
+    setNotice("Проект восстановлен. Размеры, марки, цвета и идентификаторы сохранены. Проверьте модель перед передачей инженеру.");
+  }
+  function download(kind: "ifc" | "csv" | "json") {
+    try {
+      const input = exportInput();
+      const content = kind === "ifc" ? createCassetteIfc(input) : kind === "csv" ? createCassetteCsv(input) : serializeCassetteBimProject(input);
       const url = URL.createObjectURL(new Blob([content], { type: kind === "csv" ? "text/csv;charset=utf-8" : "application/octet-stream" }));
       const a = document.createElement("a"); a.href = url; a.download = `steelprodukt-cassettes.${kind}`;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-      trackLeadEvent("bim_export_prepared", { format: kind, panels_count: summary.quantity });
+      if (kind !== "json") trackLeadEvent("bim_export_prepared", { format: kind, panels_count: summary.quantity });
       setNotice(`Файл ${kind.toUpperCase()} подготовлен: ${summary.quantity} кассет с назначенными цветами.`);
     } catch { setNotice("Проверьте параметры модели и повторите скачивание."); }
   }
@@ -143,6 +168,19 @@ export function CassetteBimConfigurator() {
     </div>
     <div className={styles.notice} role="status" aria-live="polite">{notice || "Выберите цвет и нажмите «Применить». Просмотр палитры не меняет окраску кассет."}</div>
     <section className={styles.download} id="bim-download" aria-labelledby="bim-download-title"><div><p className={styles.eyebrow}>Готово к экспорту</p><h2 id="bim-download-title">Модель и спецификация</h2><p>Назначенные RAL сохранятся у каждой кассеты.</p></div><div className={styles.downloadButtons}><button type="button" className={styles.darkButton} onClick={() => download("ifc")} disabled={!valid}>Скачать IFC</button><button type="button" className={styles.secondary} onClick={() => download("csv")} disabled={!valid}>Спецификация CSV</button></div></section>
+    <section className={styles.projectFiles} aria-labelledby="bim-project-title">
+      <h2 id="bim-project-title">Сохранить и продолжить проект</h2>
+      <p>JSON сохраняет размеры, раскладку, цвета и постоянные идентификаторы кассет. Файл остаётся у вас; загрузка здесь не отправляет его на сервер.</p>
+      <div className={styles.downloadButtons}>
+        <button type="button" className={styles.secondary} disabled={!valid} onClick={() => download("json")}>Сохранить BIM-проект JSON</button>
+        <label className={styles.importFile}>Открыть BIM-проект JSON<input type="file" accept=".json,application/json" onChange={e => { const file=e.currentTarget.files?.[0]; e.currentTarget.value=""; void readProject(file); }} /></label>
+      </div>
+      {pendingProject && <div className={styles.restorePrompt}>
+        <p><strong>{pendingProject.mark}</strong>: {pendingProject.columns} × {pendingProject.rows} кассет. Заменить текущую раскладку? Несохранённые изменения будут потеряны.</p>
+        <button type="button" className={styles.darkButton} onClick={restoreProject}>Заменить раскладку</button>
+        <button type="button" className={styles.secondary} onClick={() => { ++importEpoch.current; setPendingProject(null); setNotice("Открытие отменено. Текущий проект сохранён."); }}>Отмена</button>
+      </div>}
+    </section>
     <p className={styles.scopeNote}>{bimScope}</p>
   </div>;
 }

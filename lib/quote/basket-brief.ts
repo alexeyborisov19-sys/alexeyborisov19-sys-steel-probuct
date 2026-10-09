@@ -4,6 +4,7 @@ import {
   type BasketDesign,
 } from "./basket-design";
 import { calculatedBasketSize } from "./basket-fit";
+import { validBasketReview, basketReviewSummary, type BasketCustomerReview } from "./basket-review";
 export const basketScreens = {
   "wide-slots": "10 длинных прорезей",
   round: "Круглая перфорация",
@@ -37,6 +38,7 @@ export type BasketBrief = {
   ral: string;
   screen: string;
   design?: BasketDesign;
+  review?: BasketCustomerReview;
 };
 export function validBasketBrief(input: BasketBrief) {
   const size = input.design?.sizing === "block" ? calculatedBasketSize(input.design.fit) : null;
@@ -47,7 +49,8 @@ export function validBasketBrief(input: BasketBrief) {
     ) &&
     basketColors.some((c) => c.ral === input.ral) &&
     Object.hasOwn(basketScreens, input.screen) &&
-    (input.design === undefined || validBasketDesign(input.design))
+    (input.design === undefined || validBasketDesign(input.design)) &&
+    (input.review === undefined || validBasketReview(input.review))
   );
 }
 export function basketBriefHref(input: BasketBrief) {
@@ -100,4 +103,11 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",
     "Модель наружного блока / основание / город объекта: уточню.",
   ].join("\n");
+}
+
+/** Complete local handoff. New free-text customer notes never enter a contact URL. */
+export function basketBriefText(input: BasketBrief): string {
+  const url = new URL(basketBriefHref(input), "https://www.steelprodukt.ru");
+  const brief = basketBriefSummary(url.searchParams)!;
+  return input.review ? `${brief}\n\n${basketReviewSummary(input.review)}` : brief;
 }

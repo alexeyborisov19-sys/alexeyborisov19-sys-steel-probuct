@@ -1,5 +1,7 @@
 import { fitLabels, type BasketFit } from "./basket-fit";
 import { validBasketBrief, type BasketBrief } from "./basket-brief";
+import { cleanBasketReview } from "./basket-review";
+export const MAX_BASKET_PROJECT_BYTES = 512000;
 export const MAX_BASKET_POSITIONS = 100;
 function clean(items: unknown): BasketBrief[] {
   if (
@@ -64,23 +66,25 @@ function clean(items: unknown): BasketBrief[] {
       ral,
       screen: design?.front.pattern ?? screen,
       ...(design ? { design } : {}),
+      ...(v.review ? { review: cleanBasketReview(v.review) } : {}),
     };
   });
 }
 export function serializeBasketProject(items: BasketBrief[]) {
   return JSON.stringify(
-    { kind: "steel-basket-specification", version: 1, items: clean(items) },
+    { kind: "steel-basket-specification", version: 2, items: clean(items) },
     null,
     2,
   );
 }
 export function parseBasketProject(text: string): BasketBrief[] {
-  if (text.length > 200000) throw Error("Размер файла превышает 200 КБ.");
+  if (new TextEncoder().encode(text).length > MAX_BASKET_PROJECT_BYTES) throw Error("Размер файла превышает 512 КБ.");
   const value: unknown = JSON.parse(text);
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw Error("Некорректный файл спецификации.");
   const p = value as Record<string, unknown>;
-  if (p.kind !== "steel-basket-specification" || p.version !== 1)
+  if (p.kind !== "steel-basket-specification" || (p.version !== 1 && p.version !== 2))
     throw Error("Этот формат спецификации не поддерживается.");
+  if (p.version === 1 && new TextEncoder().encode(text).length > 200000) throw Error("Размер файла версии 1 превышает 200 КБ.");
   return clean(p.items);
 }

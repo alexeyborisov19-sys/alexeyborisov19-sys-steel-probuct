@@ -10,9 +10,12 @@ import { basketFitForSizing } from "@/lib/quote/basket-mounting";
 import { defaultBasketDesign, type BasketDesign } from "@/lib/quote/basket-design";
 import { BasketSpecification } from "./BasketSpecification";
 import type { BasketBrief } from "@/lib/quote/basket-brief";
+import { BasketCustomerFields } from "./BasketCustomerFields";
+import { BasketReviewChecklist } from "./BasketReviewChecklist";
+import { basketReview, defaultBasketReview, type BasketCustomerReview } from "@/lib/quote/basket-review";
 import { BasketDesignFields } from "./BasketDesignFields";
 import { AttributionLink } from "@/components/AttributionLink";
-import { basketBriefHref, basketBriefSummary, basketColors, basketSizeExamples, validBasketBrief } from "@/lib/quote/basket-brief";
+import { basketBriefHref, basketBriefText, basketColors, basketSizeExamples, validBasketBrief } from "@/lib/quote/basket-brief";
 import styles from "./BasketConfigurator.module.css";
 
 const steps = [
@@ -28,6 +31,7 @@ export function BasketConfigurator() {
   const [step, setStep] = useState(0);
   const [design, setDesign] = useState<BasketDesign>(() => { const d = defaultBasketDesign(); return {...d, sizing:"block" as const, front:{...d.front,pattern:"wide-slots" as const}, side:{...d.side,pattern:"wide-slots" as const}}; });
   const [dimensions, setDimensions] = useState({ width: "900", height: "600", depth: "550", quantity: "1" });
+  const [review, setReview] = useState<BasketCustomerReview>(defaultBasketReview);
   const [ral, setRal] = useState("7024");
   const heading = useRef<HTMLDivElement>(null);
   const screen = design.front.pattern;
@@ -39,14 +43,16 @@ export function BasketConfigurator() {
     depth: calculated ? String(calculated.depth) : "",
     quantity: dimensions.quantity,
   } : dimensions;
-  const input = { width: Number(selectedDimensions.width), height: Number(selectedDimensions.height), depth: Number(selectedDimensions.depth), quantity: Number(selectedDimensions.quantity), ral, screen, design };
+  const input = { width: Number(selectedDimensions.width), height: Number(selectedDimensions.height), depth: Number(selectedDimensions.depth), quantity: Number(selectedDimensions.quantity), ral, screen, design, review };
   const dimensionsValid = Object.values(selectedDimensions).every((v) => /^\d+$/.test(v) && Number(v) > 0 && Number(v) <= 10000);
   const valid = dimensionsValid && validBasketBrief(input);
   const requiredSpace = requiredBasketSpace(design.fit);
   const tooSmall = !byBlock && requiredSpace && dimensionsValid && (input.width <= requiredSpace.width || input.height <= requiredSpace.height || input.depth <= requiredSpace.depth);
   const color = basketColors.find((c) => c.ral === ral)!;
   const href = valid ? basketBriefHref(input) : "";
-  const summary = valid ? basketBriefSummary(new URLSearchParams(href.split("?")[1].split("#")[0]))! : "";
+  const summary = valid ? basketBriefText(input) : "";
+  const checks = basketReview(input);
+  const pendingCount = checks.filter(check => check.state === "missing" || check.state === "conflict").length;
   function go(next: number) {
     setStep(next);
     heading.current?.focus({ preventScroll: true });
@@ -62,7 +68,7 @@ export function BasketConfigurator() {
       <header className={styles.header}>
         <div><p className={styles.eyebrow}>СТАЛЬ ПРОДУКТ / КОНФИГУРАТОР</p>
           <h2>Ваша корзина.<br /><span>В деталях.</span></h2>
-          <p>Размеры, рисунок и цвет — соберите исполнение для своего фасада.</p>
+          <p>От наружного блока до спецификации: размеры, зазоры, панели и данные для проверки инженером.</p>
         </div>
         <span className={styles.free}>Бесплатно · без регистрации</span>
       </header>
@@ -76,11 +82,12 @@ export function BasketConfigurator() {
         <aside className={styles.preview} aria-label="Визуализация корзины">
           <div className={styles.previewInner}>
 
-            <BasketAppearance width={input.width} height={input.height} depth={input.depth} color={color.hex} ral={ral} design={design} />
+            <BasketAppearance width={input.width} height={input.height} depth={input.depth} color={color.hex} ral={ral} design={design} review={review} />
             <div className={styles.summaryChips}>
               <span><small>{byBlock ? "Расчётный внутренний размер" : "Наружные габариты"}, Ш × В × Г</small><b>{dimensionsValid ? `${input.width} × ${input.height} × ${input.depth}` : "Уточните размеры"}<em>{dimensionsValid ? " мм" : ""}</em></b></span>
               <span><small>Количество</small><b>{dimensionsValid ? input.quantity : "—"}<em> шт.</em></b></span>
             </div>
+            <button type="button" className={styles.reviewShortcut} onClick={() => go(3)}><span>{pendingCount ? `Нужно уточнить: ${pendingCount}` : "Данные позиции собраны"}</span><span>Проверить задание ↗</span></button>
             <p className={styles.studioNote}>Вид модели меняется вместе с параметрами. Расчёт приблизительный; размеры и крепление уточняются перед изготовлением.</p>
           </div>
         </aside>
@@ -89,6 +96,7 @@ export function BasketConfigurator() {
             <p className={styles.eyebrow}>ШАГ {step + 1} ИЗ 4</p>
             <h3>{["Начнём с размера", "Придайте корзине характер", "Уточним установку", "Проверьте ваше задание"][step]}</h3>
           </div>
+          {editing !== null && <p className={styles.editingNotice}>Редактируется позиция {editing + 1}{review.mark ? ` · ${review.mark}` : ""}. Изменения попадут в спецификацию после сохранения.</p>}
           <div hidden={step !== 0}>
             <div className="mb-5 flex gap-2" role="group" aria-label="Способ определения размеров">
               {([['block','По размерам блока'],['basket','Знаю размер корзины']] as const).map(([value,label])=><button key={value} type="button" aria-pressed={(byBlock?'block':'basket')===value} onClick={()=>{
@@ -116,6 +124,7 @@ export function BasketConfigurator() {
               <summary>Не знаете размер? Подобрать по кондиционеру</summary>
               <BasketAcReference value={design.capacityClass} onChange={(capacityClass) => setDesign({...design,capacityClass})} onApply={([width,height,depth]) => setDimensions({...dimensions,width:String(width),height:String(height),depth:String(depth)})}/>
             </details></>}
+            <BasketCustomerFields section="equipment" value={review} onChange={setReview} />
             {step === 0 && byBlock && dimensionsValid && <BasketVolumePrice {...input}/>}
           </div>
           {step === 1 && <fieldset className={styles.colors}>
@@ -124,8 +133,10 @@ export function BasketConfigurator() {
             <p>{color.name}. Цвет экрана приблизительный; покрытие согласуется по образцу.</p>
           </fieldset>}
           <BasketDesignFields step={steps[step].stage} design={design} onChange={setDesign} width={input.width} height={input.height} depth={input.depth} quantity={input.quantity}/>
+          {step === 2 && <BasketCustomerFields section="service" value={review} onChange={setReview} />}
+          {step === 3 && <BasketReviewChecklist input={input} onStep={go} />}
           {step === 3 && tooSmall && <p className={styles.validation} role="alert">Корзину нужно увеличить: наружные размеры не вмещают необходимый свободный объём {requiredSpace.width} × {requiredSpace.height} × {requiredSpace.depth} мм. Исправьте размеры или передайте задание инженеру для подбора.</p>}
-          {!valid && <p className={styles.validation} role="status">{!dimensionsValid ? "Заполните размеры и количество. В режиме по блоку укажите все шесть отступов; если отступ не нужен — введите 0." : "Проверьте введённые параметры на шагах «Исполнение» и «Крепление»: размер отверстия должен быть меньше шага; числовые поля должны быть заполнены корректно."}</p>}
+          {!valid && <p className={styles.validation} role="status">{!dimensionsValid ? "Заполните размеры и количество. В режиме по блоку укажите все шесть отступов; если отступ не нужен — введите 0." : "Проверьте параметры исполнения, сервисные расстояния и примечания. Размер отверстия должен быть меньше шага; числовые поля должны быть заполнены корректно."}</p>}
           <div className={styles.navigation}>
             <button type="button" disabled={step === 0} onClick={() => go(step - 1)}>← Назад</button>
             {step < 3 && <button type="button" className={styles.primary} disabled={!dimensionsValid} onClick={() => go(step + 1)}>Далее: {steps[step + 1].title.toLowerCase()} →</button>}
@@ -137,17 +148,18 @@ export function BasketConfigurator() {
               if(editing===null){setItems([...items,value]);setSaved("Позиция добавлена в спецификацию.");}
               else{setItems(items.map((x,i)=>i===editing?value:x));setEditing(null);setSaved("Изменения позиции сохранены.");}
             }}>{editing===null?"Добавить в спецификацию":`Сохранить позицию ${editing+1}`}</button>
-            {editing!==null && <button type="button" onClick={()=>{setEditing(null);setSaved("");}}>Отменить редактирование позиции</button>}
+            {editing!==null && <button type="button" onClick={()=>{setEditing(null);setSaved("");}}>Выйти без сохранения позиции</button>}
             <button type="button" disabled={!valid} onClick={download}>Скачать задание · TXT ↓</button>
+            <p className={styles.help}>Полное задание с моделью, сервисным доступом и примечаниями сохраняется в TXT и файле спецификации. По ссылке в форму передаются основные параметры корзины; полное задание приложите отдельно.</p>
             <p role="status">{saved}</p>
           </div>}
         </div>
       </div>
-      <BasketSpecification items={items} onChange={(next)=>{setItems(next);setEditing(null);setSaved("");}} onEdit={(v,i)=>{
+      <BasketSpecification items={items} editing={editing} onChange={(next)=>{setItems(next);setEditing(null);setSaved("");}} onEdit={(v,i)=>{
         const fallback=defaultBasketDesign();
         const pattern=v.screen as BasketDesign["front"]["pattern"];
         const restored=v.design?structuredClone(v.design):{...fallback,front:{...fallback.front,pattern},side:{...fallback.side,pattern}};
-        setDimensions({width:String(v.width),height:String(v.height),depth:String(v.depth),quantity:String(v.quantity)});setRal(v.ral);setDesign(restored);setEditing(i);setSaved("");go(0);
+        setDimensions({width:String(v.width),height:String(v.height),depth:String(v.depth),quantity:String(v.quantity)});setRal(v.ral);setDesign(restored);setReview(v.review ? structuredClone(v.review) : defaultBasketReview());setEditing(i);setSaved("");go(0);
       }}/>
     </div>
   );

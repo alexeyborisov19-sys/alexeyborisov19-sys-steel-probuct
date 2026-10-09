@@ -94,7 +94,7 @@ function Panel({ id, width, height, pattern, paint, shade = false }: {
 export function BasketProductView({ width, height, depth, color, ral, design }: Props) {
   const uid = useId().replace(/:/g, "");
   const [view, setView] = useState<"volume" | "front">("volume");
-  const [dimensions, setDimensions] = useState(false);
+  const [dimensions, setDimensions] = useState(true);
   const valid = [width, height, depth].every(validDimension);
   const w = valid ? width : 900;
   const h = valid ? height : 600;

@@ -1,0 +1,61 @@
+name: Product configurator quality
+on:
+  pull_request:
+    paths:
+      - 'components/cassette-project/**'
+      - 'components/cad/shared/**'
+      - 'components/ClientManufacturingWorkspace.tsx'
+      - 'components/MetalCassetteCalculator.tsx'
+      - 'components/CassetteBim*'
+      - 'components/commercial/Basket*'
+      - 'lib/cassette-project/**'
+      - 'lib/bim/**'
+      - 'lib/instant-quote/project-file.ts'
+      - 'lib/quote/basket*'
+      - 'tests/*project*'
+      - 'tests/*basket*'
+      - 'tests/*cassette*'
+      - 'scripts/audit-product-configurators.mjs'
+      - '.github/workflows/product-configurator-quality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SITE_URL: https://www.steelprodukt.ru
+      BROWSER_CHANNEL: chrome
+      CONFIGURATOR_AUDIT_BASE_URL: http://127.0.0.1:3106
+      SEO_AUDIT_BASE_URL: http://127.0.0.1:3106
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Local-only intercepted responsive project flows
+        run: |
+          npm start -- --hostname 127.0.0.1 --port 3106 > /tmp/configurator-server.log 2>&1 &
+          server=$!
+          trap 'kill $server 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3106/ >/dev/null; then break; fi
+            sleep 2
+          done
+          npm run seo:audit
+          node --import tsx scripts/audit-product-configurators.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: product-configurator-browser-evidence
+          path: output/product-configurators/
+          if-no-files-found: ignore
+          retention-days: 7

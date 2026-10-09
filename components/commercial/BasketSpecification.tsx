@@ -1,196 +1,86 @@
 "use client";
 import { useRef, useState } from "react";
-import {
-  type BasketBrief,
-  basketBriefSummary,
-  basketBriefHref,
-} from "@/lib/quote/basket-brief";
-import {
-  serializeBasketProject,
-  parseBasketProject,
-  MAX_BASKET_POSITIONS,
-} from "@/lib/quote/basket-project";
-export function BasketSpecification({
-  items,
-  onChange,
-  onEdit,
-}: {
+import { type BasketBrief, basketBriefText, basketScreens } from "@/lib/quote/basket-brief";
+import { serializeBasketProject, parseBasketProject, MAX_BASKET_POSITIONS, MAX_BASKET_PROJECT_BYTES } from "@/lib/quote/basket-project";
+import { basketReview } from "@/lib/quote/basket-review";
+import styles from "./BasketConfigurator.module.css";
+
+export function BasketSpecification({ items, onChange, onEdit, editing = null }: {
   items: BasketBrief[];
-  onChange: (v: BasketBrief[]) => void;
-  onEdit: (v: BasketBrief, index: number) => void;
+  onChange: (value: BasketBrief[]) => void;
+  onEdit: (value: BasketBrief, index: number) => void;
+  editing?: number | null;
 }) {
   const upload = useRef<HTMLInputElement>(null);
   const latestItems = useRef(items);
   latestItems.current = items;
   const [message, setMessage] = useState("");
-  function download(name: string, text: string) {
-    const url = URL.createObjectURL(
-      new Blob(["\uFEFF" + text], { type: "text/plain;charset=utf-8" }),
-    );
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    a.click();
+  // Object identities prevent deleting or editing one row from selecting a different row.
+  const [selected, setSelected] = useState<Set<BasketBrief>>(() => new Set());
+  const selectedItems = items.filter(item => selected.has(item));
+  const total = items.reduce((sum, item) => sum + item.quantity, 0);
+  const pending = items.filter(item => basketReview(item).some(check => check.state === "missing" || check.state === "conflict")).length;
+  function download(name: string, text: string, json = false) {
+    const url = URL.createObjectURL(new Blob([json ? text : "\uFEFF" + text], { type: json ? "application/json;charset=utf-8" : "text/plain;charset=utf-8" }));
+    const a = document.createElement("a"); a.href = url; a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return (
-    <section
-      aria-labelledby="basket-spec-title"
-      className="border-t border-slate-200 bg-[#f7f8f6] p-5 sm:p-9 lg:col-span-2"
-    >
-      <h3 id="basket-spec-title" className="text-xl font-semibold">
-        Спецификация корзин
-      </h3>
-      <p className="mt-2 text-sm text-slate-600">
-        Добавляйте разные размеры и рисунки по одному. До 100 позиций. Сохраните
-        файл, чтобы позднее открыть его здесь; данные не сохраняются
-        автоматически.
-      </p>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <button
-          type="button"
-          className="min-h-11 border border-slate-300 px-4"
-          onClick={() => upload.current?.click()}
-        >
-          Открыть спецификацию
-        </button>
-        <button
-          type="button"
-          disabled={!items.length}
-          className="min-h-11 border border-slate-300 px-4 disabled:opacity-40"
-          onClick={() =>
-            download("Корзины.baskets.json", serializeBasketProject(items))
-          }
-        >
-          Сохранить файл
-        </button>
-        <button
-          type="button"
-          disabled={!items.length}
-          className="min-h-11 border border-slate-300 px-4 disabled:opacity-40"
-          onClick={() =>
-            download(
-              "Задание-корзины-все.txt",
-              items
-                .map(
-                  (x, i) =>
-                    `ПОЗИЦИЯ ${i + 1}\n${basketBriefSummary(new URL(basketBriefHref(x), "https://www.steelprodukt.ru").searchParams)}`,
-                )
-                .join("\n\n"),
-            )
-          }
-        >
-          Скачать общее задание
-        </button>
-        <input
-          ref={upload}
-          type="file"
-          accept=".json"
-          className="hidden"
-          aria-label="Файл спецификации корзин"
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            if (!f) return;
-            try {
-              if (f.size > 200000)
-                throw Error("Размер файла превышает 200 КБ.");
-              const added = parseBasketProject(
-                (await f.text()).replace(/^\uFEFF/, ""),
-              );
-              if (
-                latestItems.current.length + added.length >
-                MAX_BASKET_POSITIONS
-              )
-                throw Error("Общий предел — 100 позиций.");
-              onChange([...latestItems.current, ...added]);
-              setMessage(`Добавлено позиций из файла: ${added.length}.`);
-            } catch (err) {
-              setMessage(
-                err instanceof Error
-                  ? err.message
-                  : "Не удалось прочитать файл.",
-              );
-            }
-          }}
-        />
+  function brief(list: BasketBrief[]) {
+    return ["СПЕЦИФИКАЦИЯ КОРЗИН — предварительное задание", `Позиций: ${list.length}; корзин: ${list.reduce((sum, item) => sum + item.quantity, 0)}.`, "Это перечень запрошенных изделий, не производственная ведомость крепежа и не подтверждённая стоимость заказа.", ...list.map(item => `ПОЗИЦИЯ ${items.indexOf(item) + 1}\n${basketBriefText(item)}`)].join("\n\n");
+  }
+  return <section aria-labelledby="basket-spec-title" className={styles.specification}>
+    <div className={styles.specHeading}><div><p className={styles.eyebrow}>ПРОЕКТ / ДО 100 ПОЗИЦИЙ</p><h3 id="basket-spec-title">Спецификация корзин</h3></div><span>{items.length} / {MAX_BASKET_POSITIONS}</span></div>
+    <p className={styles.help}>Добавляйте размеры и исполнения по одному. Файл версии 2 сохраняет модель блока и пожелания к доступу; старые файлы версии 1 открываются здесь. Данные не сохраняются автоматически.</p>
+    {items.length > 0 && <dl className={styles.specMetrics}>
+      <div><dt>Корзин</dt><dd>{total}<small> в {items.length} позициях</small></dd></div>
+      <div><dt>Передних панелей</dt><dd>{total}<small> по 1 на корзину</small></dd></div>
+      <div><dt>Боковых панелей</dt><dd>{total * 2}<small> по 2 на корзину</small></dd></div>
+      <div><dt>Позиций для уточнения</dt><dd>{pending}<small> по входным данным</small></dd></div>
+    </dl>}
+    <div className={styles.specActions}>
+      <button type="button" onClick={() => upload.current?.click()}>Открыть спецификацию</button>
+      <button type="button" disabled={!items.length} onClick={() => download("Корзины.baskets.json", serializeBasketProject(items), true)}>Сохранить все · JSON</button>
+      <button type="button" disabled={!items.length} onClick={() => download("Задание-корзины-все.txt", brief(items))}>Скачать общее задание · TXT</button>
+      <input ref={upload} type="file" accept=".json" className="hidden" aria-label="Файл спецификации корзин" onChange={async event => {
+        const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
+        try {
+          if (file.size > MAX_BASKET_PROJECT_BYTES) throw Error("Размер файла превышает 512 КБ.");
+          const added = parseBasketProject((await file.text()).replace(/^\uFEFF/, ""));
+          if (latestItems.current.length + added.length > MAX_BASKET_POSITIONS) throw Error("Общий предел — 100 позиций.");
+          onChange([...latestItems.current, ...added]); setSelected(new Set()); setMessage(`Добавлено позиций из файла: ${added.length}.`);
+        } catch (error) { setMessage(error instanceof Error ? error.message : "Не удалось прочитать файл."); }
+      }} />
+    </div>
+    <p role="status" className={styles.specMessage}>{message}</p>
+    {items.length ? <>
+      <div className={styles.specSelection}>
+        <label><input type="checkbox" checked={selectedItems.length === items.length} onChange={event => setSelected(event.target.checked ? new Set(items) : new Set())} />Выбрать все позиции</label>
+        <span>Выбрано: {selectedItems.length}</span>
+        <button type="button" disabled={!selectedItems.length} onClick={() => download("Корзины-выбранные.baskets.json", serializeBasketProject(selectedItems), true)}>Сохранить выбранные</button>
       </div>
-      <p role="status" className="mt-3 text-sm">
-        {message}
-      </p>
-      {items.length ? (
-        <>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <caption className="sr-only">Состав заказа корзин</caption>
-              <thead>
-                <tr>
-                  {["№", "Ш × В × Г, мм", "Количество", "RAL", "Действия"].map(
-                    (x) => (
-                      <th
-                        className="whitespace-nowrap border-b border-slate-200 p-3"
-                        key={x}
-                      >
-                        {x}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((x, i) => (
-                  <tr key={i}>
-                    <td className="p-3">{i + 1}</td>
-                    <td className="whitespace-nowrap p-3">
-                      {x.width} × {x.height} × {x.depth}
-                      <span className="mt-1 block text-xs text-slate-600">{x.design?.sizing === "block" ? "внутренний расчётный" : "наружный"}</span>
-                    </td>
-                    <td className="p-3">{x.quantity}</td>
-                    <td className="p-3">{x.ral}</td>
-                    <td className="flex gap-2 p-3">
-                      <button
-                        type="button"
-                        className="min-h-11 underline"
-                        onClick={() => onEdit(x, i)}
-                        aria-label={`Изменить позицию ${i + 1}`}
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        className="min-h-11 underline"
-                        disabled={items.length >= MAX_BASKET_POSITIONS}
-                        onClick={() => onChange([...items, structuredClone(x)])}
-                        aria-label={`Копировать позицию ${i + 1}`}
-                      >
-                        Копия
-                      </button>
-                      <button
-                        type="button"
-                        className="min-h-11 underline"
-                        onClick={() =>
-                          onChange(items.filter((_, n) => n !== i))
-                        }
-                        aria-label={`Удалить позицию ${i + 1}`}
-                      >
-                        Удалить
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-4 font-semibold">
-            Всего корзин: {items.reduce((n, x) => n + x.quantity, 0)} · Позиций:{" "}
-            {items.length}
-          </p>
-        </>
-      ) : (
-        <p className="mt-4 text-slate-600">
-          Задайте параметры выше и нажмите «Добавить в спецификацию».
-        </p>
-      )}
-    </section>
-  );
+      <ol className={styles.specList}>
+        {items.map((item, index) => {
+          const checks = basketReview(item);
+          const issues = checks.filter(check => check.state === "missing" || check.state === "conflict").length;
+          const conflicts = checks.some(check => check.state === "conflict");
+          return <li key={index} className={editing === index ? styles.specEditing : ""}>
+            <label className={styles.specCheck}><input type="checkbox" aria-label={`Выбрать позицию ${index + 1}`} checked={selected.has(item)} onChange={event => setSelected(previous => { const next = new Set(previous); if (event.target.checked) next.add(item); else next.delete(item); return next; })} /><span>{String(index + 1).padStart(2, "0")}</span></label>
+            <div className={styles.specBody}>
+              <div className={styles.specRowTitle}><h4>{item.review?.mark || `Корзина ${index + 1}`}</h4><span>{item.quantity} шт.</span></div>
+              <p className={styles.specSize}>{item.width} × {item.height} × {item.depth} мм <span>{item.design?.sizing === "block" ? "внутренний расчётный" : "наружный"}</span></p>
+              <p>{item.review?.equipment || "Модель наружного блока не указана"}</p>
+              <div className={styles.specTags}><span>RAL {item.ral}</span><span>Передняя: {basketScreens[(item.design?.front.pattern ?? item.screen) as keyof typeof basketScreens]}</span><span>Боковые: {basketScreens[(item.design?.side.pattern ?? item.screen) as keyof typeof basketScreens]}</span></div>
+              <p className={styles.specReviewStatus} data-conflict={conflicts || undefined}>{conflicts ? "Есть несоответствие" : issues ? `Нужно уточнить: ${issues}` : "Входные данные указаны"} · Проверка инженером обязательна</p>
+              <div className={styles.specItemActions}>
+                <button type="button" onClick={() => onEdit(item, index)} aria-label={`Изменить позицию ${index + 1}`}>{editing === index ? "Редактируется ↑" : "Изменить ↑"}</button>
+                <button type="button" disabled={items.length >= MAX_BASKET_POSITIONS} onClick={() => { onChange([...items, structuredClone(item)]); setMessage(`Создана копия позиции ${index + 1}. Измените её параметры при необходимости.`); }} aria-label={`Копировать позицию ${index + 1}`}>Копия</button>
+                <button type="button" onClick={() => { onChange(items.filter((_, n) => n !== index)); setMessage(`Позиция ${index + 1} удалена из текущей спецификации.`); }} aria-label={`Удалить позицию ${index + 1}`}>Удалить</button>
+              </div>
+            </div>
+          </li>;
+        })}
+      </ol>
+      <p className={styles.help}>Состав: передняя и две боковые панели без верхней крышки. Крепёж, новые несущие кронштейны, анкеры и доставка согласуются отдельно. Цены отдельных позиций не суммируются без проверки комплектации.</p>
+    </> : <div className={styles.specEmpty}><strong>Первая позиция пока не добавлена</strong><p>Соберите корзину и на шаге «Результат» нажмите «Добавить в спецификацию». Здесь появятся её марка, размеры, количество и вопросы для проверки.</p></div>}
+  </section>;
 }
