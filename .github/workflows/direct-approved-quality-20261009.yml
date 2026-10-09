@@ -1,0 +1,85 @@
+name: Apply approved Direct quality changes
+on:
+  push:
+    branches: [fix/direct-approved-quality-20261009]
+    paths: [".github/workflows/direct-approved-quality-20261009.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: approved-direct-quality-714391927
+  cancel-in-progress: false
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      YD_TOKEN: ${{ secrets.YANDEX_DIRECT_OAUTH_TOKEN }}
+      YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
+    steps:
+      - name: Apply approved scoped negative keywords and four ad copy corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/direct-quality.mjs <<'NODE'
+          import assert from "node:assert/strict";
+          const campaignId=714391927,groupId=5805207337;
+          const baselineCampaign={"Id":714391927,"Name":"Сталь Продукт | Поиск | Металлокассеты и корзины | ЦФО","Type":"UNIFIED_CAMPAIGN","Status":"ACCEPTED","State":"ON","Currency":"RUB","DailyBudget":null,"NegativeKeywords":{"Items":["!как","!как изготовить","!как сделать","!какая","!какие","!каким","!какой","!своими","!своими руками","!чего","!чем","!что !такое","autocad","avito","docke","dwg","hpl","ozon","pdf","solidworks","wildberries","абакан","авито","авто","автокад","автомобиль","алматы","альта профиль","алюкобонд","алюмокомпозит","анапа","аренда","арматура","архангельск","астрахань","баня","барнаул","беларусь","белоруссия","беседка","блок хаус","блокхаус","бу","вайлдберриз","вакансии","вахта","велосипед","вес","весит","видео","виды","википедия","владивосток","волгоград","вологда","ворота","всеволожск","выкса","гараж","гатчина","глушитель","гост","гэсн","дача","двутавр","деке","демонтаж","доклад","донецк","дпк","евроштакетник","екатеринбург","забор","зарплата","ижевск","инструкция","иркутск","ищу работу","йошкар ола","казань","казахстан","калининград","калитка","картинки","кемерово","керамогранит","кирпич","кисловодск","клинкер","клинкерный","комбинат","композит","композитный","контакты компаний","краснодар","красноярск","крым","крыша","кузов","кузовной","курсы","ленобласть","леруа","лестница","лом","луганск","магнитогорск","мангал","масса","махачкала","мебель","металлобаза","металлопрокат","металлопрофиль","металлосайдинг","металлочерепица","металлургический","минвата","минск","монтаж","монтажник","мотоцикл","мпк","мурманск","набережные челны","навес","найти работу","нижний новгород","новгород","новокузнецк","новороссийск","новосибирск","нож","обучение","озон","омск","организации","оренбург","пвх","пенза","пермь","петербург","петрович","петрозаводск","печь","планкен","пластиковый","плитка","подработка","предприятия","приложение","пример","проволока","программа","прокат","профлист","профнастил","профтруба","псков","пятигорск","работа гибщик","работа маляр","работа оператор","работа сварщик","резюме","ремонт","реферат","ростов","сайдинг","самара","самому","самостоятельно","санкт петербург","сарай","саранск","саратов","севастополь","симферополь","скачать","снип","соискатель","сортамент","сочи","спб","список","справочник","ставрополь","стропила","сургут","схема","сыктывкар","теплица","термопанель","технология","тольятти","томск","требуется","труба","трудоустройство","тюмень","уголок","узбекистан","ульяновск","установить","установка","утеплитель","уфа","фабрика","ферма","фибробетон","фиброцемент","фиброцементный","фото","хабаровск","частный дом","чебоксары","челябинск","череповец","чита","швеллер","штакетник","якутск"]},"UnifiedCampaign":{"BiddingStrategy":{"Search":{"BiddingStrategyType":"WB_MAXIMUM_CLICKS","WbMaximumClicks":{"WeeklySpendLimit":4800000000,"BudgetType":"WEEKLY_BUDGET","BidCeiling":null}},"Network":{"BiddingStrategyType":"SERVING_OFF"}},"Settings":[{"Option":"ADD_METRICA_TAG","Value":"YES"},{"Option":"ADD_TO_FAVORITES","Value":"NO"},{"Option":"CAMPAIGN_EXACT_PHRASE_MATCHING_ENABLED","Value":"YES"},{"Option":"ALTERNATIVE_TEXTS_ENABLED","Value":"YES"},{"Option":"AUTO_ASSETS_ENABLED","Value":"NO"},{"Option":"ENABLE_AREA_OF_INTEREST_TARGETING","Value":"YES"},{"Option":"ENABLE_COMPANY_INFO","Value":"YES"},{"Option":"ENABLE_SITE_MONITORING","Value":"YES"},{"Option":"REQUIRE_SERVICING","Value":"NO"},{"Option":"SHARED_ACCOUNT_ENABLED","Value":"YES"}],"TrackingParams":null,"PriorityGoals":{"Items":[{"GoalId":612680821,"Value":1000000000,"IsMetrikaSourceOfValue":"NO"},{"GoalId":612680809,"Value":1000000000,"IsMetrikaSourceOfValue":"NO"}]},"CounterIds":{"Items":[112542227]},"AttributionModel":"AUTO"},"TimeTargeting":{"HolidaysSchedule":null,"Schedule":{"Items":["1,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100","2,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100","3,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100","4,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100","5,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100","6,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100","7,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100"]},"ConsiderWorkingWeekends":"YES"}};
+          const baselineGroup={"Id":5805207337,"Name":"Онлайн-калькулятор | Бесплатный расчёт | ЦФО","CampaignId":714391927,"Status":"ACCEPTED","Type":"UNIFIED_AD_GROUP","RegionIds":[3],"NegativeKeywords":{"Items":["\"калькулятор металла онлайн\"","\"калькулятор металла\"","\"расчет стоимости металла\"","балка","батарея","беседка","болт","вакансии","воздуховод","двутавровый","дерево","диплом","изгиб","кровля","круглик","крыльцо","кряк","курсовая","латунный","латунь","лист нержавейки","медный","металлоконструкция","нагрузка","отвод","пластик","площадь","пристройка","прогиб","прочность","работа","радиатор","реферат","скачать программу","стойка","терраса","токарный","торрент","фанера","фрезерный","шевронный","шестерня"]},"TrackingParams":""};
+          const baselineAds=[{"Id":"1922894479112855004","CampaignId":714391927,"AdGroupId":5807078455,"Status":"ACCEPTED","State":"ON","Type":"RESPONSIVE_AD","ResponsiveAd":{"Texts":[{"Text":"Посчитайте количество и цену по площади фасада. Производство в Смоленске.","Status":"ACCEPTED"}],"Titles":[{"Title":"Металлокассеты для фасада — цена за м²","Status":"ACCEPTED"}],"Href":"https://www.steelprodukt.ru/products/metallokassety?utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}"}},{"Id":"1922894515618992448","CampaignId":714391927,"AdGroupId":5807078510,"Status":"ACCEPTED","State":"ON","Type":"RESPONSIVE_AD","ResponsiveAd":{"Texts":[{"Text":"Посчитайте кассеты по площади или размерам стены. Бесплатно, без регистрации.","Status":"ACCEPTED"}],"Titles":[{"Title":"Калькулятор металлокассет онлайн. Количество и цена","Status":"ACCEPTED"}],"Href":"https://www.steelprodukt.ru/calculator-metallokassety?utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}"}},{"Id":"1922894516694726438","CampaignId":714391927,"AdGroupId":5807078510,"Status":"ACCEPTED","State":"ON","Type":"RESPONSIVE_AD","ResponsiveAd":{"Texts":[{"Text":"Количество кассет и ориентировочная стоимость. Точный расчёт — по раскладке.","Status":"ACCEPTED"}],"Titles":[{"Title":"Расчёт металлокассет по размерам стены","Status":"ACCEPTED"}],"Href":"https://www.steelprodukt.ru/calculator-metallokassety?utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}"}},{"Id":"1922896448354930259","CampaignId":714391927,"AdGroupId":5807078510,"Status":"ACCEPTED","State":"ON","Type":"RESPONSIVE_AD","ResponsiveAd":{"Texts":[{"Text":"Открытый и закрытый тип, толщина 0,65–1,2 мм. По площади или размерам стены.","Status":"ACCEPTED"}],"Titles":[{"Title":"Расчёт количества металлокассет онлайн. Цена по площади","Status":"ACCEPTED"}],"Href":"https://www.steelprodukt.ru/calculator-metallokassety?utm_source=yandex&utm_medium=cpc&utm_campaign={campaign_id}&utm_content={ad_id}.{gbid}.{source_type}.{device_type}&utm_term={keyword}"}}];
+          const changes={"1922894479112855004":{"Titles":["Металлокассеты по размерам фасада"],"Texts":["Рассчитайте количество. Пришлите раскладку для расчёта стоимости партии."]},"1922894515618992448":{"Titles":["Калькулятор металлокассет: количество и площадь"]},"1922894516694726438":{"Texts":["Рассчитайте количество кассет по размерам стены. Стоимость уточнит инженер."]},"1922896448354930259":{"Titles":["Расчёт количества металлокассет онлайн"]}};
+          const ids=Object.keys(changes), additions=["пружина","сопромат","шпилька","червячный"];
+          const token=String(process.env.YD_TOKEN||"").trim().replace(/^(OAuth|Bearer)\s+/i,""),login=String(process.env.YD_CLIENT_LOGIN||"").trim();
+          if(!token)throw Error("Authorized existing credential missing");
+          const headers={Authorization:"Bearer "+token,"Content-Type":"application/json","Accept-Language":"ru"};if(login)headers["Client-Login"]=login;
+          const serialize=o=>JSON.stringify(o).replace(/"(\d{16,})"/g,"$1");
+          const parse=t=>JSON.parse(t.replace(/(:\s*|,\s*|\[\s*)(\d{16,})(?=\s*[,}\]])/g,'$1"$2"'));
+          const print=(label,value)=>console.log(label+" "+JSON.stringify(value));
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          function normalize(o){const c=structuredClone(o);if(c.NegativeKeywords?.Items)c.NegativeKeywords.Items.sort();return c;}
+          function adContent(a){return {Id:a.Id,CampaignId:a.CampaignId,AdGroupId:a.AdGroupId,State:a.State,Type:a.Type,Href:a.ResponsiveAd.Href,Titles:a.ResponsiveAd.Titles.map(x=>x.Title),Texts:a.ResponsiveAd.Texts.map(x=>x.Text)};}
+          async function direct(service,method,params){
+           assert(["campaigns","adgroups","ads"].includes(service));assert(["get","update","moderate"].includes(method));
+           if(method==="update"){
+            const key={campaigns:"Campaigns",adgroups:"AdGroups",ads:"Ads"}[service];
+            assert.deepEqual(Object.keys(params),[key]);
+            for(const item of params[key]){
+             if(service==="campaigns"){assert.equal(item.Id,campaignId);assert.deepEqual(Object.keys(item),["Id","NegativeKeywords"]);}
+             if(service==="adgroups"){assert.equal(item.Id,groupId);assert.deepEqual(Object.keys(item),["Id","NegativeKeywords"]);}
+             if(service==="ads"){assert(ids.includes(item.Id));assert.deepEqual(Object.keys(item),["Id","ResponsiveAd"]);assert.deepEqual(item.ResponsiveAd,changes[item.Id]);}
+            }
+           }
+           if(method==="moderate"){assert.equal(service,"ads");assert.deepEqual(Object.keys(params),["SelectionCriteria"]);assert(params.SelectionCriteria.Ids.every(id=>ids.includes(id)));}
+           const r=await fetch("https://api.direct.yandex.com/json/v501/"+service,{method:"POST",headers,body:serialize({method,params}),signal:AbortSignal.timeout(45000)});
+           const b=parse(await r.text());if(!r.ok||b.error)throw Error(service+" "+method+" "+r.status+" "+JSON.stringify(b.error||{}));return b.result;
+          }
+          async function campaign(){const r=await direct("campaigns","get",{SelectionCriteria:{Ids:[campaignId]},FieldNames:["Id","Name","Type","State","Status","Currency","DailyBudget","NegativeKeywords","TimeTargeting"],UnifiedCampaignFieldNames:["BiddingStrategy","PriorityGoals","CounterIds","AttributionModel","Settings","TrackingParams"]});assert.equal(r.Campaigns.length,1);return r.Campaigns[0];}
+          async function groups(){const r=await direct("adgroups","get",{SelectionCriteria:{CampaignIds:[campaignId]},FieldNames:["Id","Name","CampaignId","Status","Type","RegionIds","NegativeKeywords","TrackingParams"],Page:{Limit:1000,Offset:0}});assert(!r.LimitedBy);return r.AdGroups.sort((a,b)=>a.Id-b.Id);}
+          async function ads(){const r=await direct("ads","get",{SelectionCriteria:{Ids:ids},FieldNames:["Id","CampaignId","AdGroupId","State","Status","Type","StatusClarification"],ResponsiveAdFieldNames:["Href","Titles","Texts"]});assert.equal(r.Ads.length,4);return r.Ads;}
+          function outcome(result,key,count){print(key,result);assert.equal(result[key]?.length,count);assert(result[key].every(x=>!x.Errors?.length));}
+          const before=await campaign(),beforeGroups=await groups(),beforeAds=await ads();
+          const beforeGroup=beforeGroups.find(g=>g.Id===groupId);assert(beforeGroup);
+          assert.deepEqual(normalize(before),normalize(baselineCampaign));
+          assert.deepEqual(normalize(beforeGroup),normalize(baselineGroup));
+          for(const a of beforeAds){assert.equal(a.Status,"ACCEPTED");assert.deepEqual(adContent(a),adContent(baselineAds.find(x=>x.Id===a.Id)));}
+          print("BEFORE_CAMPAIGN",before);print("BEFORE_GROUP",beforeGroup);print("BEFORE_ADS",beforeAds);
+          const expectedCampaign=structuredClone(before);expectedCampaign.NegativeKeywords.Items=before.NegativeKeywords.Items.filter(x=>x!=="dwg"&&x!=="pdf");
+          assert.equal(before.NegativeKeywords.Items.length-expectedCampaign.NegativeKeywords.Items.length,2);
+          const expectedGroups=structuredClone(beforeGroups),targetGroup=expectedGroups.find(g=>g.Id===groupId);
+          targetGroup.NegativeKeywords={Items:[...new Set([...(beforeGroup.NegativeKeywords?.Items||[]),...additions])]};
+          const expectedAds=beforeAds.map(a=>{const expected=adContent(a);return {...expected,...changes[a.Id]};});
+          const campaignResult=await direct("campaigns","update",{Campaigns:[{Id:campaignId,NegativeKeywords:expectedCampaign.NegativeKeywords}]});outcome(campaignResult,"UpdateResults",1);
+          const groupResult=await direct("adgroups","update",{AdGroups:[{Id:groupId,NegativeKeywords:targetGroup.NegativeKeywords}]});outcome(groupResult,"UpdateResults",1);
+          const adsResult=await direct("ads","update",{Ads:ids.map(Id=>({Id,ResponsiveAd:changes[Id]}))});outcome(adsResult,"UpdateResults",4);
+          let afterAds;for(let attempt=0;attempt<8;attempt++){afterAds=await ads();try{for(const a of afterAds)assert.deepEqual(adContent(a),expectedAds.find(x=>x.Id===a.Id));break;}catch(e){if(attempt===7)throw e;await sleep(2500);}}
+          const after=await campaign(),afterGroups=await groups();
+          assert.deepEqual(normalize(after),normalize(expectedCampaign));
+          assert.deepEqual(afterGroups.map(normalize),expectedGroups.map(normalize));
+          print("VERIFIED_CAMPAIGN",after);print("VERIFIED_GROUP",afterGroups.find(g=>g.Id===groupId));print("VERIFIED_AD_CONTENT",afterAds);
+          const draftIds=afterAds.filter(a=>a.Status==="DRAFT").map(a=>a.Id);
+          if(draftIds.length){const r=await direct("ads","moderate",{SelectionCriteria:{Ids:draftIds}});outcome(r,"ModerateResults",draftIds.length);}
+          afterAds=await ads();
+          print("FINAL_AD_STATUSES",afterAds.map(a=>({id:a.Id,status:a.Status,state:a.State,clarification:a.StatusClarification,titles:a.ResponsiveAd.Titles,texts:a.ResponsiveAd.Texts})));
+          print("VERIFIED",{campaign_negative_removed:["dwg","pdf"],group_negative_added:additions,four_ad_content_matches:true,budget_rub:4800,budget_strategy_payment_geo_other_goals_unchanged:true,website_untouched:true});
+          NODE
+          node --check /tmp/direct-quality.mjs
+          node /tmp/direct-quality.mjs
