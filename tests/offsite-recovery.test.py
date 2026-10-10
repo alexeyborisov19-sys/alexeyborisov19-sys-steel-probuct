@@ -38,6 +38,7 @@ class FakeCommands:
         self.stream_error = None
         self.on_download = None
         self.service_changes = {}
+        self.service_code = 0
         self.next_run = "Sat 2026-10-10 23:30:00 UTC"
         self.syntax_code = 0
 
@@ -53,7 +54,7 @@ class FakeCommands:
                 "EnvironmentFiles": "", "DropInPaths": "", "User": "root", "Group": "root",
             }
             values.update(self.service_changes)
-            return 0, "\n".join(k + "=" + v for k, v in values.items()).encode()
+            return self.service_code, "\n".join(k + "=" + v for k, v in values.items()).encode()
         if args[:2] == ["/usr/bin/bash", "-n"]:
             return self.syntax_code, PRIVATE.encode()
         if args[:2] == ["/usr/bin/rclone", "--config"]:
@@ -247,7 +248,37 @@ class RecoveryTest(unittest.TestCase):
 
     def test_unexpected_service_environment_blocks_installation(self):
         self.commands.service_changes["Environment"] = "PD_OFFSITE_REMOTE=other:private"
-        self.run_recovery("SERVICE_CONFIG_MISMATCH")
+        self.run_recovery("SERVICE_ENV_MISMATCH")
+        self.assertEqual(self.installed.read_bytes(), OLD)
+
+    def test_service_predicate_diagnostics_are_fixed_nonleaking_and_stop_before_other_reads(self):
+        cases = (
+            ("ExecStart", PRIVATE, "SERVICE_EXEC_START_MISMATCH"),
+            ("User", PRIVATE, "SERVICE_IDENTITY_MISMATCH"),
+            ("Group", PRIVATE, "SERVICE_IDENTITY_MISMATCH"),
+            ("ExecStartPre", PRIVATE, "SERVICE_HOOKS_MISMATCH"),
+            ("ExecStartPost", PRIVATE, "SERVICE_HOOKS_MISMATCH"),
+            ("EnvironmentFiles", PRIVATE, "SERVICE_ENV_FILES_MISMATCH"),
+            ("DropInPaths", PRIVATE, "SERVICE_DROPINS_MISMATCH"),
+            ("Environment", PRIVATE, "SERVICE_ENV_MISMATCH"),
+            ("Environment", "'" + PRIVATE, "SERVICE_ENV_MISMATCH"),
+        )
+        for field, value, status in cases:
+            with self.subTest(field=field, value=value):
+                self.commands.service_changes = {field: value}
+                self.commands.calls.clear()
+                result = self.run_recovery(status)
+                self.assertEqual(result["installed_script"], "unchanged")
+                self.assertEqual(self.installed.read_bytes(), OLD)
+                self.assertEqual(len(self.commands.calls), 1)
+                self.assertEqual(self.commands.calls[0][0][:3],
+                                 ["/usr/bin/systemctl", "show", "steelprodukt-pd-offsite-backup.service"])
+
+    def test_service_query_failure_is_distinct_and_does_not_leak_properties(self):
+        self.commands.service_code = 1
+        self.commands.service_changes = {"Environment": PRIVATE}
+        self.run_recovery("SERVICE_QUERY_FAILED")
+        self.assertEqual(len(self.commands.calls), 1)
         self.assertEqual(self.installed.read_bytes(), OLD)
 
     def test_imminent_timer_blocks_installation(self):

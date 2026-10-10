@@ -33,7 +33,9 @@ NEW_SHA256 = "c2896205ec2b877096b5b443a796593067ea3a9b9cdaf9a7b7d1a711ccbf48cf"
 STATUSES = frozenset({
     "OK", "USAGE", "ROOT_REQUIRED", "UNSAFE_PATH", "METADATA_MISMATCH",
     "LOCKED", "SOURCE_HASH_MISMATCH", "SCRIPT_HASH_MISMATCH", "SYNTAX_FAILED",
-    "INSTALL_CHANGED", "SERVICE_BUSY", "SERVICE_CONFIG_MISMATCH", "TIMER_UNSAFE",
+    "INSTALL_CHANGED", "SERVICE_BUSY", "SERVICE_QUERY_FAILED", "SERVICE_EXEC_START_MISMATCH",
+    "SERVICE_IDENTITY_MISMATCH", "SERVICE_HOOKS_MISMATCH", "SERVICE_ENV_FILES_MISMATCH",
+    "SERVICE_DROPINS_MISMATCH", "SERVICE_ENV_MISMATCH", "TIMER_UNSAFE",
     "REMOTE_CONFIG_MISMATCH", "LOCAL_MISSING", "LOCAL_STALE", "LOCAL_METADATA_MISMATCH",
     "LOCAL_HASH_MISMATCH", "LOCAL_CHANGED", "REMOTE_MISSING", "REMOTE_METADATA_FAILED",
     "REMOTE_SIZE_MISMATCH", "DOWNLOAD_FAILED", "REMOTE_HASH_MISMATCH", "STREAM_FAILED",
@@ -244,18 +246,24 @@ def preflight(commands: Commands, policy: Policy, now: float, config_fd: int) ->
         "/usr/bin/systemctl", "show", "steelprodukt-pd-offsite-backup.service", "--no-pager",
         "--property=ActiveState,SubState,MainPID,ExecStart,ExecStartPre,ExecStartPost,Environment,EnvironmentFiles,User,Group,DropInPaths",
     ])
-    require(code == 0, "SERVICE_CONFIG_MISMATCH")
+    require(code == 0, "SERVICE_QUERY_FAILED")
     service = properties(output)
     require(service.get("ActiveState") in {"inactive", "failed"} and
             service.get("SubState") in {"dead", "failed"} and service.get("MainPID") == "0", "SERVICE_BUSY")
     start = service.get("ExecStart", "")
     expected = str(policy.installed)
     require(start.count("path=") == 1 and start.count("argv[]=") == 1 and
-            f"path={expected} ;" in start and f"argv[]={expected} ;" in start and
-            service.get("User") == "root" and service.get("Group") == "root" and
-            all(service.get(key) == "" for key in ("ExecStartPre", "ExecStartPost", "EnvironmentFiles", "DropInPaths")) and
-            shlex.split(service.get("Environment", "")) in ([], ["PD_OFFSITE_RETENTION_DAYS=30"]),
-            "SERVICE_CONFIG_MISMATCH")
+            f"path={expected} ;" in start and f"argv[]={expected} ;" in start,
+            "SERVICE_EXEC_START_MISMATCH")
+    require(service.get("User") == "root" and service.get("Group") == "root", "SERVICE_IDENTITY_MISMATCH")
+    require(all(service.get(key) == "" for key in ("ExecStartPre", "ExecStartPost")), "SERVICE_HOOKS_MISMATCH")
+    require(service.get("EnvironmentFiles") == "", "SERVICE_ENV_FILES_MISMATCH")
+    require(service.get("DropInPaths") == "", "SERVICE_DROPINS_MISMATCH")
+    try:
+        environment = shlex.split(service.get("Environment", ""))
+    except ValueError:
+        raise Stop("SERVICE_ENV_MISMATCH") from None
+    require(environment in ([], ["PD_OFFSITE_RETENTION_DAYS=30"]), "SERVICE_ENV_MISMATCH")
     code, output = commands.run([
         "/usr/bin/systemctl", "show", "steelprodukt-pd-offsite-backup.timer", "--no-pager",
         "--property=ActiveState,SubState,NextElapseUSecRealtime",
