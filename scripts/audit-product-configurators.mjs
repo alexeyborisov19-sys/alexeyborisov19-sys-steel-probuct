@@ -159,6 +159,8 @@ try {
     await expect(fixedBasket.locator('svg')).toHaveAttribute('data-bearing-count',String(bearings));
     await expect(fixedBasket.locator('svg')).toHaveAttribute('data-wind-count','2');
   }
+  await expect(fixedBasket.getByText('2030 × 1280 × 500 мм',{exact:false}).first()).toBeVisible();
+  if(width===390){const selector=await fixedBasket.getByLabel('Исполнение по чертежу',{exact:true}).boundingBox();assert.ok(selector&&selector.width>260,'Mobile fixed-model label must fit without a narrow half-column');}
   await fixedBasket.screenshot({path:`${output}/basket-drawing-${width}-body.png`});
   await fixedBasket.getByLabel('Показать кронштейны условно',{exact:true}).check();
   for(const view of ['front','side','top','perspective']) {

@@ -17,7 +17,7 @@ export function BasketDrawingView() {
   const frontCount=geometry.panels.filter(p=>p.kind==='front').length;
   return <section data-testid="basket-drawing-view" className="mt-4 rounded-xl border border-slate-300 bg-white p-3 sm:p-4" aria-label="Фиксированные исполнения по чертежам">
     <p className="text-sm leading-6 text-slate-700">{basketDrawingScope} Схематический просмотр, не для производства.</p>
-    <div className="my-3 grid grid-cols-2 gap-3">
+    <div className="my-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label className="text-sm font-semibold">Исполнение, Ш × В × Г, мм<select aria-label="Исполнение по чертежу" value={modelId} onChange={e=>setModelId(e.target.value as BasketDrawingModelId)} className="mt-2 min-h-11 w-full rounded border border-slate-400 bg-white px-2 text-base">{basketDrawingModels.map(model=><option key={model.id} value={model.id}>{model.label}</option>)}</select></label>
       <label className="text-sm font-semibold">Ракурс<select aria-label="Ракурс конструкции" value={view} onChange={e=>setView(e.target.value as DrawingView)} className="mt-2 min-h-11 w-full rounded border border-slate-400 bg-white px-2 text-base"><option value="perspective">Объёмный вид</option><option value="front">Спереди</option><option value="side">Сбоку</option><option value="top">Сверху</option></select></label>
     </div>
@@ -25,10 +25,10 @@ export function BasketDrawingView() {
       <title>Фиксированная геометрия выбранного исполнения</title>
       {!ready&&camera.edges.map((e,i)=><line key={i} x1={e.points[0][0]} y1={e.points[0][1]} x2={e.points[1][0]} y2={e.points[1][1]} stroke="#334155" strokeWidth="1.1"/>)}
       <CassetteDepthSurface polygons={camera.polygons} colour="#a9b5ba" onAvailability={setReady}/>
-      <text x="450" y="535" textAnchor="middle" fill="#243b45" fontSize="22">{view==='side'?`Глубина кожуха ${m.depth} · высота ${m.height}`:view==='top'?`Ширина ${m.width} · глубина кожуха ${m.depth}`:`${m.width} × ${m.height} × ${m.depth} мм`}</text>
     </svg>
     {!ready&&<p className="mt-2 text-xs text-amber-950">Резервный каркас: задние рёбра тоже видны. Объёмная заливка требует WebGL.</p>}
-    <p className="mt-3 text-sm text-slate-700">{frontCount===1?'Цельный фронт':'Две отдельные лицевые панели'} · открытые верх и задняя сторона</p>
+    <p className="mt-3 text-base font-semibold text-slate-900">{m.width} × {m.height} × {m.depth} мм <span className="block text-sm font-normal text-slate-600">Ширина × высота × номинальная глубина кожуха</span></p>
+    <p className="mt-2 text-sm text-slate-700">{frontCount===1?'Цельный фронт':'Две отдельные лицевые панели'} · открытые верх и задняя сторона</p>
     <label className="mt-2 flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={supports} onChange={e=>setSupports(e.target.checked)} className="h-5 w-5 accent-orange-700"/>Показать кронштейны условно</label>
     {supports&&<p className="text-sm leading-6 text-amber-950">{geometry.bearings.length} несущих и 2 верхних ветровых кронштейна. Положение показано схематично, регулируемые крепления и анкеры не назначены.</p>}
     <details className="mt-2 text-sm text-slate-600"><summary className="min-h-11 cursor-pointer py-3">Уровень детализации</summary><p className="leading-6">{basketDrawingDetailScope}</p><p className="mt-2 leading-6">Кожух показан по номинальным габаритам. Чертёжная привязка к основанию зависит от исполнения и не переносится на вашу стену. Здесь нет расчёта нагрузок и выгрузки монтажного чертежа. Боковая лицевая плоскость495 мм сохранена без растяжения до номинальной глубины500 мм; мелкие сопряжения не моделируются. В двух исходных деталях есть незамкнутые линии: соответствующие прорези не восстановлены. Перфорация показана частично, не для производства.</p></details>

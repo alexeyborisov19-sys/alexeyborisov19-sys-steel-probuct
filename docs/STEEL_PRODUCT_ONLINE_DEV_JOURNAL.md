@@ -1,3 +1,7 @@
+## Basket drawing mobile label finish — 10 October 2026
+
+Live checkpoint: draft PR249 head4103967 passed all four CI workflows, 1,681 tests, 16 responsive browser scenarios and the unchanged independent IFC suite. Independent source review verified 477 closed cut-outs, area conservation, fixed variants and schematic support scope. Actual desktop/mobile pixels accept the geometry and occlusion; two mobile selects and the tiny SVG dimension caption need a bounded legibility correction. DONE: full-width mobile selectors, readable HTML final dimensions, shorter repeated introduction. No geometry, project data or pricing change. NEXT ACTION: fresh exact-head CI and mobile pixel acceptance; no merge or deployment.
+
 ## Fixed basket drawing inspection — 10 October 2026
 
 Baseline97564ad passed all four CI workflows and independent pixel review. Owner authorizes follow-on work in draft PR249 only. IN PROGRESS: optional neutral inspection of four fixed source-drawing basket bodies, distinct from arbitrary user dimensions and commercial calculation. Exact panel splits and source-supported component geometry; adjustable fastening positions must not become invented fixed mounting axes. No private source stamps, new rates, production claims or deployment. NEXT ACTION: source/geometry review, focused tests, full local checks and exact-head intercepted browser screenshots before acceptance.
