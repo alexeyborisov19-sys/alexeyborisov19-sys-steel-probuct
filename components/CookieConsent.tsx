@@ -4,52 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { legalLinks } from "@/lib/legal";
+import { createCookieChoiceStore, observeCookieChoiceStorage } from "@/lib/cookie-consent-state";
 
 const consentKey = "steelprodukt-cookie-consent-v2";
 const consentEvent = "steelprodukt-cookie-consent";
 const settingsEvent = "steelprodukt-cookie-settings";
 
-type CookieChoice = {
-  version: 2;
-  necessary: true;
-  analytics: boolean;
-  updatedAt: string;
-};
+const choiceStore = createCookieChoiceStore(consentKey);
+const getStorage = () => window.localStorage;
 
-// Private/embedded browsers can deny localStorage. Keep the visitor's explicit
-// choice for the lifetime of the current document so the banner and analytics
-// behaviour still match the button they pressed, without inventing persistence.
-let transientChoice: CookieChoice | null = null;
-
-function readChoice(): CookieChoice | null {
-  try {
-    const stored = window.localStorage.getItem(consentKey);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Partial<CookieChoice>;
-      if (parsed.version === 2 && parsed.necessary === true && typeof parsed.analytics === "boolean") {
-        return parsed as CookieChoice;
-      }
-    }
-  } catch {
-    // Some private-browser and embedded-browser modes disable storage access.
-  }
-  return transientChoice;
+function readChoice() {
+  return choiceStore.read(getStorage);
 }
 
 function saveChoice(analytics: boolean) {
-  const choice: CookieChoice = {
-    version: 2,
-    necessary: true,
-    analytics,
-    updatedAt: new Date().toISOString(),
-  };
-  transientChoice = choice;
-  try {
-    window.localStorage.setItem(consentKey, JSON.stringify(choice));
-  } catch {
-    // The in-memory choice above keeps consent consistent for this page visit.
-  }
+  const persisted = choiceStore.write(analytics, getStorage);
   window.dispatchEvent(new Event(consentEvent));
+  return persisted;
 }
 
 function hasAnalyticsConsent() {
@@ -76,7 +47,6 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
   const showHere = inline || !calculatorPage;
 
   useEffect(() => {
-    setVisible(readChoice() === null);
     const openSettings = () => {
       if (inline) document.getElementById("calculator-cookie-slot")?.removeAttribute("data-cookie-stored");
       setVisible(true);
@@ -85,10 +55,19 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
         bannerRef.current?.focus({ preventScroll: true });
       });
     };
-    const syncChoice = () => setVisible(readChoice() === null);
+    const syncChoice = () => {
+      const missing = readChoice() === null;
+      if (inline && missing) document.getElementById("calculator-cookie-slot")?.removeAttribute("data-cookie-stored");
+      setVisible(missing);
+    };
+    syncChoice();
+    const stopObservingStorage = observeCookieChoiceStorage({
+      target: window, key: consentKey, consentEvent, getStorage,
+    });
     window.addEventListener(settingsEvent, openSettings);
     window.addEventListener(consentEvent, syncChoice);
     return () => {
+      stopObservingStorage();
       window.removeEventListener(settingsEvent, openSettings);
       window.removeEventListener(consentEvent, syncChoice);
     };
@@ -128,13 +107,13 @@ export function CookieConsent({ inline = false }: { inline?: boolean } = {}) {
 
   function choose(analytics: boolean) {
     const analyticsWasAllowed = hasAnalyticsConsent();
-    saveChoice(analytics);
+    const persisted = saveChoice(analytics);
     setVisible(false);
 
-    // If analytics was active during this page session, unmounting the Script
-    // component cannot undo JavaScript that the vendor tag has already executed.
-    // Reload after an opt-out so the next document starts without the tag.
-    if (analyticsWasAllowed && analytics === false) {
+    // The consent event stops the runtime first. Preserve the existing clean
+    // reload only after verifying the refusal persisted; never reload into a
+    // stale grant when storage is unavailable or rejected the change.
+    if (analyticsWasAllowed && !analytics && persisted && choiceStore.canReloadAfterRevocation(getStorage)) {
       window.location.reload();
     }
   }

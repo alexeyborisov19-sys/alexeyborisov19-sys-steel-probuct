@@ -34,3 +34,14 @@ jobs:
       - run: npm run attribution:audit
         env:
           BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
+      - name: Verify consent revocation with intercepted analytics only
+        run: node scripts/audit-consent-revocation.mjs
+        env:
+          BASE_URL: https://www.steelprodukt.ru
+          ALLOW_PRODUCTION_CONSENT_AUDIT: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-consent-regression-evidence
+          path: output/browser-audit/consent
+          if-no-files-found: ignore

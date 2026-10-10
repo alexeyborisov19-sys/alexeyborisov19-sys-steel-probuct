@@ -21,7 +21,7 @@ function withAnalyticsWindow(callback: (calls: GoalCall[]) => void) {
     configurable: true,
     value: {
       ym: (...args: GoalCall) => calls.push(args),
-      localStorage: { getItem: () => JSON.stringify({ version: 2, necessary: true, analytics: true }) },
+      localStorage: { getItem: () => JSON.stringify({ version: 2, necessary: true, analytics: true, updatedAt: "2026-10-10T12:00:00.000Z" }) },
     },
   });
   process.env.NEXT_PUBLIC_YM_COUNTER_ID = String(CANONICAL_YANDEX_COUNTER_ID);
@@ -82,7 +82,7 @@ test("consented goals survive lazy runtime startup exactly once", () => {
 
 test("refused analytics does not send goals even if runtime is already loaded", () => {
   withAnalyticsWindow((calls) => {
-    window.localStorage.getItem = () => JSON.stringify({ version: 2, necessary: true, analytics: false });
+    window.localStorage.getItem = () => JSON.stringify({ version: 2, necessary: true, analytics: false, updatedAt: "2026-10-10T12:00:00.000Z" });
     trackLeadEvent("quote_request_success");
     flushPendingAnalyticsGoals();
     assert.equal(calls.length, 0);
@@ -182,12 +182,6 @@ test("Metrika runtime stays dynamically imported and requires explicit opt-in", 
   assert.equal(allLinks.length, legalLinks.length, "every cookie-banner link must opt out of prefetch");
 });
 
-test("cookie consent keeps an in-memory choice when localStorage is unavailable", () => {
-  const consent = readFileSync(resolve("components/CookieConsent.tsx"), "utf8");
-  assert.match(consent, /let transientChoice: CookieChoice \| null = null/);
-  assert.match(consent, /transientChoice = choice/);
-  assert.match(consent, /return transientChoice/);
-});
 
 test("calculator stages never count as an accepted lead", () => {
   withAnalyticsWindow((calls) => {
@@ -213,4 +207,18 @@ test("the consent-gated Metrika component tracks taps on every tel: link", () =>
   assert.match(source, /closest\('a\[href\^="tel:"\]'\)/);
   assert.match(source, /trackLeadEvent\("phone_click"/);
   assert.match(source, /removeEventListener\("click", trackPhoneClick/);
+});
+
+test("revocation discards pending goal and ecommerce queues without replacing the dataLayer", async () => {
+  const { discardPendingAnalyticsGoals } = await import("@/lib/analytics");
+  withAnalyticsWindow(() => {
+    const runtime = window as unknown as { dataLayer: unknown[]; steelPendingGoals: unknown[] };
+    const records = [{ ecommerce: { detail: { products: [{ id: "before-revocation" }] } } }];
+    runtime.dataLayer = records;
+    runtime.steelPendingGoals = ["before-revocation"];
+    discardPendingAnalyticsGoals();
+    assert.equal(runtime.dataLayer, records);
+    assert.deepEqual(records, []);
+    assert.deepEqual(runtime.steelPendingGoals, []);
+  });
 });

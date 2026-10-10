@@ -6,6 +6,7 @@ type PendingGoal = { counterId: number; target: string; params: EventParams };
 type AnalyticsWindow = Window & {
   ym?: (counterId: number, command: "reachGoal", target: string, params?: EventParams) => void;
   steelPendingGoals?: PendingGoal[];
+  dataLayer?: unknown[];
 };
 
 export const CANONICAL_YANDEX_COUNTER_ID = 112542227;
@@ -77,6 +78,13 @@ export function yandexCounterIds() {
   return configuredCounterId === CANONICAL_YANDEX_COUNTER_ID
     ? [CANONICAL_YANDEX_COUNTER_ID]
     : [];
+}
+
+export function discardPendingAnalyticsGoals() {
+  if (typeof window === "undefined") return;
+  const runtime = window as AnalyticsWindow;
+  runtime.steelPendingGoals = [];
+  if (Array.isArray(runtime.dataLayer)) runtime.dataLayer.length = 0;
 }
 
 export function trackLeadEvent(eventName: string, params: EventParams = {}) {
