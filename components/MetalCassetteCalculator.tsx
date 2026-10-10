@@ -203,7 +203,7 @@ export function MetalCassetteCalculator() {
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <CalculatorLogo />
       <label className="block w-full text-sm text-white/80 sm:w-auto">Режим калькулятора металлокассет
-        <select value={view} onChange={event=>setView(event.target.value as typeof view)} className="mt-2 block min-h-12 w-full rounded-lg border border-white/30 bg-[#101417] px-3 py-2 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+        <select aria-label="Режим калькулятора металлокассет" value={view} onChange={event=>setView(event.target.value as typeof view)} className="mt-2 block min-h-12 w-full rounded-lg border border-white/30 bg-[#101417] px-3 py-2 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
           <option value="product">По размерам и количеству</option><option value="project">Проект и раскладка</option><option value="estimate">Быстрая оценка цены</option>
         </select>
       </label>
