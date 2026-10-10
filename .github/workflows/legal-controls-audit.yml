@@ -86,8 +86,17 @@ jobs:
           # parsed number/date. Silent shell tests (including hash checks) stay UNKNOWN.
           unit = 'steelprodukt-pd-offsite-backup.service'
           classes = ('LOCK', 'SQLITE', 'PERMISSION', 'DISK_FULL', 'NETWORK', 'DNS',
-                     'TLS', 'REMOTE_AUTH', 'THROTTLE', 'HASH', 'RESTORE', 'UNKNOWN')
+                     'TLS', 'REMOTE_AUTH', 'THROTTLE', 'HASH', 'RESTORE', 'LOCAL_SOURCE',
+                     'TAR_MISSING', 'TAR_READ', 'TAR_ARCHIVE', 'TAR_FATAL', 'RCLONE_USAGE',
+                     'RCLONE_CONFIG', 'RCLONE_FILESYSTEM', 'HTTP_CLIENT', 'HTTP_SERVER',
+                     'S3_NO_BUCKET', 'S3_NO_KEY', 'S3_INVALID_REQUEST', 'S3_UNSUPPORTED',
+                     'S3_REGION', 'S3_CLOCK', 'UNKNOWN')
           counts = dict.fromkeys(classes, 0)
+          # Fixed signatures: repository backup scripts; GNU tar diagnostics;
+          # github.com/rclone/rclone (cmd/cmd.go, fs/config/config.go);
+          # github.com/spf13/pflag; github.com/aws/smithy-go;
+          # docs.aws.amazon.com/AmazonS3/latest/API/API_Error.html.
+          # These are overlapping observed indicators, never unique root causes.
           patterns = {
               'LOCK': r'PD backup already running|flock:.*(?:would block|resource temporarily unavailable)',
               'SQLITE': r'\bSQLITE_[A-Z_]+\b|sqlite3\.(?:OperationalError|DatabaseError)|database is locked|SQLite snapshot integrity failed',
@@ -96,11 +105,37 @@ jobs:
               'NETWORK': r'connection (?:refused|reset|timed out)|i/o timeout|network is unreachable|no route to host',
               'DNS': r'no such host|temporary failure in name resolution|could not resolve host|name or service not known',
               'TLS': r'x509:|tls:.*(?:handshake|certificate)|certificate verify failed',
-              'REMOTE_AUTH': r'\b(?:AccessDenied|InvalidAccessKeyId|SignatureDoesNotMatch|InvalidToken|ExpiredToken)\b|HTTP (?:status code: |error )?(?:401|403)\b',
-              'THROTTLE': r'\b(?:SlowDown|Throttling|TooManyRequests)\b|HTTP (?:status code: |error )?429\b',
-              'HASH': r'(?:hash|checksum)(?:es)? (?:differ|mismatch)|corrupted on transfer:.*(?:hash|checksum)',
+              'REMOTE_AUTH': r'\b(?:AccessDenied|InvalidAccessKeyId|SignatureDoesNotMatch|InvalidToken|ExpiredToken)\b|(?:HTTP (?:status code: |error )?|status ?code: )(?:401|403)\b',
+              'THROTTLE': r'\b(?:SlowDown|Throttling|TooManyRequests)\b|(?:HTTP (?:status code: |error )?|status ?code: )429\b',
+              'HASH': r'(?:hash|checksum)(?:es)? (?:differ|mismatch)|corrupted on transfer:.*(?:hash|checksum)|\b(?:BadDigest|InvalidDigest|XAmzContentSHA256Mismatch):',
               'RESTORE': r'restore verification failed|bad decrypt|not in gzip format|unexpected (?:EOF in archive|end of file)',
+              'LOCAL_SOURCE': r'backup source is missing or unsafe:',
+              'TAR_MISSING': r'\btar(?: \([^)]*\))?:.*Cannot (?:stat|open): No such file or directory',
+              'TAR_READ': r'\btar(?: \([^)]*\))?:.*(?:Cannot (?:open|read)|Read error|file changed as we read it)',
+              'TAR_ARCHIVE': r'\btar(?: \([^)]*\))?:.*(?:This does not look like a tar archive|Skipping to next header|Unexpected EOF in archive)',
+              'TAR_FATAL': r'\btar(?: \([^)]*\))?:.*(?:Error is not recoverable|Exiting with failure status)',
+              'RCLONE_USAGE': r'unknown (?:shorthand )?flag:|flag needs an argument:',
+              'RCLONE_CONFIG': r"didn't find section in config file|Failed to load config file|Config file .* not found - using defaults",
+              'RCLONE_FILESYSTEM': r'Failed to create file system for(?: destination)? ',
+              'HTTP_CLIENT': r'(?:https? response error StatusCode: |status code: |HTTP (?:error )?)4\d\d\b',
+              'HTTP_SERVER': r'(?:https? response error StatusCode: |status code: |HTTP (?:error )?)5\d\d\b',
+              'S3_NO_BUCKET': r'\bNoSuchBucket:',
+              'S3_NO_KEY': r'\bNoSuchKey:',
+              'S3_INVALID_REQUEST': r'\b(?:InvalidArgument|InvalidRequest|InvalidBucketName|MalformedXML):',
+              'S3_UNSUPPORTED': r'\b(?:NotImplemented|AccessControlListNotSupported):',
+              'S3_REGION': r'\b(?:AuthorizationHeaderMalformed|PermanentRedirect|IncorrectEndpoint|IllegalLocationConstraintException):',
+              'S3_CLOCK': r'\b(?:RequestTimeTooSkewed|RequestExpired):',
           }
+
+          # Only explicit S3 operation errors reveal direction. Head/List and generic
+          # copy failures do not establish upload/download or completed stages.
+          operation_patterns = {
+              'LOCAL_STAGE': r'backup source is missing or unsafe:',
+              'UPLOAD': r'operation error S3: (?:PutObject|CreateMultipartUpload|UploadPart|CompleteMultipartUpload),',
+              'DOWNLOAD': r'operation error S3: GetObject,',
+              'DELETE': r'operation error S3: DeleteObjects?,',
+          }
+          operation_counts = dict.fromkeys((*operation_patterns, 'UNKNOWN'), 0)
 
           def read_diagnostic(command, limit):
               try:
@@ -151,15 +186,22 @@ jobs:
                           message = None
                       if not isinstance(message, str) or len(message) > 4096:
                           counts['UNKNOWN'] += 1
+                          operation_counts['UNKNOWN'] += 1
                           continue
                       matches = [name for name, pattern in patterns.items() if re.search(pattern, message, re.IGNORECASE)]
                       for name in matches:
                           counts[name] += 1
-                      if not matches and re.search(r'\b(?:error|failed|fatal)\b', message, re.IGNORECASE):
+                      error_marker = re.search(r'\b(?:error|failed|fatal)\b', message, re.IGNORECASE)
+                      if not set(matches).difference(('TAR_FATAL', 'RCLONE_FILESYSTEM')) and (matches or error_marker):
                           counts['UNKNOWN'] += 1
+                      if matches or error_marker:
+                          operations = [name for name, pattern in operation_patterns.items() if re.search(pattern, message, re.IGNORECASE)]
+                          for name in operations or ['UNKNOWN']:
+                              operation_counts[name] += 1
           # UNKNOWN is also an insufficient-evidence marker, not a guessed error cause.
           if not any(counts.values()) and (service_result != 'success' or journal_status not in ('ok', 'empty')):
               counts['UNKNOWN'] = 1
+              operation_counts['UNKNOWN'] = max(1, operation_counts['UNKNOWN'])
           print('OFFSITE_DIAGNOSTIC=' + json.dumps({
               'result': service_result,
               'exec_main_code': diagnostic_number(values.get('ExecMainCode', ''), 6),
@@ -168,6 +210,7 @@ jobs:
               'exited_at': diagnostic_timestamp(values.get('ExecMainExitTimestamp', '')),
               'journal_status': journal_status,
               'error_counts': counts,
+              'operation_counts': operation_counts,
           }))
           # Retention exit facts only: do not read its journal or run the check.
           retention_raw = read_diagnostic(['systemctl', 'show', 'steelprodukt-pd-retention-check.service',
@@ -183,3 +226,32 @@ jobs:
           # END OFFSITE DIAGNOSTIC
           PYTHON
           REMOTE
+
+  consent-audit:
+    # Independent public-site verification: no server access or production secrets.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Verify published consent with mocked vendors and blocked mutations
+        env:
+          BASE_URL: https://www.steelprodukt.ru
+          ALLOW_PRODUCTION_CONSENT_AUDIT: '1'
+        run: node scripts/audit-consent-revocation.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-consent-audit
+          path: output/browser-audit/consent/
+          if-no-files-found: ignore
+          retention-days: 7

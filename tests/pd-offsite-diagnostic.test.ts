@@ -13,7 +13,7 @@ const properties = [
   "ExecMainExitTimestamp=Sat 2026-10-10 14:29:49 UTC",
   `InvocationID=${invocation}`,
 ].join("\n");
-const classes = ["LOCK", "SQLITE", "PERMISSION", "DISK_FULL", "NETWORK", "DNS", "TLS", "REMOTE_AUTH", "THROTTLE", "HASH", "RESTORE", "UNKNOWN"];
+const classes = ["LOCK", "SQLITE", "PERMISSION", "DISK_FULL", "NETWORK", "DNS", "TLS", "REMOTE_AUTH", "THROTTLE", "HASH", "RESTORE", "LOCAL_SOURCE", "TAR_MISSING", "TAR_READ", "TAR_ARCHIVE", "TAR_FATAL", "RCLONE_USAGE", "RCLONE_CONFIG", "RCLONE_FILESYSTEM", "HTTP_CLIENT", "HTTP_SERVER", "S3_NO_BUCKET", "S3_NO_KEY", "S3_INVALID_REQUEST", "S3_UNSUPPORTED", "S3_REGION", "S3_CLOCK", "UNKNOWN"];
 
 function runDiagnostic(options: { messages?: unknown[]; properties?: string; retention?: string; journal?: string; failure?: string } = {}) {
   assert.ok(source, "the audit must include the aggregate-only offsite diagnostic");
@@ -57,9 +57,11 @@ ${source}
   const result = JSON.parse(lines[0].slice("OFFSITE_DIAGNOSTIC=".length));
   const retention = JSON.parse(lines[1].slice("RETENTION_SERVICE=".length));
   assert.deepEqual(Object.keys(retention), ["result", "exec_main_code", "exec_main_status", "started_at", "exited_at"]);
-  assert.deepEqual(Object.keys(result), [...Object.keys(retention), "journal_status", "error_counts"]);
+  assert.deepEqual(Object.keys(result), [...Object.keys(retention), "journal_status", "error_counts", "operation_counts"]);
   assert.deepEqual(Object.keys(result.error_counts), classes);
   for (const count of Object.values(result.error_counts)) assert.ok(Number.isInteger(count) && Number(count) >= 0 && Number(count) <= 200);
+  assert.deepEqual(Object.keys(result.operation_counts), ["LOCAL_STAGE", "UPLOAD", "DOWNLOAD", "DELETE", "UNKNOWN"]);
+  for (const count of Object.values(result.operation_counts)) assert.ok(Number.isInteger(count) && Number(count) >= 0 && Number(count) <= 200);
   return { result, retention, stdout };
 }
 
@@ -158,4 +160,89 @@ test("retention service reports independently validated exit and time without jo
   const invalid = runDiagnostic({ retention: "Result=private-secret-token\nExecMainStatus=private-secret-token\nExecMainCode=private-secret-token\nExecMainStartTimestamp=private-secret-token\nExecMainExitTimestamp=private-secret-token" });
   assert.deepEqual(invalid.retention, { result: "unknown", exec_main_code: null, exec_main_status: null, started_at: null, exited_at: null });
   assert.ok(!invalid.stdout.includes("private-secret-token"));
+});
+
+
+test("exit-two signatures classify tar, rclone, HTTP and S3 without emitting private details", () => {
+  const cases: [string, string][] = [
+    ["backup source is missing or unsafe: /private/customer", "LOCAL_SOURCE"],
+    ["tar: /private/customer: Cannot stat: No such file or directory", "TAR_MISSING"],
+    ["tar: /private/customer: Cannot open: Permission denied", "TAR_READ"],
+    ["tar: This does not look like a tar archive", "TAR_ARCHIVE"],
+    ["Error: unknown flag: --private-secret-token", "RCLONE_USAGE"],
+    ["flag needs an argument: --private-secret-token", "RCLONE_USAGE"],
+    ["Failed to load config file /private/customer: parsing failed", "RCLONE_CONFIG"],
+    [`Failed to create file system for "private-bucket": didn't find section in config file`, "RCLONE_CONFIG"],
+    ['Config file "/private/customer" not found - using defaults', "RCLONE_CONFIG"],
+    ["https response error StatusCode: 400, RequestID: private-secret-token", "HTTP_CLIENT"],
+    ["http response error StatusCode: 503, private-secret-token", "HTTP_SERVER"],
+    ["status code: 403, request id: private-secret-token", "REMOTE_AUTH"],
+    ["api error NoSuchBucket: private-bucket", "S3_NO_BUCKET"],
+    ["NoSuchKey: /private/customer", "S3_NO_KEY"],
+    ["api error InvalidRequest: private-secret-token", "S3_INVALID_REQUEST"],
+    ["api error AccessControlListNotSupported: private-secret-token", "S3_UNSUPPORTED"],
+    ["api error AuthorizationHeaderMalformed: private-secret-token", "S3_REGION"],
+    ["api error RequestTimeTooSkewed: private-secret-token", "S3_CLOCK"],
+    ["api error XAmzContentSHA256Mismatch: private-secret-token", "HASH"],
+  ];
+  for (const [message, expected] of cases) {
+    const { result, stdout } = runDiagnostic({ properties: properties.replace("ExecMainStatus=1", "ExecMainStatus=2"), messages: [message] });
+    assert.equal(result.error_counts[expected], 1, expected);
+    assert.equal(result.error_counts.UNKNOWN, 0, expected);
+    assert.equal(result.exec_main_status, 2);
+    for (const value of ["/private/customer", "private-secret-token", "private-bucket"]) assert.ok(!stdout.includes(value));
+  }
+});
+
+test("generic fatal summaries identify the tool but preserve an unknown cause", () => {
+  for (const [message, indicator] of [
+    ["tar: Exiting with failure status due to previous errors", "TAR_FATAL"],
+    ["tar (child): Error is not recoverable: exiting now", "TAR_FATAL"],
+    ['Failed to create file system for "private-bucket": unexplained', "RCLONE_FILESYSTEM"],
+  ]) {
+    const { result } = runDiagnostic({ messages: [message] });
+    assert.equal(result.error_counts[indicator], 1);
+    assert.equal(result.error_counts.UNKNOWN, 1);
+    assert.equal(result.operation_counts.UNKNOWN, 1);
+  }
+  assert.equal(runDiagnostic({ properties: properties.replace("ExecMainStatus=1", "ExecMainStatus=2") }).result.error_counts.UNKNOWN, 1);
+});
+
+test("operation counts require explicit evidence and never infer copy direction or completion", () => {
+  for (const [message, operation] of [
+    ["backup source is missing or unsafe: /private/customer", "LOCAL_STAGE"],
+    ["operation error S3: PutObject, api error AccessDenied: private-secret-token", "UPLOAD"],
+    ["operation error S3: UploadPart, api error AccessDenied: private-secret-token", "UPLOAD"],
+    ["operation error S3: GetObject, api error NoSuchKey: private-secret-token", "DOWNLOAD"],
+    ["operation error S3: DeleteObjects, api error AccessDenied: private-secret-token", "DELETE"],
+  ]) {
+    const { result } = runDiagnostic({ messages: [message] });
+    assert.equal(result.operation_counts[operation], 1);
+    assert.equal(result.operation_counts.UNKNOWN, 0);
+  }
+  for (const message of ["Failed to copy: private-secret-token", "operation error S3: HeadObject, private-secret-token", "operation error S3: ListObjectsV2, private-secret-token", "customer@example.invalid says upload failed"]) {
+    const { result, stdout } = runDiagnostic({ messages: [message] });
+    assert.equal(result.operation_counts.UNKNOWN, 1);
+    for (const key of ["LOCAL_STAGE", "UPLOAD", "DOWNLOAD", "DELETE"]) assert.equal(result.operation_counts[key], 0);
+    assert.ok(!stdout.includes("private-secret-token"));
+    assert.ok(!stdout.includes("customer@example.invalid"));
+  }
+});
+
+test("public consent audit is isolated from server credentials and runs the unchanged guarded script", () => {
+  const job = workflow.split("  consent-audit:\n")[1];
+  assert.ok(job);
+  assert.doesNotMatch(job, /\$\{\{\s*secrets\.|BEGET_|ssh|needs:|continue-on-error|npm (?:start|run build)/);
+  assert.match(job, /persist-credentials: false/);
+  assert.match(job, /node-version: '22'/);
+  assert.match(job, /npm ci --ignore-scripts/);
+  assert.match(job, /npx playwright install --with-deps chromium/);
+  assert.match(job, /BASE_URL: https:\/\/www\.steelprodukt\.ru/);
+  assert.match(job, /ALLOW_PRODUCTION_CONSENT_AUDIT: '1'/);
+  assert.match(job, /node scripts\/audit-consent-revocation\.mjs/);
+  assert.match(job, /path: output\/browser-audit\/consent\//);
+  const script = readFileSync("scripts/audit-consent-revocation.mjs", "utf8");
+  assert.match(script, /if \(external \|\| mutation\)/);
+  assert.match(script, /await route\.abort\(\)/);
+  assert.match(script, /serviceWorkers: 'block'/);
 });
