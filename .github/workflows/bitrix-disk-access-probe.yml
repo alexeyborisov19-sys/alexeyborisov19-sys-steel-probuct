@@ -1,0 +1,111 @@
+name: Bitrix Disk access probe
+
+on:
+  push:
+    branches: [audit/bitrix-disk-probe-20261010]
+    paths: [.github/workflows/bitrix-disk-access-probe.yml]
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check existing Disk read access
+        env:
+          BITRIX_WEBHOOK_URL: ${{ secrets.BITRIX_WEBHOOK_URL }}
+        shell: bash
+        run: |
+          set +x
+          python3 - <<'PY'
+          import json, os, re, urllib.request, urllib.error, urllib.parse
+
+          SAFE = {
+              'ACCESS_DENIED', 'INVALID_CREDENTIALS', 'NO_AUTH_FOUND',
+              'insufficient_scope', 'ERROR_METHOD_NOT_FOUND',
+              'QUERY_LIMIT_EXCEEDED', 'OPERATION_TIME_LIMIT',
+              'INTERNAL_SERVER_ERROR', 'OVERLOAD_LIMIT'
+          }
+          out = {'disk_scope': None, 'storage_count': None, 'access_code': 'NOT_RUN'}
+
+          class ProbeError(Exception):
+              pass
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          opener = urllib.request.build_opener(NoRedirect())
+
+          def call(base, method, params):
+              if method not in {'scope', 'disk.storage.getList'}:
+                  raise ProbeError('METHOD_BLOCKED')
+              req = urllib.request.Request(
+                  base + method + '.json', data=json.dumps(params).encode(),
+                  headers={'Content-Type': 'application/json'}, method='POST')
+              status = 200
+              try:
+                  response = opener.open(req, timeout=15)
+              except urllib.error.HTTPError as error:
+                  status = error.code
+                  if 300 <= status < 400:
+                      raise ProbeError('REDIRECT_BLOCKED') from None
+                  response = error
+              except Exception:
+                  raise ProbeError('TRANSPORT_ERROR') from None
+              with response:
+                  raw = response.read(524289)
+              if len(raw) > 524288:
+                  raise ProbeError('RESPONSE_LIMIT')
+              try:
+                  data = json.loads(raw)
+              except Exception:
+                  raise ProbeError('INVALID_RESPONSE') from None
+              if not isinstance(data, dict):
+                  raise ProbeError('INVALID_RESPONSE')
+              if 'error' in data:
+                  code = data['error']
+                  raise ProbeError(code if isinstance(code, str) and code in SAFE else 'API_ERROR')
+              if status >= 400:
+                  raise ProbeError('HTTP_ERROR')
+              return data
+
+          try:
+              base = os.environ.get('BITRIX_WEBHOOK_URL', '').strip().rstrip('/') + '/'
+              parsed = urllib.parse.urlsplit(base)
+              if (parsed.scheme != 'https' or parsed.hostname != 'b24-hyjw76.bitrix24.ru'
+                  or parsed.port not in (None, 443) or parsed.username or parsed.password
+                  or parsed.query or parsed.fragment
+                  or not re.fullmatch(r'/rest/[0-9]+/[A-Za-z0-9_-]+/', parsed.path)):
+                  raise ProbeError('CONFIG_REJECTED')
+              scopes = call(base, 'scope', {}).get('result')
+              if not isinstance(scopes, list) or not all(isinstance(v, str) for v in scopes):
+                  raise ProbeError('INVALID_RESPONSE')
+              out['disk_scope'] = 'disk' in scopes
+              if not out['disk_scope']:
+                  raise ProbeError('insufficient_scope')
+              count, start, seen = 0, 0, set()
+              for page in range(4):
+                  data = call(base, 'disk.storage.getList', {'start': start, 'order': {'ID': 'ASC'}})
+                  rows = data.get('result')
+                  if not isinstance(rows, list):
+                      raise ProbeError('INVALID_RESPONSE')
+                  count += len(rows)
+                  next_start = data.get('next')
+                  if next_start is None:
+                      out['storage_count'] = count
+                      out['access_code'] = 'OK'
+                      break
+                  if not isinstance(next_start, int) or next_start <= start or next_start in seen:
+                      raise ProbeError('INVALID_RESPONSE')
+                  seen.add(start)
+                  start = next_start
+              else:
+                  raise ProbeError('PAGE_LIMIT')
+          except ProbeError as error:
+              out['access_code'] = error.args[0]
+          except Exception:
+              out['access_code'] = 'LOCAL_ERROR'
+          print(json.dumps(out, separators=(',', ':')))
+          PY
