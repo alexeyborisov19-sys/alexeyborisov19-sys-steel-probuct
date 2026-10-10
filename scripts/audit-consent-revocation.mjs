@@ -48,6 +48,29 @@ async function fixture({ width = 1440, initial = null, delayed = false, path = '
     // frames. Seed only the intended site document, never an opaque frame.
     if (window.top !== window || window.location.origin !== origin) return;
     window.__auditDocument = Math.random().toString(36);
+    // SSR markup and the document marker precede hydration. Observe the real
+    // consent receiver before clicking the settings button, without firing it.
+    window.__consentSettingsReady = false;
+    const settingsListeners = [new Set(), new Set()];
+    const captureIndex = options => Number(typeof options === 'boolean' ? options : Boolean(options?.capture));
+    const addListener = window.addEventListener;
+    const removeListener = window.removeEventListener;
+    window.addEventListener = function(type, listener, options) {
+      const result = addListener.call(this, type, listener, options);
+      if (this === window && type === 'steelprodukt-cookie-settings' && listener) {
+        settingsListeners[captureIndex(options)].add(listener);
+        window.__consentSettingsReady = true;
+      }
+      return result;
+    };
+    window.removeEventListener = function(type, listener, options) {
+      const result = removeListener.call(this, type, listener, options);
+      if (this === window && type === 'steelprodukt-cookie-settings') {
+        settingsListeners[captureIndex(options)].delete(listener);
+        window.__consentSettingsReady = settingsListeners.some(listeners => listeners.size > 0);
+      }
+      return result;
+    };
     if (initial !== null && sessionStorage.getItem('consent-audit-seeded') !== 'yes') {
       localStorage.setItem(key, initial);
       sessionStorage.setItem('consent-audit-seeded', 'yes');
@@ -126,7 +149,10 @@ async function fixture({ width = 1440, initial = null, delayed = false, path = '
   await expect(page.locator('main')).toBeVisible();
   return { context, page, release, tags: () => tags, errors, forbiddenAnalyticsAttempts };
 }
-const settings = page => page.getByRole('button', { name: 'Настройки файлов cookie', exact: true }).first().click();
+const settings = async page => {
+  await page.waitForFunction(() => window.__consentSettingsReady === true, undefined, { timeout: 30_000 });
+  await page.getByRole('button', { name: 'Настройки файлов cookie', exact: true }).first().click();
+};
 const permit = page => page.getByRole('button', { name: 'Разрешить аналитику', exact: true }).click();
 const refuse = page => page.getByRole('button', { name: 'Продолжить без аналитики', exact: true }).click();
 const initialized = (page, count = 1) => expect.poll(() => page.evaluate(() => (window.__metrikaCalls || []).filter(call => call[1] === 'init').length)).toBe(count);
