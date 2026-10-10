@@ -419,7 +419,7 @@ def verify_approved_family(commands: Commands, policy: Policy, config_fd: int, k
                            config_before: os.stat_result) -> None:
     """Conditional create-only client requests; provider enforcement is external.
 
-    Audited rclone 1.72.0 maps upload-only If-None-Match to S3 PutObject. A known-size
+    Audited rclone 1.72.0 and 1.75.0 map upload-only If-None-Match to S3 PutObject. A known-size
     file below 64 MiB uses a single PUT; there is no multipart/fallback path here.
     This does not establish the provider's conditional-write implementation.
     """
@@ -427,7 +427,7 @@ def verify_approved_family(commands: Commands, policy: Policy, config_fd: int, k
     first = output.splitlines()[0] if output else b""
     version = re.fullmatch(rb"rclone v(\d{1,3})\.(\d{1,3})\.(\d{1,3})", first)
     result["rclone_version"] = ".".join(part.decode("ascii") for part in version.groups()) if version else "unrecognized"
-    require(code == 0 and version is not None and tuple(map(int, version.groups())) == (1, 72, 0),
+    require(code == 0 and version is not None and tuple(map(int, version.groups())) in {(1, 72, 0), (1, 75, 0)},
             "RCLONE_VERSION_UNSUPPORTED")
     result["conditional_upload_client_supported"] = True
     maxima = (policy.max_bytes, 4096, 65536)

@@ -323,14 +323,23 @@ class RecoveryTest(unittest.TestCase):
 
     def test_old_prerelease_or_unrecognized_rclone_never_uploads(self):
         self.enable_upload()
-        for version in (b"rclone v1.71.9\n", b"rclone v1.72.1\n", b"rclone v1.73.0\n", b"rclone v1.75.2\n",
-                        b"rclone v2.0.0\n", b"rclone v1.72.0-beta\n", b"rclone v1.72.0-DEV\n", PRIVATE.encode()):
+        for version in (b"rclone v1.71.9\n", b"rclone v1.72.1\n", b"rclone v1.73.0\n", b"rclone v1.74.0\n", b"rclone v1.75.1\n", b"rclone v1.75.2\n", b"rclone v1.76.0\n",
+                        b"rclone v2.0.0\n", b"rclone v1.72.0-beta\n", b"rclone v1.72.0-DEV\n", b"rclone v1.75.0-beta\n", b"rclone v1.75.0-DEV\n", PRIVATE.encode()):
             with self.subTest(version=version):
                 self.commands.version = version
                 result = self.run_upload("RCLONE_VERSION_UNSUPPORTED")
                 self.assertFalse(result["conditional_upload_client_supported"])
                 self.assertEqual(self.commands.uploads, [])
                 self.assertEqual(self.commands.downloads, [])
+
+    def test_audited_installed_rclone_1750_verifies_conditional_upload(self):
+        self.enable_upload()
+        self.commands.version = b"rclone v1.75.0\n"
+        result = self.run_upload()
+        self.assertEqual(result["rclone_version"], "1.75.0")
+        self.assertTrue(result["conditional_upload_client_supported"])
+        self.assertEqual(result["remote_objects_verified"], 3)
+        self.assertEqual(len(self.commands.uploads), 3)
 
     def test_mixed_family_uses_fresh_download_paths_for_final_readback(self):
         self.enable_upload()
