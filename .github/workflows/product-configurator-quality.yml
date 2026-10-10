@@ -47,6 +47,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Playwright video encoder for local interaction evidence
+        run: npx playwright install ffmpeg
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
