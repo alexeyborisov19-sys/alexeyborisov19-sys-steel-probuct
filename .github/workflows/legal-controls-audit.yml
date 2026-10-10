@@ -90,7 +90,7 @@ jobs:
                      'TAR_MISSING', 'TAR_READ', 'TAR_ARCHIVE', 'TAR_FATAL', 'RCLONE_USAGE',
                      'RCLONE_CONFIG', 'RCLONE_FILESYSTEM', 'HTTP_CLIENT', 'HTTP_SERVER',
                      'S3_NO_BUCKET', 'S3_NO_KEY', 'S3_INVALID_REQUEST', 'S3_UNSUPPORTED',
-                     'S3_REGION', 'S3_CLOCK', 'UNKNOWN')
+                     'S3_REGION', 'S3_CLOCK', 'PIPE_CLOSED', 'SORT_WRITE', 'UNKNOWN')
           counts = dict.fromkeys(classes, 0)
           # Fixed signatures: repository backup scripts; GNU tar diagnostics;
           # github.com/rclone/rclone (cmd/cmd.go, fs/config/config.go);
@@ -109,6 +109,8 @@ jobs:
               'THROTTLE': r'\b(?:SlowDown|Throttling|TooManyRequests)\b|(?:HTTP (?:status code: |error )?|status ?code: )429\b',
               'HASH': r'(?:hash|checksum)(?:es)? (?:differ|mismatch)|corrupted on transfer:.*(?:hash|checksum)|\b(?:BadDigest|InvalidDigest|XAmzContentSHA256Mismatch):',
               'RESTORE': r'restore verification failed|bad decrypt|not in gzip format|unexpected (?:EOF in archive|end of file)',
+              'PIPE_CLOSED': r'\bbroken pipe\b',
+              'SORT_WRITE': r'\bsort:.*write (?:failed|error)',
               'LOCAL_SOURCE': r'backup source is missing or unsafe:',
               'TAR_MISSING': r'\btar(?: \([^)]*\))?:.*Cannot (?:stat|open): No such file or directory',
               'TAR_READ': r'\btar(?: \([^)]*\))?:.*(?:Cannot (?:open|read)|Read error|file changed as we read it)',

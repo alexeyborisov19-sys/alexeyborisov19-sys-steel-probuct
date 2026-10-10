@@ -13,7 +13,7 @@ const properties = [
   "ExecMainExitTimestamp=Sat 2026-10-10 14:29:49 UTC",
   `InvocationID=${invocation}`,
 ].join("\n");
-const classes = ["LOCK", "SQLITE", "PERMISSION", "DISK_FULL", "NETWORK", "DNS", "TLS", "REMOTE_AUTH", "THROTTLE", "HASH", "RESTORE", "LOCAL_SOURCE", "TAR_MISSING", "TAR_READ", "TAR_ARCHIVE", "TAR_FATAL", "RCLONE_USAGE", "RCLONE_CONFIG", "RCLONE_FILESYSTEM", "HTTP_CLIENT", "HTTP_SERVER", "S3_NO_BUCKET", "S3_NO_KEY", "S3_INVALID_REQUEST", "S3_UNSUPPORTED", "S3_REGION", "S3_CLOCK", "UNKNOWN"];
+const classes = ["LOCK", "SQLITE", "PERMISSION", "DISK_FULL", "NETWORK", "DNS", "TLS", "REMOTE_AUTH", "THROTTLE", "HASH", "RESTORE", "LOCAL_SOURCE", "TAR_MISSING", "TAR_READ", "TAR_ARCHIVE", "TAR_FATAL", "RCLONE_USAGE", "RCLONE_CONFIG", "RCLONE_FILESYSTEM", "HTTP_CLIENT", "HTTP_SERVER", "S3_NO_BUCKET", "S3_NO_KEY", "S3_INVALID_REQUEST", "S3_UNSUPPORTED", "S3_REGION", "S3_CLOCK", "PIPE_CLOSED", "SORT_WRITE", "UNKNOWN"];
 
 function runDiagnostic(options: { messages?: unknown[]; properties?: string; retention?: string; journal?: string; failure?: string } = {}) {
   assert.ok(source, "the audit must include the aggregate-only offsite diagnostic");
@@ -68,6 +68,8 @@ ${source}
 test("offsite diagnostics classify stable tool errors and emit only validated service facts", () => {
   const cases: [string, string][] = [
     ["PD backup already running", "LOCK"],
+    ["sort: write failed: standard output: Broken pipe", "PIPE_CLOSED"],
+    ["sort: write error", "SORT_WRITE"],
     ["PD backup staging/retention failed: OperationalError; code=SQLITE_READONLY", "SQLITE"],
     ["sqlite3.OperationalError: database is locked", "SQLITE"],
     ["PD backup staging/retention failed: PermissionError; code=13", "PERMISSION"],
