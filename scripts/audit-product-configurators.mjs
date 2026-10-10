@@ -333,6 +333,7 @@ try {
 
   await open(page,'/products/dobornye-elementy/bim');
   const trim=page.getByTestId('trim-bim-workspace');
+  await trim.getByText('IFC, CSV и проект JSON',{exact:true}).click();
   await expect(trim.getByRole('button',{name:'Модель IFC4',exact:true})).toBeDisabled();
   for(const label of ['A · наружная высота полки, мм','B · наружная ширина полки, мм','H · длина профиля, мм','T · толщина, мм']) await expect(trim.getByLabel(label,{exact:true})).toHaveValue('');
   if(width===390) {
@@ -347,7 +348,6 @@ try {
   await trim.getByLabel('T · толщина, мм',{exact:true}).fill('1');
   await expect(trim.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
 
-  await trim.getByText('IFC, CSV и проект JSON',{exact:true}).click();
   const trimJson=await downloaded(page,trim.getByRole('button',{name:'Проект JSON',exact:true}));
   const trimProject=JSON.parse(trimJson);
   assert.deepEqual(trimProject.project.dimensionsMm,{A:50,B:100,H:1000,T:1});
@@ -366,6 +366,7 @@ try {
   await expect(trim.getByRole('status').last()).toContainText('пока недоступен');
   await expect(trim.getByLabel('A · наружная высота полки, мм',{exact:true})).toHaveValue('50');
   await trimUpload.setInputFiles({name:'trim.json',mimeType:'application/json',buffer:Buffer.from(trimJson)});
+  await trim.getByText('IFC, CSV и проект JSON',{exact:true}).click();
   await trim.getByRole('img',{name:'Трёхмерная модель той же геометрии, которая экспортируется в IFC',exact:true}).screenshot({path:`${output}/trim-${width}-solid.png`});
   await check(page,'trim',width,errors);
   const trimContextLoss=await trim.locator('canvas').evaluate(canvas=>{
