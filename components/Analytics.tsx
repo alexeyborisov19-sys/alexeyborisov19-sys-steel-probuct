@@ -2,12 +2,34 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { flushPendingAnalyticsGoals, trackLeadEvent, yandexCounterIds } from "@/lib/analytics";
+import { createMetrikaLifecycle, type MetrikaCommand, type MetrikaRuntime } from "@/lib/analytics-runtime-control";
 import { consentEvent, hasAnalyticsConsent } from "./CookieConsent";
 
 const counterIds = yandexCounterIds();
 const webvisorEnabled = process.env.NEXT_PUBLIC_YM_WEBVISOR === "true";
+const lifecycle = createMetrikaLifecycle(counterIds, {
+  ssr: true, clickmap: true, trackLinks: true, accurateTrackBounce: true,
+  webvisor: webvisorEnabled, ecommerce: "dataLayer",
+});
+
+function ensureMetrikaTag(runtime: Window & MetrikaRuntime) {
+  if (!counterIds.length) return;
+  if (!runtime.ym) {
+    const queue: MetrikaCommand = (...args) => { (queue.a ??= []).push(args); };
+    queue.l = Date.now();
+    runtime.ym = queue;
+  }
+  const metrikaTagUrl = `https://mc.yandex.ru/metrika/tag.js?id=${counterIds[0]}`;
+  if (Array.from(document.scripts).some(script => script.src === metrikaTagUrl)) return;
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = metrikaTagUrl;
+  const first = document.getElementsByTagName("script")[0];
+  if (first?.parentNode) first.parentNode.insertBefore(script, first);
+  else document.head.appendChild(script);
+}
 
 /**
  * Analytics remains inactive unless the canonical public counter ID is supplied
@@ -21,6 +43,8 @@ export function Analytics() {
   const [runtimeReady, setRuntimeReady] = useState(false);
   const pathname = usePathname();
   const lastPath = useRef<string | null>(null);
+  const mounted = useRef(true);
+  const readyRevision = useRef(0);
 
   // Init records the current document. Next client navigation does not reload
   // that document, so record subsequent paths only while consent remains valid.
@@ -48,55 +72,56 @@ export function Analytics() {
     return () => document.removeEventListener("click", trackPhoneClick, { capture: true });
   }, []);
 
-  function analyticsReady() {
+  const analyticsReady = useCallback(() => {
     // Next's inline Script calls onReady before appending/executing its body.
-    // Wait until that synchronous insertion creates ym and queues init; otherwise
-    // goals collected during startup remain stranded with no later flush.
+    // Preserve that microtask boundary, but insert the vendor tag only here,
+    // after rechecking live consent, so even a stale Script effect cannot load it.
+    // Cached Script remounts use the same guarded initialization path.
+    const revision = readyRevision.current;
     queueMicrotask(() => {
-      const runtime = window as Window & { ym?: unknown };
-      if (!hasAnalyticsConsent() || typeof runtime.ym !== "function") return;
+      if (!mounted.current || revision !== readyRevision.current) return;
+      const runtime = window as Window & MetrikaRuntime;
+      if (!hasAnalyticsConsent()) { lifecycle.stop(runtime); return; }
+      try { ensureMetrikaTag(runtime); } catch { return; }
+      if (!lifecycle.start(runtime, true)) return;
       lastPath.current = window.location.pathname;
       setRuntimeReady(true);
       flushPendingAnalyticsGoals();
     });
-  }
+  }, []);
 
   useEffect(() => {
+    mounted.current = true;
     function syncConsent() {
-      try {
-        setAnalyticsAllowed(hasAnalyticsConsent());
-      } catch {
-        // Storage can be blocked in private or embedded browser modes.
-        // In that case analytics stays disabled and the site remains usable.
-        setAnalyticsAllowed(false);
+      let allowed = false;
+      try { allowed = hasAnalyticsConsent(); } catch { /* Fail closed. */ }
+      if (!allowed) {
+        readyRevision.current += 1;
+        lifecycle.stop(window as Window & MetrikaRuntime);
+        setRuntimeReady(false);
+        lastPath.current = null;
       }
+      setAnalyticsAllowed(allowed);
+      // Rapid revoke/regrant can be batched without remounting Next's cached
+      // Script. Its onReady callback then does not run again.
+      if (allowed && typeof (window as Window & MetrikaRuntime).ym === "function") analyticsReady();
     }
 
     syncConsent();
     window.addEventListener(consentEvent, syncConsent);
-    return () => window.removeEventListener(consentEvent, syncConsent);
-  }, []);
+    return () => {
+      mounted.current = false;
+      readyRevision.current += 1;
+      lifecycle.stop(window as Window & MetrikaRuntime);
+      window.removeEventListener(consentEvent, syncConsent);
+    };
+  }, [analyticsReady]);
 
   if (!analyticsAllowed) return null;
 
   return <>
     {counterIds.length ? <Script id="yandex-metrica" strategy="afterInteractive" onReady={analyticsReady}>{`
       window.dataLayer = window.dataLayer || [];
-      var metrikaTagUrl = 'https://mc.yandex.ru/metrika/tag.js?id=${counterIds[0]}';
-      (function(m,e,t,r,i,k,a){
-        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a);
-      })(window,document,'script',metrikaTagUrl,'ym');
-${counterIds.map((counterId) => `      ym(${counterId}, 'init', {
-        ssr:true,
-        clickmap:true,
-        trackLinks:true,
-        accurateTrackBounce:true,
-        webvisor:${webvisorEnabled ? "true" : "false"},
-        ecommerce:"dataLayer"
-      });`).join("\n")}
     `}</Script> : null}
   </>;
 }

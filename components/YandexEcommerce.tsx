@@ -142,12 +142,16 @@ export function YandexEcommerce() {
     let sentForPage = false;
 
     function syncEcommerce() {
-      if (sentForPage) return;
       try {
-        if (!hasAnalyticsConsent()) return;
+        if (!hasAnalyticsConsent()) {
+          sentForPage = false;
+          return;
+        }
       } catch {
+        sentForPage = false;
         return;
       }
+      if (sentForPage) return;
 
       const schemas = readJsonLdSchemas();
       const detailProduct = schemas

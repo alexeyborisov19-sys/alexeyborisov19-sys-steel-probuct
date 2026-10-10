@@ -4,9 +4,17 @@ on:
     paths:
       - 'components/Analytics.tsx'
       - 'components/CookieConsent.tsx'
+      - 'components/ConsentGatedAnalytics.tsx'
+      - 'components/YandexEcommerce.tsx'
       - 'components/QuoteRequestForm.tsx'
       - 'lib/analytics.ts'
+      - 'lib/analytics-runtime-control.ts'
+      - 'lib/cookie-consent-state.ts'
+      - 'tests/analytics*.test.ts'
+      - 'tests/cookie-consent*.test.ts'
+      - 'tests/yandex-ecommerce.test.ts'
       - 'scripts/audit-form-goal-diagnostic.mjs'
+      - 'scripts/audit-consent-revocation.mjs'
       - '.github/workflows/analytics-regression.yml'
   workflow_dispatch:
 permissions:
@@ -41,3 +49,10 @@ jobs:
             sleep 1
           done
           node scripts/audit-form-goal-diagnostic.mjs
+          node scripts/audit-consent-revocation.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consent-regression-evidence
+          path: output/browser-audit/consent
+          if-no-files-found: ignore
