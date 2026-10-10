@@ -1,5 +1,5 @@
 "use client";
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { CassetteDepthSurface } from './CassetteDepthSurface';
 import { cassetteGeometry, cassetteProfiles, type Vec3 } from '@/lib/bim/cassette-geometry';
 import { validateCassetteBim, type CassetteBimInput } from '@/lib/bim/cassette';
@@ -80,12 +80,24 @@ export function CassetteBimShapePreview({ input, colour = '#a8b5b9' }: { input: 
   const [yaw, setYaw] = useState(145), [pitch, setPitch] = useState(20);
   const [mode, setMode] = useState<CassetteInspectionMode>('single'), [axis, setAxis] = useState<CassetteInspectionAxis>('horizontal');
   const canPair = canInspectCassetteNeighbours(input), effectiveMode = canPair ? mode : 'single';
+  const drag = useRef<{id:number;x:number;y:number;yaw:number;pitch:number} | null>(null);
+  const wrapYaw = (value:number) => ((value % 360) + 360) % 360;
+  const clampPitch = (value:number) => Math.max(-80, Math.min(80, value));
   const buttonClass = 'min-h-11 rounded-md border px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#cf5c22]';
   return <section className="border-b border-[#ced8dc] p-4 sm:px-7 sm:py-6" aria-label="Проверка формы кассеты">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-lg font-semibold text-[#162a32]">Рассмотрите конструкцию</h3>{canPair ? <div role="group" aria-label="Режим осмотра кассет" className="flex w-full flex-wrap gap-2 sm:w-auto">{modes.map(([value, label]) => <button key={value} type="button" aria-pressed={effectiveMode === value} onClick={() => setMode(value)} className={`${buttonClass} flex-1 sm:flex-none ${effectiveMode === value ? 'border-[#cf5c22] bg-[#fff0e5] text-[#803309]' : 'border-[#bac8ce] bg-white text-[#354b54] hover:border-[#526d79]'}`}>{label}</button>)}</div> : null}</div>
-    <CassetteInspectionView input={input} colour={colour} mode={effectiveMode} axis={axis} yaw={yaw} pitch={pitch} />
+    <h3 className="text-lg font-semibold text-[#162a32]">Рассмотрите конструкцию</h3>
+    <p className="mt-2 text-sm text-[#52636b]">Потяните модель в сторону для поворота. С клавиатуры используйте стрелки.</p>
+    <div tabIndex={0} role="group" aria-label="Вращение модели кассеты" data-cassette-orbit={`${yaw}:${pitch}`} className="select-none rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00699b]" style={{touchAction:'pan-y pinch-zoom'}}
+      onPointerDown={event=>{if(event.button!==0)return;drag.current={id:event.pointerId,x:event.clientX,y:event.clientY,yaw,pitch};event.currentTarget.setPointerCapture(event.pointerId);}}
+      onPointerMove={event=>{const start=drag.current;if(!start||start.id!==event.pointerId)return;setYaw(wrapYaw(start.yaw+(event.clientX-start.x)*.6));if(event.pointerType!=='touch')setPitch(clampPitch(start.pitch-(event.clientY-start.y)*.4));}}
+      onPointerUp={event=>{drag.current=null;if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}}
+      onPointerCancel={()=>{drag.current=null;}} onLostPointerCapture={()=>{drag.current=null;}}
+      onKeyDown={event=>{if(event.target!==event.currentTarget)return;if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(event.key)){event.preventDefault();if(event.key==='Home'){setYaw(145);setPitch(20);}else if(event.key==='ArrowLeft'||event.key==='ArrowRight')setYaw(value=>wrapYaw(value+(event.key==='ArrowRight'?10:-10)));else setPitch(value=>clampPitch(value+(event.key==='ArrowUp'?10:-10)));}}}>
+      <CassetteInspectionView input={input} colour={colour} mode={effectiveMode} axis={axis} yaw={yaw} pitch={pitch} />
+    </div>
     <details className="mt-3 rounded-lg border border-[#ccd7dc] bg-white px-4 py-1"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-[#354b54] focus-visible:outline focus-visible:outline-[#cf5c22]">Ракурс и расположение</summary>
       <div className="mb-4 space-y-4">
+        {canPair ? <div role="group" aria-label="Режим осмотра кассет" className="flex flex-wrap gap-2">{modes.map(([value, label]) => <button key={value} type="button" aria-pressed={effectiveMode === value} onClick={() => setMode(value)} className={`${buttonClass} ${effectiveMode === value ? 'border-[#cf5c22] bg-[#fff0e5] text-[#803309]' : 'border-[#bac8ce] bg-white text-[#354b54]'}`}>{label}</button>)}</div> : null}
         <div role="group" aria-label="Ракурс кассеты" className="flex flex-wrap gap-2">{([['Лицо', 0, 0], ['Обратная сторона', 180, 0], ['Объёмный вид', 145, 20], ['Профиль', 90, 0]] as const).map(([label, y, p]) => <button key={label} type="button" aria-pressed={yaw === y && pitch === p} onClick={() => { setYaw(y); setPitch(p); }} className={`${buttonClass} ${yaw === y && pitch === p ? 'border-[#cf5c22] bg-[#fff0e5] text-[#803309]' : 'border-[#bac8ce] text-[#354b54] hover:border-[#526d79]'}`}>{label}</button>)}</div>
         {canPair && effectiveMode !== 'single' ? <label className="block text-sm text-[#354b54]">Расположение соседних кассет<select aria-label="Расположение соседних кассет" value={axis} onChange={event => setAxis(event.target.value as CassetteInspectionAxis)} className="mt-2 min-h-11 w-full max-w-sm rounded-md border border-[#bac8ce] bg-white px-3 text-base"><option value="horizontal">По горизонтали</option><option value="vertical">По вертикали</option></select></label> : null}
         <div className="grid gap-3 sm:grid-cols-2"><label className="block text-sm text-[#354b54]">Поворот модели<input type="range" min="0" max="360" value={yaw} onChange={event => setYaw(Number(event.target.value))} className="mt-2 block min-h-11 w-full accent-[#cf5c22]" /></label><label className="block text-sm text-[#354b54]">Наклон модели<input type="range" min="-80" max="80" value={pitch} onChange={event => setPitch(Number(event.target.value))} className="mt-2 block min-h-11 w-full accent-[#cf5c22]" /></label></div>

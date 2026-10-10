@@ -28,7 +28,7 @@ async function open(page,path) {
 async function check(page,name,width,errors) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({path:`${output}/${name}-${width}.png`,fullPage:true});
-  const workspace = page.locator(name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name.startsWith('baskets') ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : name === 'trim' ? '[data-testid="trim-bim-workspace"]' : 'section[aria-label="Файл проекта"]');
+  const workspace = page.locator(name.startsWith('cassette-spec') ? '[data-testid="cassette-product-spec"]' : name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name.startsWith('baskets') ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : name === 'trim' ? '[data-testid="trim-bim-workspace"]' : 'section[aria-label="Файл проекта"]');
   await workspace.evaluate(element => window.scrollTo(0, Math.max(0, element.getBoundingClientRect().top + window.scrollY - 80)));
   await page.screenshot({path:`${output}/${name}-${width}-workspace.png`});
   const a11y=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
@@ -61,6 +61,48 @@ try {
   const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await installSafetyRoutes(context);
   await open(page,'/calculator-metallokassety');
+  const spec=page.getByTestId('cassette-product-spec');
+  await expect(spec.getByLabel('Ширина лица, мм · позиция 1',{exact:true})).toHaveValue('');
+  await spec.getByRole('button',{name:'Далее: материал и цвет',exact:true}).click();
+  await expect(spec.getByRole('status')).toContainText('положительные размеры');
+  for(const [label,value] of [['Ширина лица, мм','600'],['Высота лица, мм','1200'],['Количество, шт.','3']]) await spec.getByLabel(`${label} · позиция 1`,{exact:true}).fill(value);
+  await spec.getByRole('button',{name:'Добавить типоразмер',exact:true}).click();
+  for(const [label,value] of [['Ширина лица, мм','450'],['Высота лица, мм','1000'],['Количество, шт.','2']]) await spec.getByLabel(`${label} · позиция 2`,{exact:true}).fill(value);
+  await spec.getByRole('button',{name:'Далее: материал и цвет',exact:true}).click();
+  await spec.getByLabel('Покрытие / цвет RAL',{exact:true}).fill('RAL 7016');
+  await spec.getByRole('button',{name:'Показать спецификацию',exact:true}).click();
+  await expect(spec).toContainText('5 шт.');await expect(spec).toContainText('Цена после проверки специалистом');
+  const brief=await downloaded(page,spec.getByRole('button',{name:'Скачать спецификацию TXT',exact:true}));assert.ok(brief.includes('600 × 1200 мм; 3 шт.')&&brief.includes('450 × 1000 мм; 2 шт.')&&brief.includes('RAL 7016')&&!brief.includes('₽'));
+  await spec.screenshot({path:`${output}/cassette-spec-${width}-result.png`});
+  await check(page,'cassette-spec-result',width,errors);
+  await spec.getByRole('button',{name:'Назад',exact:true}).click();await spec.getByRole('button',{name:'Назад',exact:true}).click();
+  await expect(spec.getByLabel('Ширина лица, мм · позиция 1',{exact:true})).toHaveValue('600');
+  await spec.screenshot({path:`${output}/cassette-spec-${width}-input.png`});
+  await check(page,'cassette-spec-input',width,errors);
+  const mode=page.getByLabel('Режим калькулятора металлокассет',{exact:true});
+  await mode.selectOption('estimate');const estimate=page.locator('#cassette-view-estimate');
+  await estimate.getByLabel('Площадь фасада',{exact:true}).fill('137');
+  await estimate.getByRole('button',{name:'1,0 мм',exact:true}).click();
+  await estimate.getByRole('button',{name:/^Закрытая/}).click();
+  await mode.selectOption('product');await expect(spec.getByLabel('Ширина лица, мм · позиция 1',{exact:true})).toHaveValue('600');
+  await mode.selectOption('estimate');await expect(estimate.getByLabel('Площадь фасада',{exact:true})).toHaveValue('137');
+  await expect(estimate.getByRole('button',{name:'1,0 мм',exact:true})).toHaveAttribute('aria-pressed','true');await expect(estimate.getByRole('button',{name:/^Закрытая/})).toHaveAttribute('aria-pressed','true');
+  await mode.selectOption('product');
+  await spec.getByRole('button',{name:'Добавить типоразмер',exact:true}).click();
+  for(const [label,value] of [['Ширина лица, мм','900'],['Высота лица, мм','300'],['Количество, шт.','4']]) await spec.getByLabel(`${label} · позиция 3`,{exact:true}).fill(value);
+  const originalIds=await spec.locator('[data-cassette-spec-row]').evaluateAll(rows=>rows.map(row=>row.getAttribute('data-cassette-spec-row')));
+  await spec.getByRole('button',{name:'Удалить типоразмер 2',exact:true}).click();await spec.getByRole('button',{name:'Добавить типоразмер',exact:true}).click();
+  const changedIds=await spec.locator('[data-cassette-spec-row]').evaluateAll(rows=>rows.map(row=>row.getAttribute('data-cassette-spec-row')));
+  assert.deepEqual(changedIds.slice(0,2),[originalIds[0],originalIds[2]]);assert.ok(!originalIds.includes(changedIds[2]));
+  await expect(spec.getByLabel('Ширина лица, мм · позиция 1',{exact:true})).toHaveValue('600');await expect(spec.getByLabel('Ширина лица, мм · позиция 2',{exact:true})).toHaveValue('900');await expect(spec.getByLabel('Ширина лица, мм · позиция 3',{exact:true})).toHaveValue('');
+  for(let count=3;count<100;count++)await spec.getByRole('button',{name:'Добавить типоразмер',exact:true}).click();
+  await expect(spec.getByRole('button',{name:'Добавить типоразмер',exact:true})).toBeDisabled();await expect(spec.locator('[data-cassette-spec-row]')).toHaveCount(100);
+  for(let position=1;position<=100;position++)for(const [label,value] of [['Ширина лица, мм','600'],['Высота лица, мм','1200'],['Количество, шт.','1']])await spec.getByLabel(`${label} · позиция ${position}`,{exact:true}).fill(value);
+  await spec.getByRole('button',{name:'Далее: материал и цвет',exact:true}).click();await expect(spec.getByLabel('Покрытие / цвет RAL',{exact:true})).toHaveValue('RAL 7016');
+  await spec.getByRole('button',{name:'Показать спецификацию',exact:true}).click();await expect(spec).toContainText('100 шт. · 72 м² лиц');
+  const hundredBrief=await downloaded(page,spec.getByRole('button',{name:'Скачать спецификацию TXT',exact:true}));assert.equal((hundredBrief.match(/\d+\. Лицо 600 × 1200 мм; 1 шт\./g)||[]).length,100);assert.ok(hundredBrief.includes('RAL 7016'));
+  await spec.screenshot({path:`${output}/cassette-spec-${width}-100-types.png`});
+  await page.getByLabel('Режим калькулятора металлокассет',{exact:true}).selectOption('project');
   const editor=page.getByTestId('cassette-project-editor');
   if(width===390) {
     const start=await editor.boundingBox(), input=await page.locator('#cassette-elevation-width').boundingBox();
@@ -104,7 +146,9 @@ try {
   await open(page,'/products/metallokassety/bim');
   const bimJson=await downloaded(page,page.getByRole('button',{name:'Сохранить BIM-проект JSON',exact:true}));
   const firstIfc=await downloaded(page,page.getByRole('button',{name:'Скачать IFC',exact:true}));
+  await page.getByText('Раскладка, шов и марка',{exact:true}).click();
   await page.getByLabel('Марка кассеты',{exact:true}).fill('changed');
+  await page.getByText('Раскладка, шов и марка',{exact:true}).click();
   await page.getByLabel('Открыть BIM-проект JSON',{exact:false}).setInputFiles({name:'bim.json',mimeType:'application/json',buffer:Buffer.from(bimJson)});
   await page.getByRole('button',{name:'Заменить раскладку',exact:true}).click();
   const secondIfc=await downloaded(page,page.getByRole('button',{name:'Скачать IFC',exact:true}));
@@ -112,13 +156,24 @@ try {
   const inspection=page.getByTestId('cassette-bim-inspection');
   await expect(inspection.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
   await inspection.screenshot({path:`${output}/bim-${width}-single.png`});
+  const cassetteOrbit=page.getByRole('group',{name:'Вращение модели кассеты',exact:true});
+  await cassetteOrbit.focus();const beforeCassetteOrbit=await cassetteOrbit.getAttribute('data-cassette-orbit');await page.keyboard.press('ArrowRight');assert.notEqual(await cassetteOrbit.getAttribute('data-cassette-orbit'),beforeCassetteOrbit);await page.keyboard.press('Home');
+  const cassetteBox=await cassetteOrbit.boundingBox();assert.ok(cassetteBox);await page.mouse.move(cassetteBox.x+cassetteBox.width/2,cassetteBox.y+cassetteBox.height/2);await page.mouse.down();await page.mouse.move(cassetteBox.x+cassetteBox.width/2+60,cassetteBox.y+cassetteBox.height/2,{steps:8});await page.mouse.up();assert.notEqual(await cassetteOrbit.getAttribute('data-cassette-orbit'),beforeCassetteOrbit);await cassetteOrbit.focus();await page.keyboard.press('Home');
+  if(width===390) {
+    await cassetteOrbit.scrollIntoViewIfNeeded();const touchBox=await cassetteOrbit.boundingBox();assert.ok(touchBox);
+    const client=await context.newCDPSession(page),x=touchBox.x+touchBox.width/2,y=touchBox.y+Math.min(touchBox.height/2,180);
+    await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+    for(let delta=10;delta<=60;delta+=10)await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+delta,y}]});
+    await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    assert.notEqual(await cassetteOrbit.getAttribute('data-cassette-orbit'),beforeCassetteOrbit,'Touch drag rotates the model');await client.detach();await cassetteOrbit.focus();await page.keyboard.press('Home');
+  }
+  await page.getByText('Ракурс и расположение',{exact:true}).click();
   await page.getByRole('button',{name:'Соседние',exact:true}).click();
   await expect(inspection).toHaveAttribute('data-inspection-mode','neighbours');
   await expect(inspection.locator('svg')).toHaveAttribute('data-solid-instances','2');
   await expect(inspection).toContainText('Узел зацепления и крепёж не подтверждены');
   await expect(inspection.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
   await inspection.screenshot({path:`${output}/bim-${width}-neighbours.png`});
-  await page.getByText('Ракурс и расположение',{exact:true}).click();
   await page.getByLabel('Расположение соседних кассет',{exact:true}).selectOption('vertical');
   await page.getByRole('button',{name:'Разнесённо',exact:true}).click();
   await expect(inspection).toHaveAttribute('data-inspection-mode','exploded');
@@ -278,6 +333,7 @@ try {
 
   await open(page,'/products/dobornye-elementy/bim');
   const trim=page.getByTestId('trim-bim-workspace');
+  await trim.getByText('IFC, CSV и проект JSON',{exact:true}).click();
   await expect(trim.getByRole('button',{name:'Модель IFC4',exact:true})).toBeDisabled();
   for(const label of ['A · наружная высота полки, мм','B · наружная ширина полки, мм','H · длина профиля, мм','T · толщина, мм']) await expect(trim.getByLabel(label,{exact:true})).toHaveValue('');
   if(width===390) {
@@ -299,7 +355,7 @@ try {
   const trimIfc=await downloaded(page,trim.getByRole('button',{name:'Модель IFC4',exact:true}));
   assert.equal((trimIfc.match(/=IFCBUILDINGELEMENTPROXY\(/g)||[]).length,1);
   const trimCsv=await downloaded(page,trim.getByRole('button',{name:'Спецификация CSV',exact:true}));assert.ok(trimCsv.includes('A_mm')&&trimCsv.includes(trimProject.notice));
-  const trimBrief=await downloaded(page,trim.getByRole('button',{name:'Передать специалисту',exact:true}));assert.ok(trimBrief.includes(trimProject.notice));
+  const trimBrief=await downloaded(page,trim.getByRole('button',{name:'Скачать задание TXT',exact:true}));assert.ok(trimBrief.includes(trimProject.notice));
   await trim.getByLabel('A · наружная высота полки, мм',{exact:true}).fill('75');
   const trimUpload=trim.getByLabel('Восстановить проект JSON, до 16 КБ',{exact:true});
   await trimUpload.setInputFiles({name:'trim.json',mimeType:'application/json',buffer:Buffer.from(trimJson)});
@@ -310,6 +366,7 @@ try {
   await expect(trim.getByRole('status').last()).toContainText('пока недоступен');
   await expect(trim.getByLabel('A · наружная высота полки, мм',{exact:true})).toHaveValue('50');
   await trimUpload.setInputFiles({name:'trim.json',mimeType:'application/json',buffer:Buffer.from(trimJson)});
+  await trim.getByText('IFC, CSV и проект JSON',{exact:true}).click();
   await trim.getByRole('img',{name:'Трёхмерная модель той же геометрии, которая экспортируется в IFC',exact:true}).screenshot({path:`${output}/trim-${width}-solid.png`});
   await check(page,'trim',width,errors);
   const trimContextLoss=await trim.locator('canvas').evaluate(canvas=>{

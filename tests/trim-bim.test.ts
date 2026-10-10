@@ -73,7 +73,7 @@ test('identity is stable across dimension edits and separate between projects',(
  const guid=stableIfcGuid(`${project.id}/element/${project.elementId}`);assert.ok(createTrimIfc(project).includes(guid));assert.ok(createTrimIfc({...project,revision:2,dimensionsMm:{...project.dimensionsMm,H:1200}}).includes(guid));assert.ok(!createTrimIfc({...project,id:'different'}).includes(guid));
 });
 test('UI uses source letters, empty dimensions, visible source image and explicit pending variants',()=>{
- const ui=readFileSync('components/TrimBimConfigurator.tsx','utf8');assert.ok(ui.includes("dimensions:{A:'',B:'',H:'',T:''}"));assert.ok(ui.includes("disabled={t.id!=='fire-stop'}"));assert.ok(ui.includes('<image href={trimSourceImage(template.id)}'));assert.ok(!ui.includes('β'));assert.ok(!ui.includes('S1'));assert.ok(ui.includes('Передать специалисту'));assert.ok(ui.includes('file.size>TRIM_MAX_PROJECT_BYTES'));assert.ok(ui.includes('importGeneration.current'));assert.ok(ui.includes('CassetteDepthSurface'));assert.ok(!ui.includes('fetch('));
+ const ui=readFileSync('components/TrimBimConfigurator.tsx','utf8');assert.ok(ui.includes("dimensions:{A:'',B:'',H:'',T:''}"));assert.ok(!ui.includes('<select aria-label="Форма"'));assert.ok(ui.includes('<image href={trimSourceImage(template.id)}'));assert.ok(!ui.includes('β'));assert.ok(!ui.includes('S1'));assert.ok(ui.includes('Скачать задание TXT'));assert.ok(ui.includes('file.size>TRIM_MAX_PROJECT_BYTES'));assert.ok(ui.includes('importGeneration.current'));assert.ok(ui.includes('CassetteDepthSurface'));assert.ok(!ui.includes('fetch('));
  for(const template of trimBimCatalog)assert.ok(readFileSync(`public/images/products/catalog-sheets/page-${template.sourcePage}.png`).length>1000);
 });
 
