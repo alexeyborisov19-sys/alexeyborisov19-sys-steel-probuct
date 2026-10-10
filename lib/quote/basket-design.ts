@@ -1,3 +1,6 @@
+import { basketAppearancePatterns, validBasketAppearancePattern, type BasketAppearancePattern } from "../../data/basket-appearance-patterns";
+import { validBasketWallAssembly, basketWallAssemblySummary, type BasketWallAssembly } from "./basket-wall-assembly";
+import { validBasketAcReference, basketAcReferenceSummary, basketAcDimensionDisclaimer, type BasketAcAppliedReference } from "./basket-ac-reference";
 import { validBasketFit, basketFitSummary, type BasketFit } from "./basket-fit";
 import { basketMountingDimensions } from "./basket-mounting";
 /** Geometry of a user-defined rectangular panel field, not a shop flat pattern. */
@@ -17,10 +20,14 @@ export type PanelPattern = {
   margin: number;
 };
 export type BasketDesign = {
+  /** Original appearance concept; never implies verified manufacturing flats. */
+  appearance?: BasketAppearancePattern;
   version: 1;
   sizing?: "basket" | "block";
   wallKind?: "wall" | "ventilated" | "unknown";
   capacityClass?: number;
+  acReference?: BasketAcAppliedReference;
+  wallAssembly?: BasketWallAssembly;
   fit?: BasketFit;
   blockWidth: number;
   blockHeight: number;
@@ -82,6 +89,9 @@ export function validBasketDesign(v: unknown): v is BasketDesign {
   const d = v as BasketDesign;
   return (
     d.version === 1 &&
+    (d.appearance === undefined || validBasketAppearancePattern(d.appearance)) &&
+    (d.wallAssembly === undefined || validBasketWallAssembly(d.wallAssembly)) &&
+    (d.acReference === undefined || validBasketAcReference(d.acReference)) &&
     (d.sizing === undefined || d.sizing === "basket" || d.sizing === "block") &&
     (d.wallKind === undefined || ["wall", "ventilated", "unknown"].includes(d.wallKind)) &&
     (d.fit === undefined || validBasketFit(d.fit)) &&
@@ -149,6 +159,10 @@ export function basketDesignSummary(d: BasketDesign) {
     p.pattern === "wide-slots" ? "10 длинных продолговатых прорезей по ширине панели; ширина отверстий и краевые отступы уточняются по чертежу" :
     `${panelPatterns[p.pattern]}; отверстие ${p.diameter} мм${p.pattern === "slots" ? `, длина ${p.slotLength} мм` : ""}; шаг ${p.pitch} мм; поле от края ${p.margin} мм`;
   return [
+    basketAcDimensionDisclaimer + ".",
+    ...(d.appearance ? [`Проектный рисунок: ${basketAppearancePatterns[d.appearance].title}. ${basketAppearancePatterns[d.appearance].detail}. Производственные развёртки и комплектность требуют подтверждения.`] : []),
+    basketWallAssemblySummary(d.wallAssembly),
+    ...(d.acReference ? [basketAcReferenceSummary(d.acReference)] : []),
     ...(d.capacityClass
       ? [
           `Класс кондиционера: ${d.capacityClass} тыс. БТЕ/ч; подбор корзины предварительный. Размеры конкретной модели и зазоры обязательно перепроверить.`,
@@ -162,8 +176,8 @@ export function basketDesignSummary(d: BasketDesign) {
     basketFitSummary(d.fit),
     "Толщина кронштейнов: требуется подбор по проверенной конструкции, основанию и нагрузкам.",
     "Конструкция: передняя и две боковые панели, без верхней крышки. Задние отгибы не крепятся к стене; корзина закрепляется только на кронштейнах наружного блока.",
-    `Передняя панель: ${panel(d.front)}.`,
-    `Боковые панели: ${panel(d.side)}.`,
+    ...(d.appearance ? [] : [`Передняя панель: ${panel(d.front)}.`,
+    `Боковые панели: ${panel(d.side)}.`]),
     "Все расчёты приблизительные: размеры, крепление и окончательная стоимость уточняются по модели блока и проекту фасада.",
     "Перфорация рассчитана для прямоугольных полей; развёртки, гибы, крепёжные зоны, вентиляция и несущая способность требуют проверки.",
   ].join("\n");

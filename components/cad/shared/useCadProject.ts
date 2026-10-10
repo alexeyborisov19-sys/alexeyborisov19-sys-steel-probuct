@@ -10,6 +10,7 @@ import type { ClientCadPreview } from "@/lib/instant-quote/client-cad-preview-ty
 import { createEmptyProject, type ManufacturingOperation, type OperationInputs, type PartConfiguration } from "@/lib/instant-quote/domain";
 import { modelReadings, nearestThicknessOption } from "@/lib/instant-quote/client-labels";
 import type { MaterialId } from "@/lib/instant-quote/pricing";
+import { prepareCadProjectRestore, verifyCadAttachment, type CadProjectFile, type CadProjectSource } from "@/lib/instant-quote/project-file";
 import { addPartToProject, removePartFromProject, setPartMaterial, setPartQuantity, setPartState, setPartOperationInputs, setPartThickness, togglePartOperation, updatePartGeometry } from "@/lib/instant-quote/project";
 const MAX_PROJECT_PARTS = 5;
 const RECALCULATING_MESSAGE = "Идёт расчёт проекта…";
@@ -35,6 +36,10 @@ export function useCadProject(trackPublicFunnel = false) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepthRef = useRef(0);
   const [project, setProject] = useState(() => createEmptyProject());
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const [projectRevision, setProjectRevision] = useState(1);
+  const [sourcesByPartId, setSourcesByPartId] = useState<Record<string, CadProjectSource>>({});
   const [previewsByPartId, setPreviewsByPartId] = useState<Record<string, ClientCadPreview>>({});
   const [filesByPartId, setFilesByPartId] = useState<Record<string, File>>({});
   const [analyzingByPartId, setAnalyzingByPartId] = useState<Record<string, boolean>>({});
@@ -89,6 +94,10 @@ export function useCadProject(trackPublicFunnel = false) {
   const quantity = activePart?.configuration.quantity ?? 1;
   const bendConflict = activePart ? bendConfigurationConflict(activePreview?.cad.bendCountFromModel, activePart.configuration.operations, activePart.configuration.operationInputs?.bendCount) : null;
   const allFilesPresent = project.parts.length > 0 && project.parts.every((part) => Boolean(filesByPartId[part.id]));
+  const missingAttachments = project.parts.flatMap(part => {
+    const source = sourcesByPartId[part.id];
+    return !filesByPartId[part.id] && source?.kind === "cad" ? [{ partId: part.id, attachment: source.attachment }] : [];
+  });
   const anyAnalyzing = Object.values(analyzingByPartId).some(Boolean);
   const canCalculate = allFilesPresent && !anyAnalyzing && !isCalculating && !isIngesting;
   // Files are analysed in parallel, so the selected position can look ready
@@ -116,6 +125,7 @@ export function useCadProject(trackPublicFunnel = false) {
     calculationAbort.current = null;
     setIsCalculating(false);
     setCalculatedAt(null);
+    setCalculationFailed(false);
     const stale = calculation;
     const staleMessage = options.message ?? "Результат устарел: проект изменился. Нажмите «Рассчитать проект».";
     setStatusByPartId((current) => {
@@ -135,59 +145,11 @@ export function useCadProject(trackPublicFunnel = false) {
   };
 
   const markConfigurationChanged = (partId: string) => {
+    setProjectRevision(current => Math.min(1_000_000_000, current + 1));
     dropStaleCalculation({ changed: partId });
   };
 
-  const ingestFiles = async (files: File[], configurations?: PartConfiguration[], replaceId?: string) => {
-    if(ingestLock.current)throw new Error("Дождитесь добавления текущих изделий.");
-    if (!files.length) return;
-    let nextProject = project;
-    const replacing=replaceId?nextProject.parts.find(p=>p.id===replaceId):undefined;
-    if(replaceId&&(!replacing||files.length!==1))throw new Error("Позиция для изменения не найдена.");
-    const room = replacing ? 1 : MAX_PROJECT_PARTS - nextProject.parts.length;
-    const accepting = files.slice(0, Math.max(0, room));
-    const overflowMessage = accepting.length < files.length
-      ? `В одном проекте можно рассчитать не более ${MAX_PROJECT_PARTS} позиций. Лишние файлы не добавлены — рассчитайте их отдельным проектом.`
-      : null;
-    if (!accepting.length) {
-      setProjectCalculationMessage(overflowMessage);
-      return;
-    }
-    ingestLock.current=true;setIsIngesting(true);
-    try {
-    const rejectedFiles: string[] = [];
-    const jobs: Array<{ file: File; partId: string; format: "dxf" | "dwg" | "step" | "stp" }> = [];
-
-    accepting.forEach((file, index) => {
-      try {
-        const addedAt = new Date(Date.now() + index);
-        if(replacing){nextProject={...nextProject,activePartId:replacing.id,parts:nextProject.parts.map(p=>p.id===replacing.id?{...p,fileName:file.name,fileSizeBytes:file.size,geometry:null,configuration:configurations?.[index]??p.configuration}:p)};}
-        else nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, addedAt);
-        const partId = nextProject.activePartId;
-        if (partId) {
-          nextProject = setPartMaterial(nextProject, partId, configurations?.[index]?.materialId??"cold", addedAt);
-          if(configurations?.[index])nextProject={...nextProject,parts:nextProject.parts.map(p=>p.id===partId?{...p,configuration:configurations[index]}:p)};
-        }
-        const part = partId ? nextProject.parts.find((item) => item.id === partId) : null;
-        if (partId && part) jobs.push({ file, partId, format: part.format });
-      } catch {
-        rejectedFiles.push(`Файл «${file.name}» не добавлен: проверьте формат и размер.`);
-      }
-    });
-
-    if (trackPublicFunnel && jobs.length) trackLeadEvent("calculator_parts_added", { parts_count: jobs.length, input_method: configurations ? "manual" : "cad" });
-    setProject(nextProject);
-    if(configurations)setMaterialConfirmed(current=>({...current,...Object.fromEntries(jobs.map(job=>[job.partId,true]))}));
-    // A new position makes the project total stale, so the sentences the
-    // priced positions are still showing go with it.
-    dropStaleCalculation();
-    if (overflowMessage || rejectedFiles.length) setProjectCalculationMessage([overflowMessage, ...rejectedFiles].filter(Boolean).join(" "));
-    setFilesByPartId((current) => {
-      const next = { ...current };
-      for (const job of jobs) next[job.partId] = job.file;
-      return next;
-    });
-
+  const analyzeFiles = async (jobs: Array<{ file: File; partId: string; format: "dxf" | "dwg" | "step" | "stp" }>, preserveConfiguration = false) => {
     await Promise.all(jobs.map(async ({ file, partId, format }) => {
       if (format === "dwg") {
         setProject((current) => setPartState(current, partId, "manual-review"));
@@ -231,20 +193,22 @@ export function useCadProject(trackPublicFunnel = false) {
           // A STEP model carries its own sheet thickness. Selecting it here is
           // what keeps the default 1 mm from silently pricing a 3 mm part: the
           // server refuses a declared thickness its BRep contradicts.
-          const measuredThickness = nearestThicknessOption(preview.cad.thicknessFromModelMm);
-          if (measuredThickness != null) next = setPartThickness(next, partId, measuredThickness);
-          // A STEP model that reports bends selects bending and fills in the
-          // count, so the customer never counts them by hand.
-          const bends = preview.cad.bendCountFromModel;
-          if (bends != null && bends > 0) {
-            next = togglePartOperation(next, partId, "bending", true);
-            next = setPartOperationInputs(next, partId, { bendCount: bends });
-          }
-          const countersinks = preview.cad.countersinkCountFromModel;
-          if (countersinks != null && countersinks > 0) {
-            next = togglePartOperation(next, partId, "countersink", true);
-            const declared = next.parts.find(part => part.id === partId)?.configuration.operationInputs?.countersinkCount;
-            next = setPartOperationInputs(next, partId, { countersinkCount: Math.max(countersinks, declared ?? 0) });
+          if (!preserveConfiguration) {
+            const measuredThickness = nearestThicknessOption(preview.cad.thicknessFromModelMm);
+            if (measuredThickness != null) next = setPartThickness(next, partId, measuredThickness);
+            // A STEP model that reports bends selects bending and fills in the
+            // count, so the customer never counts them by hand.
+            const bends = preview.cad.bendCountFromModel;
+            if (bends != null && bends > 0) {
+              next = togglePartOperation(next, partId, "bending", true);
+              next = setPartOperationInputs(next, partId, { bendCount: bends });
+            }
+            const countersinks = preview.cad.countersinkCountFromModel;
+            if (countersinks != null && countersinks > 0) {
+              next = togglePartOperation(next, partId, "countersink", true);
+              const declared = next.parts.find(part => part.id === partId)?.configuration.operationInputs?.countersinkCount;
+              next = setPartOperationInputs(next, partId, { countersinkCount: Math.max(countersinks, declared ?? 0) });
+            }
           }
           return setPartState(next, partId, preview.status === "needs-review" ? "manual-review" : "configurable");
         });
@@ -269,7 +233,118 @@ export function useCadProject(trackPublicFunnel = false) {
         }
       }
     }));
+  };
+
+  const ingestFiles = async (files: File[], configurations?: PartConfiguration[], replaceId?: string) => {
+    if(ingestLock.current)throw new Error("Дождитесь добавления текущих изделий.");
+    if (!files.length) return;
+    let nextProject = project;
+    const replacing=replaceId?nextProject.parts.find(p=>p.id===replaceId):undefined;
+    if(replaceId&&(!replacing||files.length!==1))throw new Error("Позиция для изменения не найдена.");
+    const room = replacing ? 1 : MAX_PROJECT_PARTS - nextProject.parts.length;
+    const accepting = files.slice(0, Math.max(0, room));
+    const overflowMessage = accepting.length < files.length
+      ? `В одном проекте можно рассчитать не более ${MAX_PROJECT_PARTS} позиций. Лишние файлы не добавлены — рассчитайте их отдельным проектом.`
+      : null;
+    if (!accepting.length) {
+      setProjectCalculationMessage(overflowMessage);
+      return;
+    }
+    ingestLock.current=true;setIsIngesting(true);
+    try {
+    const rejectedFiles: string[] = [];
+    const jobs: Array<{ file: File; partId: string; format: "dxf" | "dwg" | "step" | "stp" }> = [];
+
+    accepting.forEach((file, index) => {
+      try {
+        const addedAt = new Date(Date.now() + index);
+        if(replacing){nextProject={...nextProject,activePartId:replacing.id,parts:nextProject.parts.map(p=>p.id===replacing.id?{...p,fileName:file.name,fileSizeBytes:file.size,geometry:null,configuration:configurations?.[index]??p.configuration}:p)};}
+        else nextProject = addPartToProject(nextProject, { fileName: file.name, fileSizeBytes: file.size }, addedAt);
+        const partId = nextProject.activePartId;
+        if (partId) {
+          nextProject = setPartMaterial(nextProject, partId, configurations?.[index]?.materialId??"cold", addedAt);
+          if(configurations?.[index])nextProject={...nextProject,parts:nextProject.parts.map(p=>p.id===partId?{...p,configuration:configurations[index]}:p)};
+        }
+        const part = partId ? nextProject.parts.find((item) => item.id === partId) : null;
+        if (partId && part) jobs.push({ file, partId, format: part.format });
+      } catch {
+        rejectedFiles.push(`Файл «${file.name}» не добавлен: проверьте формат и размер.`);
+      }
+    });
+
+    if (trackPublicFunnel && jobs.length) trackLeadEvent("calculator_parts_added", { parts_count: jobs.length, input_method: configurations ? "manual" : "cad" });
+    setProject(nextProject);
+    if (jobs.length) setProjectRevision(current => Math.min(1_000_000_000, current + 1));
+    if(configurations)setMaterialConfirmed(current=>({...current,...Object.fromEntries(jobs.map(job=>[job.partId,true]))}));
+    // A new position makes the project total stale, so the sentences the
+    // priced positions are still showing go with it.
+    dropStaleCalculation();
+    if (overflowMessage || rejectedFiles.length) setProjectCalculationMessage([overflowMessage, ...rejectedFiles].filter(Boolean).join(" "));
+    setPreviewsByPartId(current => {
+      const next = { ...current };
+      for (const job of jobs) delete next[job.partId];
+      return next;
+    });
+    setFilesByPartId((current) => {
+      const next = { ...current };
+      for (const job of jobs) next[job.partId] = job.file;
+      return next;
+    });
+
+    await analyzeFiles(jobs);
     } finally {ingestLock.current=false;setIsIngesting(false);}
+  };
+
+  const restoreProject = async (saved: CadProjectFile) => {
+    if (ingestLock.current) throw new Error("Дождитесь обработки текущих изделий.");
+    // No mutation until the entire package and every manual source are ready.
+    const restored = prepareCadProjectRestore(saved);
+    ingestLock.current = true;
+    setIsIngesting(true);
+    for (const controller of analysisControllers.current.values()) controller.abort();
+    analysisControllers.current.clear();
+    dropStaleCalculation();
+    setProject(restored.project);
+    setProjectRevision(restored.revision);
+    setSourcesByPartId(restored.sourcesByPartId);
+    setFilesByPartId(restored.filesByPartId);
+    setPreviewsByPartId({});
+    setAnalyzingByPartId({});
+    // A restored material is a saved selection, not a new confirmation.
+    setMaterialConfirmed({});
+    setStatusByPartId(Object.fromEntries(restored.project.parts.map(part => [part.id,
+      restored.filesByPartId[part.id] ? "Размеры восстановлены. Повторно проверяем ручную заготовку." : "Исходный CAD не прикреплён. Выберите оригинал в разделе «Файл проекта».",
+    ])));
+    setProjectCalculationMessage("Проект восстановлен без старой цены. Проверьте параметры, прикрепите недостающие CAD и рассчитайте заново.");
+    try {
+      await analyzeFiles(restored.project.parts.flatMap(part => {
+        const file = restored.filesByPartId[part.id];
+        return file ? [{ file, partId: part.id, format: part.format }] : [];
+      }), true);
+    } finally { ingestLock.current = false; setIsIngesting(false); }
+  };
+
+  const reattachFile = async (partId: string, file: File) => {
+    if (ingestLock.current) throw new Error("Дождитесь обработки текущих изделий.");
+    const source = sourcesByPartId[partId];
+    if (source?.kind !== "cad" || filesByPartId[partId]) throw new Error("Позиция уже восстановлена или не найдена.");
+    ingestLock.current = true;
+    setIsIngesting(true);
+    try {
+      await verifyCadAttachment(file, source.attachment);
+      const part = projectRef.current.parts.find(part => part.id === partId);
+      if (!part) throw new Error("Позиция удалена. Исходный файл не добавлен.");
+      dropStaleCalculation();
+      setFilesByPartId(current => ({ ...current, [partId]: file }));
+      setStatusByPartId(current => ({ ...current, [partId]: "Контрольная сумма совпала. Повторно проверяем CAD." }));
+      await analyzeFiles([{ file, partId, format: part.format }], true);
+    } finally { ingestLock.current = false; setIsIngesting(false); }
+  };
+
+  const renameProject = (title: string) => {
+    setProject(current => ({ ...current, title, updatedAt: new Date().toISOString() }));
+    setProjectRevision(current => Math.min(1_000_000_000, current + 1));
+    dropStaleCalculation();
   };
 
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -334,6 +409,8 @@ export function useCadProject(trackPublicFunnel = false) {
     const id = activePart.id;
     analysisControllers.current.get(id)?.abort(); analysisControllers.current.delete(id);
     setAnalyzingByPartId(current => { const next = { ...current }; delete next[id]; return next; });
+    setProjectRevision(current => Math.min(1_000_000_000, current + 1));
+    setSourcesByPartId(current => { const next = { ...current }; delete next[id]; return next; });
     setProject((current) => removePartFromProject(current, id));
     setPreviewsByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
     setFilesByPartId((current) => { const next = { ...current }; delete next[id]; return next; });
@@ -422,5 +499,5 @@ export function useCadProject(trackPublicFunnel = false) {
     ["Z", fmtMetric(activePreview.cad.depthMm)],
   ] : [];
 
-  return { isIngesting, inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, workflowSteps, dropStaleCalculation, ingestFiles, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict, filesByPartId, previewsByPartId };
+  return { projectRevision, sourcesByPartId, missingAttachments, restoreProject, reattachFile, renameProject, isIngesting, inputRef, project, setProject, activePart, activePreview, activeCalculation, approvedProjectTotalRub, estimatedProjectTotalRub, quoteHandoffHref, isAnalyzing, materialId, thickness, quantity, canCalculate, calculateLabel, calculateLabelShort, workflowSteps, dropStaleCalculation, ingestFiles, onChange, onDragEnter, onDragOver, onDragLeave, onDrop, updateQuantity, updateMaterial, updateThickness, toggleOperation, updateOperationInputs, removeActivePart, calculateProject, clientMetrics, isDraggingFiles, projectCalculationMessage, calculationFailed, statusByPartId, calculation, calculatedAt, materialConfirmed, bendConflict, filesByPartId, previewsByPartId };
 }

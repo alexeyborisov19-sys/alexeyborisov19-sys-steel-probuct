@@ -1,10 +1,9 @@
 "use client";
+import { basketAppearancePatterns } from "@/data/basket-appearance-patterns";
+import { basketAcDimensionDisclaimer } from "@/lib/quote/basket-ac-reference";
 import { BasketVolumePrice } from "./BasketVolumePrice";
-import { BasketCutComparison } from "./BasketCutComparison";
-import { BasketFitResult } from "./BasketFitFields";
 import { BasketNumberInput } from "./BasketNumberInput";
 import { BasketMountingFields, BasketMountingResult } from "./BasketMountingFields";
-import { basketReference } from "@/lib/quote/basket-reference";
 import {
   type BasketDesign,
   type PanelPattern,
@@ -85,7 +84,7 @@ export function BasketDesignFields({
   }
   function panel(key: "front" | "side", title: string) {
     const p = design[key];
-    const set = (patch: Partial<PanelPattern>) => onChange({ ...design, [key]: { ...p, ...patch } });
+    const set = (patch: Partial<PanelPattern>) => onChange({ ...design, appearance:undefined, [key]: { ...p, ...patch } });
     return (
       <fieldset className="mt-7 min-w-0">
         <legend className="font-semibold text-slate-800">{title}</legend>
@@ -148,7 +147,7 @@ export function BasketDesignFields({
   }
   if (step === 1) return (
     <div className="text-slate-800">
-      <h3 className="text-xl font-semibold">Блок и крепление</h3>
+      <details className="mb-4 rounded-lg border border-slate-200 p-3"><summary className="text-sm font-semibold">Опоры и масса блока</summary>
       <p className="mt-2 text-sm leading-6 text-slate-600">Укажите известные данные из паспорта кондиционера. Остальное можно уточнить с инженером.</p>
       <div className="mt-5 grid grid-cols-2 gap-4">
         {number("mass", "Масса блока, кг", 2000)}
@@ -161,21 +160,25 @@ export function BasketDesignFields({
           <option value="bearing">Нужны несущие кронштейны</option>
         </select>
       </label>
+      </details>
       <BasketMountingFields design={design} onChange={onChange}/>
     </div>
   );
   if (step === 2) return (
     <div className="text-slate-800">
       <h3 className="text-xl font-semibold">Исполнение панелей</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">Выберите рисунок отдельно для передней и боковых панелей. Его параметры можно уточнить ниже.</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{design.appearance ? `Выбран рисунок «${basketAppearancePatterns[design.appearance].title}». Другие варианты — рядом с объёмной моделью.` : 'Индивидуальные параметры панелей из вашего проекта.'}</p>
+      <details className="mt-3 rounded-xl border border-slate-200 p-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Индивидуальные параметры панелей</summary>
+      <p className="mt-2 text-xs text-slate-600">Изменение этих параметров переключит проект с готового эскиза на индивидуальный рисунок.</p>
       {panel("front", "Передняя панель")}
       <details className="mt-5 rounded-xl border border-slate-200 p-4">
         <summary className="text-sm font-semibold">Боковые панели · {panelPatterns[design.side.pattern]}</summary>
         {panel("side", "Две боковые панели")}
       </details>
-      <button type="button" className="mt-4 min-h-11 text-sm font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950" onClick={() => onChange({ ...design, side: { ...design.front } })}>
+      <button type="button" className="mt-4 min-h-11 text-sm font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950" onClick={() => onChange({ ...design, appearance:undefined, side: { ...design.front } })}>
         Применить передний рисунок к боковым
       </button>
+      </details>
       <p className="mt-3 text-xs leading-5 text-slate-600">Образцы показывают характер рисунка. Начальные параметры — ориентир; вентиляцию и конструкцию проверяем по выбранному кондиционеру.</p>
     </div>
   );
@@ -183,15 +186,16 @@ export function BasketDesignFields({
   const valid = validBasketDesign(design) && [width, height, depth, quantity].every((n) => Number.isFinite(n) && n >= 1 && n <= 10000);
   const front = valid ? panelCutting(width, height, design.front) : null;
   const side = valid ? panelCutting(depth, height, design.side) : null;
-  const emptyPattern = front && side && (((design.front.pattern === "round" || design.front.pattern === "slots") && front.holes === 0) || ((design.side.pattern === "round" || design.side.pattern === "slots") && side.holes === 0));
+  const emptyPattern = !design.appearance && front && side && (((design.front.pattern === "round" || design.front.pattern === "slots") && front.holes === 0) || ((design.side.pattern === "round" || design.side.pattern === "slots") && side.holes === 0));
   return (
     <div className="text-slate-800">
       <h3 className="text-xl font-semibold">Ваша корзина</h3>
       <p className="mt-2 text-sm text-slate-600">{design.sizing === "block" ? "Расчётный внутренний размер" : "Наружный размер"}: {width} × {height} × {depth} мм · {quantity} шт.</p>
+      {(design.capacityClass || design.acReference) && <p className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm leading-6 text-orange-900">{basketAcDimensionDisclaimer}.</p>}
       <p className="mt-3 text-sm text-slate-600">Передняя и две боковые панели. Без верхней крышки. Корзина закрепляется на кронштейнах наружного блока; задние отгибы не крепятся к стене.</p>
       <dl className="mt-5 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white px-4 text-sm">
-        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Передняя панель</dt><dd className="font-medium">{panelPatterns[design.front.pattern]}</dd></div>
-        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Боковые панели</dt><dd className="font-medium">{panelPatterns[design.side.pattern]}</dd></div>
+        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Передняя панель</dt><dd className="font-medium">{design.appearance?basketAppearancePatterns[design.appearance].title:panelPatterns[design.front.pattern]}</dd></div>
+        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Боковые панели</dt><dd className="font-medium">{design.appearance?"По выбранному эскизу":panelPatterns[design.side.pattern]}</dd></div>
         <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Крепление</dt><dd className="font-medium">{design.mount === "existing" ? "На кронштейнах блока" : design.mount === "bearing" ? "Нужны несущие кронштейны" : "Уточнить с инженером"}</dd></div>
       </dl>
       {!valid && <p className="mt-4 rounded-xl bg-orange-50 p-4 text-sm text-orange-900" role="status">Проверьте размеры и рисунок: шаг должен быть больше отверстия.</p>}
@@ -199,28 +203,6 @@ export function BasketDesignFields({
       <BasketVolumePrice quantity={quantity} width={width} height={height} depth={depth} design={design} />
       <p className="mt-4 text-sm leading-6 text-slate-600">Все расчёты приблизительные. Габариты, вентиляцию, крепления и окончательную стоимость согласуем перед изготовлением.</p>
       <BasketMountingResult design={design}/>
-      <details className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-700">Технические данные и проверка размеров</summary>
-        {front && side && (
-          <>
-            <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
-              <div><dt className="text-slate-600">Отверстия, 3 панели</dt><dd className="mt-1 text-lg font-semibold">{front.known && side.known ? (front.holes + 2 * side.holes).toLocaleString("ru-RU") : "По чертежу"}</dd></div>
-              <div><dt className="text-slate-600">Рез, 3 панели</dt><dd className="mt-1 text-lg font-semibold">{front.known && side.known ? `${(front.cutLengthM + 2 * side.cutLengthM).toFixed(2)} м` : "По чертежу"}</dd></div>
-              <div><dt className="text-slate-600">Открытая площадь спереди</dt><dd className="mt-1 font-medium">{front.known ? `${front.openPercent.toFixed(1)} %` : "По чертежу"}</dd></div>
-              <div><dt className="text-slate-600">Открытая площадь сбоку</dt><dd className="mt-1 font-medium">{side.known ? `${side.openPercent.toFixed(1)} %` : "По чертежу"}</dd></div>
-            </dl>
-            <p className="mt-4 text-xs leading-5 text-slate-600">На одну корзину, включая наружные прямоугольные контуры. Без припусков на гибку и крепёжных вырезов. Доля отверстий не подтверждает достаточность вентиляции.</p>
-          </>
-        )}
-        <BasketCutComparison design={design} width={width} height={height} depth={depth} quantity={quantity} />
-        <BasketFitResult calculated={design.sizing === "block"} fit={design.fit} width={width} height={height} depth={depth} />
-        <details className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-semibold">Состав производственного образца 1180 × 630 × 510 мм</summary>
-          <p className="mt-3 text-sm leading-6 text-slate-600">По сборочному чертежу. Образец состава не подтверждает пригодность для выбранного блока или фасада. При изменении размеров и крепления состав пересматривается.</p>
-          <ul className="mt-3 space-y-2 text-sm">{basketReference.parts.map((part) => <li key={part.name}>{part.name}: {part.quantity} шт. · оцинкованная сталь {part.thicknessMm} мм</li>)}</ul>
-          <p className="mt-3 text-sm leading-6 text-slate-600">Крепёж по сборке: {basketReference.fasteners.map((p) => `${p.name} — ${p.quantity} шт.`).join("; ")}. Анкеры основания подбираются отдельно.</p>
-        </details>
-      </details>
     </div>
   );
 }

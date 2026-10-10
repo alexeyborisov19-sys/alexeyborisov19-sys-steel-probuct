@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {buildSync} from 'esbuild';
+import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
+import {basketConceptPanelHoles} from '../lib/bim/basket-concept-geometry';
+const built=buildSync({stdin:{contents:`import {createElement} from 'react';import {renderToStaticMarkup} from 'react-dom/server';import {BasketAppearanceSelector} from './components/commercial/BasketAppearanceSelector';export const render=value=>renderToStaticMarkup(createElement(BasketAppearanceSelector,{value,onChange:()=>{}}));`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,logLevel:'silent'});
+const mod={exports:{} as {render:(value:string)=>string}};
+new Function('module','exports','require',built.outputFiles[0].text)(mod,mod.exports,createRequire(`${process.cwd()}/package.json`));
+test('primary choices are three labelled canonical thumbnails; four optional patterns stay collapsed',()=>{
+ const html=mod.exports.render('regular'),main=html.split('<details')[0];
+ assert.equal((main.match(/<button/g)||[]).length,3);
+ assert.equal((main.match(/<svg/g)||[]).length,3);
+ assert.equal((html.match(/<button/g)||[]).length,7);
+ assert.match(html,/aria-label="Ровные прорези" aria-pressed="true"/);
+ assert.match(html,/Все рисунки/);assert.doesNotMatch(html,/<details[^>]*open/);
+ assert.equal(basketConceptPanelHoles('regular',1430,880,false).length,12);
+ assert.equal(basketConceptPanelHoles('circle',1430,880,false).length,160);
+});
+test('main appearance has no competing mode toolbar and mounting/source views follow their steps',()=>{
+ const appearance=readFileSync('components/commercial/BasketAppearance.tsx','utf8');
+ assert.doesNotMatch(appearance,/Режим визуализации|setMode/);
+ assert.match(appearance,/props.stage===1 \? <BasketClearanceView/);
+ assert.match(appearance,/props.stage===2&&<details/);
+ assert.match(appearance,/<BasketProductView \{\.\.\.props\} compact\/>/);
+ assert.ok(appearance.indexOf('<BasketInteractiveView')<appearance.indexOf('<BasketAppearanceSelector'));
+ const configurator=readFileSync('components/commercial/BasketConfigurator.tsx','utf8');
+ assert.match(configurator,/stage=\{step\}/);
+ assert.match(configurator,/step > 0 && <button[^>]*onClick=\{\(\) => go\(step - 1\)\}/);
+});

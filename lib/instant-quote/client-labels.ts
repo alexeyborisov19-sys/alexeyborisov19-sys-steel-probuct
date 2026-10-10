@@ -1,3 +1,4 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 import type { ManufacturingOperation } from "@/lib/instant-quote/domain";
 
 /** Customer-facing names shared by the configurator and the printed quote. */
@@ -20,7 +21,7 @@ export const OPERATION_LABELS: Record<ManufacturingOperation, string> = {
 };
 
 /** Shared notice: applies to customer-entered parameters as well as uploaded models. */
-export const CALCULATION_DISCLAIMER =
+export const CALCULATION_DISCLAIMER = PRODUCT_CALCULATION_NOTICE + ". " +
   "Расчёт выполнен автоматически по предоставленным данным и является предварительным. "
   + "Расчёт носит ориентировочный характер. Он не является публичной офертой: "
   + "окончательные цена, сроки, характеристики и условия поставки определяются "

@@ -85,3 +85,12 @@ test("public route rejects invalid payload, cross-origin, oversized stream and r
   assert.equal(limited.status, 429);
   assert.equal(limited.headers.get("retry-after"), "45");
 });
+
+test('new concept appearances never receive the old ten-slot price or load unrelated rates',async()=>{
+ for(const appearance of ['circle','regular','shift','rhythm','tilt','square','louvers']){
+  const configured={...input(),design:{...input().design,appearance}};
+  const response=await handleBasketEstimate(request(configured),{...dependencies,loadRates:async()=>{throw Error('Concept must not enter calibrated panel price');}});
+  assert.equal(response.status,200);
+  const body=await response.json();assert.equal(body.price,null);assert.match(body.reason,/развёртки/);
+ }
+});

@@ -71,3 +71,68 @@ test("wide-slot specifications survive save/import and normalize legacy short na
   assert.equal(loaded.design?.front.pattern, "wide-slots");
   assert.equal(loaded.design?.side.pattern, "wide-slots");
 });
+
+const customerReview = {
+  version: 1 as const,
+  mark: "КР-01 / северный фасад",
+  equipment: "Модель из паспорта заказчика",
+  clearanceSource: "Паспорт, раздел установки, страница 12",
+  facadeNotes: "Основание и узлы крепления уточнить по проекту",
+  serviceSide: "right" as const,
+  accessMethod: "remove-side" as const,
+  requiredServiceMm: 450,
+  availableServiceMm: 500,
+};
+
+test("version 2 preserves customer review without changing geometry or prices", () => {
+  const reviewed = { ...item, review: customerReview };
+  const text = serializeBasketProject([reviewed, item]);
+  assert.equal(JSON.parse(text).version, 2);
+  assert.deepEqual(parseBasketProject(text), [reviewed, item]);
+  assert.equal(text.includes('"price"'), false);
+});
+
+test("original version 1 remains readable without fabricated equipment or service data", () => {
+  const text = JSON.stringify({ kind: "steel-basket-specification", version: 1, items: [item] });
+  assert.deepEqual(parseBasketProject(text), [item]);
+  assert.equal("review" in parseBasketProject(text)[0], false);
+});
+
+test("rejects unsupported review and project versions and malformed review atomically", () => {
+  for (const patch of [
+    { version: 7 }, { mark: "x".repeat(81) }, { equipment: 123 },
+    { serviceSide: "rear" }, { accessMethod: "certified" },
+    { requiredServiceMm: -1 }, { availableServiceMm: 10001 },
+    { clearanceSource: "secret\u0000text" },
+  ]) {
+    assert.throws(() => parseBasketProject(JSON.stringify({
+      kind: "steel-basket-specification", version: 2,
+      items: [item, { ...item, review: { ...customerReview, ...patch } }],
+    })));
+  }
+  for (const version of [0, 3, "2", null]) assert.throws(() => parseBasketProject(JSON.stringify({
+    kind: "steel-basket-specification", version, items: [item],
+  })));
+});
+
+test("v2 customer text remains data and unknown review fields are removed", () => {
+  const review = { ...customerReview, mark: '<img src=x onerror=alert(1)>', price: 1, approved: true };
+  const [loaded] = parseBasketProject(JSON.stringify({ kind: "steel-basket-specification", version: 2, items: [{ ...item, review }] }));
+  assert.equal(loaded.review?.mark, review.mark);
+  assert.equal("approved" in loaded.review!, false);
+  assert.equal("price" in loaded.review!, false);
+});
+
+test("100 fully annotated positions fit their v2 byte budget and round-trip", () => {
+  const review = { ...customerReview, mark: "М".repeat(80), equipment: "Б".repeat(160), clearanceSource: "И".repeat(240), facadeNotes: "Ф".repeat(500) };
+  const positions = Array.from({ length: 100 }, (_, index) => ({ ...item, quantity: index + 1, review }));
+  const text = serializeBasketProject(positions);
+  assert.ok(new TextEncoder().encode(text).length < 512000);
+  assert.deepEqual(parseBasketProject(text), positions);
+});
+
+test("byte limit is enforced before JSON parsing, including multibyte content", () => {
+  assert.throws(() => parseBasketProject('я'.repeat(256001)), /512 КБ/);
+  const legacy = JSON.stringify({ kind: "steel-basket-specification", version: 1, items: [item], unused: "я".repeat(100001) });
+  assert.throws(() => parseBasketProject(legacy), /200 КБ/);
+});

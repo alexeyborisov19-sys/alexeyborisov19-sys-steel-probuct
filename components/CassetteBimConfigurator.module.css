@@ -662,3 +662,11 @@
 .rotation label { flex:1; }
 .rotation input { padding:0; accent-color:var(--orange); }
 @media(max-width:600px) { .shapePreview { padding:20px 16px; } .shapeSvg { height:280px; } }
+.projectFiles { padding:24px 28px; border-top:1px solid var(--line); }
+.projectFiles h2 { font-size:20px; font-weight:650; }
+.projectFiles p { margin:10px 0 16px; line-height:1.6; }
+.importFile { display:flex; flex-direction:column; gap:8px; font-size:14px; min-width:0; max-width:100%; }
+.importFile input { max-width:100%; min-height:44px; padding:8px; border:1px solid var(--line); border-radius:6px; }
+.restorePrompt { margin-top:16px; padding:16px; border:1px solid var(--orange); border-radius:8px; }
+.restorePrompt button { margin:4px 8px 4px 0; }
+@media(max-width:600px) { .projectFiles { padding:20px 16px; } }

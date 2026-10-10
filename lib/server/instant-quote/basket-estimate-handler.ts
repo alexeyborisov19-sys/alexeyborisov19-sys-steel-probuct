@@ -36,6 +36,7 @@ export async function handleBasketEstimate(request: Request, overrides: Partial<
       return response({ price: null, reason: "Проверьте данные расчёта." }, 400);
     }
     if (!validBasketEstimateInput(input)) return response({ price: null, reason: "Проверьте размеры, количество и параметры корзины." }, 400);
+    if (input.design.appearance) return response({price:null,reason:"Для полного расчёта этой корзины специалист должен подтвердить развёртки и комплект кронштейнов. Параметры и рисунок сохранены."});
     // The owner's approved configuration is valid without a supplier lookup.
     const approved = basketConfiguredPrice(input);
     if (approved) return response({ price: publicPrice(approved) });

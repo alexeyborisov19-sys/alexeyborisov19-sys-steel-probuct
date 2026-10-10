@@ -70,6 +70,7 @@ function expectedSchemaTypes(path) {
   if (["/production", "/industries", "/products"].includes(path)) expected.push("ItemList");
   if (path === "/customers") expected.push("ItemList");
   if (path.startsWith("/customers/")) expected.push("FAQPage");
+  if (path === "/products/dobornye-elementy/bim") expected.push("WebApplication");
   if (path === "/products/metallokassety/bim") expected.push("WebApplication", "FAQPage");
   if (path === "/products/metallokassety") expected.push("ItemList", "FAQPage");
   if (path.startsWith("/production/")) expected.push("Service", "FAQPage");
@@ -78,6 +79,7 @@ function expectedSchemaTypes(path) {
   if (
     path.startsWith("/products/")
     && path !== "/products/metallokassety/bim"
+    && path !== "/products/dobornye-elementy/bim"
     && path !== "/products/metallokassety"
     && path !== "/products/dobornye-elementy"
   ) expected.push("Product", "FAQPage");

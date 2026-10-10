@@ -1,0 +1,7 @@
+import { JsonLd } from '@/components/JsonLd';
+import { absoluteUrl } from '@/lib/site';
+import { PageLayout } from '@/components/PageLayout';
+import { TrimBimConfigurator } from '@/components/TrimBimConfigurator';
+import { createPageMetadata } from '@/lib/seo';
+export const metadata=createPageMetadata({title:'BIM-модели доборных элементов по размерам',description:'Г-профиль по размерам A, B, H, T из каталога. Предварительная модель формы, сохранение JSON, CSV и IFC4. Остальные формы требуют проверки.',path:'/products/dobornye-elementy/bim'});
+export default function TrimBimPage(){return <PageLayout compactHero path="/products/dobornye-elementy/bim" eyebrow="Инструменты проектировщика" title="BIM-модели доборных элементов" description="Задайте размеры Г-профиля по буквам чертежа и сохраните модель для согласования со специалистом." breadcrumbs={[{name:'Главная',path:'/'},{name:'Продукция',path:'/products'},{name:'Доборные элементы',path:'/products/dobornye-elementy'},{name:'BIM-модели',path:'/products/dobornye-elementy/bim'}]}><JsonLd data={{'@context':'https://schema.org','@type':'WebApplication',name:'BIM-модель Г-профиля по размерам A/B/H/T',url:absoluteUrl('/products/dobornye-elementy/bim'),applicationCategory:'DesignApplication',operatingSystem:'Современный веб-браузер',inLanguage:'ru-RU',featureList:['Предварительная форма Г-профиля 90°','Размеры A/B/H/T','Экспорт IFC4, CSV и JSON']}}/><section className="bg-slate-100 py-8 sm:py-12"><div className="container"><TrimBimConfigurator/></div></section></PageLayout>;}

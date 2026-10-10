@@ -32,10 +32,9 @@ export function BasketVolumePrice(input:{quantity:number;width:number;height:num
     <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Предварительная стоимость корзины</p>
     {!current?<p className="mt-3 text-lg" role="status">Пересчитываем…</p>:current.error?<><p className="mt-3 text-sm" role="status">Не удалось обновить цену. Ваши параметры сохранены в форме.</p><button type="button" className="mt-3 min-h-11 underline" onClick={()=>{setResult(null);setRetry(n=>n+1)}}>Повторить расчёт</button></>:current.price?<>
       <h4 className="mt-2 text-3xl font-semibold" aria-live="polite">{rub(current.price.total)}</h4>
-      <p className="mt-2 text-sm">За {input.quantity} шт. · {rub(current.price.unit)} / шт.</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">Передняя и две боковые панели с окраской, без верхней крышки. Размер, выбранная перфорация и количество учтены.</p>
-      <p className="mt-2 text-xs leading-5 text-slate-600">Расчёт приблизительный. Окончательная стоимость — после проверки размеров и комплектации. Корзина крепится на кронштейнах блока; новые несущие кронштейны, анкеры и доставка в цену не входят.</p>
-      {input.design.mount!=='existing'&&<p className="mt-2 text-xs leading-5 text-slate-600">Показана стоимость самой корзины. Опоры кондиционера рассчитаем отдельно по нагрузке и основанию.</p>}
+      <p className="mt-2 text-sm">За {input.quantity} шт.</p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">Корзина с окраской, без верхней крышки.</p>
+      <p className="mt-2 text-xs leading-5 text-slate-600">Предварительно. Окончательная стоимость — после проверки задания. Несущие кронштейны, анкеры и доставка не включены.</p>
     </>:<><h4 className="mt-2 text-xl font-semibold">По выбранной комплектации</h4><p className="mt-2 text-sm leading-6 text-slate-600">{current.reason||'Для этого исполнения нужен индивидуальный расчёт. Передайте собранные параметры инженеру.'}</p></>}
   </section>;
 }

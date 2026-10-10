@@ -1,15 +1,20 @@
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
+import { stableIfcGuid } from "./ifc-identity";
 import { cassetteGeometry, cassetteMinimumJoint, cassetteFaceWidth, cassetteProfiles, cassetteSource, type CassetteProfile } from "./cassette-geometry";
 /** Architectural coordination geometry, not a manufacturing unfolding or certified facade system. */
 export type CassetteBimInput = {
   profile?: CassetteProfile; returnWidthMm?: number;
+  /** Saved project scope for stable cross-export panel identity. */
+  projectId?: string;
   widthMm: number; heightMm: number; depthMm: number; thicknessMm: number;
   jointMm: number; columns: number; rows: number; mark: string; finish: string;
   /** Stable row:column keys (zero based). */
   panelColours?: Record<string, { ral: string; hex: string }>;
 };
-export const bimScope = "Координационная модель. ОТ и ЗТ — геометрия из STEP, угловая — упрощённая по чертежу. Изменение ширины и высоты адаптирует центральную часть; борта и толщина сохраняются. Крепёж и подсистема не входят; узел стыковки требует согласования. Не для изготовления или расчёта нагрузок.";
+export const bimScope = PRODUCT_CALCULATION_NOTICE + ". " + "Координационная модель. ОТ и ЗТ — геометрия из STEP, угловая — упрощённая по чертежу. Изменение ширины и высоты адаптирует центральную часть; борта и толщина сохраняются. Крепёж и подсистема не входят; узел стыковки требует согласования. Не для изготовления или расчёта нагрузок.";
 export function validateCassetteBim(p: CassetteBimInput): string[] {
   const errors: string[] = [];
+  if (p.projectId !== undefined && !/^[A-Za-z0-9_-]{1,80}$/.test(p.projectId)) errors.push("Некорректный идентификатор проекта.");
   for (const [key, label] of [["widthMm", "Ширина"], ["heightMm", "Высота"], ["depthMm", "Глубина"]] as const)
     if (!Number.isFinite(p[key]) || p[key] <= 0 || p[key] > 10000) errors.push(`${label}: укажите размер от 0 до 10 000 мм, не включая ноль.`);
   if (![0.7, 1, 1.2, 1.5].includes(p.thicknessMm)) errors.push("Выберите толщину из списка.");
@@ -21,7 +26,7 @@ export function validateCassetteBim(p: CassetteBimInput): string[] {
   for (const colour of Object.values(p.panelColours || {})) {
     if (!/^RAL [0-9]{4}$/.test(colour.ral) || !/^#[0-9a-f]{6}$/i.test(colour.hex)) errors.push("Укажите RAL в формате RAL 7016 и экранный цвет.");
   }
-  if (p.profile && !(p.profile in cassetteProfiles)) errors.push("Выберите исполнение кассеты.");
+  if (p.profile && !(Object.hasOwn(cassetteProfiles, p.profile))) errors.push("Выберите исполнение кассеты.");
   if (p.profile && (p.widthMm < 120 || p.heightMm < 120)) errors.push("Для сохранения бортов ширина и высота должны быть не меньше 120 мм.");
   if ((p.profile === "open" || p.profile === "closed") && (![.7,1].includes(p.thicknessMm) || p.depthMm !== cassetteSource(p).depth)) errors.push("Используйте толщину 0,7 или 1 мм и глубину исходной STEP-модели.");
   if (p.profile && p.jointMm < cassetteMinimumJoint(p)) errors.push(`Шов: не меньше ${cassetteMinimumJoint(p)} мм для размещения полных бортов без пересечений. Меньший шов требует проверенного узла стыковки.`);
@@ -52,6 +57,8 @@ function guid() {
 const num = (v: number) => Number.isInteger(v) ? `${v}.` : String(Number(v.toFixed(8)));
 export function createCassetteIfc(p: CassetteBimInput): string {
   const errors = validateCassetteBim(p); if (errors.length) throw new Error(errors.join(" "));
+  let identitySequence = 0;
+  const identity = (key?: string) => p.projectId ? str(stableIfcGuid(`${p.projectId}/${key ?? `entity-${identitySequence++}`}`)) : guid();
   const lines: string[] = [];
   const add = (s: string) => { const id = `#${lines.length + 1}`; lines.push(`${id}=${s};`); return id; };
   const point = (x: number, y: number, z: number) => add(`IFCCARTESIANPOINT((${num(x)},${num(y)},${num(z)}))`);
@@ -61,15 +68,15 @@ export function createCassetteIfc(p: CassetteBimInput): string {
   const placement = add(`IFCLOCALPLACEMENT($,${axis})`);
   const context = add(`IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,0.00001,${axis},$)`);
   const units = add(`IFCUNITASSIGNMENT((${add("IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.)")},${add("IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)")}))`);
-  const project = add(`IFCPROJECT(${guid()},$,${str("Сталь Продукт — металлокассеты")},${str(bimScope)},$,$,$,(${context}),${units})`);
-  const building = add(`IFCBUILDING(${guid()},$,${str("Координационная модель")},$,$,${placement},$,$,.ELEMENT.,$,$,$)`);
-  const storey = add(`IFCBUILDINGSTOREY(${guid()},$,${str("Фасадный фрагмент")},$,$,${placement},$,$,.ELEMENT.,0.)`);
-  add(`IFCRELAGGREGATES(${guid()},$,$,$,${project},(${building}))`);
-  add(`IFCRELAGGREGATES(${guid()},$,$,$,${building},(${storey}))`);
+  const project = add(`IFCPROJECT(${identity()},$,${str("Сталь Продукт — металлокассеты")},${str(bimScope)},$,$,$,(${context}),${units})`);
+  const building = add(`IFCBUILDING(${identity()},$,${str("Координационная модель")},$,$,${placement},$,$,.ELEMENT.,$,$,$)`);
+  const storey = add(`IFCBUILDINGSTOREY(${identity()},$,${str("Фасадный фрагмент")},$,$,${placement},$,$,.ELEMENT.,0.)`);
+  add(`IFCRELAGGREGATES(${identity()},$,$,$,${project},(${building}))`);
+  add(`IFCRELAGGREGATES(${identity()},$,$,$,${building},(${storey}))`);
   const w = p.widthMm, h = p.heightMm, d = p.depthMm, t = p.thicknessMm;
   function makeShape(hex?: string) {
   const solids = cassetteGeometry(p).map(solid => {
-    const coords=add(`IFCCARTESIANPOINTLIST3D((${solid.vertices.map(v=>`(${v.map(num).join(",")})`).join(",")}),$)`);
+    const coords=add(`IFCCARTESIANPOINTLIST3D((${solid.vertices.map(v=>`(${v.map(num).join(",")})`).join(",")}))`);
     const triangles=solid.faces.flatMap(face=>Array.from({length:face.length-2},(_,i)=>[face[0]+1,face[i+1]+1,face[i+2]+1]));
     return add(`IFCTRIANGULATEDFACESET(${coords},$,.T.,(${triangles.map(t=>`(${t.join(",")})`).join(",")}),$)`);
   });
@@ -98,8 +105,8 @@ export function createCassetteIfc(p: CassetteBimInput): string {
   property("DefaultFinish", p.finish || "По проекту"); property("Source", "https://www.steelprodukt.ru/products/metallokassety/bim"); property("Revision", "2.0");
   property("Profile", p.profile ? cassetteProfiles[p.profile].label : "Прямые борта");
   if(p.profile === "corner") property("ReturnWidth", num(p.returnWidthMm!), "IFCLENGTHMEASURE");
-  const pset = add(`IFCPROPERTYSET(${guid()},$,'SP_CassetteCoordination',$,(${properties.join(",")}))`);
-  const type = add(`IFCPLATETYPE(${guid()},$,${str(p.mark)},${str(bimScope)},$,(${pset}),$,$,$,.CURTAIN_PANEL.)`);
+  const pset = add(`IFCPROPERTYSET(${identity()},$,'SP_CassetteCoordination',$,(${properties.join(",")}))`);
+  const type = add(`IFCPLATETYPE(${identity()},$,${str(p.mark)},${str(bimScope)},$,(${pset}),$,$,$,.CURTAIN_PANEL.)`);
   const material = add(`IFCMATERIAL(${str("Оцинкованная сталь")},$,${str("Сталь")})`);
   const outward = add("IFCDIRECTION((0.,-1.,0.))");
   const panels: string[] = [];
@@ -109,30 +116,30 @@ export function createCassetteIfc(p: CassetteBimInput): string {
     const tag = `${p.mark}-${String(panels.length+1).padStart(3,"0")}`;
     const colour = p.panelColours?.[`${row}:${col}`];
     const shape = shapeFor(colour?.hex);
-    const panel = add(`IFCPLATE(${guid()},$,${str(tag)},${str(bimScope)},$,${pl},${shape},${str(tag)},.CURTAIN_PANEL.)`);
+    const panel = add(`IFCPLATE(${identity(`panel-${row}:${col}`)},$,${str(tag)},${str(bimScope)},$,${pl},${shape},${str(tag)},.CURTAIN_PANEL.)`);
     panels.push(panel);
     {
       const finish = add(`IFCPROPERTYSINGLEVALUE('Finish',$,IFCLABEL(${str(colour?.ral || p.finish || "По проекту")}),$)`);
       const swatch = add(`IFCPROPERTYSINGLEVALUE('PreviewColour',$,IFCLABEL(${str(colour?.hex || "Not assigned")}),$)`);
-      const colourSet = add(`IFCPROPERTYSET(${guid()},$,'SP_CassetteFinish',$,(${finish},${swatch}))`);
-      add(`IFCRELDEFINESBYPROPERTIES(${guid()},$,$,$,(${panel}),${colourSet})`);
+      const colourSet = add(`IFCPROPERTYSET(${identity()},$,'SP_CassetteFinish',$,(${finish},${swatch}))`);
+      add(`IFCRELDEFINESBYPROPERTIES(${identity()},$,$,$,(${panel}),${colourSet})`);
     }
     const area = add(`IFCQUANTITYAREA('FaceArea',${str("Площадь лицевой поверхности без швов")},$,${num(cassetteFaceWidth(p)*h/1e6)},$)`);
-    const quantities = add(`IFCELEMENTQUANTITY(${guid()},$,'SP_CassetteQuantities',$,$,(${area}))`);
-    add(`IFCRELDEFINESBYPROPERTIES(${guid()},$,$,$,(${panel}),${quantities})`);
+    const quantities = add(`IFCELEMENTQUANTITY(${identity()},$,'SP_CassetteQuantities',$,$,(${area}))`);
+    add(`IFCRELDEFINESBYPROPERTIES(${identity()},$,$,$,(${panel}),${quantities})`);
   }
-  add(`IFCRELCONTAINEDINSPATIALSTRUCTURE(${guid()},$,$,$,(${panels.join(",")}),${storey})`);
-  add(`IFCRELDEFINESBYTYPE(${guid()},$,$,$,(${panels.join(",")}),${type})`);
-  add(`IFCRELASSOCIATESMATERIAL(${guid()},$,$,$,(${panels.join(",")}),${material})`);
+  add(`IFCRELCONTAINEDINSPATIALSTRUCTURE(${identity()},$,$,$,(${panels.join(",")}),${storey})`);
+  add(`IFCRELDEFINESBYTYPE(${identity()},$,$,$,(${panels.join(",")}),${type})`);
+  add(`IFCRELASSOCIATESMATERIAL(${identity()},$,$,$,(${panels.join(",")}),${material})`);
   return `ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('Architectural coordination geometry'),'2;1');\nFILE_NAME('steelprodukt-cassettes.ifc','${new Date().toISOString()}',('Steel Produkt'),('Steel Produkt'),'Steel Produkt BIM 2.0','Steel Produkt','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n${lines.join("\n")}\nENDSEC;\nEND-ISO-10303-21;\n`;
 }
 export function createCassetteCsv(p: CassetteBimInput) {
   const errors = validateCassetteBim(p); if (errors.length) throw new Error(errors.join(" "));
   const safe = (s: string) => `"${(/^[\s]*[=+\-@]|^[\t\r\n]/.test(s) ? "'"+s : s).replaceAll('"','""')}"`;
-  const rows = [["Марка","Ширина, мм","Высота, мм","Глубина, мм","Толщина, мм","Покрытие","Количество","Площадь лица всего, м²","Статус","Исполнение","Второе крыло, мм"]];
+  const rows = [["Марка","Ширина, мм","Высота, мм","Глубина, мм","Толщина, мм","Покрытие","Количество","Площадь лица всего, м²","Статус","Исполнение","Второе крыло, мм","Идентификатор панели"]];
   for (let row=0; row<p.rows; row++) for (let col=0; col<p.columns; col++) {
     const tag = `${p.mark}-${String(row*p.columns+col+1).padStart(3,"0")}`;
-    rows.push([tag,String(p.widthMm),String(p.heightMm),String(p.depthMm),String(p.thicknessMm),p.panelColours?.[`${row}:${col}`]?.ral || p.finish || "По проекту","1",String(cassetteFaceWidth(p)*p.heightMm/1e6),bimScope,p.profile ? cassetteProfiles[p.profile].label : "Прямые борта",p.profile === "corner" ? String(p.returnWidthMm) : ""]);
+    rows.push([tag,String(p.widthMm),String(p.heightMm),String(p.depthMm),String(p.thicknessMm),p.panelColours?.[`${row}:${col}`]?.ral || p.finish || "По проекту","1",String(cassetteFaceWidth(p)*p.heightMm/1e6),bimScope,p.profile ? cassetteProfiles[p.profile].label : "Прямые борта",p.profile === "corner" ? String(p.returnWidthMm) : "",p.projectId ? `${p.projectId}/${row}:${col}` : ""]);
   }
   return "\uFEFF"+rows.map(row=>row.map(safe).join(";")).join("\r\n");
 }

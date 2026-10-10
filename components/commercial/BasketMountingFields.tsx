@@ -1,4 +1,6 @@
 "use client";
+import { BasketWallSection } from "./BasketWallSection";
+import { basketStructuralBases, basketFacadeFinishes, defaultBasketWallAssembly, type BasketWallAssembly } from "@/lib/quote/basket-wall-assembly";
 import type { BasketDesign } from "@/lib/quote/basket-design";
 import { basketMountingDimensions, setBasketRearGap, setBasketWallKind, type BasketWallKind } from "@/lib/quote/basket-mounting";
 import { BasketNumberInput } from "./BasketNumberInput";
@@ -10,15 +12,17 @@ export function BasketMountingResult({ design }: { design: BasketDesign }) {
   return <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" aria-label="Предварительная геометрия крепления">
     <h4 className="text-sm font-semibold text-slate-800">От несущей стены до задней стенки блока</h4>
     {m.wallToBlockRearMm !== null ? <>
-      <p className="mt-2 text-xl font-semibold text-slate-800" role="status">{m.facadeMm} + {m.rearMm} = {m.wallToBlockRearMm} мм</p>
-      <p className="mt-2 text-xs leading-5 text-slate-600">{m.wallKind === "wall" ? "Дополнительный вынос через фасад — 0 мм. Учтён только задний зазор блока." : "Глубина фасада + зазор от облицовки до блока. Глубина фасада влияет на вынос крепления, а не на размер корзины."}</p>
+      <p className="mt-2 text-xl font-semibold text-slate-800" role="status">{m.wallToBlockRearMm} мм</p>
+      <p className="mt-2 text-xs leading-5 text-slate-600">{m.wallKind === "wall" ? "Дополнительный вынос через фасад — 0 мм. Учтён только задний зазор блока." : "Расстояние учитывает фасад и зазор до блока. Фасад влияет на вынос крепления, а не на размер корзины."}</p>
     </> : <p className="mt-2 text-sm leading-6 text-slate-600" role="status">{m.wallKind === "unknown" ? "Выберите основание крепления. Если оно пока неизвестно, можно продолжить расчёт корзины." : m.facadeMm === null ? "Укажите глубину вентфасада — добавим её к заднему зазору блока." : "Укажите задний зазор блока — расстояние появится сразу."}</p>}
-    <p className="mt-3 text-xs leading-5 text-slate-600">Расчёт приблизительный. Это расстояние до блока, а не полная длина кронштейна. Для подбора кронштейнов дополнительно учитываются положение опор, масса блока и корзины, основание и нагрузки.</p>
+    <p className="mt-3 text-xs leading-5 text-slate-600">Предварительное расстояние до блока. Длина и несущая способность кронштейнов требуют подбора.</p>
   </section>;
 }
 
 export function BasketMountingFields({ design, onChange }: { design: BasketDesign; onChange: (value: BasketDesign) => void }) {
   const m = basketMountingDimensions(design);
+  const assembly = design.wallAssembly ?? defaultBasketWallAssembly();
+  const setAssembly = (patch: Partial<BasketWallAssembly>) => onChange({...design, wallAssembly: {...assembly, ...patch}});
   const options: { value: BasketWallKind; title: string; caption: string }[] = [
     { value: "wall", title: "К несущей стене", caption: "Без выноса через утепление и облицовку" },
     { value: "ventilated", title: "Через вентфасад", caption: "К несущей стене за утеплением и облицовкой" },
@@ -46,8 +50,23 @@ export function BasketMountingFields({ design, onChange }: { design: BasketDesig
       <BasketNumberInput className={control} value={m.rearMm} emptyValue={null} min={0} max={10000} placeholder="Задний зазор блока" onValue={rear => onChange(setBasketRearGap(design, rear))}/>
       <span className="mt-2 block text-xs font-normal leading-5 text-slate-600">Тот же задний зазор, что на шаге «Размеры». Он учитывается один раз; изменение обновит оба шага.</span>
     </label>
-    <BasketRearGapHint onApply={rear => onChange(setBasketRearGap(design, rear))}/>
-    <BasketMountingResult design={design}/>
+    <BasketWallSection design={design}/>
+    <details className="mt-4 rounded-lg border border-slate-200 p-3">
+      <summary className="text-sm font-semibold text-slate-800">Уточнить состав стены и утепление</summary>
+      <label className="mt-3 block text-sm font-medium text-slate-700">Несущая основа
+        <select aria-label="Несущая основа" className={control} value={assembly.structuralBase} onChange={e => setAssembly({structuralBase:e.target.value as BasketWallAssembly["structuralBase"]})}>{Object.entries(basketStructuralBases).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+      </label>
+      <label className="mt-3 block text-sm font-medium text-slate-700">Наружная отделка
+        <select aria-label="Наружная отделка" className={control} value={assembly.finish} onChange={e => setAssembly({finish:e.target.value as BasketWallAssembly["finish"]})}>{Object.entries(basketFacadeFinishes).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+      </label>
+      <label className="mt-3 block text-sm font-medium text-slate-700">Утепление
+        <select aria-label="Утепление" className={control} value={assembly.insulation} onChange={e => setAssembly({insulation:e.target.value as BasketWallAssembly["insulation"], ...(e.target.value === "no" ? {insulationThicknessMm:null} : {})})}><option value="unknown">Пока неизвестно</option><option value="yes">Есть утеплитель</option><option value="no">Без утепления</option></select>
+      </label>
+      {assembly.insulation === "yes" && <label className="mt-3 block text-sm font-medium text-slate-700">Толщина утеплителя, мм<BasketNumberInput className={control} value={assembly.insulationThicknessMm} emptyValue={null} min={0} max={2000} placeholder="По проекту фасада" onValue={insulationThicknessMm => setAssembly({insulationThicknessMm})}/></label>}
+      <p className="mt-3 text-xs leading-5 text-slate-600">Утеплитель — часть общего слоя от стены до облицовки. Эти сведения не определяют анкеры или несущую способность.</p>
+      <BasketRearGapHint onApply={rear => onChange(setBasketRearGap(design, rear))}/>
+    </details>
+    <details className="mt-3 text-sm"><summary>Расстояние от стены до блока</summary><BasketMountingResult design={design}/></details>
     <p className="mt-4 text-xs leading-5 text-slate-600">Корзина крепится только к кронштейнам наружного блока. Её задние отгибы не крепятся к стене. Тип, толщину металла и анкеры кронштейнов уточняем по конструкции и нагрузкам.</p>
   </div>;
 }

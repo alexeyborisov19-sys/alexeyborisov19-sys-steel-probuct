@@ -1,9 +1,13 @@
+import { basketAppearancePatterns } from "../../data/basket-appearance-patterns";
+import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
+import { basketAcDimensionDisclaimer } from "./basket-ac-reference";
 import {
   validBasketDesign,
   basketDesignSummary,
   type BasketDesign,
 } from "./basket-design";
 import { calculatedBasketSize } from "./basket-fit";
+import { validBasketReview, basketReviewSummary, type BasketCustomerReview } from "./basket-review";
 export const basketScreens = {
   "wide-slots": "10 длинных прорезей",
   round: "Круглая перфорация",
@@ -30,6 +34,7 @@ export const basketSizeExamples = [
   { width: 1300, height: 1050, depth: 650 },
 ] as const;
 export type BasketBrief = {
+  positionId?: string;
   width: number;
   height: number;
   depth: number;
@@ -37,17 +42,20 @@ export type BasketBrief = {
   ral: string;
   screen: string;
   design?: BasketDesign;
+  review?: BasketCustomerReview;
 };
 export function validBasketBrief(input: BasketBrief) {
   const size = input.design?.sizing === "block" ? calculatedBasketSize(input.design.fit) : null;
   return (
+    (input.positionId === undefined || typeof input.positionId === "string" && /^[a-zA-Z0-9_-]{1,128}$/.test(input.positionId)) &&
     (input.design?.sizing !== "block" || !!size && input.width === size.width && input.height === size.height && input.depth === size.depth) &&
     [input.width, input.height, input.depth, input.quantity].every(
       (n) => Number.isSafeInteger(n) && n > 0 && n <= 10000,
     ) &&
     basketColors.some((c) => c.ral === input.ral) &&
     Object.hasOwn(basketScreens, input.screen) &&
-    (input.design === undefined || validBasketDesign(input.design))
+    (input.design === undefined || validBasketDesign(input.design)) &&
+    (input.review === undefined || validBasketReview(input.review))
   );
 }
 export function basketBriefHref(input: BasketBrief) {
@@ -90,14 +98,22 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
   if (!validBasketBrief({ ...input, design })) return null;
   return [
     "Прошу рассчитать корзины для кондиционеров.",
+    PRODUCT_CALCULATION_NOTICE + ".",
     "Все расчёты приблизительные. Окончательные размеры, крепление и стоимость согласуются перед изготовлением.",
     `${design?.sizing === "block" ? "Расчётный внутренний габарит по блоку и зазорам" : "Предварительный наружный габарит"} (Ш × В × Г): ${input.width} × ${input.height} × ${input.depth} мм.`,
     ...(design?.sizing === "block" ? ["Наружные размеры с учётом панелей и отгибов уточняются по рабочему чертежу. Цена предварительная."] : []),
     `Количество: ${input.quantity} шт.`,
-    `Экран: ${basketScreens[(design?.front.pattern ?? input.screen) as keyof typeof basketScreens]}.`,
+    `Экран: ${design?.appearance ? basketAppearancePatterns[design.appearance].title : basketScreens[(design?.front.pattern ?? input.screen) as keyof typeof basketScreens]}.`,
     `Цвет: RAL ${input.ral}.`,
-    ...(design ? [basketDesignSummary(design)] : []),
+    ...(design ? [basketDesignSummary(design)] : [basketAcDimensionDisclaimer + "."]),
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",
     "Модель наружного блока / основание / город объекта: уточню.",
   ].join("\n");
+}
+
+/** Complete local handoff. New free-text customer notes never enter a contact URL. */
+export function basketBriefText(input: BasketBrief): string {
+  const url = new URL(basketBriefHref(input), "https://www.steelprodukt.ru");
+  const brief = basketBriefSummary(url.searchParams)!;
+  return input.review ? `${brief}\n\n${basketReviewSummary(input.review)}` : brief;
 }

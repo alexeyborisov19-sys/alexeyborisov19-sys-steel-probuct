@@ -15,13 +15,15 @@ type ProductCollectionPageProps = {
   intro: string;
   slugs: string[];
   faq?: FaqItem[];
+  toolLink?: { href: string; label: string };
 };
 
-export function ProductCollectionPage({ path, eyebrow, title, description, heading, intro, slugs, faq }: ProductCollectionPageProps) {
+export function ProductCollectionPage({ path, eyebrow, title, description, heading, intro, slugs, faq, toolLink }: ProductCollectionPageProps) {
   return <>{path && faq ? <JsonLd data={faqSchema(faq)} /> : null}<PageLayout path={path} eyebrow={eyebrow} title={title} description={description} image="/images/web/hero-main.webp" imageAlt="Иллюстративный визуал: фасад промышленного здания из тёмных металлокассет с перфорированным экраном">
     <section className="bg-[#0c1013] py-14 sm:py-20">
       <div className="container">
         <div className="max-w-3xl border-l-2 border-steel-orange pl-5"><p className="text-lg font-semibold leading-relaxed">{intro}</p></div>
+        {toolLink ? <Link href={toolLink.href} className="mt-6 inline-block rounded-lg border border-white/30 px-5 py-3 text-sm font-semibold text-white underline underline-offset-4">{toolLink.label}</Link> : null}
         <div className="mt-14 flex flex-col justify-between gap-5 border-b border-white/12 pb-5 sm:flex-row sm:items-end"><div><p className="eyebrow">Выберите исполнение</p><h2 className="mt-3 text-2xl font-semibold uppercase sm:text-3xl">{heading}</h2></div><Link href="/contacts#contact-form" className="text-xs font-bold uppercase text-steel-orange">Отправить проект на расчёт&nbsp; →</Link></div>
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{slugs.map((slug) => <ProductCard key={slug} product={productBySlug[slug]} />)}</div>
       </div>
