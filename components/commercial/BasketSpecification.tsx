@@ -1,4 +1,6 @@
 "use client";
+import { BasketOrderSummary } from "./BasketOrderSummary";
+import { basketAppearancePatterns } from "@/data/basket-appearance-patterns";
 import { basketAcDimensionDisclaimer } from "@/lib/quote/basket-ac-reference";
 import { useRef, useState } from "react";
 import { type BasketBrief, basketBriefText, basketScreens } from "@/lib/quote/basket-brief";
@@ -64,14 +66,14 @@ export function BasketSpecification({ items, onChange, onEdit, editing = null }:
           const checks = basketReview(item);
           const issues = checks.filter(check => check.state === "missing" || check.state === "conflict").length;
           const conflicts = checks.some(check => check.state === "conflict");
-          return <li key={index} className={editing === index ? styles.specEditing : ""}>
+          return <li key={item.positionId??index} className={editing === index ? styles.specEditing : ""}>
             <label className={styles.specCheck}><input type="checkbox" aria-label={`Выбрать позицию ${index + 1}`} checked={selected.has(item)} onChange={event => setSelected(previous => { const next = new Set(previous); if (event.target.checked) next.add(item); else next.delete(item); return next; })} /><span>{String(index + 1).padStart(2, "0")}</span></label>
             <div className={styles.specBody}>
               <div className={styles.specRowTitle}><h4>{item.review?.mark || `Корзина ${index + 1}`}</h4><span>{item.quantity} шт.</span></div>
               <p className={styles.specSize}>{item.width} × {item.height} × {item.depth} мм <span>{item.design?.sizing === "block" ? "внутренний расчётный" : "наружный"}</span></p>
               <p>{item.review?.equipment || "Модель наружного блока не указана"}</p>
               {(item.design?.acReference || item.design?.capacityClass) && <p className={styles.referenceWarning}>{basketAcDimensionDisclaimer}.</p>}
-              <div className={styles.specTags}><span>RAL {item.ral}</span><span>Передняя: {basketScreens[(item.design?.front.pattern ?? item.screen) as keyof typeof basketScreens]}</span><span>Боковые: {basketScreens[(item.design?.side.pattern ?? item.screen) as keyof typeof basketScreens]}</span></div>
+              <div className={styles.specTags}><span>RAL {item.ral}</span><span>Передняя: {item.design?.appearance?basketAppearancePatterns[item.design.appearance].title:basketScreens[(item.design?.front.pattern ?? item.screen) as keyof typeof basketScreens]}</span><span>Боковые: {item.design?.appearance?"По эскизу":basketScreens[(item.design?.side.pattern ?? item.screen) as keyof typeof basketScreens]}</span></div>
               <p className={styles.specReviewStatus} data-conflict={conflicts || undefined}>{conflicts ? "Есть несоответствие" : issues ? `Нужно уточнить: ${issues}` : "Входные данные указаны"} · Проверка инженером обязательна</p>
               <div className={styles.specItemActions}>
                 <button type="button" onClick={() => onEdit(item, index)} aria-label={`Изменить позицию ${index + 1}`}>{editing === index ? "Редактируется ↑" : "Изменить ↑"}</button>
@@ -82,6 +84,7 @@ export function BasketSpecification({ items, onChange, onEdit, editing = null }:
           </li>;
         })}
       </ol>
+      <BasketOrderSummary items={items}/>
       <p className={styles.help}>Состав: передняя и две боковые панели без верхней крышки. Крепёж, новые несущие кронштейны, анкеры и доставка согласуются отдельно. Цены отдельных позиций не суммируются без проверки комплектации.</p>
     </> : <div className={styles.specEmpty}><strong>Первая позиция пока не добавлена</strong><p>Соберите корзину и на шаге «Результат» нажмите «Добавить в спецификацию». Здесь появятся её марка, размеры, количество и вопросы для проверки.</p></div>}
   </section>;

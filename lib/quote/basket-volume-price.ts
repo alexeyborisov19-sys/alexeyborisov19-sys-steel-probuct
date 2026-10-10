@@ -98,6 +98,8 @@ function variablePanelCost(size: Pick<BasketEstimateInput, "width" | "height" | 
  */
 export function basketConfiguredPrice(input: BasketEstimateInput, rates?: BasketEstimateRates): BasketConfiguredPrice | null {
   if (!validBasketEstimateInput(input)) return null;
+  // New original concepts are not the approved ten-slot production reference.
+  if (input.design.appearance) return null;
   if (input.design.sizing === "block") {
     const envelope = calculatedBasketSize(input.design.fit);
     if (!envelope || envelope.width !== input.width || envelope.height !== input.height || envelope.depth !== input.depth) return null;

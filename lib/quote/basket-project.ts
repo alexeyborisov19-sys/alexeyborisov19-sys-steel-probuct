@@ -23,6 +23,7 @@ function clean(items: unknown): BasketBrief[] {
     const design = v.design
       ? {
           version: 1 as const,
+          ...(v.design.appearance ? {appearance:v.design.appearance} : {}),
           ...(v.design.wallAssembly ? { wallAssembly: cleanBasketWallAssembly(v.design.wallAssembly) } : {}),
           ...(v.design.acReference ? { acReference: basketAcReference(v.design.acReference.code) } : {}),
           ...(v.design.sizing ? { sizing: v.design.sizing } : {}),
@@ -64,6 +65,7 @@ function clean(items: unknown): BasketBrief[] {
         }
       : undefined;
     return {
+      ...(v.positionId ? {positionId:v.positionId} : {}),
       width,
       height,
       depth,

@@ -1,3 +1,4 @@
+import { basketAppearancePatterns } from "../../data/basket-appearance-patterns";
 import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 import { basketAcDimensionDisclaimer } from "./basket-ac-reference";
 import {
@@ -33,6 +34,7 @@ export const basketSizeExamples = [
   { width: 1300, height: 1050, depth: 650 },
 ] as const;
 export type BasketBrief = {
+  positionId?: string;
   width: number;
   height: number;
   depth: number;
@@ -45,6 +47,7 @@ export type BasketBrief = {
 export function validBasketBrief(input: BasketBrief) {
   const size = input.design?.sizing === "block" ? calculatedBasketSize(input.design.fit) : null;
   return (
+    (input.positionId === undefined || typeof input.positionId === "string" && /^[a-zA-Z0-9_-]{1,128}$/.test(input.positionId)) &&
     (input.design?.sizing !== "block" || !!size && input.width === size.width && input.height === size.height && input.depth === size.depth) &&
     [input.width, input.height, input.depth, input.quantity].every(
       (n) => Number.isSafeInteger(n) && n > 0 && n <= 10000,
@@ -100,7 +103,7 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
     `${design?.sizing === "block" ? "Расчётный внутренний габарит по блоку и зазорам" : "Предварительный наружный габарит"} (Ш × В × Г): ${input.width} × ${input.height} × ${input.depth} мм.`,
     ...(design?.sizing === "block" ? ["Наружные размеры с учётом панелей и отгибов уточняются по рабочему чертежу. Цена предварительная."] : []),
     `Количество: ${input.quantity} шт.`,
-    `Экран: ${basketScreens[(design?.front.pattern ?? input.screen) as keyof typeof basketScreens]}.`,
+    `Экран: ${design?.appearance ? basketAppearancePatterns[design.appearance].title : basketScreens[(design?.front.pattern ?? input.screen) as keyof typeof basketScreens]}.`,
     `Цвет: RAL ${input.ral}.`,
     ...(design ? [basketDesignSummary(design)] : [basketAcDimensionDisclaimer + "."]),
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",

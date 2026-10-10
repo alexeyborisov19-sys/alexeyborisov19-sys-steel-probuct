@@ -36,6 +36,19 @@ async function check(page,name,width,errors) {
   results.push({name,width,overflow,errors:[...errors],violations:a11y.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))});
   assert.equal(overflow,false,`${name}: page overflow`);assert.deepEqual(errors,[],`${name}: runtime errors`);assert.deepEqual(a11y.violations,[],`${name}: accessibility`);
 }
+async function installSafetyRoutes(context) {
+  await context.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.protocol==='data:'||url.protocol==='blob:') return route.continue();
+    if(url.origin!==origin) return route.abort();
+    // Local CAD preview is read-only geometry analysis. Every other write, including lead/analytics endpoints, is intercepted.
+    if(!['GET','HEAD'].includes(request.method()) && !['/api/online-order/cad/analyze','/api/basket-order-quote'].includes(url.pathname)) {
+      if(url.pathname==='/api/calc-metallokassety') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({netAreaM2:100,quantity:149,defaultRateRubM2:1764,approximateRateRubM2:1764,approximateTotalRub:176400})});
+      return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false,code:'CALCULATION_UNAVAILABLE',message:'Local audit intercept'})});
+    }
+    return route.continue();
+  });
+}
 const cad=Buffer.from('0\nSECTION\n2\nHEADER\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n0\nLWPOLYLINE\n90\n4\n70\n1\n10\n0\n20\n0\n10\n400\n20\n0\n10\n400\n20\n350\n10\n0\n20\n350\n0\nENDSEC\n0\nEOF\n');
 const config={materialId:'zinc',thicknessMm:1,quantity:25,operations:['laser-cutting','bending'],operationInputs:{bendCount:2}};
 const cadProject={format:'steel-product-cad-project',schemaVersion:1,title:'QA local project',revision:5,savedAt:'2026-10-09T00:00:00.000Z',activePosition:0,positions:[
@@ -46,17 +59,7 @@ try {
  for(const width of [390,1440]) {
   const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'});
   const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-  await context.route('**/*',async route=>{
-    const request=route.request(),url=new URL(request.url());
-    if(url.protocol==='data:'||url.protocol==='blob:') return route.continue();
-    if(url.origin!==origin) return route.abort();
-    // Local CAD preview is read-only geometry analysis. Every other write, including lead/analytics endpoints, is intercepted.
-    if(!['GET','HEAD'].includes(request.method()) && url.pathname!=='/api/online-order/cad/analyze') {
-      if(url.pathname==='/api/calc-metallokassety') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({netAreaM2:100,quantity:149,defaultRateRubM2:1764,approximateRateRubM2:1764,approximateTotalRub:176400})});
-      return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false,code:'CALCULATION_UNAVAILABLE',message:'Local audit intercept'})});
-    }
-    return route.continue();
-  });
+  await installSafetyRoutes(context);
   await open(page,'/calculator-metallokassety');
   const editor=page.getByTestId('cassette-project-editor');
   if(width===390) {
@@ -147,6 +150,27 @@ try {
   await basket.getByRole('button',{name:'Добавить в спецификацию',exact:true}).click();
   const known=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить все · JSON',exact:true})));
   assert.deepEqual([known.items[0].width,known.items[0].height,known.items[0].depth,known.items[0].quantity],[1110,710,610,4]);
+  const interactive=basket.locator('[data-basket-interactive-view]');
+  await expect(interactive.locator('canvas')).toHaveAttribute('data-basket-depth-renderer','ready');
+  await expect(basket.getByRole('region',{name:'Итог всего заказа'})).toContainText('4 корзин');
+  for(const title of ['Круг','Ровные прорези','Сдвиг']) {
+    await basket.getByRole('button',{name:title,exact:true}).click();
+    await expect(interactive.locator('canvas')).toHaveAttribute('data-basket-depth-renderer','ready');
+    await interactive.screenshot({path:`${output}/basket-interactive-${width}-${title==='Круг'?'circle':title==='Сдвиг'?'shift':'regular'}.png`});
+  }
+  await basket.locator('summary').filter({hasText:/^Все варианты/}).click();
+  for(const [title,key] of [['Ритм','rhythm'],['Наклон','tilt'],['Квадрат','square'],['Жалюзи','louvers']]){
+    await basket.getByRole('button',{name:title,exact:true}).click();
+    await interactive.screenshot({path:`${output}/basket-interactive-${width}-${key}.png`});
+  }
+  const before=await interactive.locator('canvas').getAttribute('data-camera');
+  await interactive.getByRole('button',{name:'Повернуть вправо',exact:true}).click();
+  await expect.poll(()=>interactive.locator('canvas').getAttribute('data-camera')).not.toBe(before);
+  await interactive.getByRole('group',{name:'Вращение модели',exact:true}).focus();
+  await page.keyboard.press('ArrowLeft');await page.keyboard.press('Home');
+  await basket.getByRole('button',{name:'Ровные прорези',exact:true}).click();
+  await basket.locator('summary').filter({hasText:/^Все варианты/}).click();
+  await check(page,'baskets-interactive',width,errors);
   await check(page,'baskets-known',width,errors);
   await expect(basket.getByTestId('basket-drawing-view')).toHaveCount(0);
   await basket.getByText('Конструкция по чертежу',{exact:true}).click();
@@ -209,6 +233,25 @@ try {
   await expect(clearance).toContainText('Задний 30');await expect(clearance).toContainText('Передний 200');
   await clearance.screenshot({path:`${output}/baskets-${width}-diagram.png`});
   await check(page,'baskets',width,errors);
+  const wholeOrder=basket.getByRole('region',{name:'Итог всего заказа'});
+  await expect(wholeOrder).toContainText('6 корзин');
+  const mixed=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить все · JSON',exact:true})));
+  assert.equal(new Set(mixed.items.map(item=>item.positionId)).size,2,'Copied basket rows retain distinct stable identities');
+  await basket.getByRole('button',{name:'Изменить позицию 1',exact:true}).click();
+  await basket.getByLabel('Количество, шт.',{exact:true}).fill('7');
+  await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Результат/}).click();
+  await basket.getByRole('button',{name:'Сохранить позицию 1',exact:true}).click();
+  await expect(wholeOrder).toContainText('10 корзин');
+  await basket.getByRole('button',{name:'Изменить позицию 1',exact:true}).click();
+  await basket.getByLabel('Количество, шт.',{exact:true}).fill('2');
+  await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Результат/}).click();
+  await basket.getByRole('button',{name:'Сохранить позицию 1',exact:true}).click();
+  await expect(wholeOrder).toContainText('5 корзин');
+  await basket.getByRole('button',{name:'Удалить позицию 2',exact:true}).click();
+  await expect(wholeOrder).toContainText('2 корзин');
+  const changedOrder=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить все · JSON',exact:true})));
+  assert.equal(changedOrder.items[0].positionId,mixed.items[0].positionId,'Editing quantity preserves identity');
+
 
   await open(page,'/products/dobornye-elementy/bim');
   const trim=page.getByTestId('trim-bim-workspace');
@@ -280,5 +323,23 @@ try {
   await check(page,'cad',width,errors);
   await context.close();
  }
+ const videoContext=await browser.newContext({viewport:{width:1280,height:850},recordVideo:{dir:`${output}/video`,size:{width:1280,height:850}},serviceWorkers:'block'});
+ await installSafetyRoutes(videoContext);
+ const videoPage=await videoContext.newPage();
+ await open(videoPage,'/products/korziny-dlya-konditsionerov#selection');
+ const videoBasket=videoPage.locator('[data-basket-configurator]');
+ await videoBasket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
+ const videoModel=videoBasket.locator('[data-basket-interactive-view]');
+ await expect(videoModel.locator('canvas')).toHaveAttribute('data-basket-depth-renderer','ready');
+ await videoModel.scrollIntoViewIfNeeded();
+ for(const pattern of ['Круг','Ровные прорези','Сдвиг']){
+  await videoBasket.getByRole('button',{name:pattern,exact:true}).click();
+  await videoModel.getByRole('button',{name:'Повернуть вправо',exact:true}).click();
+  await videoPage.waitForTimeout(650);
+ }
+ await videoModel.getByRole('button',{name:'Спереди',exact:true}).click();await videoPage.waitForTimeout(400);
+ await videoModel.getByRole('button',{name:'3/4',exact:true}).click();await videoPage.waitForTimeout(400);
+ await videoPage.screenshot({path:`${output}/basket-interactive-desktop-final.png`});
+ await videoContext.close();
 } finally {await writeFile(`${output}/results.json`,JSON.stringify(results,null,2));await browser.close();}
-console.log(`Passed ${results.length} responsive project flows. Price and lead requests were intercepted.`);
+console.log(`Passed ${results.length} responsive project flows. Lead/analytics writes were intercepted; only local read-only geometry and basket-source readiness were allowed.`);

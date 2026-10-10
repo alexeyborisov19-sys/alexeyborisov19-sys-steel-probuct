@@ -1,4 +1,5 @@
 "use client";
+import { basketAppearancePatterns } from "@/data/basket-appearance-patterns";
 import { basketAcDimensionDisclaimer } from "@/lib/quote/basket-ac-reference";
 import { BasketVolumePrice } from "./BasketVolumePrice";
 import { BasketNumberInput } from "./BasketNumberInput";
@@ -83,7 +84,7 @@ export function BasketDesignFields({
   }
   function panel(key: "front" | "side", title: string) {
     const p = design[key];
-    const set = (patch: Partial<PanelPattern>) => onChange({ ...design, [key]: { ...p, ...patch } });
+    const set = (patch: Partial<PanelPattern>) => onChange({ ...design, appearance:undefined, [key]: { ...p, ...patch } });
     return (
       <fieldset className="mt-7 min-w-0">
         <legend className="font-semibold text-slate-800">{title}</legend>
@@ -166,15 +167,18 @@ export function BasketDesignFields({
   if (step === 2) return (
     <div className="text-slate-800">
       <h3 className="text-xl font-semibold">Исполнение панелей</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">Выберите рисунок отдельно для передней и боковых панелей. Его параметры можно уточнить ниже.</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{design.appearance ? `Выбран рисунок «${basketAppearancePatterns[design.appearance].title}». Другие варианты — рядом с объёмной моделью.` : 'Индивидуальные параметры панелей из вашего проекта.'}</p>
+      <details className="mt-3 rounded-xl border border-slate-200 p-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Индивидуальные параметры панелей</summary>
+      <p className="mt-2 text-xs text-slate-600">Изменение этих параметров переключит проект с готового эскиза на индивидуальный рисунок.</p>
       {panel("front", "Передняя панель")}
       <details className="mt-5 rounded-xl border border-slate-200 p-4">
         <summary className="text-sm font-semibold">Боковые панели · {panelPatterns[design.side.pattern]}</summary>
         {panel("side", "Две боковые панели")}
       </details>
-      <button type="button" className="mt-4 min-h-11 text-sm font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950" onClick={() => onChange({ ...design, side: { ...design.front } })}>
+      <button type="button" className="mt-4 min-h-11 text-sm font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950" onClick={() => onChange({ ...design, appearance:undefined, side: { ...design.front } })}>
         Применить передний рисунок к боковым
       </button>
+      </details>
       <p className="mt-3 text-xs leading-5 text-slate-600">Образцы показывают характер рисунка. Начальные параметры — ориентир; вентиляцию и конструкцию проверяем по выбранному кондиционеру.</p>
     </div>
   );
@@ -182,7 +186,7 @@ export function BasketDesignFields({
   const valid = validBasketDesign(design) && [width, height, depth, quantity].every((n) => Number.isFinite(n) && n >= 1 && n <= 10000);
   const front = valid ? panelCutting(width, height, design.front) : null;
   const side = valid ? panelCutting(depth, height, design.side) : null;
-  const emptyPattern = front && side && (((design.front.pattern === "round" || design.front.pattern === "slots") && front.holes === 0) || ((design.side.pattern === "round" || design.side.pattern === "slots") && side.holes === 0));
+  const emptyPattern = !design.appearance && front && side && (((design.front.pattern === "round" || design.front.pattern === "slots") && front.holes === 0) || ((design.side.pattern === "round" || design.side.pattern === "slots") && side.holes === 0));
   return (
     <div className="text-slate-800">
       <h3 className="text-xl font-semibold">Ваша корзина</h3>
@@ -190,8 +194,8 @@ export function BasketDesignFields({
       {(design.capacityClass || design.acReference) && <p className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm leading-6 text-orange-900">{basketAcDimensionDisclaimer}.</p>}
       <p className="mt-3 text-sm text-slate-600">Передняя и две боковые панели. Без верхней крышки. Корзина закрепляется на кронштейнах наружного блока; задние отгибы не крепятся к стене.</p>
       <dl className="mt-5 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white px-4 text-sm">
-        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Передняя панель</dt><dd className="font-medium">{panelPatterns[design.front.pattern]}</dd></div>
-        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Боковые панели</dt><dd className="font-medium">{panelPatterns[design.side.pattern]}</dd></div>
+        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Передняя панель</dt><dd className="font-medium">{design.appearance?basketAppearancePatterns[design.appearance].title:panelPatterns[design.front.pattern]}</dd></div>
+        <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Боковые панели</dt><dd className="font-medium">{design.appearance?"По выбранному эскизу":panelPatterns[design.side.pattern]}</dd></div>
         <div className="flex flex-wrap justify-between gap-2 py-3"><dt className="text-slate-600">Крепление</dt><dd className="font-medium">{design.mount === "existing" ? "На кронштейнах блока" : design.mount === "bearing" ? "Нужны несущие кронштейны" : "Уточнить с инженером"}</dd></div>
       </dl>
       {!valid && <p className="mt-4 rounded-xl bg-orange-50 p-4 text-sm text-orange-900" role="status">Проверьте размеры и рисунок: шаг должен быть больше отверстия.</p>}

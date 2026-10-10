@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { PRODUCT_CALCULATION_NOTICE } from "@/lib/product-calculation-notice";
+import { normalizeBasketPositionIds } from "@/lib/quote/basket-position-identity";
 import { BasketAppearance } from "./BasketAppearance";
 import { applyBasketAcReference, basketAcDimensionDisclaimer } from "@/lib/quote/basket-ac-reference";
 import { BasketAcReference } from "./BasketAcReference";
@@ -29,7 +30,7 @@ export function BasketConfigurator() {
   const [editing, setEditing] = useState<number | null>(null);
   const [saved, setSaved] = useState("");
   const [step, setStep] = useState(0);
-  const [design, setDesign] = useState<BasketDesign>(() => { const d = defaultBasketDesign(); return {...d, sizing:"block" as const, front:{...d.front,pattern:"wide-slots" as const}, side:{...d.side,pattern:"wide-slots" as const}}; });
+  const [design, setDesign] = useState<BasketDesign>(() => { const d = defaultBasketDesign(); return {...d, appearance:"regular" as const, sizing:"block" as const, front:{...d.front,pattern:"wide-slots" as const}, side:{...d.side,pattern:"wide-slots" as const}}; });
   const [dimensions, setDimensions] = useState({ width: "900", height: "600", depth: "550", quantity: "1" });
   const [review, setReview] = useState<BasketCustomerReview>(defaultBasketReview);
   const [ral, setRal] = useState("7024");
@@ -61,8 +62,8 @@ export function BasketConfigurator() {
   }
   function savePosition() {
     const value=structuredClone(input);
-    if(editing===null){setItems([...items,value]);setSaved("Позиция добавлена в спецификацию.");}
-    else{setItems(items.map((x,i)=>i===editing?value:x));setEditing(null);setSaved("Изменения позиции сохранены.");}
+    if(editing===null){setItems(normalizeBasketPositionIds([...items,value]));setSaved("Позиция добавлена в спецификацию.");}
+    else{setItems(normalizeBasketPositionIds(items.map((x,i)=>i===editing?{...value,positionId:x.positionId}:x)));setEditing(null);setSaved("Изменения позиции сохранены.");}
   }
   function download(preliminary = false) {
     const content = preliminary ? `ПРЕДВАРИТЕЛЬНОЕ ЗАДАНИЕ ДЛЯ ПОДБОРА КОРЗИНЫ\n${PRODUCT_CALCULATION_NOTICE}.\nРазмер корзины не определён: зазоры не подтверждены.\nКоличество: ${Number.isFinite(input.quantity) && input.quantity > 0 ? input.quantity : "нужно уточнить"}. Цвет: RAL ${ral}.\n${basketDesignSummary(design)}\n${basketReviewSummary(review)}` : summary;
@@ -168,11 +169,11 @@ export function BasketConfigurator() {
         <aside className={styles.preview} aria-label="Визуализация корзины">
           <div className={styles.previewInner}>
 
-            <BasketAppearance width={input.width} height={input.height} depth={input.depth} color={color.hex} ral={ral} design={design} review={review} />
+            <BasketAppearance width={input.width} height={input.height} depth={input.depth} color={color.hex} ral={ral} design={design} review={review} onDesignChange={setDesign} />
           </div>
         </aside>
       </div>
-      <BasketSpecification items={items} editing={editing} onChange={(next)=>{setItems(next);setEditing(null);setSaved("");}} onEdit={(v,i)=>{
+      <BasketSpecification items={items} editing={editing} onChange={(next)=>{setItems(normalizeBasketPositionIds(next));setEditing(null);setSaved("");}} onEdit={(v,i)=>{
         const fallback=defaultBasketDesign();
         const pattern=v.screen as BasketDesign["front"]["pattern"];
         const restored=v.design?structuredClone(v.design):{...fallback,front:{...fallback.front,pattern},side:{...fallback.side,pattern}};
