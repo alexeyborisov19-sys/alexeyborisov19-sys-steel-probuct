@@ -164,16 +164,41 @@ bash "$APP_PATH/deploy/prepare-storage.sh" "$APP_USER"
 
 # The scheduled off-server job invokes this stable system path. Keep the
 # installed executable in sync with the deployed, reviewed repository version.
-test -f "$APP_PATH/deploy/backup-personal-data.sh" || {
-  echo "Personal-data backup script is missing from the release."
+for backup_tool in backup-personal-data.sh pd-backup-files.py backup-personal-data-offsite.sh verify-offsite-recovery.py; do
+  [[ -f "$APP_PATH/deploy/$backup_tool" && ! -L "$APP_PATH/deploy/$backup_tool" ]] || {
+    echo "Personal-data backup tooling is missing or unsafe in the release."
+    exit 1
+  }
+done
+
+# The guarded repair has already installed this exact reviewed offsite script.
+# Fail closed on missing, old or unknown state instead of overwriting it during
+# deployment. A separate guarded repair must resolve any mismatch first.
+OFFSITE_SOURCE="$APP_PATH/deploy/backup-personal-data-offsite.sh"
+OFFSITE_INSTALLED=/usr/local/sbin/steelprodukt-pd-offsite-backup
+OFFSITE_SHA256=c2896205ec2b877096b5b443a796593067ea3a9b9cdaf9a7b7d1a711ccbf48cf
+[[ -f "$OFFSITE_INSTALLED" && ! -L "$OFFSITE_INSTALLED" ]] || {
+  echo "Reviewed offsite backup executable is missing or unsafe."
   exit 1
 }
+offsite_source_digest="$(sha256sum -- "$OFFSITE_SOURCE")"
+offsite_installed_digest="$(sha256sum -- "$OFFSITE_INSTALLED")"
+if [[ "${offsite_source_digest%% *}" != "$OFFSITE_SHA256" ||
+      "${offsite_installed_digest%% *}" != "$OFFSITE_SHA256" ]] ||
+   ! cmp -s -- "$OFFSITE_SOURCE" "$OFFSITE_INSTALLED"; then
+  echo "Offsite backup executable needs guarded repair before release."
+  exit 1
+fi
+
 install -m 0750 -o root -g root \
   "$APP_PATH/deploy/backup-personal-data.sh" \
   /usr/local/sbin/steelprodukt-pd-backup
 install -m 0750 -o root -g root \
   "$APP_PATH/deploy/pd-backup-files.py" \
   /usr/local/sbin/steelprodukt-pd-backup-files
+install -m 0750 -o root -g root \
+  "$APP_PATH/deploy/verify-offsite-recovery.py" \
+  /usr/local/sbin/steelprodukt-verify-offsite-recovery
 
 migrate_existing_records() {
   local source="$1"

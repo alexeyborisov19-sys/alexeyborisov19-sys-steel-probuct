@@ -219,7 +219,13 @@ function consentAuditInitDocument(documentOrigin: string, { child = false, stora
   const values = new Map<string, string>();
   const session = new Map<string, string>();
   let storageReads = 0;
-  const window: Record<string, unknown> = { location: { origin: documentOrigin }, addEventListener() {} };
+  const window: EventTarget & {
+    location: { origin: string };
+    top?: unknown;
+    __auditDocument?: string;
+    __consentAuditPhase?: string;
+    __consentSettingsReady?: boolean;
+  } = Object.assign(new EventTarget(), { location: { origin: documentOrigin } });
   window.top = child ? {} : window;
   const sandbox = {
     window, document: { addEventListener() {} }, storageDenied,
@@ -271,4 +277,98 @@ test("consent audit seeds only the intended top-level document and preserves lat
 test("consent audit still surfaces unexpected storage errors in the intended document", () => {
   const page = consentAuditInitDocument("http://127.0.0.1:3000", { storageDenied: true });
   assert.throws(page.run, /Access is denied for this document/);
+});
+
+
+test("audit settings readiness follows real listener registration and cleanup without dispatching events", () => {
+  const page = consentAuditInitDocument("http://127.0.0.1:3000");
+  page.run();
+  assert.equal(page.window.__consentSettingsReady, false);
+  let opened = 0;
+  const open = () => { opened += 1; };
+  page.window.addEventListener("unrelated", open);
+  assert.equal(page.window.__consentSettingsReady, false);
+  page.window.addEventListener("steelprodukt-cookie-settings", open);
+  assert.equal(page.window.__consentSettingsReady, true);
+  assert.equal(opened, 0, "observing registration must not open the settings");
+  page.window.dispatchEvent(new Event("steelprodukt-cookie-settings"));
+  assert.equal(opened, 1, "the native registration must remain functional");
+  page.window.removeEventListener("steelprodukt-cookie-settings", open);
+  assert.equal(page.window.__consentSettingsReady, false);
+  page.window.dispatchEvent(new Event("steelprodukt-cookie-settings"));
+  assert.equal(opened, 1);
+});
+
+test("audit readiness tracks duplicate registrations, capture matching and independent listeners", () => {
+  const page = consentAuditInitDocument("http://127.0.0.1:3000");
+  page.run();
+  const first = () => {};
+  const second = () => {};
+  page.window.addEventListener("steelprodukt-cookie-settings", first);
+  page.window.addEventListener("steelprodukt-cookie-settings", first);
+  page.window.removeEventListener("steelprodukt-cookie-settings", first, true);
+  assert.equal(page.window.__consentSettingsReady, true, "wrong capture must not remove the live listener");
+  page.window.addEventListener("steelprodukt-cookie-settings", second, { capture: true });
+  page.window.removeEventListener("steelprodukt-cookie-settings", first);
+  assert.equal(page.window.__consentSettingsReady, true, "a second consent component is still mounted");
+  page.window.removeEventListener("steelprodukt-cookie-settings", second, { capture: true });
+  assert.equal(page.window.__consentSettingsReady, false, "duplicate adds must not leave a stale count");
+});
+
+test("audit readiness ignores registrations on another target and resets in a new document", () => {
+  const page = consentAuditInitDocument("http://127.0.0.1:3000");
+  page.run();
+  page.window.addEventListener.call(new EventTarget(), "steelprodukt-cookie-settings", () => {});
+  assert.equal(page.window.__consentSettingsReady, false);
+  page.window.addEventListener("steelprodukt-cookie-settings", () => {});
+  assert.equal(page.window.__consentSettingsReady, true);
+  const reloaded = consentAuditInitDocument("http://127.0.0.1:3000");
+  reloaded.run();
+  assert.equal(reloaded.window.__consentSettingsReady, false);
+});
+
+test("audit waits for delayed consent hydration before its single real settings click", async () => {
+  const document = consentAuditInitDocument("http://127.0.0.1:3000");
+  document.run();
+  const source = readFileSync(resolve("scripts/audit-consent-revocation.mjs"), "utf8");
+  const helper = source.slice(source.indexOf("const settings ="), source.indexOf("const permit ="));
+  const audit: { settings?: (page: unknown) => Promise<void> } = {};
+  runInNewContext(helper.replace("const settings =", "audit.settings ="), { audit, window: document.window });
+  let clicks = 0;
+  let bannerVisible = false;
+  let finishHydration: (() => void) | undefined;
+  const page = {
+    waitForFunction: async (ready: () => boolean, _argument: unknown, options: { timeout: number }) => {
+      assert.equal(ready(), false, "an early document marker and SSR content are not readiness");
+      assert.equal(options.timeout, 30_000, "missing hydration must fail within the normal click timeout");
+      await new Promise<void>(resolve => { finishHydration = () => { assert.equal(ready(), true); resolve(); }; });
+    },
+    getByRole: (role: string, options: { name: string; exact: boolean }) => {
+      assert.equal(role, "button");
+      assert.equal(options.name, "Настройки файлов cookie");
+      assert.equal(options.exact, true);
+      return { first: () => ({ click: async () => { clicks += 1; document.window.dispatchEvent(new Event("steelprodukt-cookie-settings")); } }) };
+    },
+  };
+  const opening = audit.settings!(page);
+  assert.equal(clicks, 0, "the SSR settings button must not be clicked before the receiver is ready");
+  document.window.addEventListener("steelprodukt-cookie-settings", () => { bannerVisible = true; });
+  assert.ok(finishHydration);
+  finishHydration();
+  await opening;
+  assert.equal(clicks, 1);
+  assert.equal(bannerVisible, true);
+});
+
+test("audit does not click or swallow a missing-hydration timeout", async () => {
+  const source = readFileSync(resolve("scripts/audit-consent-revocation.mjs"), "utf8");
+  const helper = source.slice(source.indexOf("const settings ="), source.indexOf("const permit ="));
+  const audit: { settings?: (page: unknown) => Promise<void> } = {};
+  runInNewContext(helper.replace("const settings =", "audit.settings ="), { audit });
+  const error = new Error("consent listener was never mounted");
+  const page = {
+    waitForFunction: async () => { throw error; },
+    getByRole: () => { throw new Error("settings click attempted before hydration"); },
+  };
+  await assert.rejects(async () => audit.settings!(page), error);
 });
