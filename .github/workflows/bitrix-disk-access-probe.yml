@@ -39,7 +39,7 @@ jobs:
           opener = urllib.request.build_opener(NoRedirect())
 
           def call(base, method, params):
-              if method not in {'scope', 'disk.storage.getList'}:
+              if method != 'disk.storage.getList':
                   raise ProbeError('METHOD_BLOCKED')
               req = urllib.request.Request(
                   base + method + '.json', data=json.dumps(params).encode(),
@@ -79,12 +79,6 @@ jobs:
                   or parsed.query or parsed.fragment
                   or not re.fullmatch(r'/rest/[0-9]+/[A-Za-z0-9_-]+/', parsed.path)):
                   raise ProbeError('CONFIG_REJECTED')
-              scopes = call(base, 'scope', {}).get('result')
-              if not isinstance(scopes, list) or not all(isinstance(v, str) for v in scopes):
-                  raise ProbeError('INVALID_RESPONSE')
-              out['disk_scope'] = 'disk' in scopes
-              if not out['disk_scope']:
-                  raise ProbeError('insufficient_scope')
               count, start, seen = 0, 0, set()
               for page in range(4):
                   data = call(base, 'disk.storage.getList', {'start': start, 'order': {'ID': 'ASC'}})
