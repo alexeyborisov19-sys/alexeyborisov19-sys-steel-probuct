@@ -39,6 +39,10 @@ class FakeCommands:
         self.on_download = None
         self.service_changes = {}
         self.service_code = 0
+        self.typed_outputs = {"ExecStartPre": b"a(sasbttttuii) 0\n", "ExecStartPost": b"a(sasbttttuii) 0\n",
+                              "EnvironmentFiles": b"a(sb) 0\n"}
+        self.typed_codes = {}
+        self.typed_error = None
         self.next_run = "Sat 2026-10-10 23:30:00 UTC"
         self.syntax_code = 0
 
@@ -54,7 +58,21 @@ class FakeCommands:
                 "EnvironmentFiles": "", "DropInPaths": "", "User": "root", "Group": "root",
             }
             values.update(self.service_changes)
+            # systemd v249's custom STRUCT ARRAY printer emits these three
+            # fields only per entry, so their empty arrays have no text line.
+            values = {key: value for key, value in values.items()
+                      if value or key not in {"ExecStartPre", "ExecStartPost", "EnvironmentFiles"}}
             return self.service_code, "\n".join(k + "=" + v for k, v in values.items()).encode()
+        if args[:5] == ["/usr/bin/busctl", "--system", "--no-pager", "--timeout=10", "get-property"]:
+            self.fixture.assertEqual(args[5:8], ["org.freedesktop.systemd1",
+                                                "/org/freedesktop/systemd1/unit/steelprodukt_2dpd_2doffsite_2dbackup_2eservice",
+                                                "org.freedesktop.systemd1.Service"])
+            self.fixture.assertEqual(len(args), 9)
+            self.fixture.assertIn(args[8], self.typed_outputs)
+            self.fixture.assertEqual(kwargs, {"timeout": 20, "maximum": 4096})
+            if self.typed_error:
+                raise self.typed_error
+            return self.typed_codes.get(args[8], 0), self.typed_outputs[args[8]]
         if args[:2] == ["/usr/bin/bash", "-n"]:
             return self.syntax_code, PRIVATE.encode()
         if args[:2] == ["/usr/bin/rclone", "--config"]:
@@ -281,6 +299,42 @@ class RecoveryTest(unittest.TestCase):
         self.assertEqual(len(self.commands.calls), 1)
         self.assertEqual(self.installed.read_bytes(), OLD)
 
+    def test_typed_empty_struct_arrays_prove_absent_formatted_fields(self):
+        self.run_recovery()
+        typed = [args for args, _ in self.commands.calls if args[0] == "/usr/bin/busctl"]
+        self.assertEqual([args[-1] for args in typed], ["ExecStartPre", "ExecStartPost", "EnvironmentFiles"])
+        self.assertEqual(len(typed), 3)
+
+    def test_typed_nonempty_malformed_and_missing_values_remain_fail_closed(self):
+        for field in ("ExecStartPre", "ExecStartPost", "EnvironmentFiles"):
+            expected = "SERVICE_ENV_FILES_MISMATCH" if field == "EnvironmentFiles" else "SERVICE_HOOKS_MISMATCH"
+            original = self.commands.typed_outputs[field]
+            for bad in (b"", b"as 0\n", b"a(sb) 0\nextra", b"a(sasbttttuii) 0\nextra",
+                        b"a(sasbttttuii) 1 " + PRIVATE.encode(), b"a(sb) 1 " + PRIVATE.encode()):
+                with self.subTest(field=field, value=bad):
+                    self.commands.typed_outputs[field] = bad
+                    self.commands.calls.clear()
+                    result = self.run_recovery(expected)
+                    self.assertEqual(result["installed_script"], "unchanged")
+                    self.assertEqual(self.installed.read_bytes(), OLD)
+                    self.assertTrue(all(args[0] in {"/usr/bin/systemctl", "/usr/bin/busctl"}
+                                        for args, _ in self.commands.calls))
+                    self.assertEqual(self.commands.calls[-1][0][-1], field)
+            self.commands.typed_outputs[field] = original
+
+    def test_typed_query_errors_fail_closed_without_raw_output(self):
+        for field in ("ExecStartPre", "ExecStartPost", "EnvironmentFiles"):
+            with self.subTest(field=field):
+                self.commands.typed_codes = {field: 1}
+                self.run_recovery("SERVICE_QUERY_FAILED")
+                self.assertEqual(self.installed.read_bytes(), OLD)
+                self.assert_no_remote()
+
+    def test_missing_busctl_fails_closed_without_exception_text(self):
+        self.commands.typed_error = FileNotFoundError(PRIVATE)
+        self.run_recovery("SERVICE_QUERY_FAILED")
+        self.assertEqual(self.installed.read_bytes(), OLD)
+
     def test_imminent_timer_blocks_installation(self):
         self.commands.next_run = "Sat 2026-10-10 18:05:00 UTC"
         self.run_recovery("TIMER_UNSAFE")
@@ -395,6 +449,10 @@ class RecoveryTest(unittest.TestCase):
             if args[0] == "/usr/bin/systemctl":
                 self.assertEqual(args[1], "show")
                 actual.append("status")
+            elif args[0] == "/usr/bin/busctl":
+                self.assertEqual(args[4], "get-property")
+                self.assertIn(args[-1], {"ExecStartPre", "ExecStartPost", "EnvironmentFiles"})
+                actual.append("typed_property")
             elif args[0] == "/usr/bin/bash":
                 self.assertEqual(args[1], "-n")
                 actual.append("syntax")
@@ -408,7 +466,7 @@ class RecoveryTest(unittest.TestCase):
                 self.assertEqual(args, ["STREAM_COUNT"])
                 actual.append("stream")
             self.assertFalse({"delete", "purge", "sync", "move", "start", "restart", "daemon-reload"} & set(args))
-        self.assertEqual(actual, ["status", "status", "syntax", "lsjson", "copyto", "stream"])
+        self.assertEqual(actual, ["status", "typed_property", "typed_property", "typed_property", "status", "syntax", "lsjson", "copyto", "stream"])
 
 
 class PipeProcess:

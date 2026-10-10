@@ -256,14 +256,35 @@ def preflight(commands: Commands, policy: Policy, now: float, config_fd: int) ->
             f"path={expected} ;" in start and f"argv[]={expected} ;" in start,
             "SERVICE_EXEC_START_MISMATCH")
     require(service.get("User") == "root" and service.get("Group") == "root", "SERVICE_IDENTITY_MISMATCH")
-    require(all(service.get(key) == "" for key in ("ExecStartPre", "ExecStartPost")), "SERVICE_HOOKS_MISMATCH")
-    require(service.get("EnvironmentFiles") == "", "SERVICE_ENV_FILES_MISMATCH")
+    # A nonempty formatted value still blocks immediately. Missing structured
+    # array text is ambiguous in systemctl v249 and MUST be proved empty below.
+    require(all(service.get(key) in {None, ""} for key in ("ExecStartPre", "ExecStartPost")), "SERVICE_HOOKS_MISMATCH")
+    require(service.get("EnvironmentFiles") in {None, ""}, "SERVICE_ENV_FILES_MISMATCH")
     require(service.get("DropInPaths") == "", "SERVICE_DROPINS_MISMATCH")
     try:
         environment = shlex.split(service.get("Environment", ""))
     except ValueError:
         raise Stop("SERVICE_ENV_MISMATCH") from None
     require(environment in ([], ["PD_OFFSITE_RETENTION_DAYS=30"]), "SERVICE_ENV_MISMATCH")
+    # busctl get-property prints the D-Bus signature and array length even for
+    # zero entries. Query only the same three previously selected properties.
+    # Signatures: systemd v249 man/org.freedesktop.systemd1.xml.
+    for field, empty, mismatch in (
+        ("ExecStartPre", b"a(sasbttttuii) 0\n", "SERVICE_HOOKS_MISMATCH"),
+        ("ExecStartPost", b"a(sasbttttuii) 0\n", "SERVICE_HOOKS_MISMATCH"),
+        ("EnvironmentFiles", b"a(sb) 0\n", "SERVICE_ENV_FILES_MISMATCH"),
+    ):
+        try:
+            code, output = commands.run([
+                "/usr/bin/busctl", "--system", "--no-pager", "--timeout=10", "get-property",
+                "org.freedesktop.systemd1",
+                "/org/freedesktop/systemd1/unit/steelprodukt_2dpd_2doffsite_2dbackup_2eservice",
+                "org.freedesktop.systemd1.Service", field,
+            ], timeout=20, maximum=4096)
+        except OSError:
+            raise Stop("SERVICE_QUERY_FAILED") from None
+        require(code == 0, "SERVICE_QUERY_FAILED")
+        require(output == empty, mismatch)
     code, output = commands.run([
         "/usr/bin/systemctl", "show", "steelprodukt-pd-offsite-backup.timer", "--no-pager",
         "--property=ActiveState,SubState,NextElapseUSecRealtime",
