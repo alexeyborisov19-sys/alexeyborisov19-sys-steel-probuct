@@ -219,7 +219,13 @@ function consentAuditInitDocument(documentOrigin: string, { child = false, stora
   const values = new Map<string, string>();
   const session = new Map<string, string>();
   let storageReads = 0;
-  const window = Object.assign(new EventTarget(), { location: { origin: documentOrigin } }) as EventTarget & Record<string, unknown>;
+  const window: EventTarget & {
+    location: { origin: string };
+    top?: unknown;
+    __auditDocument?: string;
+    __consentAuditPhase?: string;
+    __consentSettingsReady?: boolean;
+  } = Object.assign(new EventTarget(), { location: { origin: documentOrigin } });
   window.top = child ? {} : window;
   const sandbox = {
     window, document: { addEventListener() {} }, storageDenied,
