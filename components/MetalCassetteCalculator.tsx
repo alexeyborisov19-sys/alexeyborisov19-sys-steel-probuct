@@ -1,6 +1,7 @@
 "use client";
 import { AttributionLink } from "@/components/AttributionLink";
 import { CalculatorLogo } from "@/components/CalculatorLogo";
+import { CassetteProductSpecification } from "@/components/CassetteProductSpecification";
 import { CassetteProjectEditor } from "@/components/cassette-project/CassetteProjectEditor";
 
 import { useEffect, useMemo, useState } from "react";
@@ -24,7 +25,7 @@ const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 function numeric(value: string) { return Number(value.trim().replace(/\s+/g, "").replace(",", ".")); }
 
-function MetalCassetteQuickEstimate() {
+function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
   const [mode, setMode] = useState<Mode>("area");
   const [type, setType] = useState<CassetteType>("open");
   const [thickness, setThickness] = useState<Thickness>("0.7");
@@ -50,6 +51,7 @@ function MetalCassetteQuickEstimate() {
   const result = responseState?.key === requestKey ? responseState.value : null;
   const amount = result?.approximateTotalRub;
   useEffect(() => {
+    if (!active) return;
     const controller = new AbortController();
     let disposed = false;
     let deadline: ReturnType<typeof setTimeout> | undefined;
@@ -77,7 +79,7 @@ function MetalCassetteQuickEstimate() {
       } finally { clearTimeout(deadline); }
     }, 140);
     return () => { disposed = true; window.clearTimeout(timer); clearTimeout(deadline); controller.abort(); };
-  }, [payload, requestKey, retry]);
+  }, [active, payload, requestKey, retry]);
   const specialistHref = {
     pathname: "/contacts",
     query: {
@@ -92,7 +94,7 @@ function MetalCassetteQuickEstimate() {
   const typeName = type === "open" ? "Открытая" : "Закрытая";
 
   return (
-    <section id="calculator-metallokasset" className="mt-12 scroll-mt-24 overflow-hidden border border-steel-orange/35 bg-[#101417] sm:mt-16">
+    <section id="cassette-quick-estimate" className="mt-12 scroll-mt-24 overflow-hidden border border-steel-orange/35 bg-[#101417] sm:mt-16">
       <div className="border-b border-white/10 px-5 py-5 sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-4"><CalculatorLogo /><p className="eyebrow">Предварительный расчёт</p></div>
         <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
@@ -196,15 +198,18 @@ function MetalCassetteQuickEstimate() {
 
 
 export function MetalCassetteCalculator() {
-  const [view, setView] = useState<"project" | "estimate">("project");
-  return <div className="mt-12 sm:mt-16">
+  const [view, setView] = useState<"product" | "project" | "estimate">("product");
+  return <div id="calculator-metallokasset" className="mt-12 scroll-mt-24 sm:mt-16">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <CalculatorLogo />
-      <div className="flex max-w-full flex-wrap gap-2" aria-label="Режим калькулятора металлокассет">
-        {([ ["project", "Проект и раскладка"], ["estimate", "Быстрая оценка цены"] ] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} aria-controls={`cassette-view-${key}`} onClick={() => setView(key)} className={`min-h-12 border px-4 py-3 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${view === key ? "border-steel-orange bg-steel-orange text-black" : "border-white/25 text-white/80 hover:border-steel-orange"}`}>{label}</button>)}
-      </div>
+      <label className="block w-full text-sm text-white/80 sm:w-auto">Режим калькулятора металлокассет
+        <select value={view} onChange={event=>setView(event.target.value as typeof view)} className="mt-2 block min-h-12 w-full rounded-lg border border-white/30 bg-[#101417] px-3 py-2 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+          <option value="product">По размерам и количеству</option><option value="project">Проект и раскладка</option><option value="estimate">Быстрая оценка цены</option>
+        </select>
+      </label>
     </div>
+    <div id="cassette-view-product" hidden={view !== "product"}><CassetteProductSpecification /></div>
     <div id="cassette-view-project" hidden={view !== "project"}><CassetteProjectEditor /></div>
-    <div id="cassette-view-estimate" hidden={view !== "estimate"}><p className="border border-white/15 bg-[#101417] p-4 text-sm leading-7 text-white/75">Быстрая оценка по типовым допущениям. Она не использует проектную раскладку и не является ценой её ведомости. Стоимость рассчитывается автоматически.</p><MetalCassetteQuickEstimate /></div>
+    <div id="cassette-view-estimate" hidden={view !== "estimate"}><p className="border border-white/15 bg-[#101417] p-4 text-sm leading-7 text-white/75">Быстрая оценка по типовым допущениям. Она не использует проектную раскладку и не является ценой её ведомости. Стоимость рассчитывается автоматически.</p><MetalCassetteQuickEstimate active={view === "estimate"} /></div>
   </div>;
 }

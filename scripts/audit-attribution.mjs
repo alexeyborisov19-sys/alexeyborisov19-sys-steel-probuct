@@ -42,11 +42,12 @@ try {
         if (await decline.isVisible()) await decline.click();
         for (const step of scenario.steps) {
           if (step === 'cassette-project-result') {
+            await page.getByLabel('Режим калькулятора металлокассет', { exact: true }).selectOption('project');
             await page.getByRole('button', { name: '4. Итог', exact: true }).click();
             continue;
           }
           if (step === 'cassette-quick-mode') {
-            await page.getByRole('button', { name: 'Быстрая оценка цены', exact: true }).click();
+            await page.getByLabel('Режим калькулятора металлокассет', { exact: true }).selectOption('estimate');
             continue;
           }
           let link;

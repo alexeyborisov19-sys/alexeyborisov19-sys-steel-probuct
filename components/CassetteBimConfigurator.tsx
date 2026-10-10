@@ -106,24 +106,32 @@ export function CassetteBimConfigurator() {
 
   return <div className={styles.workspace} id="bim-workspace">
     <nav className={styles.steps} aria-label="Настройка BIM-модели">
-      <a href="#bim-dimensions"><span>01</span> Размеры</a><a href="#bim-colours"><span>02</span> Кассеты и цвет</a><a href="#bim-download"><span>03</span> Скачать модель</a>
+      <a href="#bim-dimensions"><span>01</span> Размеры</a><a href="#bim-colours" onClick={()=>{const details=document.getElementById("bim-colours");if(details instanceof HTMLDetailsElement)details.open=true;}}><span>02</span> Кассеты и цвет</a><a href="#bim-download"><span>03</span> Скачать модель</a>
     </nav>
     <details className={styles.parameters} id="bim-dimensions" open>
-      <summary><span>Размеры и раскладка</span><small>{valid ? `${p.columns} × ${p.rows} кассет · ${format(p.widthMm)} × ${format(p.heightMm)} мм` : "Проверьте параметры"}</small></summary>
+      <summary><span>Кассета и размеры</span><small>{valid ? `${p.columns} × ${p.rows} кассет · ${format(p.widthMm)} × ${format(p.heightMm)} мм` : "Проверьте параметры"}</small></summary>
       <div className={styles.fields}>
         <label className={styles.profileField}>Исполнение<select value={p.profile} onChange={e=>chooseProfile(e.target.value as CassetteProfile,p.thicknessMm)}>{Object.entries(cassetteProfiles).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
         {p.profile==='corner' && <label>Второе крыло, мм<input type="number" value={p.returnWidthMm} onChange={e=>setP({...p,returnWidthMm:Number(e.target.value)})}/></label>}
-        {fields.map(([key, label]) => <label key={key}>{label}<input type="number" readOnly={key === "depthMm"} disabled={key === "columns" && p.profile === "corner"} min={key === "jointMm" ? 0 : undefined} step={key === "rows" || key === "columns" ? 1 : "any"} value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
+        {fields.filter(([key]) => key === "widthMm" || key === "heightMm").map(([key, label]) => <label key={key}>{label}<input type="number" step="any" value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
         <label>Толщина, мм<select value={p.thicknessMm} onChange={e => chooseProfile(p.profile!,Number(e.target.value))}>{(p.profile === "corner" ? [1] : [0.7, 1]).map(t => <option key={t} value={t}>{t}</option>)}</select></label>
-        <label>Марка кассеты<input maxLength={80} value={p.mark} onChange={e => setP({ ...p, mark: e.target.value })} /></label>
       </div>
-      <p className={styles.hint}>Открытый и закрытый типы — по исходным STEP-моделям 0,7 и 1 мм. Угловая — по рабочему чертежу, без отверстий и радиусов. Смена типа или толщины возвращает исходные размеры. Изменение ширины и высоты адаптирует центральную часть; глубина и гибы сохраняются.</p>
-      <p className={styles.hint}>Шов задаётся между лицевыми габаритами. Для полных бортов без наложения в этой компоновке требуется не меньше {format(cassetteMinimumJoint(p))} мм. Меньший шов возможен только с отдельно проверенным узлом стыковки.</p>
-      <details className={styles.extra}><summary>Описание покрытия для кассет без выбранного RAL</summary><label>Покрытие по проекту<input maxLength={120} value={p.finish} onChange={e => setP({ ...p, finish: e.target.value })} /></label></details>
+      <details className={styles.extra}><summary>Раскладка, шов и марка</summary>
+        <div className={styles.fields}>
+          {fields.filter(([key]) => key !== "widthMm" && key !== "heightMm").map(([key, label]) => <label key={key}>{label}<input type="number" readOnly={key === "depthMm"} disabled={key === "columns" && p.profile === "corner"} min={key === "jointMm" ? 0 : undefined} step={key === "rows" || key === "columns" ? 1 : "any"} value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
+          <label>Марка кассеты<input maxLength={80} value={p.mark} onChange={e => setP({ ...p, mark: e.target.value })} /></label>
+        </div>
+        <p className={styles.hint}>Шов задаётся между лицевыми габаритами. Для полных бортов без наложения в этой компоновке требуется не меньше {format(cassetteMinimumJoint(p))} мм. Меньший шов возможен только с отдельно проверенным узлом стыковки.</p>
+      </details>
+      <details className={styles.extra}><summary>Исходная геометрия и покрытие</summary>
+        <p className={styles.hint}>Открытый и закрытый типы — по исходным STEP-моделям 0,7 и 1 мм. Угловая — по рабочему чертежу, без отверстий и радиусов. Смена типа или толщины возвращает исходные размеры. Изменение ширины и высоты адаптирует центральную часть; глубина и гибы сохраняются.</p>
+        <label>Покрытие по проекту<input maxLength={120} value={p.finish} onChange={e => setP({ ...p, finish: e.target.value })} /></label>
+      </details>
     </details>
     {!valid && <ul role="alert" className={styles.errors}>{errors.map((e, i) => <li key={i}>{e}</li>)}</ul>}
     {valid && <CassetteBimShapePreview input={p} colour={p.panelColours?.[selectedKeys[0]]?.hex} />}
-    <div className={styles.editor} id="bim-colours">
+    <details className={styles.parameters} id="bim-colours"><summary>Цвета и выбор кассет</summary>
+    <div className={styles.editor}>
       <section className={styles.canvasSection} aria-labelledby="bim-preview-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Ваш фасадный фрагмент</p><h2 id="bim-preview-title">Выберите кассеты</h2></div><span className={styles.counter}>{scope === "all" ? `Весь блок · ${activeKeys.length}` : `${selectedKeys.length} выбрано`}</span></div>
         <p className={styles.hint}>{p.profile === "corner" ? "Схема показывает первое крыло; оба крыла окрашиваются вместе. " : ""}Нажмите на одну или несколько кассет. Оранжевая рамка и галочка означают выделение.</p>
@@ -167,7 +175,8 @@ export function CassetteBimConfigurator() {
         <p className={styles.caption}>Оттенки на экране приблизительные. Металлик и блеск не моделируются. Цвет покрытия согласуется по физическому образцу; палитра не означает наличие порошка на складе.</p>
       </section>
     </div>
-    <div className={styles.notice} role="status" aria-live="polite">{notice || "Выберите цвет и нажмите «Применить». Просмотр палитры не меняет окраску кассет."}</div>
+    </details>
+    {notice && <div className={styles.notice} role="status" aria-live="polite">{notice}</div>}
     <section className={styles.download} id="bim-download" aria-labelledby="bim-download-title"><div><p className={styles.eyebrow}>Готово к экспорту</p><h2 id="bim-download-title">Модель и спецификация</h2><p>{PRODUCT_CALCULATION_NOTICE}.</p></div><div className={styles.downloadButtons}><button type="button" className={styles.darkButton} onClick={() => download("ifc")} disabled={!valid}>Скачать IFC</button><button type="button" className={styles.secondary} onClick={() => download("csv")} disabled={!valid}>Спецификация CSV</button></div></section>
     <section className={styles.projectFiles} aria-labelledby="bim-project-title">
       <h2 id="bim-project-title">Сохранить и продолжить проект</h2>
