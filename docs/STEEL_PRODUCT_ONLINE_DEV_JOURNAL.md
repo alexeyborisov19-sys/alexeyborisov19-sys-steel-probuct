@@ -1,3 +1,7 @@
+## Basket viewer CI correction — 10 October 2026
+
+Live checkpoint: draft PR249 head9cb5c075f84eebf532ee0629a95d8fde0493bff9. Exact-head unit/lint/type/build/SEO and independent IFC job passed; browser stopped on the selected orange pattern button contrast. Actual mobile pixels additionally showed excessively dark side panels. DONE: dark selected-button text and linear-light powder-coat shading with sRGB decode/encode, retaining the selected colour and original geometry. Regression tests cover contrast and colour transfer. NEXT ACTION: fresh exact-head CI, independent desktop/mobile pixel acceptance and real interaction recording. Basket order endpoint remains a source-readiness check with null price, not a completed CAD/BOM quote. No main merge/deployment.
+
 ## Internal basket order and interactive concepts — 10 October 2026
 
 Live checkpoint: parent e97543216969c70e489671e45e14bb6dc2e01569, draft PR249; remote main remains ba873d70. The preceding mobile-label candidate passed four exact-head workflows and independent pixel review. Owner now authorizes the confirmed basket integration and animation work in this same draft, not merge/deployment. CAD stays internal to the basket calculator.

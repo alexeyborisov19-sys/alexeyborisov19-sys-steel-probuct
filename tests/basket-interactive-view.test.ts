@@ -8,15 +8,16 @@ import { createBasketConceptGeometry } from '../lib/bim/basket-concept-geometry'
 const built = buildSync({ stdin: { contents: `
   import {createElement} from 'react';
   import {renderToStaticMarkup} from 'react-dom/server';
-  import {BasketInteractiveView, prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb} from './components/commercial/BasketInteractiveView';
+  import {BasketInteractiveView, prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb, basketInteractiveLinearRgb} from './components/commercial/BasketInteractiveView';
   export const render = props => renderToStaticMarkup(createElement(BasketInteractiveView, props));
-  export {prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb};
+  export {prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb, basketInteractiveLinearRgb};
 `, resolveDir: process.cwd(), loader: 'ts' }, bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic', write: false, logLevel: 'silent' });
 const compiled = { exports: {} as {
   render: (props: { geometry: BasketInteractiveGeometry; colour: string; description?: string; dimensionLabel?: string }) => string;
   prepareBasketInteractiveGeometry: typeof import('../components/commercial/BasketInteractiveView').prepareBasketInteractiveGeometry;
   basketInteractiveCameraMatrix: typeof import('../components/commercial/BasketInteractiveView').basketInteractiveCameraMatrix;
   normalizeBasketInteractiveCamera: typeof import('../components/commercial/BasketInteractiveView').normalizeBasketInteractiveCamera;
+  basketInteractiveLinearRgb: typeof import('../components/commercial/BasketInteractiveView').basketInteractiveLinearRgb;
   basketInteractiveRgb: typeof import('../components/commercial/BasketInteractiveView').basketInteractiveRgb;
 } };
 new Function('module', 'exports', 'require', built.outputFiles[0].text)(compiled, compiled.exports, createRequire(`${process.cwd()}/package.json`));
@@ -110,5 +111,18 @@ test('all seven canonical appearance meshes fit mobile and desktop without chang
       assert.ok(Math.max(vertical, horizontal) > 1.6, 'The model fills at least 80% of one stage axis.');
     }
     assert.equal(JSON.stringify(concept), before);
+  }
+});
+
+test('sRGB paint is decoded before lighting without changing the selected colour', () => {
+  assert.deepEqual(ui.basketInteractiveLinearRgb('#ffffff'), [1, 1, 1]);
+  assert.deepEqual(ui.basketInteractiveLinearRgb('#000000'), [0, 0, 0]);
+  const mid = ui.basketInteractiveLinearRgb('#808080');
+  assert.ok(mid.every(channel => Math.abs(channel - .2158605001) < 1e-9));
+  const dark = ui.basketInteractiveLinearRgb('#0a0a0a');
+  assert.ok(dark.every(channel => Math.abs(channel - 10 / 255 / 12.92) < 1e-12));
+  for (const channel of mid) {
+    const shaded = 1.055 * (channel * .58) ** (1 / 2.4) - .055;
+    assert.ok(shaded > .38 && shaded < .4, 'ambient faces retain readable paint instead of multiplying encoded sRGB');
   }
 });

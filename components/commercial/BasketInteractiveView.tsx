@@ -32,6 +32,11 @@ export function basketInteractiveRgb(colour: string): [number, number, number] {
   return [1, 3, 5].map(start => parseInt(safe.slice(start, start + 2), 16) / 255) as [number, number, number];
 }
 
+/** Decode the display colour once; all surface illumination is linear-light. */
+export function basketInteractiveLinearRgb(colour: string): [number, number, number] {
+  return basketInteractiveRgb(colour).map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4) as [number, number, number];
+}
+
 /** Appearance-only buffers. They never provide a manufacturing blank or a thickness. */
 export function prepareBasketInteractiveGeometry(geometry: BasketInteractiveGeometry): PreparedGeometry | null {
   if (!Object.values(geometry.envelope).every(v => Number.isFinite(v) && v > 0 && v <= 10000)
@@ -93,13 +98,15 @@ function fallbackPath(mesh: PreparedGeometry) {
 const VERTEX = `attribute vec3 position; attribute vec3 normal; uniform mat4 camera; uniform mat3 normalCamera;
 varying vec3 surfaceNormal; void main(){ gl_Position=camera*vec4(position,1.0); surfaceNormal=normalCamera*normal; }`;
 const FRAGMENT = `precision mediump float; varying vec3 surfaceNormal; uniform vec3 paint; uniform float edgeMode;
+float encodeSrgb(float value){return value<=.0031308?12.92*value:1.055*pow(value,1.0/2.4)-.055;}
+vec3 displayColour(vec3 linear){vec3 v=clamp(linear,0.0,1.0);return vec3(encodeSrgb(v.r),encodeSrgb(v.g),encodeSrgb(v.b));}
 void main(){
-  if(edgeMode>.5){gl_FragColor=vec4(mix(paint*.72,vec3(.65,.71,.75),.22),1.0);return;}
+  if(edgeMode>.5){gl_FragColor=vec4(displayColour(mix(paint*.72,vec3(.38,.46,.52),.22)),1.0);return;}
   vec3 n=normalize(surfaceNormal); if(n.z>0.0)n=-n;
   float key=max(dot(n,normalize(vec3(.25,.65,-.72))),0.0);
   float fill=max(dot(n,normalize(vec3(.75,.1,-.65))),0.0);
-  vec3 powder=paint*(.43+.67*key+.10*fill);
-  gl_FragColor=vec4(clamp(powder,0.0,1.0),1.0);
+  vec3 powder=paint*(.58+.62*key+.14*fill);
+  gl_FragColor=vec4(displayColour(powder),1.0);
 }`;
 
 export function BasketInteractiveView({ geometry, colour, description, dimensionLabel = 'Ширина × высота × глубина' }: { geometry: BasketInteractiveGeometry; colour: string; description?: string; dimensionLabel?: string }) {
@@ -174,7 +181,7 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
         gl.useProgram(program);
         const { matrix, normalMatrix } = basketInteractiveCameraMatrix(mesh, camera.current, element.width / element.height);
         gl.uniformMatrix4fv(cameraLocation, false, matrix); gl.uniformMatrix3fv(normalLocation, false, normalMatrix);
-        gl.uniform3fv(paintLocation, basketInteractiveRgb(paint.current));
+        gl.uniform3fv(paintLocation, basketInteractiveLinearRgb(paint.current));
         gl.viewport(0, 0, element.width, element.height); gl.clearColor(0, 0, 0, 0); gl.clearDepth(1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
         gl.bindBuffer(gl.ARRAY_BUFFER, faces); gl.enableVertexAttribArray(position); gl.enableVertexAttribArray(normal);
