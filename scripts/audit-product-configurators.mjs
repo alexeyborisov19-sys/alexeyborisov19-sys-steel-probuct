@@ -148,6 +148,31 @@ try {
   const known=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить все · JSON',exact:true})));
   assert.deepEqual([known.items[0].width,known.items[0].height,known.items[0].depth,known.items[0].quantity],[1110,710,610,4]);
   await check(page,'baskets-known',width,errors);
+  await expect(basket.getByTestId('basket-drawing-view')).toHaveCount(0);
+  await basket.getByText('Конструкция по чертежу',{exact:true}).click();
+  const fixedBasket=basket.getByTestId('basket-drawing-view');
+  await expect(fixedBasket.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
+  await expect(fixedBasket).toContainText('не изменяет ваши размеры');
+  for(const [id,fronts,bearings] of [['body-1430-880',1,3],['body-1430-1280',2,3],['body-2030-880',1,4],['body-2030-1280',2,4]]) {
+    await fixedBasket.getByLabel('Исполнение по чертежу',{exact:true}).selectOption(id);
+    await expect(fixedBasket.locator('svg')).toHaveAttribute('data-front-panels',String(fronts));
+    await expect(fixedBasket.locator('svg')).toHaveAttribute('data-bearing-count',String(bearings));
+    await expect(fixedBasket.locator('svg')).toHaveAttribute('data-wind-count','2');
+  }
+  await fixedBasket.screenshot({path:`${output}/basket-drawing-${width}-body.png`});
+  await fixedBasket.getByLabel('Показать кронштейны условно',{exact:true}).check();
+  for(const view of ['front','side','top','perspective']) {
+    await fixedBasket.getByLabel('Ракурс конструкции',{exact:true}).selectOption(view);
+    await expect(fixedBasket.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
+    await fixedBasket.locator('svg').screenshot({path:`${output}/basket-drawing-${width}-${view}.png`});
+  }
+  const knownAfterDrawing=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить все · JSON',exact:true})));
+  assert.deepEqual(knownAfterDrawing,known,'Fixed drawing view must never mutate the customer project');
+  await check(page,'baskets-drawing',width,errors);
+  const fixedLoss=await fixedBasket.locator('canvas').evaluate(canvas=>{const ext=canvas.getContext('webgl')?.getExtension('WEBGL_lose_context');if(!ext)return false;ext.loseContext();return true;});
+  if(fixedLoss){await expect(fixedBasket.locator('canvas')).toHaveAttribute('data-depth-renderer','unavailable');await expect(fixedBasket).toContainText('Резервный каркас');}
+  await basket.getByText('Конструкция по чертежу',{exact:true}).click();
+
   await basket.getByRole('button',{name:'Подобрать по кондиционеру',exact:true}).click();
   await basket.getByText('Подобрать ориентир по мощности кондиционера',{exact:true}).click();
   await basket.getByLabel('Класс кондиционера',{exact:true}).selectOption('9');
