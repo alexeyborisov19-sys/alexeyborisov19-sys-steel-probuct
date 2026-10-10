@@ -7,7 +7,7 @@ const rectangle=(x:number,y:number,w:number,h:number):PanelPoint[]=>[[x,y],[x+w,
 const centers=[74,130,203,251,324,394,456,525,610,669,736,807];
 const widths=[18,25,16,22,30,17,26,19,29,16,24,19];
 /** Shared concept field, not a blank: no bend deduction, thickness or fastening implied. */
-function panelHoles(pattern:BasketAppearancePattern,w:number,h:number,side:boolean):PanelPoint[][] {
+export function basketConceptPanelHoles(pattern:BasketAppearancePattern,w:number,h:number,side:boolean):PanelPoint[][] {
  if(pattern==='circle'||pattern==='square'){
   const nx=side?4:16,ny=10,marginX=side?w*.16:w*.056,marginY=h/11,diameter=Math.min(w/(side?500:1430),h/880)*46;
   return Array.from({length:nx*ny},(_,i)=>{const x=marginX+(i%nx)*(w-2*marginX)/(nx-1),y=marginY+Math.floor(i/nx)*(h-2*marginY)/(ny-1);return pattern==='circle'?Array.from({length:24},(_,j)=>[x+diameter/2*Math.cos(j*Math.PI/12),y+diameter/2*Math.sin(j*Math.PI/12)] as PanelPoint):rectangle(x-diameter/2,y-diameter/2,diameter,diameter);});
@@ -33,9 +33,9 @@ export function createBasketConceptGeometry(input:{width:number;height:number;de
   for(const t of triangulatePanelSurface(1000,1000,normalized))out.triangles.push({part,points:t.map(([x,y])=>map([x/sx,y/sy])) as [BasketConceptPoint,BasketConceptPoint,BasketConceptPoint]});
   for(const r of [rectangle(0,0,pw,ph),...holes])for(let i=0;i<r.length;i++)out.edges.push([map(r[i]),map(r[(i+1)%r.length])]);
  }
- panel('front',w,h,([x,y])=>[x,h-y,0],panelHoles(pattern,w,h,false));
- panel('left',d,h,([x,y])=>[0,h-y,x],panelHoles(pattern,d,h,true));
- panel('right',d,h,([x,y])=>[w,h-y,x],panelHoles(pattern,d,h,true));
+ panel('front',w,h,([x,y])=>[x,h-y,0],basketConceptPanelHoles(pattern,w,h,false));
+ panel('left',d,h,([x,y])=>[0,h-y,x],basketConceptPanelHoles(pattern,d,h,true));
+ panel('right',d,h,([x,y])=>[w,h-y,x],basketConceptPanelHoles(pattern,d,h,true));
  panel('bottom',w,d,([x,y])=>[x,0,y],[]);
  if(pattern==='louvers')for(let i=0;i<12;i++){
   const y=h*(1-(78+i*64)/880),x0=w*50/1430,x1=w*1380/1430,z=Math.min(d*.12,h*60/880),rise=h*32/880;

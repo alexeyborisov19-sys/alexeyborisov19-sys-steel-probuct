@@ -148,7 +148,7 @@ export function BasketConfigurator() {
             <p role="status">{saved}</p>
           </div>}
           <div className={styles.navigation}>
-            <button type="button" disabled={step === 0} onClick={() => go(step - 1)}>← Назад</button>
+            {step > 0 && <button type="button" onClick={() => go(step - 1)}>← Назад</button>}
             {step < 2 && <button type="button" className={!byBlock && step === 0 ? undefined : styles.primary} onClick={() => go(step + 1)}>Далее: {steps[step + 1].title.toLowerCase()} →</button>}
           </div>
           {step === 2 && byBlock && !dimensionsValid && <div className={styles.referenceWarning}>
@@ -169,7 +169,7 @@ export function BasketConfigurator() {
         <aside className={styles.preview} aria-label="Визуализация корзины">
           <div className={styles.previewInner}>
 
-            <BasketAppearance width={input.width} height={input.height} depth={input.depth} color={color.hex} ral={ral} design={design} review={review} onDesignChange={setDesign} />
+            <BasketAppearance width={input.width} height={input.height} depth={input.depth} color={color.hex} ral={ral} design={design} review={review} onDesignChange={setDesign} stage={step} />
           </div>
         </aside>
       </div>

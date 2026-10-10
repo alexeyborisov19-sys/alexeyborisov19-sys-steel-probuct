@@ -57,7 +57,7 @@ const cadProject={format:'steel-product-cad-project',schemaVersion:1,title:'QA l
 ]};
 try {
  for(const width of [390,1440]) {
-  const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'});
+  const context=await browser.newContext({viewport:{width,height:900},hasTouch:width===390,reducedMotion:'reduce',serviceWorkers:'block'});
   const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await installSafetyRoutes(context);
   await open(page,'/calculator-metallokassety');
@@ -158,21 +158,43 @@ try {
     await expect(interactive.locator('canvas')).toHaveAttribute('data-basket-depth-renderer','ready');
     await interactive.screenshot({path:`${output}/basket-interactive-${width}-${title==='Круг'?'circle':title==='Сдвиг'?'shift':'regular'}.png`});
   }
-  await basket.locator('summary').filter({hasText:/^Все варианты/}).click();
+  await basket.locator('summary').filter({hasText:/^Все рисунки/}).click();
   for(const [title,key] of [['Ритм','rhythm'],['Наклон','tilt'],['Квадрат','square'],['Жалюзи','louvers']]){
     await basket.getByRole('button',{name:title,exact:true}).click();
     await interactive.screenshot({path:`${output}/basket-interactive-${width}-${key}.png`});
   }
   const before=await interactive.locator('canvas').getAttribute('data-camera');
-  await interactive.getByRole('button',{name:'Повернуть вправо',exact:true}).click();
+  await expect(interactive.getByRole('button')).toHaveCount(0);
+  const orbit=interactive.getByRole('group',{name:'Вращение модели',exact:true});
+  const orbitBox=await orbit.boundingBox();assert.ok(orbitBox);
+  if(width===390) await page.touchscreen.tap(orbitBox.x+orbitBox.width-12,orbitBox.y+orbitBox.height/2);
+  else await orbit.click({position:{x:orbitBox.width-12,y:orbitBox.height/2}});
   await expect.poll(()=>interactive.locator('canvas').getAttribute('data-camera')).not.toBe(before);
   await interactive.getByRole('group',{name:'Вращение модели',exact:true}).focus();
   await page.keyboard.press('ArrowLeft');await page.keyboard.press('Home');
+  if(width===390){
+    await orbit.scrollIntoViewIfNeeded();const box=await orbit.boundingBox();assert.ok(box);
+    const cdp=await context.newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
+    const touch=async(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map(([x,y])=>({x,y,id:1,radiusX:2,radiusY:2,force:1}))});
+    const beforeScroll=await interactive.locator('canvas').getAttribute('data-camera');
+    const scrollY=await page.evaluate(()=>window.scrollY);
+    await touch('touchStart',[[x,y]]);await touch('touchMove',[[x,y-80]]);await touch('touchEnd',[]);
+    await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(scrollY);
+    assert.equal(await interactive.locator('canvas').getAttribute('data-camera'),beforeScroll,'Vertical swipe scrolls without rotating');
+    await orbit.scrollIntoViewIfNeeded();const after=await orbit.boundingBox();assert.ok(after);
+    const sx=after.x+after.width*.4,sy=after.y+after.height*.5;
+    await touch('touchStart',[[sx,sy]]);await touch('touchMove',[[sx+45,sy]]);await touch('touchMove',[[sx+75,sy]]);await touch('touchEnd',[]);
+    await expect.poll(()=>interactive.locator('canvas').getAttribute('data-camera')).not.toBe(beforeScroll);
+    await cdp.detach();await orbit.focus();await page.keyboard.press('Home');
+  }
+
   await basket.getByRole('button',{name:'Ровные прорези',exact:true}).click();
-  await basket.locator('summary').filter({hasText:/^Все варианты/}).click();
+  await basket.locator('summary').filter({hasText:/^Все рисунки/}).click();
   await check(page,'baskets-interactive',width,errors);
+  await basket.getByRole('region',{name:'Просмотр исполнения',exact:true}).screenshot({path:`${output}/basket-minimal-${width}-appearance.png`});
   await check(page,'baskets-known',width,errors);
   await expect(basket.getByTestId('basket-drawing-view')).toHaveCount(0);
+  await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Результат/}).click();
   await basket.getByText('Конструкция по чертежу',{exact:true}).click();
   const fixedBasket=basket.getByTestId('basket-drawing-view');
   await expect(fixedBasket.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
@@ -199,6 +221,7 @@ try {
   if(fixedLoss){await expect(fixedBasket.locator('canvas')).toHaveAttribute('data-depth-renderer','unavailable');await expect(fixedBasket).toContainText('Резервный каркас');}
   await basket.getByText('Конструкция по чертежу',{exact:true}).click();
 
+  await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Размеры/}).click();
   await basket.getByRole('button',{name:'Подобрать по кондиционеру',exact:true}).click();
   await basket.getByText('Подобрать ориентир по мощности кондиционера',{exact:true}).click();
   await basket.getByLabel('Класс кондиционера',{exact:true}).selectOption('9');
@@ -228,7 +251,7 @@ try {
   await basket.getByRole('checkbox',{name:'Выбрать позицию 1',exact:true}).check();
   const subset=JSON.parse(await downloaded(page,basket.getByRole('button',{name:'Сохранить выбранные',exact:true})));
   assert.equal(subset.items.length,1);assert.equal(subset.items[0].review.availableServiceMm,400);assert.equal(subset.items[0].design.wallAssembly.insulationThicknessMm,150);assert.equal(subset.items[0].design.wallAssembly.structuralBase,'concrete');
-  await basket.getByRole('button',{name:'Блок и зазоры',exact:true}).click();
+  await basket.getByRole('navigation',{name:'Шаги подбора корзины'}).getByRole('button',{name:/Крепление/}).click();
   const clearance=basket.getByRole('region',{name:'Блок и зазоры по вашим данным'});
   await expect(clearance).toContainText('Задний 30');await expect(clearance).toContainText('Передний 200');
   await clearance.screenshot({path:`${output}/baskets-${width}-diagram.png`});
@@ -334,11 +357,13 @@ try {
  await videoModel.scrollIntoViewIfNeeded();
  for(const pattern of ['Круг','Ровные прорези','Сдвиг']){
   await videoBasket.getByRole('button',{name:pattern,exact:true}).click();
-  await videoModel.getByRole('button',{name:'Повернуть вправо',exact:true}).click();
+  const orbit=videoModel.getByRole('group',{name:'Вращение модели',exact:true});
+  const bounds=await orbit.boundingBox();assert.ok(bounds);
+  await videoPage.mouse.move(bounds.x+bounds.width*.5,bounds.y+bounds.height*.5);
+  await videoPage.mouse.down();await videoPage.mouse.move(bounds.x+bounds.width*.65,bounds.y+bounds.height*.46,{steps:12});await videoPage.mouse.up();
   await videoPage.waitForTimeout(650);
  }
- await videoModel.getByRole('button',{name:'Спереди',exact:true}).click();await videoPage.waitForTimeout(400);
- await videoModel.getByRole('button',{name:'3/4',exact:true}).click();await videoPage.waitForTimeout(400);
+ await videoModel.getByRole('group',{name:'Вращение модели',exact:true}).focus();await videoPage.keyboard.press('Home');await videoPage.waitForTimeout(400);
  await videoPage.screenshot({path:`${output}/basket-interactive-desktop-final.png`});
  await videoContext.close();
 } finally {await writeFile(`${output}/results.json`,JSON.stringify(results,null,2));await browser.close();}

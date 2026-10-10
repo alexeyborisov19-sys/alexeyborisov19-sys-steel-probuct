@@ -14,6 +14,7 @@ type Props = {
   design: BasketDesign;
   /** Optional initial state also supports deterministic server rendering. */
   initialUnitVisible?: boolean;
+  compact?: boolean;
 };
 
 const validDimension = (value: number) => Number.isFinite(value) && value > 0 && value <= 10000;
@@ -142,7 +143,7 @@ function OutdoorUnit({ width, height, depth, project, id }: {
   </g>;
 }
 
-export function BasketProductView({ width, height, depth, color, ral, design, initialUnitVisible = false }: Props) {
+export function BasketProductView({ width, height, depth, color, ral, design, initialUnitVisible = false, compact = false }: Props) {
   const uid = useId().replace(/:/g, "");
   const [view, setView] = useState<"volume" | "front">("volume");
   const [dimensions, setDimensions] = useState(true);
@@ -200,17 +201,17 @@ export function BasketProductView({ width, height, depth, color, ral, design, in
           {volume && <><path d={`M${right + 10} ${top - 12}l${dx} ${-dy}`} strokeDasharray="3 3"/><text x={right + dx / 2 + 10} y={top - dy / 2 - 18} textAnchor="middle" stroke="none">Г {number(depth)}</text></>}
         </g>}
       </svg>
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-4 sm:px-5">
+      {!compact && <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-4 sm:px-5">
         <div className="inline-flex gap-1 rounded-lg border border-[#cdd3cd] bg-white p-1" role="group" aria-label="Вид корзины">
           {([["volume", "Объёмный вид"], ["front", "Спереди"]] as const).map(([value, text]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => setView(value)} className={`min-h-11 rounded-md px-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ac430d] ${view === value ? "bg-[#293b31] text-white" : "text-[#46544b] hover:bg-[#eef0eb]"}`}>{text}</button>)}
         </div>
         {valid && <button type="button" aria-pressed={dimensions} onClick={() => setDimensions(!dimensions)} className={`min-h-11 rounded-lg border px-3 text-xs font-medium ${dimensions ? "border-[#ad4a1c] bg-[#fff0e5] text-[#963900]" : "border-[#cdd3cd] bg-white text-[#56625b]"}`}>Размеры, мм</button>}
         {unit && !unitOnly && <button type="button" aria-pressed={unitVisible} onClick={() => setShowUnit(!showUnit)} className={`min-h-11 rounded-lg border px-3 text-xs font-semibold ${unitVisible ? "border-[#567562] bg-[#e6ede4] text-[#294334]" : "border-[#b9c5ba] bg-white text-[#405847]"}`}>Показать блок</button>}
-      </div>
+      </div>}
       <div className="border-t border-[#d3dad4] bg-white/60 px-4 py-4 sm:px-5">
         {valid ? <><p className="text-xs text-[#54645a]">{sizeLabel}, Ш × В × Г</p><p className="mt-1 text-base font-semibold tabular-nums">{number(width)} × {number(height)} × {number(depth)} мм</p></> : <p className="text-sm leading-6 text-[#46574b]">{unitOnly ? "Размер корзины ещё не рассчитан. Уточните шесть зазоров вокруг блока." : "Введите габариты, чтобы увидеть свою корзину в правильных пропорциях."}</p>}
-        {unit && <p className="mt-2 text-xs leading-5 text-[#46574b]">Блок: {number(unit.width)} × {number(unit.height)} × {number(unit.depth)} мм. {unitOnly ? "Форма корпуса условная; пропорции по указанным размерам." : unitVisible ? "Панели полупрозрачны, чтобы показать расположение блока." : "Нажмите «Показать блок», чтобы посмотреть его расположение."}</p>}
-        {geometry.conflict && <p role="status" className="mt-2 text-sm font-medium leading-5 text-[#9b3b15]">Размеры корзины и требуемого объёма не согласованы. Проверьте зазоры в режиме «Блок и зазоры».</p>}
+        {unit && <p className="mt-2 text-xs leading-5 text-[#46574b]">Блок: {number(unit.width)} × {number(unit.height)} × {number(unit.depth)} мм. {unitOnly ? "Форма корпуса условная; пропорции по указанным размерам." : unitVisible ? "Панели полупрозрачны, чтобы показать расположение блока." : compact ? "Расположение блока показано на шаге «Крепление»." : "Нажмите «Показать блок», чтобы посмотреть его расположение."}</p>}
+        {geometry.conflict && <p role="status" className="mt-2 text-sm font-medium leading-5 text-[#9b3b15]">Размеры корзины и требуемого объёма не согласованы. Проверьте зазоры на шаге «Крепление».</p>}
         {(design.capacityClass || design.acReference) && <p className="mt-2 text-xs leading-5 text-[#8b451b]">{basketAcDimensionDisclaimer}.</p>}
         {!unitOnly && <p className="mt-2 text-xs leading-5 text-[#54645a]">Открытый верх. Размеры и оттенок RAL уточняются перед изготовлением.</p>}
         <details className="mt-2 text-xs leading-5 text-[#54645a]"><summary className="font-medium">Что показано условно</summary><p className="mt-2">Это визуализация, не рабочий чертёж. 1 передняя и 2 боковые панели. {inner ? "Панели показаны по расчётному объёму; наружные размеры уточняются." : "Внутренний просвет уточняется по чертежу."} Корпус и вентилятор блока условны. Кронштейны, анкеры и узлы крепления не показаны: их размеры и несущая способность требуют подбора. Совместимость и воздухообмен не подтверждены.</p>

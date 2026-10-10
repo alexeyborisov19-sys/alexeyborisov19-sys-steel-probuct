@@ -11,12 +11,6 @@ export type BasketInteractiveGeometry = {
 export type BasketInteractiveCamera = { yaw: number; pitch: number; zoom: number };
 type PreparedGeometry = { faces: Float32Array; edges: Float32Array; center: Vec3; half: Vec3 };
 const INITIAL: BasketInteractiveCamera = { yaw: -.52, pitch: -.3, zoom: 1 };
-const PRESETS = [
-  { id: 'volume', label: '3/4', yaw: INITIAL.yaw, pitch: INITIAL.pitch },
-  { id: 'front', label: 'Спереди', yaw: 0, pitch: 0 },
-  { id: 'side', label: 'Сбоку', yaw: -Math.PI / 2, pitch: 0 },
-  { id: 'top', label: 'Сверху', yaw: 0, pitch: -Math.PI / 2 },
-] as const;
 
 export function normalizeBasketInteractiveCamera(camera: BasketInteractiveCamera): BasketInteractiveCamera {
   const yaw = Number.isFinite(camera.yaw) ? camera.yaw : INITIAL.yaw;
@@ -25,6 +19,19 @@ export function normalizeBasketInteractiveCamera(camera: BasketInteractiveCamera
     pitch: Math.max(-Math.PI / 2, Math.min(Math.PI / 2, Number.isFinite(camera.pitch) ? camera.pitch : INITIAL.pitch)),
     zoom: Math.max(.65, Math.min(1.8, Number.isFinite(camera.zoom) ? camera.zoom : 1)),
   };
+}
+
+/** Broad edge taps offer single-pointer rotation without a separate toolbar. */
+export function basketInteractiveTapCamera(camera: BasketInteractiveCamera, x: number, y: number): BasketInteractiveCamera | null {
+  if (![x, y].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) return null;
+  const horizontal = x - .5, vertical = y - .5;
+  if (Math.max(Math.abs(horizontal), Math.abs(vertical)) < .25) return null;
+  return normalizeBasketInteractiveCamera({
+    ...camera,
+    ...(Math.abs(horizontal) >= Math.abs(vertical)
+      ? { yaw: camera.yaw + Math.sign(horizontal) * .2 }
+      : { pitch: camera.pitch + Math.sign(vertical) * .2 }),
+  });
 }
 
 export function basketInteractiveRgb(colour: string): [number, number, number] {
@@ -122,9 +129,7 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
   const pointer = useRef<{ id: number; x: number; y: number; startX: number; startY: number; touch: boolean; active: boolean } | null>(null);
   const [ready, setReady] = useState(false), [failed, setFailed] = useState(false);
   const [contextRevision, setContextRevision] = useState(0);
-  const [preset, setPreset] = useState<string>('volume');
-  const [dragging, setDragging] = useState(false), [outlines, setOutlines] = useState(false);
-  const showEdges = useRef(outlines);
+  const [dragging, setDragging] = useState(false);
 
   function cancelFrame() { if (frame.current !== null) cancelAnimationFrame(frame.current); frame.current = null; }
   function redraw() {
@@ -136,13 +141,12 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => {
       reduced.current = preference.matches;
-      if (preference.matches && frame.current !== null) { cancelFrame(); setPreset('custom'); }
+      if (preference.matches && frame.current !== null) cancelFrame();
     };
     update(); preference.addEventListener('change', update);
     return () => { preference.removeEventListener('change', update); };
   }, []);
   useEffect(() => { paint.current = colour; runtime.current?.draw(); }, [colour]);
-  useEffect(() => { showEdges.current = outlines; runtime.current?.draw(); }, [outlines]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -175,7 +179,7 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
         const buffer = gl.createBuffer(); if (!buffer) throw new Error('Buffer unavailable');
         buffers.push(buffer); gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); return buffer;
       };
-      const faces = upload(mesh.faces), edges = upload(mesh.edges);
+      const faces = upload(mesh.faces);
       const draw = () => {
         if (lost || !program) return;
         gl.useProgram(program);
@@ -188,10 +192,6 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
         gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 24, 0); gl.vertexAttribPointer(normal, 3, gl.FLOAT, false, 24, 12);
         gl.uniform1f(edgeLocation, 0);
         gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1, 1); gl.drawArrays(gl.TRIANGLES, 0, mesh.faces.length / 6); gl.disable(gl.POLYGON_OFFSET_FILL);
-        if (showEdges.current && mesh.edges.length) {
-          gl.bindBuffer(gl.ARRAY_BUFFER, edges); gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 12, 0);
-          gl.disableVertexAttribArray(normal); gl.vertexAttrib3f(normal, 0, 0, -1); gl.uniform1f(edgeLocation, 1); gl.drawArrays(gl.LINES, 0, mesh.edges.length / 3);
-        }
         element.dataset.camera = `${camera.current.yaw.toFixed(3)},${camera.current.pitch.toFixed(3)},${camera.current.zoom.toFixed(3)}`;
       };
       runtime.current = { draw };
@@ -218,12 +218,11 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
 
   function change(delta: Partial<BasketInteractiveCamera>) {
     camera.current = normalizeBasketInteractiveCamera({ ...camera.current, ...delta });
-    setPreset('custom'); redraw();
+    redraw();
   }
-  function goTo(id: string) {
-    const target = PRESETS.find(item => item.id === id) ?? PRESETS[0];
-    const next = { yaw: target.yaw, pitch: target.pitch, zoom: 1 };
-    cancelFrame(); setPreset(target.id);
+  function reset() {
+    const next = { ...INITIAL };
+    cancelFrame();
     if (reduced.current) { camera.current = next; runtime.current?.draw(); return; }
     const previous = { ...camera.current }, started = performance.now();
     const turn = normalizeBasketInteractiveCamera({ ...previous, yaw: next.yaw - previous.yaw }).yaw;
@@ -241,13 +240,12 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
       ArrowLeft: () => change({ yaw: camera.current.yaw - .12 }), ArrowRight: () => change({ yaw: camera.current.yaw + .12 }),
       ArrowUp: () => change({ pitch: camera.current.pitch - .12 }), ArrowDown: () => change({ pitch: camera.current.pitch + .12 }),
       '+': () => change({ zoom: camera.current.zoom + .1 }), '=': () => change({ zoom: camera.current.zoom + .1 }),
-      '-': () => change({ zoom: camera.current.zoom - .1 }), Home: () => goTo('volume'),
+      '-': () => change({ zoom: camera.current.zoom - .1 }), Home: reset,
     };
     if (moves[event.key]) { event.preventDefault(); moves[event.key](); }
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
     if (!ready || !event.isPrimary || event.button !== 0) return;
-    if (frame.current !== null) setPreset('custom');
     cancelFrame();
     pointer.current = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, touch: event.pointerType === 'touch', active: false };
   }
@@ -269,36 +267,31 @@ export function BasketInteractiveView({ geometry, colour, description, dimension
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
-  const button = 'min-h-11 min-w-11 border border-[#40505b] px-3 text-xs font-semibold text-[#e8edf0] hover:bg-[#293740] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff7017] disabled:cursor-default disabled:opacity-45';
+  function pointerUp(event: PointerEvent<HTMLDivElement>) {
+    const current = pointer.current;
+    if (!current || current.id !== event.pointerId) return;
+    const tapped = !current.active && Math.max(Math.abs(event.clientX - current.startX), Math.abs(event.clientY - current.startY)) < 6;
+    pointerEnd(event);
+    if (!tapped) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const next = basketInteractiveTapCamera(camera.current, (event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
+    if (next) change(next);
+  }
+
   if (!mesh) return <p role="status" className="border border-slate-300 p-4 text-sm text-slate-700">Не удалось показать геометрию. Проверьте размеры корзины.</p>;
   return <section data-basket-interactive-view className="overflow-hidden border border-[#33434d] bg-[#11191e] text-[#eef2f4]" aria-label="Объёмный вид корзины">
-    <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 text-xs">
-      <span className="font-semibold uppercase tracking-wider">Проектный вид</span>
-      <span className="flex items-center gap-2 text-[#b6c1c8]"><i className="h-3 w-3 border border-white/30" style={{ backgroundColor: /^#[a-f\d]{6}$/i.test(colour) ? colour : '#46505a' }} aria-hidden="true"/>Окрашенная сталь</span>
-    </div>
     <div className="relative h-[320px] overflow-hidden sm:h-[420px] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-[#ff7017]" role="group" aria-label="Вращение модели" aria-describedby={`${uid}-help`} tabIndex={ready ? 0 : -1}
       style={{ touchAction: 'pan-y pinch-zoom', cursor: ready ? dragging ? 'grabbing' : 'grab' : 'default', background: 'radial-gradient(ellipse at 40% 30%, #283640 0%, #11191e 72%)' }}
-      onKeyDown={keyDown} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onLostPointerCapture={pointerEnd}>
+      onKeyDown={keyDown} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerEnd} onLostPointerCapture={pointerEnd} onDoubleClick={() => { if (ready) reset(); }}>
       <div aria-hidden="true" className="pointer-events-none absolute bottom-[8%] left-[15%] h-[15%] w-[70%] rounded-[50%]" style={{ background: 'radial-gradient(ellipse, #0009 0%, #0000 70%)' }}/>
       <canvas ref={canvas} aria-hidden="true" data-basket-depth-renderer={ready ? 'ready' : 'unavailable'} className="pointer-events-none absolute inset-0 h-full w-full" style={{ opacity: ready ? 1 : 0 }}/>
       {!ready && <svg data-basket-static-fallback role="img" aria-label="Резервный каркас корзины: задние рёбра также видны" viewBox="0 0 900 560" className="pointer-events-none absolute inset-0 h-full w-full" style={{ maxHeight: 'none' }}><path d={staticPath} fill="none" stroke="#9aabb5" strokeWidth="1"/></svg>}
-      <p className="pointer-events-none absolute bottom-3 left-4 right-4 text-center text-[11px] text-[#b6c1c8]" aria-hidden="true">{ready ? 'Перетащите, чтобы повернуть' : failed ? 'Статичный каркас · 3D недоступен' : 'Подготовка объёмного вида'}</p>
+      <p className="pointer-events-none absolute bottom-3 left-4 right-4 text-center text-[11px] text-[#b6c1c8]" aria-hidden="true">{ready ? 'Вращайте модель мышкой или пальцем' : failed ? 'Статичный каркас · 3D недоступен' : 'Подготовка объёмного вида'}</p>
     </div>
     <div className="space-y-3 border-t border-[#33434d] px-3 py-3 sm:px-4">
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Ракурс корзины">
-        {PRESETS.map(view => <button key={view.id} type="button" className={button} aria-pressed={preset === view.id} disabled={!ready} onClick={() => goTo(view.id)} style={preset === view.id ? { background: '#ff7017', borderColor: '#ff7017', color: '#11191e' } : undefined}>{view.label}</button>)}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Управление моделью">
-        <button type="button" className={button} disabled={!ready} aria-label="Повернуть влево" title="Повернуть влево" onClick={() => change({ yaw: camera.current.yaw - .2 })}>←</button>
-        <button type="button" className={button} disabled={!ready} aria-label="Повернуть вправо" title="Повернуть вправо" onClick={() => change({ yaw: camera.current.yaw + .2 })}>→</button>
-        <button type="button" className={button} disabled={!ready} aria-label="Уменьшить" title="Уменьшить" onClick={() => change({ zoom: camera.current.zoom - .15 })}>−</button>
-        <button type="button" className={button} disabled={!ready} aria-label="Увеличить" title="Увеличить" onClick={() => change({ zoom: camera.current.zoom + .15 })}>+</button>
-        <button type="button" className={button} disabled={!ready} onClick={() => goTo('volume')}>Сброс</button>
-        <button type="button" className={button} disabled={!ready} aria-pressed={outlines} onClick={() => setOutlines(!outlines)}>Контуры</button>
-      </div>
-      <p id={`${uid}-help`} className="sr-only">Перетащите модель или используйте кнопки. Стрелки клавиатуры вращают модель, плюс и минус меняют масштаб, Home возвращает исходный вид. На сенсорном экране проведите по горизонтали; вертикальное движение прокручивает страницу.</p>
+      <p id={`${uid}-help`} className="sr-only">{description ? `${description}. ` : ''}Коснитесь края: слева и справа для поворота, сверху и снизу для наклона. Стрелки вращают модель, плюс и минус меняют масштаб, Home или двойной щелчок возвращает исходный вид. Вертикальный жест прокручивает страницу.</p>
       <div><p className="text-xs text-[#b6c1c8]">{dimensionLabel}</p><p className="mt-1 text-sm font-semibold tabular-nums">{geometry.envelope.width.toLocaleString('ru-RU')} × {geometry.envelope.height.toLocaleString('ru-RU')} × {geometry.envelope.depth.toLocaleString('ru-RU')} мм</p></div>
-      <p className="text-xs leading-5 text-[#b6c1c8]">{description ? `${description}. ` : ''}Визуализация, не рабочий чертёж. Цвет на экране приблизительный.</p>
+      <p className="text-xs leading-5 text-[#b6c1c8]">Визуализация, не рабочий чертёж. Цвет на экране приблизительный.</p>
       {failed && <p role="status" className="text-xs leading-5 text-[#f6c394]">3D недоступен. Показан статичный каркас, включая задние рёбра; параметры корзины сохранены.</p>}
     </div>
   </section>;

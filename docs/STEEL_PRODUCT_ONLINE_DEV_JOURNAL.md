@@ -1,3 +1,7 @@
+## Basket minimal interaction — 10 October 2026
+
+Live checkpoint: verified draft PR249 b6cfab6e5d7ef31971f319802aabbef3e3abc330, identical local1e65852;1727 tests, all four workflows and independent actual-pixel review passed. Owner now requests fewer visible controls. IN PROGRESS: direct model interaction and compact canonical pattern thumbnails, context-specific mounting preview, removal of repeated controls/copy. Preserve keyboard/single-pointer access, fallback, geometry, dimensions,100-position order and source-gated null pricing. NEXT ACTION: focused regression checks, exact-head CI and fresh mobile/desktop acceptance. No merge/deployment.
+
 ## Basket viewer CI correction — 10 October 2026
 
 Live checkpoint: draft PR249 head9cb5c075f84eebf532ee0629a95d8fde0493bff9. Exact-head unit/lint/type/build/SEO and independent IFC job passed; browser stopped on the selected orange pattern button contrast. Actual mobile pixels additionally showed excessively dark side panels. DONE: dark selected-button text and linear-light powder-coat shading with sRGB decode/encode, retaining the selected colour and original geometry. Regression tests cover contrast and colour transfer. NEXT ACTION: fresh exact-head CI, independent desktop/mobile pixel acceptance and real interaction recording. Basket order endpoint remains a source-readiness check with null price, not a completed CAD/BOM quote. No main merge/deployment.

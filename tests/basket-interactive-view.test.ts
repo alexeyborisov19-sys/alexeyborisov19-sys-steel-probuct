@@ -8,9 +8,9 @@ import { createBasketConceptGeometry } from '../lib/bim/basket-concept-geometry'
 const built = buildSync({ stdin: { contents: `
   import {createElement} from 'react';
   import {renderToStaticMarkup} from 'react-dom/server';
-  import {BasketInteractiveView, prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb, basketInteractiveLinearRgb} from './components/commercial/BasketInteractiveView';
+  import {BasketInteractiveView, prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb, basketInteractiveLinearRgb, basketInteractiveTapCamera} from './components/commercial/BasketInteractiveView';
   export const render = props => renderToStaticMarkup(createElement(BasketInteractiveView, props));
-  export {prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb, basketInteractiveLinearRgb};
+  export {prepareBasketInteractiveGeometry, basketInteractiveCameraMatrix, normalizeBasketInteractiveCamera, basketInteractiveRgb, basketInteractiveLinearRgb, basketInteractiveTapCamera};
 `, resolveDir: process.cwd(), loader: 'ts' }, bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic', write: false, logLevel: 'silent' });
 const compiled = { exports: {} as {
   render: (props: { geometry: BasketInteractiveGeometry; colour: string; description?: string; dimensionLabel?: string }) => string;
@@ -19,6 +19,7 @@ const compiled = { exports: {} as {
   normalizeBasketInteractiveCamera: typeof import('../components/commercial/BasketInteractiveView').normalizeBasketInteractiveCamera;
   basketInteractiveLinearRgb: typeof import('../components/commercial/BasketInteractiveView').basketInteractiveLinearRgb;
   basketInteractiveRgb: typeof import('../components/commercial/BasketInteractiveView').basketInteractiveRgb;
+  basketInteractiveTapCamera: typeof import('../components/commercial/BasketInteractiveView').basketInteractiveTapCamera;
 } };
 new Function('module', 'exports', 'require', built.outputFiles[0].text)(compiled, compiled.exports, createRequire(`${process.cwd()}/package.json`));
 const ui = compiled.exports;
@@ -80,19 +81,62 @@ test('camera and colour input remain bounded and safe', () => {
   assert.deepEqual(ui.basketInteractiveRgb('url(https://invalid.example)'), ui.basketInteractiveRgb('#46505a'));
 });
 
-test('server markup offers a labelled static fallback, manual controls and scope notice', () => {
+test('broad edge taps rotate on both axes without dragging or changing zoom', () => {
+  const camera = { yaw: 0, pitch: 0, zoom: 1.3 };
+  for (const [x, y, yaw, pitch] of [[.1, .5, -.2, 0], [.9, .5, .2, 0], [.5, .1, 0, -.2], [.5, .9, 0, .2]]) {
+    const next = ui.basketInteractiveTapCamera(camera, x, y);
+    assert.ok(next);
+    assert.ok(Math.abs(next.yaw - yaw) < 1e-12);
+    assert.equal(next.pitch, pitch);
+    assert.equal(next.zoom, camera.zoom);
+  }
+  assert.deepEqual(camera, { yaw: 0, pitch: 0, zoom: 1.3 });
+  assert.equal(ui.basketInteractiveTapCamera(camera, .5, .5), null);
+  assert.equal(ui.basketInteractiveTapCamera(camera, .26, .74), null);
+  // The outer quarter of every stage side is a comfortably sized target.
+  for (const [x, y] of [[.25, .5], [.75, .5], [.5, .25], [.5, .75]]) assert.ok(ui.basketInteractiveTapCamera(camera, x, y));
+  for (const [x, y] of [[-.01, .5], [1.01, .5], [.5, -.01], [.5, 1.01], [NaN, .5], [.5, Infinity]]) {
+    assert.equal(ui.basketInteractiveTapCamera(camera, x, y), null);
+  }
+  const top = ui.basketInteractiveTapCamera({ ...camera, pitch: -Math.PI / 2 }, .5, .1)!;
+  const bottom = ui.basketInteractiveTapCamera({ ...camera, pitch: Math.PI / 2 }, .5, .9)!;
+  assert.equal(top.pitch, -Math.PI / 2);
+  assert.equal(bottom.pitch, Math.PI / 2);
+  const wrapped = ui.basketInteractiveTapCamera({ ...camera, yaw: Math.PI - .1 }, .9, .5)!;
+  assert.ok(Math.abs(wrapped.yaw - (-Math.PI + .1)) < 1e-12);
+});
+
+test('server markup keeps the model and its scope without a toolbar or repeated prose', () => {
   const html = ui.render({ geometry, colour: '#46505a' });
   assert.match(html, /data-basket-interactive-view/);
   assert.match(html, /data-basket-static-fallback/);
-  for (const label of ['Спереди', 'Сбоку', 'Сверху', 'Сброс', 'Увеличить', 'Уменьшить', 'Повернуть влево', 'Повернуть вправо']) assert.ok(html.includes(label));
-  assert.match(html, /Проектный вид/);
-  assert.match(html, /не рабочий чертёж/);
+  assert.doesNotMatch(html, /<button\b|role="button"|<details\b|Ракурс корзины|Управление моделью|Проектный вид|Окрашенная сталь/);
+  assert.match(html, /900 × 600 × 550 мм/);
+  assert.equal((html.match(/не рабочий чертёж/g) ?? []).length, 1);
+  assert.equal((html.match(/Цвет на экране приблизительный/g) ?? []).length, 1);
   assert.match(html, /pan-y pinch-zoom/);
   assert.doesNotMatch(html, /setInterval|автовращение|Анкер|кг\/м/);
   const custom = ui.render({ geometry, colour: '#46505a', description: 'Выбранный рисунок', dimensionLabel: 'Расчётный внутренний объём' });
   assert.match(custom, /Расчётный внутренний объём/);
   assert.match(custom, /не рабочий чертёж/);
   assert.match(custom, /Цвет на экране приблизительный/);
+  assert.doesNotMatch(custom, /class="text-xs leading-5[^>]*>Выбранный рисунок/);
+});
+
+test('the stage retains labelled fallback, focus styling and concise hidden interaction help', () => {
+  const html = ui.render({ geometry, colour: '#46505a' });
+  const helpId = html.match(/aria-describedby="([^"]+)"/)?.[1];
+  assert.ok(helpId);
+  assert.ok(html.includes(`id="${helpId}" class="sr-only"`));
+  assert.match(html, /aria-label="Вращение модели"/);
+  assert.match(html, /focus-visible:outline-2/);
+  assert.match(html, /focus-visible:outline-\[#ff7017\]/);
+  assert.match(html, /tabindex="-1"/); // Static fallback must not offer an inactive tab stop.
+  assert.match(html, /Резервный каркас корзины: задние рёбра также видны/);
+  assert.match(html, /Стрелки.*масштаб.*Home/);
+  assert.match(html, /слева.*справа.*сверху.*снизу/);
+  assert.match(html, /[Вв]ертикальн.*прокручивает страницу/);
+  assert.doesNotMatch(html, /используйте кнопки/);
 });
 
 test('all seven canonical appearance meshes fit mobile and desktop without changing their cutouts', () => {
