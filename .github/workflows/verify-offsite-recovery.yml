@@ -1,0 +1,77 @@
+name: Verify guarded offsite recovery
+
+on:
+  push:
+    branches: [fix/offsite-recovery-20261010]
+    paths:
+      - '.github/workflows/verify-offsite-recovery.yml'
+      - 'deploy/backup-personal-data-offsite.sh'
+      - 'deploy/verify-offsite-recovery.py'
+      - 'tests/offsite-recovery.test.py'
+      - 'tests/pd-backup-runtime.test.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steelprodukt-offsite-recovery
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify recovery safety fixtures
+        run: |
+          node --import tsx --test tests/pd-backup-runtime.test.ts
+          python3 tests/offsite-recovery.test.py
+          bash -n deploy/backup-personal-data-offsite.sh
+      - name: Configure existing server access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
+      - name: Guarded selector repair and existing-copy read verification
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          source_b64=$(base64 -w0 deploy/backup-personal-data-offsite.sh)
+          helper_b64=$(base64 -w0 deploy/verify-offsite-recovery.py)
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" \
+            "sudo -n python3 - '$source_b64' '$helper_b64'" <<'PYTHON'
+          import base64, os, pathlib, subprocess, sys, tempfile
+          os.umask(0o077)
+          try:
+              with tempfile.TemporaryDirectory(prefix='steelprodukt-offsite-recovery-') as directory:
+                  root = pathlib.Path(directory)
+                  source = root / 'reviewed-source'
+                  helper = root / 'reviewed-helper.py'
+                  source.write_bytes(base64.b64decode(sys.argv[1], validate=True))
+                  helper.write_bytes(base64.b64decode(sys.argv[2], validate=True))
+                  result = subprocess.run([sys.executable, str(helper), str(source)],
+                      stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1000)
+                  code = result.returncode
+          except Exception:
+              print('OFFSITE_RECOVERY_STATUS=WRAPPER_FAILED')
+              code = 1
+          sys.exit(0 if code == 0 else 1)
+          PYTHON
