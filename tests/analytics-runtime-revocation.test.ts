@@ -211,3 +211,64 @@ test("the audit phase oracle never treats a known failed grant as permission", (
   audit.click!({ target: new ButtonTarget("Продолжить без аналитики") });
   assert.equal(window.__consentAuditPhase, "revoked");
 });
+
+function consentAuditInitDocument(documentOrigin: string, { child = false, storageDenied = false } = {}) {
+  const source = readFileSync(resolve("scripts/audit-consent-revocation.mjs"), "utf8");
+  const body = source.match(/await context\.addInitScript\(\(\{[^}]+\}\) => \{([\s\S]+?)\n  \}, \{[^}]+\}\);/)?.[1];
+  assert.ok(body);
+  const values = new Map<string, string>();
+  const session = new Map<string, string>();
+  let storageReads = 0;
+  const window: Record<string, unknown> = { location: { origin: documentOrigin }, addEventListener() {} };
+  window.top = child ? {} : window;
+  const sandbox = {
+    window, document: { addEventListener() {} }, storageDenied,
+    readStorage(kind: string) {
+      storageReads += 1;
+      const data = kind === "sessionStorage" ? session : values;
+      return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) };
+    },
+  };
+  const initial = JSON.stringify({ version: 2, necessary: true, analytics: true, updatedAt: "2026-10-10T12:00:00.000Z" });
+  function run() {
+    runInNewContext(`for (const name of ["sessionStorage", "localStorage"]) {
+      Object.defineProperty(globalThis, name, { configurable: true, get() {
+        const storage = readStorage(name);
+        if (storageDenied) throw new Error("Failed to read the 'sessionStorage' property from 'Window': Access is denied for this document.");
+        return storage;
+      }});
+    }
+    (({ key, initial, blocked, origin }) => {${body}})(${JSON.stringify({ key: "consent", initial, blocked: false, origin: "http://127.0.0.1:3000" })});`, sandbox);
+  }
+  return { run, values, window, reads: () => storageReads };
+}
+
+for (const [name, origin, child] of [
+  ["initial opaque about:blank document", "null", false],
+  ["opaque child frame", "null", true],
+  ["same-origin child frame", "http://127.0.0.1:3000", true],
+  ["unrelated top-level document", "https://unrelated.invalid", false],
+] as const) {
+  test(`consent audit does not seed or instrument an ${name}`, () => {
+    const frame = consentAuditInitDocument(origin, { child, storageDenied: true });
+    assert.doesNotThrow(frame.run);
+    assert.equal(frame.reads(), 0);
+    assert.equal(frame.window.__auditDocument, undefined);
+  });
+}
+
+test("consent audit seeds only the intended top-level document and preserves later refusal on reload", () => {
+  const page = consentAuditInitDocument("http://127.0.0.1:3000");
+  page.run();
+  assert.equal(JSON.parse(page.values.get("consent")!).analytics, true);
+  assert.equal(page.window.__consentAuditPhase, "permitted");
+  page.values.set("consent", JSON.stringify({ version: 2, necessary: true, analytics: false, updatedAt: "2026-10-10T12:00:00.000Z" }));
+  page.run();
+  assert.equal(JSON.parse(page.values.get("consent")!).analytics, false);
+  assert.equal(page.window.__consentAuditPhase, "without-consent");
+});
+
+test("consent audit still surfaces unexpected storage errors in the intended document", () => {
+  const page = consentAuditInitDocument("http://127.0.0.1:3000", { storageDenied: true });
+  assert.throws(page.run, /Access is denied for this document/);
+});

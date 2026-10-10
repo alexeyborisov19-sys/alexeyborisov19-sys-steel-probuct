@@ -43,7 +43,10 @@ const vendorStub = `(() => {
 
 async function fixture({ width = 1440, initial = null, delayed = false, path = '/contacts', blocked = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: 'block', reducedMotion: 'reduce' });
-  await context.addInitScript(({ key, initial, blocked }) => {
+  await context.addInitScript(({ key, initial, blocked, origin }) => {
+    // Playwright also injects into initial about:blank documents and child
+    // frames. Seed only the intended site document, never an opaque frame.
+    if (window.top !== window || window.location.origin !== origin) return;
     window.__auditDocument = Math.random().toString(36);
     if (initial !== null && sessionStorage.getItem('consent-audit-seeded') !== 'yes') {
       localStorage.setItem(key, initial);
@@ -75,7 +78,7 @@ async function fixture({ width = 1440, initial = null, delayed = false, path = '
       if (event.key !== key && event.key !== null) return;
       window.__consentAuditPhase = !explicitRefusal && storedPermission() ? 'permitted' : 'revoked';
     });
-  }, { key, initial, blocked });
+  }, { key, initial, blocked, origin });
   let tags = 0;
   const forbiddenAnalyticsAttempts = [];
   let release;
