@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""One-shot, hash-pinned selector repair and read-only existing-copy check.
+"""Hash-pinned selector repair and bounded existing-copy verification.
 
-This helper never invokes either backup executable, uploads an object, extracts
-an archive, changes systemd state, or runs retention. All output is allowlisted.
-Run only after reviewing and authorizing this exact helper and replacement.
+The default repairs only the approved script and reads existing remote data.
+--verify-only never repairs or uploads. --upload-approved-existing is a separate,
+explicit opt-in for one approved archive family using conditional single-part
+uploads. No mode runs a backup, extraction, service action, or retention.
+All output is allowlisted. Review and authorize the selected mode before use.
 """
 
 from __future__ import annotations
@@ -40,6 +42,8 @@ STATUSES = frozenset({
     "LOCAL_HASH_MISMATCH", "LOCAL_CHANGED", "REMOTE_MISSING", "REMOTE_METADATA_FAILED",
     "REMOTE_SIZE_MISMATCH", "DOWNLOAD_FAILED", "REMOTE_HASH_MISMATCH", "STREAM_FAILED",
     "BOUNDS_EXCEEDED", "INSUFFICIENT_SPACE", "TIMEOUT", "INTERRUPTED", "INTERNAL_ERROR",
+    "APPROVED_ARCHIVE_MISSING", "APPROVED_ARCHIVE_AMBIGUOUS", "RCLONE_VERSION_UNSUPPORTED",
+    "UPLOAD_FAILED_UNCERTAIN",
 })
 ARCHIVE_RE = re.compile(r"steelprodukt-pd-(\d{8}T\d{6}Z)\.tar\.gz\.enc\Z")
 ENV = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C", "LC_ALL": "C", "HOME": "/root", "TZ": "UTC"}
@@ -63,6 +67,9 @@ class Policy:
     max_listing_bytes: int = 64 * 1024 * 1024
     old_hash: str = OLD_SHA256
     new_hash: str = NEW_SHA256
+    approved_archive_bytes: int = 17925376
+    approved_window_start: str = "20261010T142942Z"
+    approved_window_end: str = "20261010T142949Z"
 
 
 class Stop(Exception):
@@ -322,7 +329,8 @@ def copy_metadata(source: int, target: int, info: os.stat_result) -> None:
     os.fsync(target)
 
 
-def install(source: Path, commands: Commands, policy: Policy, result: dict) -> str:
+def install(source: Path, commands: Commands, policy: Policy, result: dict,
+            verify_only: bool = False) -> str:
     safe_directory(policy.installed.parent, policy)
     with os.fdopen(open_safe(source, policy, {0o400, 0o600, 0o644, 0o700, 0o750, 0o755}, 65536), "rb") as new:
         payload = read_small(new.fileno(), 65536)
@@ -332,7 +340,8 @@ def install(source: Path, commands: Commands, policy: Policy, result: dict) -> s
         with os.fdopen(open_safe(policy.installed, policy, {0o700, 0o750, 0o755}, 65536), "rb") as old:
             info = os.fstat(old.fileno())
             current = digest(old.fileno(), 65536)
-            require(current in {policy.old_hash, policy.new_hash}, "SCRIPT_HASH_MISMATCH")
+            require(current in ({policy.new_hash} if verify_only else {policy.old_hash, policy.new_hash}),
+                    "SCRIPT_HASH_MISMATCH")
             if current == policy.new_hash:
                 return "already_current"
             backup_dir = Path(tempfile.mkdtemp(prefix=".offsite-repair-", dir=policy.backups))
@@ -386,9 +395,172 @@ def latest_archive(policy: Policy) -> Path:
     return policy.backups / latest[1]
 
 
+def approved_archive(policy: Policy) -> Path:
+    """Never substitute a later backup for the specifically approved family."""
+    matches = []
+    with os.scandir(policy.backups) as entries:
+        for count, entry in enumerate(entries, 1):
+            require(count <= 100000, "BOUNDS_EXCEEDED")
+            match = ARCHIVE_RE.fullmatch(entry.name)
+            if match is None or not policy.approved_window_start <= match.group(1) <= policy.approved_window_end:
+                continue
+            require(not entry.is_symlink(), "UNSAFE_PATH")
+            info = entry.stat(follow_symlinks=False)
+            require(stat.S_ISREG(info.st_mode), "UNSAFE_PATH")
+            if info.st_size == policy.approved_archive_bytes:
+                matches.append(policy.backups / entry.name)
+    require(bool(matches), "APPROVED_ARCHIVE_MISSING")
+    require(len(matches) == 1, "APPROVED_ARCHIVE_AMBIGUOUS")
+    return matches[0]
+
+
+def verify_approved_family(commands: Commands, policy: Policy, config_fd: int, key_fd: int,
+                           opened: list, result: dict, expected_hash: str,
+                           config_before: os.stat_result) -> None:
+    """Conditional create-only client requests; provider enforcement is external.
+
+    Audited rclone 1.72.0 maps upload-only If-None-Match to S3 PutObject. A known-size
+    file below 64 MiB uses a single PUT; there is no multipart/fallback path here.
+    This does not establish the provider's conditional-write implementation.
+    """
+    code, output = commands.run(["/usr/bin/rclone", "version"], timeout=20, maximum=8192)
+    first = output.splitlines()[0] if output else b""
+    version = re.fullmatch(rb"rclone v(\d{1,3})\.(\d{1,3})\.(\d{1,3})", first)
+    result["rclone_version"] = ".".join(part.decode("ascii") for part in version.groups()) if version else "unrecognized"
+    require(code == 0 and version is not None and tuple(map(int, version.groups())) == (1, 72, 0),
+            "RCLONE_VERSION_UNSUPPORTED")
+    result["conditional_upload_client_supported"] = True
+    maxima = (policy.max_bytes, 4096, 65536)
+    hashes = [expected_hash] + [digest(opened[i][1], maxima[i]) for i in (1, 2)]
+    sizes = [info.st_size for _, _, info in opened]
+    require(sizes[0] == policy.approved_archive_bytes and all(0 < size < 64 * 1024 * 1024 for size in sizes),
+            "BOUNDS_EXCEEDED")
+    base = ["/usr/bin/rclone", "--config", f"/proc/self/fd/{config_fd}"]
+    flags = ["--s3-no-check-bucket", "--retries", "1", "--low-level-retries", "1",
+             "--contimeout", "15s", "--timeout", "60s", "--stats", "0"]
+    remotes = [policy.remote + "/" + path.name for path, _, _ in opened]
+
+    def local_unchanged() -> None:
+        unchanged(policy.config, config_fd, config_before, "LOCAL_CHANGED")
+        for i, (path, fd, before) in enumerate(opened):
+            unchanged(path, fd, before, "LOCAL_CHANGED")
+            require(digest(fd, maxima[i]) == hashes[i], "LOCAL_CHANGED")
+
+    def exists(i: int) -> bool:
+        local_unchanged()
+        code, output = commands.run(base + ["lsjson", "--stat", remotes[i]] + flags, fds=(config_fd,))
+        require(code == 0, "REMOTE_METADATA_FAILED")
+        try:
+            item = json.loads(output)
+        except (ValueError, UnicodeError):
+            raise Stop("REMOTE_METADATA_FAILED") from None
+        require(isinstance(item, dict) and type(item.get("IsDir")) is bool and
+                type(item.get("Size")) is int, "REMOTE_METADATA_FAILED")
+        if item["IsDir"]:
+            # StatJSON can represent the exact missing S3 key as its virtual
+            # root: fs.NewDir("") has Name/Path="" and Size=-1 (rclone v1.72).
+            require(item["Size"] == -1 and item.get("IsBucket", False) is False and
+                    (item.get("Name"), item.get("Path")) in
+                    {(opened[i][0].name, opened[i][0].name), ("", "")}, "REMOTE_METADATA_FAILED")
+            return False
+        require(item.get("Name") == opened[i][0].name and item.get("Path") == opened[i][0].name,
+                "REMOTE_METADATA_FAILED")
+        require(item["Size"] == sizes[i], "REMOTE_SIZE_MISMATCH")
+        return True
+
+    present = [exists(i) for i in range(3)]
+    free = os.statvfs(policy.backups)
+    require(free.f_bavail * free.f_frsize >= 2 * sum(sizes) + 64 * 1024 * 1024, "INSUFFICIENT_SPACE")
+    local_count = commands.stream_count(opened[0][1], key_fd)
+    with tempfile.TemporaryDirectory(prefix=".offsite-readonly-", dir=policy.backups) as temp:
+        directory = Path(temp)
+        readback_number = 0
+
+        def readback(i: int) -> None:
+            nonlocal readback_number
+            local_unchanged()
+            readback_number += 1
+            destination = directory / ("object-" + str(i) + "-" + str(readback_number))
+            code, _ = commands.run(base + ["copyto", remotes[i], str(destination)] + flags + ["--no-traverse"],
+                                   fds=(config_fd,), timeout=600 if i == 0 else 60,
+                                   maximum=65536, file_limit=sizes[i])
+            require(code == 0, "DOWNLOAD_FAILED")
+            with os.fdopen(open_safe(destination, policy, {0o400, 0o600}, sizes[i]), "rb") as downloaded:
+                require(os.fstat(downloaded.fileno()).st_size == sizes[i], "REMOTE_SIZE_MISMATCH")
+                require(digest(downloaded.fileno(), sizes[i]) == hashes[i], "REMOTE_HASH_MISMATCH")
+                if i == 0:
+                    require(commands.stream_count(downloaded.fileno(), key_fd) == local_count, "STREAM_FAILED")
+            # Only this newly downloaded temporary file is removed. Every next
+            # readback has a fresh path, so copyto cannot reuse cached contents.
+            destination.unlink()
+
+        # Existing objects must all match before even one missing object is sent.
+        for i in range(3):
+            if present[i]:
+                readback(i)
+
+        stages = {}
+        for i in range(3):
+            if present[i]:
+                continue
+            local_unchanged()
+            stage = directory / ("upload-" + str(i))
+            # Freeze only the existing ciphertext/sidecar bytes in private
+            # validation storage; never create a new backup or plaintext file.
+            with stage.open("xb") as snapshot:
+                offset = 0
+                while offset < sizes[i]:
+                    chunk = os.pread(opened[i][1], min(1024 * 1024, sizes[i] - offset), offset)
+                    require(bool(chunk), "LOCAL_CHANGED")
+                    snapshot.write(chunk)
+                    offset += len(chunk)
+                snapshot.flush()
+                os.fchmod(snapshot.fileno(), 0o400)
+                os.utime(snapshot.fileno(), ns=(opened[i][2].st_atime_ns, opened[i][2].st_mtime_ns))
+                os.fsync(snapshot.fileno())
+            with os.fdopen(open_safe(stage, policy, {0o400}, sizes[i]), "rb") as frozen:
+                require(digest(frozen.fileno(), sizes[i]) == hashes[i], "LOCAL_CHANGED")
+                stages[i] = (stage, os.fstat(frozen.fileno()))
+        local_unchanged()
+        for i, (stage, stage_before) in stages.items():
+            if exists(i):
+                # A writer won the race. Verify it; never replace it.
+                readback(i)
+                continue
+            with os.fdopen(open_safe(stage, policy, {0o400}, sizes[i]), "rb") as frozen:
+                unchanged(stage, frozen.fileno(), stage_before, "LOCAL_CHANGED")
+                require(digest(frozen.fileno(), sizes[i]) == hashes[i], "LOCAL_CHANGED")
+                local_unchanged()
+                result["upload_attempted"] = True
+                result["upload_objects_attempted"] += 1
+                result["upload_outcome"] = "attempted_unverified"
+                # rclone's own failed-copy verifier can delete the destination.
+                # Disable that cleanup path, not verification: exact size and
+                # SHA256/readability are independently required by readback().
+                code, _ = commands.run(base + ["copyto", str(stage), remotes[i]] + flags +
+                                       ["--no-traverse", "--ignore-existing", "--no-update-modtime", "--header-upload", "If-None-Match:*",
+                                        "--s3-upload-cutoff", "64M", "--s3-acl", "private", "--inplace",
+                                        "--ignore-size", "--ignore-checksum", "--multi-thread-streams", "0"],
+                                       fds=(config_fd,), timeout=300, maximum=65536)
+                require(code == 0, "UPLOAD_FAILED_UNCERTAIN")
+                unchanged(stage, frozen.fileno(), stage_before, "LOCAL_CHANGED")
+                local_unchanged()
+            require(exists(i), "REMOTE_MISSING")
+            readback(i)
+        if not all(present):
+            for i in range(3):
+                require(exists(i), "REMOTE_MISSING")
+                readback(i)
+        local_unchanged()
+    result.update(remote_sha256_verified=True, remote_sidecars_verified=True,
+                  remote_objects_verified=3, stream_readable=True, items_in_archive=local_count,
+                  upload_outcome="verified_matching")
+
+
 def verify_existing(commands: Commands, policy: Policy, config_fd: int, key_fd: int,
-                    result: dict, now: float) -> None:
-    archive = latest_archive(policy)
+                    result: dict, now: float, upload_approved: bool = False,
+                    config_before: os.stat_result | None = None) -> None:
+    archive = approved_archive(policy) if upload_approved else latest_archive(policy)
     checksum = Path(str(archive) + ".sha256")
     report = archive.with_name(archive.name.removesuffix(".tar.gz.enc") + ".json")
     opened = []
@@ -416,6 +588,10 @@ def verify_existing(commands: Commands, policy: Policy, config_fd: int, key_fd: 
                 metadata.get("archive_sha256") == expected_hash, "LOCAL_METADATA_MISMATCH")
         require(digest(archive_fd, policy.max_bytes) == expected_hash, "LOCAL_HASH_MISMATCH")
         result["local_sha256_verified"] = True
+        if upload_approved:
+            require(config_before is not None, "INTERNAL_ERROR")
+            verify_approved_family(commands, policy, config_fd, key_fd, opened, result, expected_hash, config_before)
+            return
         remote_object = policy.remote + "/" + archive.name
         base = ["/usr/bin/rclone", "--config", f"/proc/self/fd/{config_fd}"]
         flags = ["--s3-no-check-bucket", "--retries", "1", "--low-level-retries", "1",
@@ -455,7 +631,7 @@ def verify_existing(commands: Commands, policy: Policy, config_fd: int, key_fd: 
 
 
 def execute(source: Path, policy: Policy | None = None, commands: Commands | None = None,
-            now: float | None = None) -> tuple[int, dict]:
+            now: float | None = None, mode: str = "repair_readonly") -> tuple[int, dict]:
     policy = policy or Policy()
     commands = commands or Commands(policy)
     result = {"status": "INTERNAL_ERROR", "installed_script": "unchanged", "upload_performed": False,
@@ -463,6 +639,13 @@ def execute(source: Path, policy: Policy | None = None, commands: Commands | Non
               "remote_sha256_verified": False, "stream_readable": False}
     descriptors = []
     try:
+        require(mode in {"repair_readonly", "verify_only", "upload_approved_existing"}, "USAGE")
+        if mode == "upload_approved_existing":
+            result.pop("upload_performed")
+            result.update(upload_attempted=False, upload_objects_attempted=0,
+                          upload_outcome="not_attempted", remote_objects_verified=0,
+                          remote_sidecars_verified=False, conditional_upload_client_supported=False,
+                          rclone_version="unrecognized")
         require(os.geteuid() == policy.uid, "ROOT_REQUIRED")
         safe_directory(policy.backups, policy, private=True)
         lock = open_safe(policy.backups / ".backup.lock", policy, {0o600}, 4096, writable=True)
@@ -478,8 +661,9 @@ def execute(source: Path, policy: Policy | None = None, commands: Commands | Non
             snapshots.append((path, fd, os.fstat(fd)))
         config_fd, key_fd = descriptors[-2:]
         preflight(commands, policy, time.time() if now is None else now, config_fd)
-        result["installed_script"] = install(source, commands, policy, result)
-        verify_existing(commands, policy, config_fd, key_fd, result, time.time() if now is None else now)
+        result["installed_script"] = install(source, commands, policy, result, verify_only=mode != "repair_readonly")
+        verify_existing(commands, policy, config_fd, key_fd, result, time.time() if now is None else now,
+                        upload_approved=mode == "upload_approved_existing", config_before=snapshots[0][2])
         for path, fd, before in snapshots:
             unchanged(path, fd, before, "LOCAL_CHANGED")
         result["status"] = "OK"
@@ -497,7 +681,8 @@ def execute(source: Path, policy: Policy | None = None, commands: Commands | Non
 
 def main(argv: list[str]) -> int:
     os.umask(0o077)
-    if len(argv) != 2:
+    modes = {"--verify-only": "verify_only", "--upload-approved-existing": "upload_approved_existing"}
+    if len(argv) not in {2, 3} or (len(argv) == 3 and argv[2] not in modes):
         print(json.dumps({"status": "USAGE"}, sort_keys=True))
         return 2
 
@@ -511,7 +696,7 @@ def main(argv: list[str]) -> int:
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
     signal.alarm(Policy().max_seconds)
-    code, result = execute(Path(argv[1]))
+    code, result = execute(Path(argv[1]), mode=modes[argv[2]] if len(argv) == 3 else "repair_readonly")
     signal.alarm(0)
     print(json.dumps(result, sort_keys=True))
     return code

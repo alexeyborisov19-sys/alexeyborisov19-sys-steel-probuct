@@ -102,6 +102,92 @@ class FakeCommands:
         return 37
 
 
+class FakeUploadCommands(FakeCommands):
+    """In-memory S3 boundary; conditional conflicts never mutate stored data."""
+    def __init__(self, fixture):
+        super().__init__(fixture)
+        self.version = b"rclone v1.72.0\n- os/version: " + PRIVATE.encode() + b"\n"
+        self.family = {fixture.archive.name: fixture.ciphertext,
+                       fixture.hashfile.name: fixture.hashfile.read_bytes(),
+                       fixture.report.name: fixture.report.read_bytes()}
+        self.objects = {name: None for name in self.family}
+        self.uploads = []
+        self.downloads = []
+        self.download_paths = []
+        self.metadata_codes = {}
+        self.metadata_overrides = {}
+        self.upload_failure_at = None
+        self.write_before_failure = False
+        self.race_before_upload = None
+        self.after_metadata = None
+
+    def run(self, args, **kwargs):
+        if args == ["/usr/bin/rclone", "version"]:
+            self.calls.append((args, kwargs))
+            return 0, self.version
+        if args[:2] != ["/usr/bin/rclone", "--config"]:
+            return super().run(args, **kwargs)
+        self.calls.append((args, kwargs))
+        self.fixture.assertNotIn("--header", args)
+        self.fixture.assertEqual(args.count("--retries"), 1)
+        self.fixture.assertEqual(args[args.index("--retries") + 1], "1")
+        self.fixture.assertEqual(args[args.index("--low-level-retries") + 1], "1")
+        if args[3] == "lsjson":
+            name = args[5].removeprefix(self.fixture.policy.remote + "/")
+            self.fixture.assertIn(name, self.family)
+            payload = self.objects[name]
+            metadata = {"Name": "" if payload is None else name, "Path": "" if payload is None else name, "IsDir": payload is None,
+                        "Size": -1 if payload is None else len(payload)}
+            metadata.update(self.metadata_overrides.get(name, {}))
+            if self.after_metadata:
+                self.after_metadata()
+            return self.metadata_codes.get(name, 0), json.dumps(metadata).encode()
+        self.fixture.assertEqual(args[3], "copyto")
+        if args[4].startswith(self.fixture.policy.remote + "/"):
+            self.fixture.assertNotIn("--header-upload", args)
+            name = args[4].removeprefix(self.fixture.policy.remote + "/")
+            self.fixture.assertIn(name, self.family)
+            payload = self.objects[name]
+            self.fixture.assertIsNotNone(payload)
+            target = Path(args[5])
+            self.fixture.assertFalse(target.exists())
+            self.fixture.assertNotIn(target, self.download_paths)
+            self.download_paths.append(target)
+            self.fixture.assertEqual(target.parent.parent, self.fixture.backups)
+            self.fixture.assertEqual(stat.S_IMODE(target.parent.stat().st_mode), 0o700)
+            self.fixture.assertEqual(kwargs["file_limit"], len(self.family[name]))
+            target.write_bytes(payload)
+            target.chmod(0o600)
+            self.downloads.append(name)
+            if self.on_download:
+                self.on_download()
+            return self.download_code, PRIVATE.encode()
+        name = args[5].removeprefix(self.fixture.policy.remote + "/")
+        self.fixture.assertIn(name, self.family)
+        source = Path(args[4])
+        self.fixture.assertEqual(source.parent.parent, self.fixture.backups)
+        self.fixture.assertEqual(stat.S_IMODE(source.parent.stat().st_mode), 0o700)
+        self.fixture.assertEqual(stat.S_IMODE(source.stat().st_mode), 0o400)
+        self.fixture.assertEqual(source.read_bytes(), self.family[name])
+        for required in ("--ignore-existing", "--no-update-modtime", "--inplace", "--ignore-size", "--ignore-checksum"):
+            self.fixture.assertIn(required, args)
+        for flag, value in (("--header-upload", "If-None-Match:*"), ("--s3-upload-cutoff", "64M"),
+                            ("--multi-thread-streams", "0"), ("--s3-acl", "private")):
+            self.fixture.assertEqual(args[args.index(flag) + 1], value)
+        self.fixture.assertNotIn("--s3-no-head", args)
+        self.uploads.append(name)
+        if self.race_before_upload:
+            self.race_before_upload(name)
+        if self.upload_failure_at == len(self.uploads):
+            if self.write_before_failure and self.objects[name] is None:
+                self.objects[name] = source.read_bytes()
+            return 1, ("412 " + PRIVATE).encode()
+        # --ignore-existing skips a race winner, even if its content differs.
+        if self.objects[name] is None:
+            self.objects[name] = source.read_bytes()
+        return 0, PRIVATE.encode()
+
+
 class RecoveryTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -140,9 +226,9 @@ class RecoveryTest(unittest.TestCase):
         path.write_bytes(data)
         path.chmod(mode)
 
-    def run_recovery(self, expected="OK"):
+    def run_recovery(self, expected="OK", mode="repair_readonly"):
         with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
-            code, result = recovery.execute(self.source, self.policy, self.commands, NOW)
+            code, result = recovery.execute(self.source, self.policy, self.commands, NOW, mode=mode)
         self.assertEqual(result["status"], expected, result)
         self.assertEqual(code, 0 if expected == "OK" else 1)
         self.assertEqual(stdout.getvalue(), "")
@@ -150,11 +236,209 @@ class RecoveryTest(unittest.TestCase):
         encoded = json.dumps(result)
         for sensitive in (PRIVATE, self.expected, self.archive.name, str(self.root), recovery.OLD_SHA256, recovery.NEW_SHA256):
             self.assertNotIn(sensitive, encoded)
-        self.assertFalse(result["upload_performed"])
+        if mode == "upload_approved_existing":
+            self.assertNotIn("upload_performed", result)
+            self.assertLessEqual(result["upload_objects_attempted"], 3)
+            self.assertIn(result["upload_outcome"], {"not_attempted", "attempted_unverified", "verified_matching"})
+        else:
+            self.assertFalse(result["upload_performed"])
         self.assertFalse(result["deletion_performed"])
         self.assertEqual(list(self.backups.glob(".offsite-readonly-*")), [])
         self.assertEqual(list(self.bin.glob(".offsite-replacement-*")), [])
         return result
+
+    def enable_upload(self):
+        self.write(self.installed, NEW, 0o750)
+        self.policy = replace(self.policy, approved_archive_bytes=len(self.ciphertext),
+                              approved_window_start=STAMP, approved_window_end=STAMP)
+        self.commands = FakeUploadCommands(self)
+
+    def run_upload(self, expected="OK"):
+        return self.run_recovery(expected, mode="upload_approved_existing")
+
+    def test_verify_only_accepts_exact_current_script_without_replacing(self):
+        self.write(self.installed, NEW, 0o750)
+        inode = self.installed.stat().st_ino
+        result = self.run_recovery(mode="verify_only")
+        self.assertEqual(result["installed_script"], "already_current")
+        self.assertEqual(self.installed.stat().st_ino, inode)
+        self.assertEqual(list(self.backups.glob(".offsite-repair-*")), [])
+
+    def test_verify_only_rejects_old_script_without_repair_or_s3_access(self):
+        self.run_recovery("SCRIPT_HASH_MISMATCH", mode="verify_only")
+        self.assertEqual(self.installed.read_bytes(), OLD)
+        self.assert_no_remote()
+        self.assertEqual(list(self.backups.glob(".offsite-repair-*")), [])
+
+    def test_upload_requires_explicit_mode_default_stays_read_only(self):
+        self.enable_upload()
+        self.run_recovery("REMOTE_MISSING")
+        self.assertEqual(self.commands.uploads, [])
+        self.assertFalse(any(args == ["/usr/bin/rclone", "version"] for args, _ in self.commands.calls))
+
+    def test_approved_upload_sends_exact_three_objects_then_verifies(self):
+        self.enable_upload()
+        result = self.run_upload()
+        self.assertEqual(self.commands.uploads, list(self.commands.family))
+        self.assertEqual(self.commands.objects, self.commands.family)
+        self.assertEqual(result["upload_objects_attempted"], 3)
+        self.assertTrue(result["upload_attempted"])
+        self.assertTrue(result["conditional_upload_client_supported"])
+        self.assertTrue(result["remote_sidecars_verified"])
+        self.assertEqual(result["remote_objects_verified"], 3)
+        self.assertEqual(result["upload_outcome"], "verified_matching")
+        self.assertEqual(self.archive.read_bytes(), self.ciphertext)
+        self.assertEqual(list(self.backups.glob(".offsite-repair-*")), [])
+
+    def test_all_existing_matching_objects_are_verified_without_upload(self):
+        self.enable_upload()
+        self.commands.objects = dict(self.commands.family)
+        result = self.run_upload()
+        self.assertEqual(self.commands.uploads, [])
+        self.assertEqual(len(self.commands.downloads), 3)
+        self.assertFalse(result["upload_attempted"])
+        self.assertEqual(result["remote_objects_verified"], 3)
+
+    def test_matching_rerun_does_not_upload_again(self):
+        self.enable_upload()
+        self.run_upload()
+        self.commands.uploads.clear()
+        self.commands.downloads.clear()
+        self.run_upload()
+        self.assertEqual(self.commands.uploads, [])
+        self.assertEqual(len(self.commands.downloads), 3)
+
+    def test_all_existing_hashes_are_checked_before_any_missing_object_upload(self):
+        self.enable_upload()
+        self.commands.objects[self.report.name] = b"x" * len(self.commands.family[self.report.name])
+        self.run_upload("REMOTE_HASH_MISMATCH")
+        self.assertEqual(self.commands.uploads, [])
+        self.assertIsNone(self.commands.objects[self.archive.name])
+
+    def test_existing_size_mismatch_blocks_all_uploads(self):
+        self.enable_upload()
+        self.commands.objects[self.hashfile.name] = b"wrong-size"
+        self.run_upload("REMOTE_SIZE_MISMATCH")
+        self.assertEqual(self.commands.uploads, [])
+
+    def test_old_prerelease_or_unrecognized_rclone_never_uploads(self):
+        self.enable_upload()
+        for version in (b"rclone v1.71.9\n", b"rclone v1.72.1\n", b"rclone v1.73.0\n", b"rclone v1.75.2\n",
+                        b"rclone v2.0.0\n", b"rclone v1.72.0-beta\n", b"rclone v1.72.0-DEV\n", PRIVATE.encode()):
+            with self.subTest(version=version):
+                self.commands.version = version
+                result = self.run_upload("RCLONE_VERSION_UNSUPPORTED")
+                self.assertFalse(result["conditional_upload_client_supported"])
+                self.assertEqual(self.commands.uploads, [])
+                self.assertEqual(self.commands.downloads, [])
+
+    def test_mixed_family_uses_fresh_download_paths_for_final_readback(self):
+        self.enable_upload()
+        self.commands.objects[self.archive.name] = self.ciphertext
+        self.run_upload()
+        self.assertEqual(self.commands.downloads.count(self.archive.name), 2)
+        self.assertEqual(len(self.commands.download_paths), len(set(self.commands.download_paths)))
+        self.assertEqual(self.commands.uploads, [self.hashfile.name, self.report.name])
+
+    def test_singlepart_size_limit_is_strict_before_any_remote_access(self):
+        self.enable_upload()
+        size = 64 * 1024 * 1024
+        with self.archive.open("wb") as archive:
+            archive.truncate(size)
+        os.utime(self.archive, (NOW - 7200, NOW - 7190))
+        value = hashlib.sha256()
+        for _ in range(64):
+            value.update(bytes(1024 * 1024))
+        self.expected = value.hexdigest()
+        self.write(self.hashfile, (self.expected + "  " + str(self.archive) + "\n").encode())
+        metadata = json.loads(self.report.read_bytes())
+        metadata.update(archive_bytes=size, archive_sha256=self.expected)
+        self.write(self.report, json.dumps(metadata).encode())
+        self.policy = replace(self.policy, approved_archive_bytes=size)
+        self.run_upload("BOUNDS_EXCEEDED")
+        self.assertFalse(any(args[:2] == ["/usr/bin/rclone", "--config"] for args, _ in self.commands.calls))
+
+    def test_config_mutation_before_upload_stops_without_sending(self):
+        self.enable_upload()
+        self.commands.after_metadata = lambda: self.config.write_bytes(PRIVATE.encode())
+        self.run_upload("LOCAL_CHANGED")
+        self.assertEqual(self.commands.uploads, [])
+
+    def test_nonzero_or_ambiguous_remote_metadata_never_means_missing(self):
+        self.enable_upload()
+        self.commands.metadata_codes[self.archive.name] = 7
+        self.run_upload("REMOTE_METADATA_FAILED")
+        self.commands.metadata_codes.clear()
+        self.commands.metadata_overrides[self.archive.name] = {"Size": 0}
+        self.run_upload("REMOTE_METADATA_FAILED")
+        self.commands.metadata_overrides[self.archive.name] = {"Name": PRIVATE}
+        self.run_upload("REMOTE_METADATA_FAILED")
+        self.assertEqual(self.commands.uploads, [])
+
+    def test_approved_selection_ignores_newer_unapproved_archive(self):
+        self.enable_upload()
+        newer = self.backups / "steelprodukt-pd-20261010T170000Z.tar.gz.enc"
+        self.write(newer, self.ciphertext)
+        self.run_upload()
+        self.assertNotIn(newer.name, self.commands.uploads)
+
+    def test_approved_selection_rejects_missing_or_ambiguous_candidates(self):
+        self.enable_upload()
+        self.policy = replace(self.policy, approved_archive_bytes=len(self.ciphertext) + 1)
+        self.run_upload("APPROVED_ARCHIVE_MISSING")
+        self.policy = replace(self.policy, approved_archive_bytes=len(self.ciphertext), approved_window_end="20261010T160005Z")
+        self.write(self.backups / "steelprodukt-pd-20261010T160001Z.tar.gz.enc", self.ciphertext)
+        self.run_upload("APPROVED_ARCHIVE_AMBIGUOUS")
+        self.assertEqual(self.commands.uploads, [])
+
+    def test_local_mutation_before_upload_stops_without_sending(self):
+        self.enable_upload()
+        self.commands.after_metadata = lambda: self.report.write_bytes(b"{}")
+        self.run_upload("LOCAL_CHANGED")
+        self.assertEqual(self.commands.uploads, [])
+
+    def test_local_decryption_failure_blocks_upload(self):
+        self.enable_upload()
+        self.commands.stream_error = recovery.Stop("STREAM_FAILED")
+        self.run_upload("STREAM_FAILED")
+        self.assertEqual(self.commands.uploads, [])
+
+    def test_conditional_conflict_stops_with_no_retry_or_fallback(self):
+        self.enable_upload()
+        self.commands.upload_failure_at = 1
+        result = self.run_upload("UPLOAD_FAILED_UNCERTAIN")
+        self.assertEqual(len(self.commands.uploads), 1)
+        self.assertEqual(result["upload_outcome"], "attempted_unverified")
+        self.assertTrue(result["upload_attempted"])
+        self.assertEqual(result["remote_objects_verified"], 0)
+
+    def test_partial_or_uncertain_success_is_reported_truthfully_and_preserved(self):
+        self.enable_upload()
+        self.commands.upload_failure_at = 2
+        self.commands.write_before_failure = True
+        result = self.run_upload("UPLOAD_FAILED_UNCERTAIN")
+        self.assertEqual(result["upload_objects_attempted"], 2)
+        self.assertEqual(self.commands.objects[self.archive.name], self.ciphertext)
+        self.assertEqual(self.commands.objects[self.hashfile.name], self.commands.family[self.hashfile.name])
+        self.assertIsNone(self.commands.objects[self.report.name])
+        self.assertEqual(result["upload_outcome"], "attempted_unverified")
+
+    def test_raced_existing_object_is_not_overwritten_and_mismatch_fails_readback(self):
+        self.enable_upload()
+        def race(name):
+            if name == self.archive.name:
+                self.commands.objects[name] = b"x" * len(self.ciphertext)
+        self.commands.race_before_upload = race
+        self.run_upload("REMOTE_HASH_MISMATCH")
+        self.assertEqual(self.commands.objects[self.archive.name], b"x" * len(self.ciphertext))
+        self.assertEqual(len(self.commands.uploads), 1)
+
+    def test_upload_refuses_old_installed_script_without_repair(self):
+        self.enable_upload()
+        self.write(self.installed, OLD, 0o750)
+        self.run_upload("SCRIPT_HASH_MISMATCH")
+        self.assertEqual(self.installed.read_bytes(), OLD)
+        self.assertEqual(self.commands.uploads, [])
 
     def assert_no_remote(self):
         self.assertFalse(any(args[0] == "/usr/bin/rclone" for args, _ in self.commands.calls))
@@ -467,6 +751,28 @@ class RecoveryTest(unittest.TestCase):
                 actual.append("stream")
             self.assertFalse({"delete", "purge", "sync", "move", "start", "restart", "daemon-reload"} & set(args))
         self.assertEqual(actual, ["status", "typed_property", "typed_property", "typed_property", "status", "syntax", "lsjson", "copyto", "stream"])
+
+
+class CommandLineTest(unittest.TestCase):
+    def test_source_first_modes_are_explicit_and_mutually_exclusive(self):
+        for flag, mode in ((None, "repair_readonly"), ("--verify-only", "verify_only"),
+                           ("--upload-approved-existing", "upload_approved_existing")):
+            with self.subTest(flag=flag), patch.object(recovery, "execute", return_value=(0, {"status": "OK"})) as execute, \
+                    patch.object(recovery.signal, "signal"), patch.object(recovery.signal, "alarm"), \
+                    patch.object(recovery.os, "umask"), contextlib.redirect_stdout(io.StringIO()):
+                args = ["helper", "/synthetic/trusted-source"] + ([] if flag is None else [flag])
+                self.assertEqual(recovery.main(args), 0)
+                execute.assert_called_once_with(Path("/synthetic/trusted-source"), mode=mode)
+
+    def test_unknown_or_combined_flags_do_not_run_any_operation(self):
+        for args in (["helper"], ["helper", "/synthetic/source", "--unknown"],
+                     ["helper", "--verify-only", "/synthetic/source"],
+                     ["helper", "/synthetic/source", "--verify-only", "--upload-approved-existing"]):
+            with self.subTest(args=args), patch.object(recovery, "execute") as execute, \
+                    patch.object(recovery.os, "umask"), contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(recovery.main(args), 2)
+                self.assertEqual(json.loads(output.getvalue()), {"status": "USAGE"})
+                execute.assert_not_called()
 
 
 class PipeProcess:

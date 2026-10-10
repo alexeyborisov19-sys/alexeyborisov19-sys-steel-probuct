@@ -412,11 +412,13 @@ jobs:
           bash "$APP_PATH/deploy/install-local-tts.sh" nodejs
           node "$APP_PATH/scripts/check-speechkit-tts.mjs" "$APP_PATH/.env.production"
           bash "$APP_PATH/deploy/prepare-production.sh" "$APP_PATH" nodejs
+          # Validate the existing fresh offsite copy before swapping the app.
+          # This gate never starts backup rotation or export-expiry deletion jobs.
+          bash "$APP_PATH/deploy/install-pd-retention-controls.sh" "$APP_PATH"
           # Passed positionally: sudo -i starts a login shell and resets the
           # environment, so an exported variable would arrive empty and the
           # release check would silently pass without checking anything.
           sudo -iu nodejs bash "$APP_PATH/deploy/build-and-restart.sh" "$APP_PATH" "$EXPECTED_BUILD_COMMIT"
-          bash "$APP_PATH/deploy/install-pd-retention-controls.sh" "$APP_PATH"
           # Purge nginx page cache as root so visitors are not stuck on pre-deploy HTML
           # that references deleted JS chunks (causes the stale "Обновляем страницу" screen).
           if [ -d /var/cache/nginx/steelprodukt ]; then

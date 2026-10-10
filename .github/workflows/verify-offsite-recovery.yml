@@ -33,7 +33,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify recovery safety fixtures
         run: |
-          node --import tsx --test tests/pd-backup-runtime.test.ts
+          node --import tsx --test tests/pd-backup-runtime.test.ts tests/pd-release-backup-gate.test.ts
           python3 tests/offsite-recovery.test.py
           bash -n deploy/backup-personal-data-offsite.sh
       - name: Configure existing server access
@@ -47,7 +47,7 @@ jobs:
           printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts
-      - name: Guarded selector repair and existing-copy read verification
+      - name: Approved conditional archive upload and read verification
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
           BEGET_USER: ${{ secrets.BEGET_USER }}
@@ -67,7 +67,7 @@ jobs:
                   helper = root / 'reviewed-helper.py'
                   source.write_bytes(base64.b64decode(sys.argv[1], validate=True))
                   helper.write_bytes(base64.b64decode(sys.argv[2], validate=True))
-                  result = subprocess.run([sys.executable, str(helper), str(source)],
+                  result = subprocess.run([sys.executable, str(helper), str(source), '--upload-approved-existing'],
                       stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1000)
                   code = result.returncode
           except Exception:
