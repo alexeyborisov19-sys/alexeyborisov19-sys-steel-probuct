@@ -16,7 +16,8 @@ test -r "$RCLONE_CONFIG"
 
 "$LOCAL_BACKUP_COMMAND" >/dev/null
 
-ARCHIVE=$(find "$BACKUP_ROOT" -maxdepth 1 -type f -name 'steelprodukt-pd-*.tar.gz.enc' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d ' ' -f 2-)
+# Drain the sorted listing so large backup directories do not trigger SIGPIPE.
+ARCHIVE=$(find "$BACKUP_ROOT" -maxdepth 1 -type f -name 'steelprodukt-pd-*.tar.gz.enc' -printf '%T@ %p\n' | sort -nr | sed -n '1p' | cut -d ' ' -f 2-)
 test -n "$ARCHIVE"
 HASH_FILE="$ARCHIVE.sha256"
 REPORT="${ARCHIVE%.tar.gz.enc}.json"
