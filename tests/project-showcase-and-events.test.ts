@@ -64,10 +64,7 @@ test("upcoming industry events stay chronological, dated and linked to official 
   assert.deepEqual(
     upcomingIndustryEvents.map((event) => event.shortName),
     [
-      "Фасадная неделя",
-      "Tube China",
-      "100+ TechnoBuild",
-      "Weldex",
+      "MWCS",
       "ExpoCoating Moscow",
       "MosBuild Summit",
       "FENESTRATION BAU China",
@@ -75,9 +72,12 @@ test("upcoming industry events stay chronological, dated and linked to official 
       "Big 5 Global",
       "DMP Greater Bay Area Industrial Expo",
       "RosBuild",
+      "ITES China",
       "MosBuild",
       "Металлообработка",
       "АРХ Москва",
+      "Beijing Essen Welding & Cutting",
+      "Weldex",
     ],
   );
 
