@@ -6,6 +6,11 @@ import { CassetteElevationPreview } from "./CassetteElevationPreview";
 import type { CassetteView } from "./cassette-visual-geometry";
 
 const number = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 });
+const plural = new Intl.PluralRules("ru-RU");
+function countWithWord(value: number, one: string, few: string, many: string) {
+  const form = plural.select(value);
+  return `${value} ${form === "one" ? one : form === "few" ? few : many}`;
+}
 const viewButton = "min-h-11 flex-1 border px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange sm:flex-none";
 export function CassetteVisualWorkspace({ elevation, layout, selected, onSelect, review = false }: { elevation: CassetteElevation; layout: CassetteElevationLayout; selected: CassettePanel | null; onSelect: (id: string | null) => void; review?: boolean }) {
   const [view, setView] = useState<CassetteView>("perspective");
@@ -16,7 +21,7 @@ export function CassetteVisualWorkspace({ elevation, layout, selected, onSelect,
   const [showStatuses, setShowStatuses] = useState(false), [showMarks, setShowMarks] = useState(true);
   return <section className="min-w-0" aria-label="Предпросмотр фасада">
     <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
-      <div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-wider text-white/60 sm:block">Ваш фасад</p><h3 className="break-words text-lg font-semibold sm:mt-1 sm:text-xl">{elevation.name}</h3><p className="mt-1 text-sm text-white/75 sm:mt-2">{layout.rows} рядов × {layout.columns} столбцов · {layout.summary.quantity} позиций облицовки</p></div>
+      <div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-wider text-white/60 sm:block">Ваш фасад</p><h3 className="break-words text-lg font-semibold sm:mt-1 sm:text-xl">{elevation.name}</h3><p className="mt-1 text-sm text-white/75 sm:mt-2">{countWithWord(layout.rows, "ряд", "ряда", "рядов")} × {countWithWord(layout.columns, "столбец", "столбца", "столбцов")} · {countWithWord(layout.summary.quantity, "позиция", "позиции", "позиций")} облицовки</p></div>
       <span className="text-sm tabular-nums text-white/80 sm:border sm:border-white/15 sm:px-3 sm:py-2">{number.format(elevation.widthMm)} × {number.format(elevation.heightMm)} мм</span>
     </div>
     <div className="mt-3 overflow-hidden border border-white/15 bg-[#10171d] sm:mt-5">
