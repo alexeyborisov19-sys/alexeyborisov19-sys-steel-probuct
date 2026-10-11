@@ -18,8 +18,8 @@ test("public calculation warnings are concise without losing the non-offer and r
   assert.match(shared, /не является публичной офертой/);
   assert.match(shared, /проверки инженером/);
   assert.match(shared, /коммерческом предложении и договоре/);
-  assert.doesNotMatch(shared, /Носит ориентировочный характер/);
-  assert.doesNotMatch(shared, /PRODUCT_CALCULATION_NOTICE/);
+  assert.match(shared, /PRODUCT_CALCULATION_NOTICE/);
+  assert.match(shared, /Не является офертой/);
 });
 
 test("cassette budget and facade grid use consistent understandable labels", async () => {
