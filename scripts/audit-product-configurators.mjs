@@ -171,8 +171,8 @@ try {
   await open(page,'/products/metallokassety/bim');
   await expect(page.getByText('При смене типа или толщины размеры вернутся к исходным.',{exact:true})).toBeVisible();
   const bimWidth=page.getByLabel('Ширина кассеты, мм',{exact:true});
-  await bimWidth.fill('');await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Скачать IFC',exact:true})).toBeDisabled();
-  await bimWidth.fill('700');await expect(page.getByRole('alert')).toHaveCount(0);
+  await bimWidth.fill('');await expect(page.locator('#bim-workspace').getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Скачать IFC',exact:true})).toBeDisabled();
+  await bimWidth.fill('700');await expect(page.locator('#bim-workspace').getByRole('alert')).toHaveCount(0);
   await page.getByLabel('Исполнение',{exact:true}).selectOption('closed');await expect(bimWidth).not.toHaveValue('700');
   await bimWidth.fill('710');await page.getByLabel('Толщина, мм',{exact:true}).selectOption('1');await expect(bimWidth).not.toHaveValue('710');
   await page.getByLabel('Исполнение',{exact:true}).selectOption('corner');
