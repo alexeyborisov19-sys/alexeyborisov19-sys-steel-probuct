@@ -49,12 +49,16 @@ test("all thirteen made-to-order catalogue pages have truthful manufacturing Ser
 test("Google product snippet warning is not reintroduced by catalogue page renderers", () => {
   const standardProductPage = readFileSync("app/(public)/products/[slug]/page.tsx", "utf8");
   const newerLandingPage = readFileSync("components/CommercialProductLandingPage.tsx", "utf8");
+  const basketLandingPage = readFileSync("components/commercial/BasketLandingPage.tsx", "utf8");
   const seoAudit = readFileSync("scripts/audit-seo.mjs", "utf8");
 
   assert.match(standardProductPage, /serviceSchema\(\{/);
   assert.doesNotMatch(standardProductPage, /productSchema\(product\)/);
   assert.match(newerLandingPage, /serviceSchema\(\{/);
+  assert.match(newerLandingPage, /manufacturingLandingServiceSchema\(landing\)/);
   assert.doesNotMatch(newerLandingPage, /"@type": "Product"/);
+  assert.match(basketLandingPage, /manufacturingLandingServiceSchema\(landing\)/);
+  assert.doesNotMatch(basketLandingPage, /productSchema\(landing\)/);
   assert.match(seoAudit, /expected\.push\("Service", "FAQPage"\)/);
   assert.match(seoAudit, /types\.has\("Product"\)/);
   assert.match(seoAudit, /eligibilityLimitations\.length\) process\.exitCode = 1/);
