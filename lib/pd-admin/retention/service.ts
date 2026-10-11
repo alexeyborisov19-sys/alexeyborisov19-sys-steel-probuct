@@ -215,20 +215,37 @@ export function verifyDeletion(context: PdAuthContext, idValue: string, versionV
     const index = context.database.prepare("SELECT deleted_at FROM lead_index WHERE request_id = ?").get(record.request_id) as { deleted_at: string | null } | undefined;
     return { ...record, verified: record.result === "DELETED" && present.length === 0 && Boolean(index?.deleted_at), remaining: present.length };
   });
-  const failed = verification.filter((item) => !item.verified); const report = {
-    operator: legalOperator.name, deletionJobId: id, verifiedAt: now, items: verification.map((item) => ({ requestId: item.request_id, result: item.verified ? "VERIFIED" : "FAILED", remaining: item.remaining })),
+  const failed = verification.filter((item) => !item.verified);
+  // Only files in the working storage are checked here. This does not confirm
+  // copies held by mail providers, backup rotation or a signed destruction act.
+  const localFilesVerified = records.length > 0 && failed.length === 0 && Number(job.skipped_count) === 0;
+  const outstandingConfirmations = [
+    "MAIL_AND_PROCESSOR_COPIES", "LOCAL_AND_OFFSITE_BACKUPS",
+    "SIGNED_DESTRUCTION_ACT", "EVENT_JOURNAL_EXTRACT",
+  ];
+  const report = {
+    operator: legalOperator.name, deletionJobId: id, verifiedAt: now,
+    verificationScope: "LOCAL_WORKING_FILES_ONLY",
+    localFilesVerified, legalDestructionConfirmed: false, outstandingConfirmations,
+    items: verification.map((item) => ({ requestId: item.request_id, result: item.verified ? "VERIFIED" : "FAILED", remaining: item.remaining })),
     preserved: ["access_events", "deletion_records", "legal_history", "export_history", "request_history", "incident_history", "consent_audit_until_own_expiry"],
   };
   const directory = protectedReportDirectory(context); const reportContent = Buffer.from(`${JSON.stringify(report, null, 2)}\n`); const reportSha = createHash("sha256").update(reportContent).digest("hex");
   const reportPath = resolve(directory, `${id}.report.json`); writeProtected(reportPath, reportContent);
   const actId = newStage4Id(); const actNumber = `SP-DEL-${now.slice(0, 10).replaceAll("-", "")}-${id.slice(0, 8).toUpperCase()}`;
   const actDocument = createDocx([
-    "Акт уничтожения персональных данных", `Оператор: ${legalOperator.name}, ИНН ${legalOperator.inn}, ОГРН ${legalOperator.ogrn}`,
-    `Номер: ${actNumber}`, `Дата: ${now}`, `Основание: истечение утверждённого срока хранения; deletion job ${id}`,
-    `Категории: заявки и связанные вложения. Количество записей: ${records.length}.`,
-    `Результат проверки: ${failed.length ? "имеются исключения" : "подтверждено"}.`,
-    "Сохранены обязательные служебные журналы и consent-audit до собственного срока.",
-    `SHA-256 отчёта: ${reportSha}`, "Исполнитель: ____________________", "Проверяющий: ____________________",
+    "ПРОЕКТ — НЕ ПОДПИСАН. НЕ ПОДТВЕРЖДАЕТ ПОЛНОГО УНИЧТОЖЕНИЯ ДАННЫХ.",
+    "Проект акта уничтожения — проверка локального этапа",
+    `Оператор: ${legalOperator.name}, ИНН ${legalOperator.inn}, ОГРН ${legalOperator.ogrn}`,
+    `Номер проекта: ${actNumber}`, `Дата формирования: ${now}`,
+    `Основание: истечение срока хранения; техническое задание ${id}`,
+    `Категории: заявки и вложения. Проверено записей: ${records.length}.`,
+    `Локальная проверка: ${localFilesVerified ? "локальные рабочие файлы удалены" : "есть исключения"}.`,
+    "Отдельной проверки требуют корпоративная почта, системы подрядчиков и резервные копии.",
+    "Для подтверждения уничтожения требуется подписанный акт и выгрузка из журнала событий.",
+    "Не подтверждать полное уничтожение до проверки всех систем и применимых сроков.",
+    "Служебные журналы и доказательства согласий сохраняются по собственным срокам.",
+    `SHA-256 технического отчёта: ${reportSha}`, "Исполнитель: ____________________", "Проверяющий: ____________________",
   ]);
   const actPath = resolve(directory, `${id}.act.docx`); let actWritten = false;
   try {
@@ -236,7 +253,8 @@ export function verifyDeletion(context: PdAuthContext, idValue: string, versionV
     const actSha = createHash("sha256").update(actDocument).digest("hex");
     return auditedTransaction(context, {
       userId: context.user.id, sessionId: context.session.id, action: "DELETION_ACT_CREATED", targetType: "DELETION_JOB", targetId: id,
-      legalBasis: "DELETION_VERIFICATION", result: failed.length ? "PARTIAL" : "SUCCESS", ipHash: context.ipHash, metadata: { count: records.length, items: failed.length, status: failed.length ? "PARTIALLY_COMPLETED" : "COMPLETED" },
+      legalBasis: "DELETION_VERIFICATION", result: "PARTIAL", ipHash: context.ipHash,
+       metadata: { count: records.length, items: failed.length, status: "PARTIALLY_COMPLETED", scope: "LOCAL_WORKING_FILES_ONLY", complianceConfirmed: false },
     }, (database) => {
       const updateRecord = database.prepare("UPDATE deletion_records SET verification_status = ?, verified_at = ?, verified_by = ?, act_id = ? WHERE id = ?");
       for (const item of verification) updateRecord.run(item.verified ? "VERIFIED" : "FAILED", now, context.user.id, actId, item.id);
@@ -244,11 +262,16 @@ export function verifyDeletion(context: PdAuthContext, idValue: string, versionV
         files_count, method, executed_by, verified_by, result, preserved_records_json, exceptions_json, report_sha256, document_path, document_sha256)
         VALUES (?, ?, ?, ?, 'RETENTION_EXPIRED', '["LEAD_AND_ATTACHMENTS"]', ?, ?, 'CONTROLLED_FILE_DELETE', ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(actId, id, actNumber, now, JSON.stringify(records.map((record) => record.request_id)), records.length, context.user.id, context.user.id,
-          failed.length ? "PARTIALLY_DELETED" : "DELETED", JSON.stringify(report.preserved), JSON.stringify(failed.map((item) => item.request_id)), reportSha, actPath, actSha);
+          "PARTIALLY_DELETED", JSON.stringify(report.preserved),
+           JSON.stringify([...failed.map((item) => item.request_id), ...outstandingConfirmations]), reportSha, actPath, actSha);
       const updated = database.prepare(`UPDATE deletion_jobs SET status = ?, stage4_status = ?, completed_at = ?, report_path = ?, report_sha256 = ?, act_path = ?, act_sha256 = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?`)
-        .run(failed.length ? "FAILED" : "COMPLETED", failed.length ? "PARTIALLY_COMPLETED" : "COMPLETED", now, reportPath, reportSha, actPath, actSha, now, id, version);
+        .run("FAILED", "PARTIALLY_COMPLETED", now, reportPath, reportSha, actPath, actSha, now, id, version);
       assertChanged(updated.changes);
-      return { id, result: failed.length ? "PARTIALLY_DELETED" : "DELETED", reportSha256: reportSha, actSha256: actSha, version: version + 1 };
+      return {
+         id, result: "PARTIALLY_DELETED", localFilesVerified,
+         legalDestructionConfirmed: false, outstandingConfirmations,
+         reportSha256: reportSha, actSha256: actSha, version: version + 1,
+       };
     });
   } catch (error) {
     if (actWritten && existsSync(actPath)) unlinkSync(actPath);
