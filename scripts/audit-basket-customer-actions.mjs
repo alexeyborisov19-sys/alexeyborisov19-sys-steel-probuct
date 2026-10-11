@@ -105,7 +105,7 @@ try {
       }
     });
     await action('003', 'Known block and six clearances produce independent 900 × 600 × 550 dimensions', async () => {
-      await details('Уточнить зазоры вокруг блока');
+      await details('Указать зазоры вокруг блока');
       for (const [label, value] of [['Ширина блока, мм', '800'], ['Высота блока, мм', '500'], ['Глубина блока без зазоров, мм', '300'], ['Зазор слева, мм', '50'], ['Зазор справа, мм', '50'], ['Зазор сверху, мм', '50'], ['Зазор снизу, мм', '50'], ['Зазор спереди, мм', '200'], ['Зазор сзади, мм', '50']]) await field(label).fill(value);
       await field('Количество, шт.').fill('2');
       await showChecklist();
@@ -211,7 +211,7 @@ try {
       await details('Модель и примечания к позиции');
       await field('Марка / зона установки').fill('QA-КР-02');
       await field('Количество, шт.').fill('3');
-      await details('Уточнить зазоры вокруг блока');
+      await details('Зазоры вокруг блока · указаны');
       await field('Ширина блока, мм').fill('900');
       await step('Результат');
       await root.getByRole('button', { name: 'Сохранить позицию 2', exact: true }).click();
