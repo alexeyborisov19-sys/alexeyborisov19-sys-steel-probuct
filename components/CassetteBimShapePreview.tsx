@@ -47,8 +47,8 @@ export function CassetteInspectionView({ input, colour = '#a8b5b9', mode = 'sing
   const source = input.profile === 'open' || input.profile === 'closed' ? 'Борта, гибы и отверстия — из исходной STEP-модели.' : input.profile === 'corner' ? 'Угловая кассета — упрощённая геометрия по чертежу, без отверстий и радиусов.' : 'Упрощённая геометрия прямых бортов.';
   return <figure className="mt-4" data-testid="cassette-bim-inspection" data-inspection-mode={effectiveMode}>
     <figcaption className="mb-3 flex flex-wrap items-start justify-between gap-2 text-sm leading-6 text-[#4d6066]">
-      <div><h4 className="font-semibold text-[#182a30]">{modeTitles[effectiveMode]}</h4><p>Лицо {number.format(input.widthMm)} × {number.format(input.heightMm)} мм · борт {number.format(input.depthMm)} мм</p></div>
-      {effectiveMode !== 'single' ? <p className="rounded-md border border-[#a7b9bf] bg-white px-3 py-1 text-[#253c45]">{effectiveMode === 'exploded' ? 'Шов до разноса' : 'Шов между лицами'}: {number.format(input.jointMm)} мм</p> : null}
+      <div><h4 className="font-semibold text-[#182a30]">{modeTitles[effectiveMode]}</h4><p>{input.profile === 'corner' ? `Крылья: ${number.format(input.widthMm)} и ${number.format(input.returnWidthMm ?? 0)} мм · высота ${number.format(input.heightMm)} мм` : `Видимая часть ${number.format(input.widthMm)} × ${number.format(input.heightMm)} мм`} · борт {number.format(input.depthMm)} мм</p></div>
+      {effectiveMode !== 'single' ? <p className="rounded-md border border-[#a7b9bf] bg-white px-3 py-1 text-[#253c45]">{effectiveMode === 'exploded' ? 'Шов до разноса' : 'Шов между кассетами'}: {number.format(input.jointMm)} мм</p> : null}
     </figcaption>
     <svg role="img" aria-labelledby={`${prefix}-title`} aria-describedby={`${prefix}-description`} viewBox={`${frameX} 0 ${frameWidth} 560`} style={{ aspectRatio: `${frameWidth} / 560`, height: 'auto' }} className="block max-h-[560px] w-full rounded-xl border border-[#b7c7cd] bg-[#e3eaed]" data-solid-instances={projected.instances.length}>
       <title id={`${prefix}-title`}>{`${input.profile ? cassetteProfiles[input.profile].label : 'Кассета'}: ${modeTitles[effectiveMode]}`}</title>
@@ -69,7 +69,7 @@ export function CassetteInspectionView({ input, colour = '#a8b5b9', mode = 'sing
       </g> : null}
       {effectiveMode === 'exploded' && second ? <line aria-hidden="true" data-illustrative-separation="true" x1={projected.project(centre)[0]} y1={projected.project(centre)[1]} x2={projected.project([centre[0], centre[1], second.offset[2]])[0]} y2={projected.project([centre[0], centre[1], second.offset[2]])[1]} stroke="#476878" strokeDasharray="6 6" strokeWidth="1" vectorEffect="non-scaling-stroke" /> : null}
     </svg>
-    {!depthReady ? <p className="mt-2 text-xs text-[#52636b]">Упрощённый показ поверхностей. Для проверки формы используйте исходную модель IFC.</p> : null}
+    {!depthReady ? <p className="mt-2 text-xs text-[#52636b]">Упрощённый показ поверхностей. Для просмотра формы скачайте созданную здесь модель IFC. Это модель по вашим параметрам, не исходный производственный файл.</p> : null}
     <p className="mt-3 text-sm leading-6 text-[#4d6066]">{source} Геометрия деталей совпадает с IFC; ракурс и разнос меняют только показ.</p>
     {input.profile === 'corner' ? <p className="mt-2 text-sm leading-6 text-[#6b4e20]">Показана одна угловая кассета. Узел её примыкания не подтверждён исходными моделями.</p> : null}
     {effectiveMode !== 'single' ? <p className="mt-2 rounded-lg border border-[#dac69f] bg-[#fff9ed] px-3 py-2 text-sm leading-6 text-[#674a1e]">{coordinationNotice} {effectiveMode === 'exploded' ? 'Разнос условный, только для осмотра; это не монтажный зазор.' : 'Шов измеряется между лицевыми габаритами, а не между бортами.'}</p> : null}

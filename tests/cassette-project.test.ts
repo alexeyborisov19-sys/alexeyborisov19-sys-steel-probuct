@@ -154,3 +154,12 @@ test("multiple openings are order-independent for dimensions, area and supported
   assert.deepEqual(before.panels[0].coordinationRect, after.panels[0].coordinationRect);
   assert.deepEqual(after.panels[0].coordinationRect, { xMm: 100, yMm: 0, widthMm: 800, heightMm: 500 });
 });
+test('layout CSV keeps existing headers and explains face-cell terminology in its scope cell',()=>{
+ const p=createCassetteProject('copy-contract');p.elevations=[elevation()];
+ const csv=createCassetteProjectCsv(p),header=csv.split('\r\n')[0];
+ assert.equal(header.split('";"').length,25);
+ assert.match(header,/Ширина ячейки лица, мм/);
+ assert.match(csv,/Ячейка лица — участок видимой части кассеты в сетке, без загнутых краёв/);
+ assert.match(csv,/Остаток лица — его площадь за вычетом проёмов/);
+ assert.match(createCassetteProjectBrief(p),/Видимая часть кассеты: 1000 × 500 мм/);
+});

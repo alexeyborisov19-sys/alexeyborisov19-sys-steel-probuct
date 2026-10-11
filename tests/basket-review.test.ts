@@ -81,3 +81,13 @@ test("review rejects stale calculated envelope and unknown rear distance", () =>
 test("mass outside supported input bounds is still missing review data", () => {
   for (const mass of [0, -1, 2001, NaN]) assert.equal(basketReview({ ...item, design: { ...item.design, mass } }).find(x => x.id === "mass")?.state, "missing");
 });
+
+test('filled equipment in TXT is not contradicted by a blanket unknown-details line',()=>{
+  const text=basketBriefText({...item,review:{...defaultBasketReview(),equipment:'AC model 123'}});
+  assert.match(text,/Модель наружного блока: AC model 123/);
+  assert.doesNotMatch(text,/Модель наружного блока \/ основание \/ город объекта: уточню|Модель наружного блока: не указана/);
+  assert.match(text,/Город объекта: не указан/);
+  const unknown=basketBriefText({...item,design:undefined,review:defaultBasketReview()});
+  assert.match(unknown,/Модель наружного блока: не указана/);assert.match(unknown,/Основание крепления: не указано/);
+  assert.ok(!basketBriefHref({...item,review:{...defaultBasketReview(),equipment:'AC model 123'}}).includes('AC'));
+});

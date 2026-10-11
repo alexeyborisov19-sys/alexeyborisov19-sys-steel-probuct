@@ -107,7 +107,9 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
     `Цвет: RAL ${input.ral}.`,
     ...(design ? [basketDesignSummary(design)] : [basketAcDimensionDisclaimer + "."]),
     "Размеры, воздушные и сервисные зазоры, крепление и комплектность необходимо подтвердить по модели кондиционера и проекту фасада.",
-    "Модель наружного блока / основание / город объекта: уточню.",
+    ...(!design ? ["Основание крепления: не указано."] : []),
+    "Город объекта: не указан.",
+    "Полные сведения о модели блока и примечания приложите отдельным файлом. Через ссылку они не передаются.",
   ].join("\n");
 }
 
@@ -115,5 +117,5 @@ export function basketBriefSummary(params: URLSearchParams): string | null {
 export function basketBriefText(input: BasketBrief): string {
   const url = new URL(basketBriefHref(input), "https://www.steelprodukt.ru");
   const brief = basketBriefSummary(url.searchParams)!;
-  return input.review ? `${brief}\n\n${basketReviewSummary(input.review)}` : brief;
+  return input.review ? `${brief}\n\n${basketReviewSummary(input.review)}` : `${brief}\nМодель наружного блока: не указана.`;
 }

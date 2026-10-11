@@ -86,3 +86,10 @@ test('downloaded provenance uses the canonical absolute public URL',()=>{
  const saved=JSON.parse(serializeTrimProject(project));assert.equal(saved.source.image,'https://www.steelprodukt.ru/images/products/catalog-sheets/page-09.png');saved.source.image='/images/products/catalog-sheets/page-09.png';assert.throws(()=>parseTrimProject(JSON.stringify(saved)));
  assert.ok(createTrimIfc(project).includes('https://www.steelprodukt.ru/images/products/catalog-sheets/page-09.png'));
 });
+test('trim TXT explains A/B/H/T and CSV keeps its stable header with a Russian legend',()=>{
+ const brief=createTrimBrief(project),csv=createTrimCsv(project);
+ assert.match(brief,/A — наружная высота полки: 50 мм/);assert.match(brief,/B — наружная ширина полки: 100 мм/);
+ assert.match(brief,/H — длина профиля: 1000 мм/);assert.match(brief,/T — толщина металла: 1 мм/);
+ assert.equal(csv.split('\r\n')[0],'\uFEFF"ProjectId";"Revision";"ElementId";"Mark";"Template";"Quantity";"A_mm";"B_mm";"H_mm";"T_mm";"C_deg";"Material_user_input";"Finish_user_input";"SourceImage";"SourceSection";"GeometryScope";"Notice"');
+ assert.match(csv,/A_mm — наружная высота полки/);assert.match(csv,/C_deg — угол в градусах/);
+});

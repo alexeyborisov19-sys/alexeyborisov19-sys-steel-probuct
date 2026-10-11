@@ -35,3 +35,10 @@ test("Per-cassette colours stay at row and column and export with independent IF
  assert.ok(rows[2].includes("RAL по проекту"));
  assert.throws(()=>createCassetteIfc({...p,panelColours:{"0:0":{ral:"bad",hex:"bad"}}}));
 });
+test('BIM CSV preserves columns and explains dimension meaning inside the status cell',()=>{
+ const csv=createCassetteCsv(p),header=csv.split('\r\n')[0];
+ assert.equal(header.split('";"').length,12);
+ assert.match(header,/"Ширина, мм";"Высота, мм";"Глубина, мм"/);
+ assert.match(csv,/Ширина и высота — видимая часть без загнутых краёв; глубина — борт/);
+ assert.match(csv,/ширина относится к первому крылу, площадь включает оба крыла/);
+});

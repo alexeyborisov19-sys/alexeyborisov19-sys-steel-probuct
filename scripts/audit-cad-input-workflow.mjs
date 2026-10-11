@@ -1,6 +1,8 @@
 /** Local candidate only. Synthetic CAD/quotes; external traffic and all real writes are blocked. */
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { chromium, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { candidateIdentity } from './audit-cad-actions-twice.mjs';
@@ -13,7 +15,12 @@ const candidate = await candidateIdentity();
 const startedAt = new Date().toISOString();
 const executionGroup = process.env.CAD_AUDIT_RUN_ID || (process.env.GITHUB_RUN_ID && process.env.GITHUB_RUN_ATTEMPT ? `${process.env.GITHUB_RUN_ID}:${process.env.GITHUB_RUN_ATTEMPT}` : null);
 const browser = await chromium.launch(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {});
+let fixtureDirectory;
 try {
+  fixtureDirectory = await mkdtemp(join(tmpdir(), 'cad-upload-budget-'));
+  const oversizedPath = join(fixtureDirectory, 'oversized.step');
+  const oversizedFile = await open(oversizedPath, 'w');
+  try { await oversizedFile.truncate(50 * 1024 * 1024 + 1); } finally { await oversizedFile.close(); }
   for (const pass of [1, 2]) for (const width of [360, 480, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce', serviceWorkers: 'block' });
     await context.route('**/*', route => {
@@ -133,7 +140,8 @@ try {
     }
     if ([360, 1440].includes(width)) {
       const before = await page.evaluate(() => window.cadWorkflowTest.analyses);
-      await upload.setInputFiles({ name: 'oversized.step', mimeType: 'application/octet-stream', buffer: Buffer.alloc(50 * 1024 * 1024 + 1) });
+      // Playwright rejects in-memory payloads above 50 MiB before the application sees them.
+      await upload.setInputFiles(oversizedPath);
       await expect(page.getByText(/Файл «oversized.step» не добавлен/)).toBeVisible();
       assert.equal(await page.evaluate(() => window.cadWorkflowTest.analyses), before);
       await expect(quoteLabel(4)).toBeVisible();
@@ -158,5 +166,6 @@ try {
 } finally {
   await writeFile(`${output}/cad-input-workflow-results.json`, JSON.stringify({ kind: 'cad-core-evidence', candidate, executionGroup, startedAt, finishedAt: new Date().toISOString(), results }, null, 2));
   await browser.close();
+  if (fixtureDirectory) await rm(fixtureDirectory, { recursive: true, force: true });
 }
 console.log(JSON.stringify(results, null, 2));

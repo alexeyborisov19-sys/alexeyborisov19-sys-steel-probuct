@@ -1,8 +1,8 @@
-/** Measured installation plus manufacturer-specified clearance; no invented universal allowance. */
+/** Physical unit dimensions plus manufacturer-specified clearance; no invented universal allowance. */
 export const fitLabels = {
-  width: "Ширина всей установки, мм",
-  height: "Высота всей установки, мм",
-  depth: "Глубина всей установки, мм",
+  width: "Ширина блока, мм",
+  height: "Высота блока, мм",
+  depth: "Глубина блока без зазоров, мм",
   left: "Зазор слева, мм",
   right: "Зазор справа, мм",
   top: "Зазор сверху, мм",
@@ -68,14 +68,15 @@ export function calculatedBasketSize(fit?: BasketFit) {
 }
 export function basketFitSummary(fit?: BasketFit) {
   if (!fit)
-    return "Размер всей установки и монтажные зазоры: необходимо уточнить.";
+    return "Размеры блока без воздушных зазоров и отдельные монтажные зазоры: необходимо уточнить.";
   const space = requiredBasketSpace(fit);
   return (
+    "Размеры блока включают выступающие части, но не воздушные зазоры. Задний и передний зазоры указаны отдельно.\n" +
     (Object.keys(fitLabels) as (keyof BasketFit)[])
       .map((k) => `${fitLabels[k]}: ${fit[k] ?? "неизвестно"}`)
       .join("; ") +
     (space
       ? `\nТребуемый свободный объём (Ш × В × Г): ${space.width} × ${space.height} × ${space.depth} мм. Проверить по внутреннему чертежу корзины; это не подтверждение вентиляции или несущей способности.`
-      : "\nСвободный объём не рассчитан: заполните размеры установки и все зазоры.")
+      : "\nСвободный объём не рассчитан: заполните размеры блока и все зазоры.")
   );
 }
