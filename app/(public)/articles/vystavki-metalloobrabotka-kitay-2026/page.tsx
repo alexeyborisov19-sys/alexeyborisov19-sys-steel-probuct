@@ -15,7 +15,7 @@ import { createPageMetadata } from "@/lib/seo";
 const pagePath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const pageTitle = "Календарь выставок по металлообработке в Китае — 2026–2027";
 const pageDescription = "Проверенный календарь выставок Китая на 2026–2027 годы: станки, лазерная резка, гибка, штамповка, сварка, роботизация, мехобработка, литьё и материалы.";
-const checkedAt = "2026-08-19";
+const checkedAt = "2026-10-11";
 
 export const metadata: Metadata = createPageMetadata({
   title: pageTitle,
@@ -53,72 +53,65 @@ const confirmedExhibitions2027: ConfirmedExhibition[] = [
       "Листовая и трубная металлообработка, лазерные комплексы, гибка, сварка, станки, роботизация, автоматизация и точное производство.",
     url: "https://global.iteschina.com/en/about",
   },
+  {
+    name: "Beijing Essen Welding & Cutting Fair 2027",
+    date: "23–26 июня 2027",
+    city: "Шанхай, Китай",
+    venue: "Shanghai New International Expo Centre (SNIEC)",
+    focus:
+      "Специализированная выставка сварочных технологий и резки; официально заявлена в Шанхае.",
+    url: "https://www.schweissen-schneiden.com/joining-cutting-surfacing/schweissen-schneiden-worldwide/bewc/",
+  },
 ];
 
 const choiceRows: ExhibitionChoiceRow[] = [
   {
-    task: "Лазерная резка и лазерная сварка",
-    primary: "Laser World of Photonics / MWCS",
-    primaryDate: "18–20 марта / 12–16 октября 2026",
-    alternative: "MetalForm China / CIEX",
-    alternativeDate: "24–27 июня / 18–21 марта 2026",
-    focus: "Лазерные комплексы, источники, автоматическая загрузка, контроль реза и сварочные ячейки",
-  },
-  {
-    task: "Гибка, панелегибы и штамповка",
-    primary: "MetalForm China",
-    primaryDate: "24–27 июня 2026",
-    alternative: "CCMT / MWCS",
-    alternativeDate: "21–25 апреля / 12–16 октября 2026",
-    focus: "Листогибы, панелегибы, прессы, оснастка, роботизированная подача и контроль геометрии",
-  },
-  {
-    task: "Механическая обработка",
-    primary: "CCMT",
-    primaryDate: "21–25 апреля 2026",
-    alternative: "ITES / DMP",
-    alternativeDate: "ITES: 31 марта – 3 апреля 2026 / 24–27 марта 2027; DMP: 3–6 декабря 2026",
-    focus: "Обрабатывающие центры, токарные станки, инструмент, измерение и цифровое управление",
-  },
-  {
-    task: "Роботизация производства",
-    primary: "MWCS + Robotics Show",
+    task: "Лазерная резка и обработка листа",
+    primary: "MWCS",
     primaryDate: "12–16 октября 2026",
-    alternative: "ITES / SIA",
-    alternativeDate: "ITES: 31 марта – 3 апреля 2026 / 24–27 марта 2027; SIA: 3–5 июня 2026",
-    focus: "Роботы, манипуляторы, машинное зрение, автоматические склады и интеграция линий",
-  },
-  {
-    task: "Сварка и сборка",
-    primary: "MWCS / MetalForm China",
-    primaryDate: "12–16 октября / 24–27 июня 2026",
-    alternative: "AMTS / CIEX",
-    alternativeDate: "8–10 июля / 18–21 марта 2026",
-    focus: "Роботизированная сварка, позиционеры, сборочные стенды, контроль шва и безопасность",
-  },
-  {
-    task: "Трубы и профили",
-    primary: "Tube China",
-    primaryDate: "21–24 сентября 2026",
-    alternative: "DMP",
+    alternative: "DMP Greater Bay Area",
     alternativeDate: "3–6 декабря 2026",
-    focus: "Резка труб, профилегибочное оборудование, сварные линии, измерение и обработка торцов",
+    focus: "Оборудование для обработки листа, автоматизация и контроль результата",
   },
   {
-    task: "Литьё и термообработка",
-    primary: "Metal China",
-    primaryDate: "6–9 мая 2026",
-    alternative: "Northeast Asia Foundry",
-    alternativeDate: "1–4 сентября 2026",
-    focus: "Литьё, дробемётная очистка, печи, термообработка и подготовка тяжёлых деталей",
+    task: "Гибка, штамповка и инструмент",
+    primary: "MWCS",
+    primaryDate: "12–16 октября 2026",
+    alternative: "ITES China",
+    alternativeDate: "24–27 марта 2027",
+    focus: "Обработка листового металла, производственная оснастка и технологии точного формообразования",
   },
   {
-    task: "Металл, сплавы и снабжение",
-    primary: "Shanghai Metals Expo",
-    primaryDate: "16–19 ноября 2026",
-    alternative: "Tube China",
-    alternativeDate: "21–24 сентября 2026",
-    focus: "Листовой металл, специальные сплавы, покрытия, трубы, профили и поставщики сырья",
+    task: "Станки и мехобработка",
+    primary: "ITES China",
+    primaryDate: "24–27 марта 2027",
+    alternative: "MWCS",
+    alternativeDate: "12–16 октября 2026",
+    focus: "Станки с ЧПУ, механическая обработка, измерения и автоматизация",
+  },
+  {
+    task: "Автоматизация производства",
+    primary: "DMP Greater Bay Area",
+    primaryDate: "3–6 декабря 2026",
+    alternative: "ITES China",
+    alternativeDate: "24–27 марта 2027",
+    focus: "Производственные линии, роботизация и интеграция оборудования",
+  },
+  {
+    task: "Сварка и резка",
+    primary: "Beijing Essen Welding & Cutting",
+    primaryDate: "23–26 июня 2027",
+    alternative: "DMP Greater Bay Area — раздел Welding & Cutting",
+    alternativeDate: "3–6 декабря 2026",
+    focus: "Специализированная выставка сварки и тематический раздел многопрофильной промышленной выставки",
+  },
+  {
+    task: "Трубная металлообработка",
+    primary: "MWCS",
+    primaryDate: "12–16 октября 2026",
+    alternative: "DMP Greater Bay Area",
+    alternativeDate: "3–6 декабря 2026",
+    focus: "Обработка листа и труб, станки, производственные технологии",
   },
 ];
 
@@ -128,7 +121,7 @@ function eventStatus(endDate: string) {
 
 export default function ChinaExhibitions2026Page() {
   const upcoming = chinaExhibitions2026.filter((event) => eventStatus(event.endDate) === "Предстоит");
-  const editorialChoice = chinaExhibitions2026.filter((event) => event.priority === "Главная рекомендация");
+  const editorialChoice = chinaExhibitions2026.filter((event) => event.priority === "Главная рекомендация" && eventStatus(event.endDate) === "Предстоит");
 
   return (
     <PageLayout
@@ -165,10 +158,10 @@ export default function ChinaExhibitions2026Page() {
         <div className="container">
           <div className="grid gap-px border border-white/12 bg-white/10 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              ["14", "выставок 2026–2027"],
+              ["15", "выставок 2026–2027"],
               [String(upcoming.length), "ещё пройдут в 2026 году"],
               ["9", "направлений технологий"],
-              ["19.08", "дата проверки календаря"],
+              ["11.10", "дата проверки календаря"],
             ].map(([number, label]) => (
               <div key={label} className="bg-[#101519] p-6">
                 <p className="font-mono text-3xl font-bold text-steel-orange">{number}</p>
@@ -267,7 +260,7 @@ export default function ChinaExhibitions2026Page() {
               <p className="eyebrow">Полный календарь</p>
               <h2 className="mt-3 text-3xl font-semibold uppercase sm:text-4xl">Выставки по датам</h2>
             </div>
-            <p className="text-xs uppercase tracking-[.12em] text-white/38">Данные проверены 28 июля 2026</p>
+            <p className="text-xs uppercase tracking-[.12em] text-white/38">Предстоящие даты проверены 11 октября 2026</p>
           </div>
 
           <div className="mt-8 space-y-5">
