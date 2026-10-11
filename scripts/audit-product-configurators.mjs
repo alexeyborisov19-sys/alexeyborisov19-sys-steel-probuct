@@ -147,7 +147,7 @@ try {
         assert.equal(response.status(),200,`Quantity estimate: ${kind}, ${thickness}, ${quantity}`);
         const quote=await response.json();
         assert.equal(quote.quantity,quantity);
-        assert.equal(quote.netAreaM2,quantity*0.72);
+        assert.equal(quote.netAreaM2,quantity*600*1200/1_000_000);
         assert.ok(quote.approximateTotalRub>0&&Number.isSafeInteger(quote.approximateTotalRub));
         assert.equal(quote.marketVerified,false);
       }
