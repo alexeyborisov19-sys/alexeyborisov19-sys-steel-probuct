@@ -9,7 +9,7 @@ import { createPageMetadata } from "@/lib/seo";
 export const metadata = createPageMetadata({ title: "BIM-модель металлокассет — скачать IFC и спецификацию", description: "Бесплатная координационная IFC-модель металлокассет: размеры, толщина, швы, марки и спецификация CSV. Настройте фасадный фрагмент для архитектурного проекта.", path: "/products/metallokassety/bim" });
 const faq = [
   {question: "Можно скачать модель бесплатно?", answer: "Да. Генерация IFC и спецификации CSV бесплатна и не требует регистрации. Изготовление кассет рассчитывается отдельно."},
-  {question: "Можно менять параметры после загрузки в Revit?", answer: "Размеры этой IFC-модели задаются в генераторе до скачивания. Она не является редактируемым семейством RFA. Семейства для Revit 2022 будут доступны после отдельной проверки."},
+  {question: "Можно менять параметры после загрузки в Revit?", answer: "Размеры этой IFC-модели задаются в генераторе до скачивания. Она не является редактируемым семейством RFA. Семейства RFA в этом сервисе пока недоступны."},
   {question: "Подходит ли модель для заказа в производство?", answer: "Нет. Она предназначена для архитектурной компоновки и подсчёта элементов. Открытый и закрытый типы воспроизводят исходные STEP с точностью сетки 0,1 мм; изменённые размеры и узлы стыковки согласуются по рабочей документации."},
 ];
 export default function CassetteBimPage() {
@@ -26,7 +26,7 @@ export default function CassetteBimPage() {
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             <div className="rounded-lg bg-slate-50 p-4"><h3 className="font-semibold">IFC4 — модель</h3><p className="mt-2 text-sm leading-6 text-slate-600">Геометрия и RAL каждой кассеты. Размеры задаются здесь, перед скачиванием.</p></div>
             <div className="rounded-lg bg-slate-50 p-4"><h3 className="font-semibold">CSV — спецификация</h3><p className="mt-2 text-sm leading-6 text-slate-600">Отдельная строка на кассету: марка, размеры, покрытие и площадь лица. Открывается в табличном редакторе.</p></div>
-            <div className="rounded-lg bg-amber-50 p-4"><h3 className="font-semibold">RFA — в разработке</h3><p className="mt-2 text-sm leading-6 text-slate-600">Семейства для Revit 2022 пока недоступны. IFC не заменяет параметрическое семейство.</p></div>
+            <div className="rounded-lg bg-amber-50 p-4"><h3 className="font-semibold">RFA пока недоступен</h3><p className="mt-2 text-sm leading-6 text-slate-600">Скачиваемый IFC предназначен для координации проекта. Редактируемое семейство Revit не создаётся.</p></div>
           </div>
           <details className="mt-6 border-t border-slate-200 py-4"><summary className="cursor-pointer font-semibold">Паспорт параметров и геометрия</summary><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">Паспорт IFC-модели металлокассет</caption><tbody>{[
             ["Элементы", "IfcPlate / IfcPlateType. Каждая кассета имеет отдельный номер."],
