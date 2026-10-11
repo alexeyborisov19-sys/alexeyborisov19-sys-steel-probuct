@@ -25,17 +25,27 @@ on:
       - 'tests/*basket*'
       - 'tests/*cassette*'
       - 'scripts/audit-product-configurators.mjs'
+      - 'scripts/audit-basket-customer-actions.mjs'
       - 'scripts/generate-ifc-validation-fixtures.ts'
       - 'scripts/validate-cassette-ifc.py'
       - '.github/workflows/product-configurator-quality.yml'
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
 jobs:
   verify:
+    name: Verify customer actions (replay ${{ matrix.replay }})
+    strategy:
+      fail-fast: false
+      matrix:
+        replay: [1, 2]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
+      AUDIT_REPLAY: ${{ matrix.replay }}
       NEXT_TELEMETRY_DISABLED: '1'
       # Synthetic local runner identity only; never a production secret.
       IP_HASH_SALT: 'configurator-ci-synthetic-local-only'
@@ -45,6 +55,8 @@ jobs:
       SEO_AUDIT_BASE_URL: http://localhost:3106
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -67,11 +79,20 @@ jobs:
           done
           npm run seo:audit
           node --import tsx scripts/audit-product-configurators.mjs
+          node --import tsx scripts/audit-basket-customer-actions.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: product-configurator-browser-evidence
+          name: product-configurator-browser-evidence-replay-${{ matrix.replay }}
           path: output/product-configurators/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: basket-customer-actions-evidence-replay-${{ matrix.replay }}
+          path: output/basket-customer-actions/
           if-no-files-found: ignore
           retention-days: 7
 
@@ -81,6 +102,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

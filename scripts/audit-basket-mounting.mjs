@@ -17,9 +17,9 @@ try { for (const width of [320,390,1440]) {
  await root.getByRole('button',{name:'Знаю размер корзины',exact:true}).click();await step('Крепление');
  await root.getByRole('textbox',{name:/^От блока до/}).fill('75');
  await step('Размеры');await root.getByRole('button',{name:'По размерам блока',exact:true}).click();
- await root.getByLabel('Ширина всей установки, мм',{exact:true}).fill('800');
+ await root.getByLabel('Ширина блока, мм',{exact:true}).fill('800');
  await expect(root.getByLabel('Зазор сзади, мм',{exact:true})).toHaveValue('75');
- const fields=[['Ширина всей установки, мм','800'],['Высота всей установки, мм','500'],['Глубина всей установки, мм','300'],['Зазор слева, мм','50'],['Зазор справа, мм','50'],['Зазор сверху, мм','50'],['Зазор снизу, мм','50'],['Зазор спереди, мм','200'],['Зазор сзади, мм','50']];
+ const fields=[['Ширина блока, мм','800'],['Высота блока, мм','500'],['Глубина блока без зазоров, мм','300'],['Зазор слева, мм','50'],['Зазор справа, мм','50'],['Зазор сверху, мм','50'],['Зазор снизу, мм','50'],['Зазор спереди, мм','200'],['Зазор сзади, мм','50']];
  for(const [name,value] of fields)await root.getByLabel(name,{exact:true}).fill(value);
  await root.getByLabel('Количество, шт.',{exact:true}).fill('100');
  const price=root.getByRole('region',{name:'Стоимость выбранного исполнения'});

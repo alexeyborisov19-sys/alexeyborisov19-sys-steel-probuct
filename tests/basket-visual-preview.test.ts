@@ -127,3 +127,12 @@ test("customer result hides intermediate workload and facade formula",()=>{
   assert.match(mount,/180 мм/);
   assert.doesNotMatch(mount,/150 \+ 30|= 180/);
 });
+
+test('size guidance never folds rear air gap into physical block depth',()=>{
+ const html=ui.fields(design.fit);
+ assert.match(html,/Размеры самого блока с выступающими частями, без воздушных зазоров/);
+ assert.match(html,/Задний зазор всегда указывайте отдельно/);
+ assert.match(html,/сначала вычтите задний зазор из этого замера/);
+ assert.match(html,/role="img" aria-label="Вид сверху: задний зазор, глубина самого блока и передний зазор измеряются отдельно"/);
+ assert.doesNotMatch(html,/Если зазор уже вошёл|Глубина всей установки/);
+});

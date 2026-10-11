@@ -35,3 +35,32 @@ test('main route does not silently run area pricing and FAQ no longer promises e
   assert.match(main,/<select aria-label="Режим калькулятора металлокассет"/);assert.match(main,/useState<"product" \| "project" \| "estimate">\("product"\)/);assert.match(main,/<MetalCassetteQuickEstimate active=\{view === "estimate"\} \/>/);assert.match(main,/if \(!active\) return;/);assert.doesNotMatch(main,/view === "estimate" && <MetalCassetteQuickEstimate/);
   assert.doesNotMatch(page,/Её можно изменить вручную|Редактируемая цена за квадратный метр/);assert.match(page,/В быстром режиме оценки бюджета доступны/);assert.match(page,/толщину можно указать как исходные данные заказа или оставить на согласование/);
 });
+
+test('cassette dimensions explain the visible face with a labelled front-view sketch',()=>{
+  const [product]=mod.exports.render();
+  assert.match(product,/Ширина кассеты, мм/);assert.match(product,/Высота кассеты, мм/);
+  assert.match(product,/Размеры видимой части кассеты, без загнутых краёв/);
+  assert.match(product,/aria-describedby="cassette-dimensions-help"/);
+  assert.match(product,/role="img" aria-label="Вид кассеты спереди: ширина по горизонтали, высота по вертикали"/);
+  assert.match(product,/Кассета 1/);assert.match(product,/Добавить другой размер/);
+  assert.doesNotMatch(product,/Ширина лица|Высота лица|Типоразмер|Для другой пары размеров/);
+});
+
+test('BIM dimensions describe the face grid and never promise overall manufacturing dimensions',()=>{
+  const [,bim]=mod.exports.render();
+  assert.match(bim,/Видимая часть со швами/);assert.match(bim,/без выступающих монтажных полок/);
+  assert.match(bim,/При смене типа или толщины размеры вернутся к исходным/);
+  assert.doesNotMatch(bim,/Габариты блока|Ширина лица|Высота лица/);
+  const source=readFileSync('components/CassetteBimConfigurator.tsx','utf8');
+  assert.match(source,/Ширина первого крыла, мм/);assert.match(source,/Ширина второго крыла, мм/);
+  assert.match(source,/Текущая раскладка не изменена/);assert.doesNotMatch(source,/Текущий проект сохранён/);
+  const brief=cassetteProductBrief(draft());assert.match(brief,/Видимая часть кассеты 600 × 1200 мм/);assert.match(brief,/Площадь видимой части:/);
+});
+test('contact links describe opening a form and generated IFC never claims to be the source file',()=>{
+ for(const path of ['components/MetalCassetteCalculator.tsx','components/cassette-project/CassetteProjectEditor.tsx','app/(public)/products/metallokassety/bim/page.tsx']){
+  const source=readFileSync(path,'utf8');assert.match(source,/Открыть форму обращения/);assert.doesNotMatch(source,/>Передать (специалисту|инженеру)/);
+ }
+ const preview=readFileSync('components/CassetteBimShapePreview.tsx','utf8');
+ assert.match(preview,/скачайте созданную здесь модель IFC/);assert.doesNotMatch(preview,/исходную модель IFC/);
+ assert.match(preview,/Крылья:/);assert.match(preview,/input.returnWidthMm/);
+});

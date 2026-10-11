@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultBasketDesign, type BasketDesign } from '../lib/quote/basket-design';
-import { calculatedBasketSize, emptyBasketFit } from '../lib/quote/basket-fit';
+import { calculatedBasketSize, emptyBasketFit, basketFitSummary } from '../lib/quote/basket-fit';
 import { basketConfiguredPrice } from '../lib/quote/basket-volume-price';
 import { parseBasketProject, serializeBasketProject } from '../lib/quote/basket-project';
 import { basketMountingDimensions, basketRearGap, basketWallKind, basketFitForSizing, setBasketRearGap, setBasketWallKind, type BasketWallKind } from '../lib/quote/basket-mounting';
@@ -125,4 +125,16 @@ test('first switch from manual basket retains entered mounting gap, including ze
  }
  const cleared={...completeDesign(),offset:75,fit:{...completeDesign().fit!,rear:null}};
  assert.equal(basketFitForSizing(cleared,'block')!.rear,null);
+});
+
+test('physical block depth and separate gaps preserve both basket and wall-to-block dimensions',()=>{
+ const d={...completeDesign(),wallKind:'ventilated' as const};
+ assert.equal(calculatedBasketSize(d.fit)!.depth,550);
+ assert.equal(basketMountingDimensions(d).wallToBlockRearMm,250);
+ const foldedGap={...d,fit:{...d.fit!,depth:350,rear:0}};
+ assert.equal(calculatedBasketSize(foldedGap.fit)!.depth,550);
+ assert.equal(basketMountingDimensions(foldedGap).wallToBlockRearMm,200);
+ const brief=basketFitSummary(d.fit);
+ assert.match(brief,/Глубина блока без зазоров, мм: 300/);assert.match(brief,/Зазор сзади, мм: 50/);
+ assert.match(brief,/но не воздушные зазоры/);assert.doesNotMatch(brief,/всей установки/);
 });
