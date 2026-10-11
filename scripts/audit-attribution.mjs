@@ -48,6 +48,7 @@ try {
           }
           if (step === 'cassette-quick-mode') {
             await page.getByLabel('Режим калькулятора металлокассет', { exact: true }).selectOption('estimate');
+            await page.getByLabel('Площадь фасада', { exact: true }).fill('100');
             continue;
           }
           let link;
