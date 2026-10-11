@@ -7,7 +7,7 @@ import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { commercialProductLandingBySlug } from "@/data/commercial-product-landings";
 import { faqSchema } from "@/lib/schema";
-import { productSchema } from "@/components/CommercialProductLandingPage";
+import { manufacturingLandingServiceSchema } from "@/components/CommercialProductLandingPage";
 import { basketSizeExamples } from "@/lib/quote/basket-brief";
 import { BasketConfigurator } from "./BasketConfigurator";
 import {
@@ -54,7 +54,7 @@ export function BasketLandingPage() {
   const landing = commercialProductLandingBySlug["korziny-dlya-konditsionerov"];
   return (
     <>
-      <JsonLd data={[productSchema(landing), faqSchema(faq)]} />
+      <JsonLd data={[manufacturingLandingServiceSchema(landing), faqSchema(faq)]} />
       <PageLayout
         path="/products/korziny-dlya-konditsionerov"
         eyebrow="Кондиционер — часть архитектуры"

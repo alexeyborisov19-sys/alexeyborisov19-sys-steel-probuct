@@ -15,7 +15,7 @@ import { productSeoBySlug } from "@/data/product-seo";
 import { productSearchPhrases } from "@/data/semantic";
 import { getIndustrySolutions } from "@/lib/industry-solutions";
 import { industriesForProduct } from "@/lib/product-linking";
-import { breadcrumbSchema, faqSchema, productSchema, webPageSchema } from "@/lib/schema";
+import { breadcrumbSchema, faqSchema, serviceSchema, webPageSchema } from "@/lib/schema";
 import { createPageMetadata } from "@/lib/seo";
 
 type ProductPageProps = { params: Promise<{ slug: string }> };
@@ -56,7 +56,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
   return <><JsonLd data={[
     webPageSchema({ name: product.title, description: product.lead, path: `/products/${product.slug}` }),
     breadcrumbSchema([{ name: "Главная", path: "/" }, { name: "Продукция", path: "/products" }, { name: product.title, path: `/products/${product.slug}` }]),
-    productSchema(product),
+    serviceSchema({
+      name: product.title,
+      description: product.lead,
+      path: `/products/${product.slug}`,
+      serviceType: "Изготовление металлических изделий по чертежам на заказ",
+    }),
     faqSchema(faqItems),
   ]} /><Header /><main id="main-content" tabIndex={-1}>
     <InnerHero eyebrow={product.category} title={product.slug === "akvilon" ? "Аквилоны для фасадов и откосов на заказ" : product.title} description={product.lead} image="/images/web/hero-main.webp" imageAlt="Иллюстративный визуал: фасад промышленного здания из тёмных металлокассет с перфорированным экраном" />
