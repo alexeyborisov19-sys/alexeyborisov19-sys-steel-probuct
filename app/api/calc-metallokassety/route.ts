@@ -74,12 +74,13 @@ export async function POST(request: Request) {
   const input: MetalCassetteEstimateInput = { mode, type: payload.type, thickness: payload.thickness };
   if (mode === "area") {
     input.areaM2 = asNumber(payload.areaM2);
-    if (!positive(input.areaM2)) return invalid("Укажите положительную площадь фасада.");
+    if (!positive(input.areaM2) || input.areaM2 > 1_000_000) return invalid("Укажите площадь фасада от 0 до 1 000 000 м².");
   } else {
     input.wallWidthMm = asNumber(payload.wallWidthMm);
     input.wallHeightMm = asNumber(payload.wallHeightMm);
     input.openingsM2 = payload.openingsM2 == null ? 0 : asNumber(payload.openingsM2);
-    if (!positive(input.wallWidthMm) || !positive(input.wallHeightMm)
+    if (!positive(input.wallWidthMm) || input.wallWidthMm > 1_000_000
+      || !positive(input.wallHeightMm) || input.wallHeightMm > 1_000_000
       || !Number.isFinite(input.openingsM2) || input.openingsM2 < 0) return invalid("Проверьте размеры стены и площадь проёмов.");
     if (input.openingsM2 >= (input.wallWidthMm * input.wallHeightMm) / 1_000_000) {
       return invalid("Площадь проёмов должна быть меньше площади стены.");
