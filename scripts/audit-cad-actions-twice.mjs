@@ -446,7 +446,7 @@ export const CAD_ACTION_SCENARIOS = {
       await expect(page.getByLabel('Вид модели', { exact: true })).toHaveCount(0);
     });
   },
-  async preview3d({ page, step, prefix }) {
+  async preview3d({ page, step, prefix, width }) {
     await configureFixture(page, { includeMesh: true });
     await upload(page);
     const canvas = page.locator('canvas[aria-label="Интерактивная 3D-модель детали"]');
@@ -485,15 +485,48 @@ export const CAD_ACTION_SCENARIOS = {
       await expect.poll(async () => (await pixels()).hash).toBe(initial.hash);
       const box = await canvas.boundingBox();
       assert.ok(box && box.width > 0 && box.height > 0);
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(box.x + box.width / 2 + 45, box.y + box.height / 2 + 25, { steps: 6 });
-      await page.mouse.up();
+      if (width === 360) {
+        const session = await page.context().newCDPSession(page);
+        const touch = offset => [{ x: box.x + box.width / 2 + offset, y: box.y + box.height / 2 + offset / 2, id: 1 }];
+        try {
+          await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touch(0) });
+          for (const offset of [9, 18, 27, 36, 45]) await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touch(offset) });
+          await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        } finally { await session.detach(); }
+      } else {
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2 + 45, box.y + box.height / 2 + 25, { steps: 6 });
+        await page.mouse.up();
+      }
       await expect.poll(async () => (await pixels()).hash).not.toBe(initial.hash);
       await byButton(page, 'Fit').click();
       await expect.poll(async () => (await pixels()).hash).toBe(initial.hash);
-      await canvas.hover();
-      await page.mouse.wheel(0, 240);
+      if (width === 360) {
+        // A touch device has no mouse wheel: dispatch real browser touch input, not DOM events.
+        await canvas.evaluate(element => {
+          window.cadTouchEvidence = [];
+          element.addEventListener('pointerdown', event => window.cadTouchEvidence.push({ id: event.pointerId, type: event.pointerType, trusted: event.isTrusted }), { capture: true });
+        });
+        const session = await page.context().newCDPSession(page);
+        const rect = await canvas.boundingBox();
+        assert.ok(rect);
+        const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+        const points = distance => [{ x: center.x - distance / 2, y: center.y, id: 1 }, { x: center.x + distance / 2, y: center.y, id: 2 }];
+        try {
+          await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points(60) });
+          for (const distance of [75, 90, 105, 120]) await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: points(distance) });
+          await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        } finally { await session.detach(); }
+        const touches = await page.evaluate(() => window.cadTouchEvidence);
+        assert.equal(new Set(touches.map(event => event.id)).size, 2);
+        assert.ok(touches.every(event => event.type === 'touch' && event.trusted));
+        // Spreading must enlarge the model, not merely rotate it as the old one-pointer handler did.
+        await expect.poll(async () => (await pixels()).nonzero).toBeGreaterThan(initial.nonzero * 1.5);
+      } else {
+        await canvas.hover();
+        await page.mouse.wheel(0, 240);
+      }
       await expect.poll(async () => (await pixels()).hash).not.toBe(initial.hash);
       await byButton(page, 'Fit').click();
       await expect.poll(async () => (await pixels()).hash).toBe(initial.hash);
@@ -715,7 +748,7 @@ export async function candidateIdentity() {
     'components/ClientManufacturingWorkspace.tsx', 'components/cad/shared/useCadProject.ts', 'components/cad/shared/ProjectFileControls.tsx',
     'components/cad/public/PublicManualSheetParts.tsx', 'components/instant-quote/ClientOperationControls.tsx', 'components/instant-quote/ClientQuotePrintout.tsx',
     'components/ClientCad2DPreview.tsx', 'components/CadMeshViewer.tsx', 'lib/instant-quote/project-file.ts', 'lib/instant-quote/manual-sheet.ts',
-    'lib/instant-quote/cad-input-workflow.ts', 'lib/instant-quote/client-calculation-request.ts', 'scripts/audit-cad-actions-twice.mjs', 'scripts/cad-action-matrix.mjs', 'scripts/audit-cad-input-workflow.mjs',
+    'lib/instant-quote/cad-input-workflow.ts', 'lib/instant-quote/cad-view-controls.ts', 'lib/instant-quote/client-calculation-request.ts', 'scripts/audit-cad-actions-twice.mjs', 'scripts/cad-action-matrix.mjs', 'scripts/audit-cad-input-workflow.mjs',
   ];
   const hashes = Object.fromEntries(await Promise.all(files.map(async file => [file, createHash('sha256').update(await readFile(file)).digest('hex')])));
   return { gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), githubSha: process.env.GITHUB_SHA || null,

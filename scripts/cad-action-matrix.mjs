@@ -22,7 +22,7 @@ const rows = [
   ['operation-sides-unknown', 'operations', 'Select both sides options and unknown for coating/preparation; assert outgoing inputs'],
   ['preview-2d-zoom-fit', 'preview2d', 'Assert zoom in/out viewBox geometry and exact fit restoration'],
   ['preview-view-switch', 'preview3d', 'Switch genuine synthetic-mesh 2D/3D DOM and selected state'],
-  ['preview-3d-controls', 'preview3d', 'Assert rendered synthetic cube pixels change for wire, drag and wheel, then return with fit'],
+  ['preview-3d-controls', 'preview3d', 'Assert rendered synthetic cube pixels change for wire, drag and touch pinch (mobile) or wheel (desktop), then return with fit'],
   ['calculate-success', 'calculation', 'Assert successful synthetic quote, all positions, exact total and request payload'],
   ['calculate-partial', 'calculation', 'Assert subtotal, unpriced-position warning and omission of complete printed total'],
   ['calculate-failed-retry', 'calculation', 'Assert failed response clears price/print and retry obtains a fresh result'],
