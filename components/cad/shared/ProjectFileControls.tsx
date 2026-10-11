@@ -76,7 +76,7 @@ export function ProjectFileControls({ project, filesByPartId, sourcesByPartId, r
 
   return <section className="mb-5 rounded-xl border border-white/15 bg-[#141b21] p-4" aria-label="Файл проекта">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="text-sm font-semibold">Сохранить и продолжить позже</h2><p className="mt-1 text-xs leading-5 text-white/70">JSON хранит параметры и список исходников. CAD и старые цены в него не входят. Автосохранения нет.</p></div>
+      <div><h2 className="text-sm font-semibold">Сохранить и продолжить позже</h2><p className="mt-1 text-xs leading-5 text-white/70">Сохраните проект в JSON, чтобы продолжить позже. После открытия файла прикрепите исходные CAD заново: они и прежние цены не сохраняются. Автосохранения нет.</p></div>
       <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={locked || !project.parts.length} onClick={() => void download()}>Скачать проект</button><button type="button" ref={openButton} className={button} disabled={locked} onClick={() => input.current?.click()}>Открыть JSON проекта</button></div>
     </div>
     {project.parts.length > 0 && <div className="mt-3 flex flex-wrap items-end gap-3"><label className="block min-w-0 flex-1 text-xs text-white/70" htmlFor="cad-project-title">Название проекта<input id="cad-project-title" value={project.title} maxLength={120} onChange={event => onRename(event.target.value)} disabled={locked} className="mt-1 min-h-11 w-full rounded-lg border border-white/20 bg-[#101820] px-3 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange disabled:opacity-50" /></label><p className="pb-3 text-xs text-white/65">Ревизия {revision}</p></div>}

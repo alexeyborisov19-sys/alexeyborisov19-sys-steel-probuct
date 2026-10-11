@@ -150,7 +150,7 @@ try {
   for(const [key,value] of [['elevation-width','2020'],['elevation-height','1020']]) await page.locator(`#cassette-${key}`).fill(value);
   await editor.getByRole('button',{name:'2. Кассеты',exact:true}).click();
   for(const [key,value] of [['face-width','1000'],['face-height','500'],['joint-x','20'],['joint-y','20']]) await page.locator(`#cassette-${key}`).fill(value);
-  await expect(editor).toContainText('2 рядов × 2 колонок');
+  await expect(editor).toContainText('2 ряда × 2 столбца · 4 позиции облицовки');
   await editor.getByRole('button',{name:'3. Проёмы',exact:true}).click();
   await editor.getByRole('button',{name:'+ Прямоугольный проём',exact:true}).click();
   for(const [key,value] of [['widthMm','200'],['heightMm','200'],['xMm','100'],['yMm','100']]) await page.locator(`#cassette-opening-O1-${key}`).fill(value);

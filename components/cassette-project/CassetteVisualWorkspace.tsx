@@ -6,6 +6,11 @@ import { CassetteElevationPreview } from "./CassetteElevationPreview";
 import type { CassetteView } from "./cassette-visual-geometry";
 
 const number = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 });
+const plural = new Intl.PluralRules("ru-RU");
+function countWithWord(value: number, one: string, few: string, many: string) {
+  const form = plural.select(value);
+  return `${value} ${form === "one" ? one : form === "few" ? few : many}`;
+}
 const viewButton = "min-h-11 flex-1 border px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-steel-orange sm:flex-none";
 export function CassetteVisualWorkspace({ elevation, layout, selected, onSelect, review = false }: { elevation: CassetteElevation; layout: CassetteElevationLayout; selected: CassettePanel | null; onSelect: (id: string | null) => void; review?: boolean }) {
   const [view, setView] = useState<CassetteView>("perspective");
@@ -16,7 +21,7 @@ export function CassetteVisualWorkspace({ elevation, layout, selected, onSelect,
   const [showStatuses, setShowStatuses] = useState(false), [showMarks, setShowMarks] = useState(true);
   return <section className="min-w-0" aria-label="Предпросмотр фасада">
     <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
-      <div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-wider text-white/60 sm:block">Ваш фасад</p><h3 className="break-words text-lg font-semibold sm:mt-1 sm:text-xl">{elevation.name}</h3><p className="mt-1 text-sm text-white/75 sm:mt-2">{layout.rows} рядов × {layout.columns} колонок · {layout.summary.quantity} позиций с видимой частью вне проёмов</p></div>
+      <div className="min-w-0"><p className="hidden text-xs font-semibold uppercase tracking-wider text-white/60 sm:block">Ваш фасад</p><h3 className="break-words text-lg font-semibold sm:mt-1 sm:text-xl">{elevation.name}</h3><p className="mt-1 text-sm text-white/75 sm:mt-2">{countWithWord(layout.rows, "ряд", "ряда", "рядов")} × {countWithWord(layout.columns, "столбец", "столбца", "столбцов")} · {countWithWord(layout.summary.quantity, "позиция", "позиции", "позиций")} облицовки</p></div>
       <span className="text-sm tabular-nums text-white/80 sm:border sm:border-white/15 sm:px-3 sm:py-2">{number.format(elevation.widthMm)} × {number.format(elevation.heightMm)} мм</span>
     </div>
     <div className="mt-3 overflow-hidden border border-white/15 bg-[#10171d] sm:mt-5">
@@ -38,7 +43,7 @@ export function CassetteVisualWorkspace({ elevation, layout, selected, onSelect,
       {([["Целые", layout.summary.complete, "bg-[#334d5b]"], ["Краевые", layout.summary.edge, "bg-[#9d6739]"], ["У проёмов", layout.summary.affected, "bg-[#80534e]"], ["Исключены", layout.summary.removed, "bg-[#182126]"]] as const).map(([label, value, colour]) => <div key={label} className="border border-white/10 px-3 py-2"><div className="flex items-center gap-2 text-white/75"><span aria-hidden="true" className={`inline-block h-2.5 w-2.5 shrink-0 ${colour}`} />{label}</div><strong className="mt-1 block text-lg font-semibold tabular-nums">{value}</strong></div>)}
     </div> : null}
     <details className="mt-4 border-t border-white/15 pt-2" open={inspectorOpen} onToggle={event => setInspectorOpen(event.currentTarget.open)}><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-white/85 focus-visible:outline focus-visible:outline-steel-orange">Проверить отдельную кассету{selected ? ` · ${selected.mark}` : ""}</summary>
-    {view === "perspective" ? <label className="flex min-h-11 items-center gap-2 text-sm text-white/80"><input type="checkbox" checked={showStatuses} onChange={event => setShowStatuses(event.target.checked)} className="h-4 w-4 accent-orange-600" />Цвета статусов</label> : <label className="flex min-h-11 items-center gap-2 text-sm text-white/80"><input type="checkbox" checked={showMarks} onChange={event => setShowMarks(event.target.checked)} className="h-4 w-4 accent-orange-600" />Ряд.колонка на схеме</label>}
+    {view === "perspective" ? <label className="flex min-h-11 items-center gap-2 text-sm text-white/80"><input type="checkbox" checked={showStatuses} onChange={event => setShowStatuses(event.target.checked)} className="h-4 w-4 accent-orange-600" />Цвета статусов</label> : <label className="flex min-h-11 items-center gap-2 text-sm text-white/80"><input type="checkbox" checked={showMarks} onChange={event => setShowMarks(event.target.checked)} className="h-4 w-4 accent-orange-600" />Номера рядов и столбцов</label>}
     <p className="text-xs leading-6 text-white/60">Покрытие / RAL не воспроизводится. Освещение условное.</p>
     <label htmlFor="cassette-selected-panel" className="mt-2 block text-sm font-medium text-white/85">Выбранная позиция<select id="cassette-selected-panel" value={selected?.id ?? ""} onChange={event => selectPanel(event.target.value || null)} className="mt-2 min-h-11 w-full min-w-0 border border-white/20 bg-[#0c1013] px-3 py-2 text-base outline-none focus:border-steel-orange focus:ring-1 focus:ring-steel-orange"><option value="">Выберите на рисунке или в этом списке</option>{layout.panels.map(panel => <option key={panel.id} value={panel.id}>{panel.mark} · {cassettePanelStatusLabels[panel.status]} · {number.format(panel.widthMm)} × {number.format(panel.heightMm)} мм</option>)}</select></label>
     {selected ? <div className="mt-3 border border-steel-orange/35 bg-steel-orange/5 p-4" aria-label="Выбранная позиция">

@@ -53,7 +53,7 @@ export function BasketAcReference({ value, onChange, onApply, onApplyUnit }: {
       <summary className="text-sm font-medium">Таблица мощности и примеров размеров</summary>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-left text-xs leading-5">
-          <caption className="sr-only">Ориентировочные размеры примеров наружных блоков по мощности охлаждения. {basketAcDimensionDisclaimer}.</caption>
+          <caption className="sr-only">Примеры габаритов наружных блоков по классам мощности охлаждения. Точные размеры проверяйте по документации своей модели.</caption>
           <thead><tr className="border-b border-slate-300"><th scope="col" className="py-2 pr-2 font-semibold">кВт / тыс. BTU/ч</th><th scope="col" className="py-2 font-semibold">Блок, Ш × В × Г, мм</th></tr></thead>
           <tbody>{basketAcClasses.map(x => <tr key={x.code} className="border-b border-slate-200"><th scope="row" className="py-3 pr-2 align-top font-medium">≈ {x.kw} / {x.code}</th><td className="py-3"><span className="font-semibold">≈ {x.blockDimensions.join(" × ")}</span><a href={x.source} target="_blank" rel="noreferrer" className="mt-1 block break-words text-slate-600 underline underline-offset-4">{x.model}</a></td></tr>)}</tbody>
         </table>

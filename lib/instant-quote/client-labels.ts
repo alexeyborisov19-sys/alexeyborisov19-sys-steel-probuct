@@ -22,10 +22,9 @@ export const OPERATION_LABELS: Record<ManufacturingOperation, string> = {
 
 /** Shared notice: applies to customer-entered parameters as well as uploaded models. */
 export const CALCULATION_DISCLAIMER = PRODUCT_CALCULATION_NOTICE + ". " +
-  "Расчёт выполнен автоматически по указанным данным; результат предварительный и не является публичной офертой. " +
-  "Окончательные цена, сроки, " +
-  "характеристики и условия поставки согласуются после проверки инженером " +
-  "и определяются коммерческим предложением и договором.";
+  "Расчёт выполнен автоматически и не является публичной офертой. " +
+  "Итоговые характеристики, цена, сроки и условия поставки согласуются после проверки инженером " +
+  "и фиксируются в коммерческом предложении и договоре.";
 
 /** Keep the non-offer statement next to every displayed or spoken preliminary price. */
 export const CALCULATION_DISCLAIMER_SHORT =

@@ -40,7 +40,7 @@ const faqItems = [
   },
   {
     question: "Как учитываются русты у открытой кассеты?",
-    answer: "При расчёте стены учитываются только швы между соседними кассетами. Дополнительный руст после последней кассеты в ряду или колонне не добавляется.",
+    answer: "При расчёте стены учитываются только швы между соседними кассетами. Дополнительный руст после последней кассеты в ряду или столбце не добавляется.",
   },
   {
     question: "Как учитывается закрытый тип?",
@@ -117,8 +117,8 @@ export default function MetalCassetteCalculatorPage() {
               </article>
               <article className="border border-white/12 bg-[#111519] p-6">
                 <span className="text-2xl font-semibold text-steel-orange">02</span>
-                <h2 className="mt-4 text-xl font-semibold uppercase">По стене — точнее</h2>
-                <p className="mt-3 text-sm leading-7 text-white/60">Ширина и высота позволяют считать целые ряды и колонны. Для открытого типа корректно учитываются межкассетные русты, для закрытого — рабочий шаг замка.</p>
+                <h2 className="mt-4 text-xl font-semibold uppercase">По размерам стены</h2>
+                <p className="mt-3 text-sm leading-7 text-white/60">По размерам стены оцениваем число кассет с учётом межкассетных швов для открытого типа или шага замка для закрытого. Расположение проёмов и подрезку проверяют по раскладке.</p>
               </article>
               <article className="border border-white/12 bg-[#111519] p-6">
                 <span className="text-2xl font-semibold text-steel-orange">03</span>

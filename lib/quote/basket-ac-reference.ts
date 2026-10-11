@@ -61,7 +61,7 @@ export const basketAcClasses = [
   },
 ] as const;
 
-export const basketAcDimensionDisclaimer = "Размеры ориентировочные. Необходимо подтвердить по спецификации производителя конкретной модели";
+export const basketAcDimensionDisclaimer = "Размеры приведены для примера. Сверьте габариты вашей модели с документацией производителя";
 export type BasketAcAppliedReference = {
   catalogueVersion: 1;
   code: number;
