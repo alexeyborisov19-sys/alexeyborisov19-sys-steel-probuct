@@ -1,4 +1,3 @@
-import { PRODUCT_CALCULATION_NOTICE } from "../product-calculation-notice";
 import type { ManufacturingOperation } from "@/lib/instant-quote/domain";
 
 /** Customer-facing names shared by the configurator and the printed quote. */
