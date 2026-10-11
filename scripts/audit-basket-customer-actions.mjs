@@ -126,7 +126,7 @@ try {
     for (const [label, options, prefix] of [
       ['Сервисная сторона', ['unknown', 'front', 'left', 'right', 'top'], '008'],
       ['Желаемый способ доступа', ['unknown', 'remove-front', 'remove-side', 'open-top'], '009'],
-    ]) for (const option of options) await action(`${prefix}-${option}`, `${label}: ${option}`, async () => { await field(label).selectOption(option); await expect(field(label)).toHaveValue(option); });
+    ]) for (const option of options) await action(`${prefix}-${option}`, `${label}: ${option}`, async () => { const select = root.getByRole('combobox', { name: new RegExp(`^${label}`) }); await select.selectOption(option); await expect(select).toHaveValue(option); });
     await action('010', 'Service distances and facade note complete checklist without automatic manufacture approval', async () => {
       await field('Нужно для обслуживания, мм').fill('400');
       await field('Есть на объекте, мм').fill('450');
