@@ -9,7 +9,6 @@ export const OPERATION_TABLE_DEFAULTS = {
   bendCount: 2,
   weldLengthM: 1,
   countersinkCount: 4,
-  assemblyMinutes: 10,
   powderSides: 2,
   surfacePreparationSides: 2,
 } as const;
@@ -80,10 +79,6 @@ export function operationTableDefaultInputPatch(
     };
   }
 
-  if (operation === "assembly") {
-    if (positiveNumber(current.assemblyMinutes) != null || wasExplicitlyCleared(current, "assemblyMinutes")) return {};
-    return { assemblyMinutes: OPERATION_TABLE_DEFAULTS.assemblyMinutes };
-  }
 
   if (operation === "powder-coating") {
     if (selectedSides(current.powderSides) != null || wasExplicitlyCleared(current, "powderSides")) return {};
@@ -104,6 +99,7 @@ export function completeSelectedOperationInputs(
   evidence: OperationInputEvidence = {},
 ): OperationInputs {
   let result: OperationInputs = { ...current };
+  delete result.assemblyMinutes;
   for (const operation of operations) {
     result = {
       ...result,

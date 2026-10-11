@@ -45,7 +45,8 @@ function configuration(value: unknown): PartConfiguration {
     const sides = key === 'powderSides' || key === 'surfacePreparationSides';
     const integer = sides || key === 'bendCount' || key === 'countersinkCount';
     const parsed = number(rawInputs[key], sides ? 1 : 0, INPUT_LIMITS[key], integer);
-    Object.assign(inputs, { [key]: parsed });
+    // Read legacy files safely, but do not restore factory-time assumptions into customer state.
+    if (key !== "assemblyMinutes") Object.assign(inputs, { [key]: parsed });
   }
   return { materialId: item.materialId as string, thicknessMm: number(item.thicknessMm, Number.MIN_VALUE, 100), quantity: number(item.quantity, 1, 100_000, true), operations: [...item.operations], operationInputs: inputs };
 }
@@ -129,7 +130,7 @@ export async function createCadProjectFile(project: InstantQuoteProject, files: 
     if (!partSource) invalid('Исходный файл отсутствует: сохранение проекта пока недоступно.');
     const c = part.configuration;
     const inputs: OperationInputs = {};
-    for (const key of Object.keys(INPUT_LIMITS) as (keyof OperationInputs)[]) if (c.operationInputs?.[key] != null) Object.assign(inputs, { [key]: c.operationInputs[key] });
+    for (const key of Object.keys(INPUT_LIMITS) as (keyof OperationInputs)[]) if (key !== "assemblyMinutes" && c.operationInputs?.[key] != null) Object.assign(inputs, { [key]: c.operationInputs[key] });
     positions.push({ source: partSource, configuration: { materialId: c.materialId, thicknessMm: c.thicknessMm, quantity: c.quantity, operations: [...c.operations], operationInputs: inputs } });
   }
   return validate({ format: 'steel-product-cad-project', schemaVersion: 1, title: project.title, revision, savedAt: new Date().toISOString(), activePosition: Math.max(0, project.parts.findIndex(part => part.id === project.activePartId)), positions });

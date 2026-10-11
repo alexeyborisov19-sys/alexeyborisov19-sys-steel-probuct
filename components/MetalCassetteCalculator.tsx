@@ -13,8 +13,6 @@ type Thickness = "0.65" | "0.7" | "1.0" | "1.2";
 type Estimate = {
   netAreaM2: number;
   quantity: number;
-  defaultRateRubM2: number;
-  approximateRateRubM2: number;
   approximateTotalRub: number;
 };
 const thicknesses: Array<{ value: Thickness; label: string }> = [
@@ -69,7 +67,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
           throw new Error("estimate failed");
         }
         if (disposed) return;
-        if (![data.netAreaM2, data.quantity, data.defaultRateRubM2, data.approximateRateRubM2, data.approximateTotalRub]
+        if (![data.netAreaM2, data.quantity, data.approximateTotalRub]
           .every((value) => typeof value === "number" && Number.isFinite(value) && value > 0)) throw new Error("invalid estimate");
         setResponseState({ key: requestKey, value: data }); setStatus("ready");
       } catch {

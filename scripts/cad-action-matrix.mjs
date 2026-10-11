@@ -18,7 +18,7 @@ const rows = [
   ['quantity-valid-invalid', 'configuration', 'Preserve invalid drafts and block quote/save; recover to valid bounds'],
   ['quantity-presets', 'configuration', 'Exercise all five presets with selected state and outgoing quantity'],
   ...['bending', 'welding', 'countersink', 'assembly', 'surface-preparation', 'powder-coating', 'packaging'].map(id => [`operation-${id}`, 'operations', `Enable/disable ${id}; assert operation and applicable input omission in manifest`]),
-  ['operation-counts-unknown', 'operations', 'Change all four numeric operation inputs and clear each via unknown; assert outgoing inputs'],
+  ['operation-counts-unknown', 'operations', 'Change all three numeric operation inputs and clear each via unknown; assert outgoing inputs'],
   ['operation-sides-unknown', 'operations', 'Select both sides options and unknown for coating/preparation; assert outgoing inputs'],
   ['preview-2d-zoom-fit', 'preview2d', 'Assert zoom in/out viewBox geometry and exact fit restoration'],
   ['preview-view-switch', 'preview3d', 'Switch genuine synthetic-mesh 2D/3D DOM and selected state'],

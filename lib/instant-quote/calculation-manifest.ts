@@ -91,7 +91,8 @@ function operationInputs(
     result.weldLengthM = boundedNumber(item.weldLengthM, `${label}.weldLengthM`, 500, false);
   }
   if (item.assemblyMinutes != null && operations.has("assembly")) {
-    result.assemblyMinutes = boundedNumber(item.assemblyMinutes, `${label}.assemblyMinutes`, 10_000, false);
+    // Legacy clients may send this field: validate it, but never trust a production time from the browser.
+    boundedNumber(item.assemblyMinutes, `${label}.assemblyMinutes`, 10_000, false);
   }
   if (item.powderSides != null && operations.has("powder-coating")) {
     const sides = boundedNumber(item.powderSides, `${label}.powderSides`, 2, true);

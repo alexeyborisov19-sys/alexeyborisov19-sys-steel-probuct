@@ -320,7 +320,7 @@ export function useCadProject(trackPublicFunnel = false) {
     setStatusByPartId(Object.fromEntries(restored.project.parts.map(part => [part.id,
       restored.filesByPartId[part.id] ? "Размеры восстановлены. Повторно проверяем ручную заготовку." : "Исходный CAD не прикреплён. Выберите оригинал в разделе «Файл проекта».",
     ])));
-    setProjectCalculationMessage("Проект восстановлен без старой цены. Проверьте параметры, прикрепите недостающие CAD и рассчитайте заново.");
+    setProjectCalculationMessage("Проект восстановлен без старой цены. Проверьте параметры, прикрепите недостающие CAD и рассчитайте заново. Если выбрана сборка, её состав и окончательную стоимость уточнит специалист.");
     try {
       await analyzeFiles(restored.project.parts.flatMap(part => {
         const file = restored.filesByPartId[part.id];

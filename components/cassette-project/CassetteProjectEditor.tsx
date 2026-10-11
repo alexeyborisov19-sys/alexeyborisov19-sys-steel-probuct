@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { AttributionLink } from "@/components/AttributionLink";
 import { CassetteVisualWorkspace } from "./CassetteVisualWorkspace";
 import { CassetteBudgetSummary } from "./CassetteBudgetSummary";
-import { estimateCassetteProjectBudget } from "@/lib/cassette-project/budget";
+import { cassetteBudgetProjectKey, createCassetteBudgetLoader, currentCassetteBudget, type CassetteBudgetSnapshot } from "@/lib/cassette-project/public-budget";
 import { buildCassetteElevation, CASSETTE_PROJECT_LIMITS, CASSETTE_PROJECT_SCOPE, cassettePanelStatusLabels, createCassetteElevation, createCassetteProject, validateCassetteProject, type CassetteElevation, type CassetteOpening, type CassettePanelStatus, type CassetteProject } from "@/lib/cassette-project/model";
 import { createCassetteProjectBrief, createCassetteProjectCsv, parseCassetteProject, serializeCassetteProject } from "@/lib/cassette-project/export";
 import { cassetteLayoutExportSummary, createCassetteLayoutIfc } from "@/lib/bim/cassette-layout";
@@ -36,7 +36,23 @@ export function CassetteProjectEditor() {
   const errors = useMemo(() => validateCassetteProject(project), [project]);
   const layouts = useMemo(() => errors.length ? [] : project.elevations.map(e => ({ elevation: e, layout: buildCassetteElevation(e, project.id) })), [project, errors]);
   const layout = layouts.find(item => item.elevation.id === elevation.id)?.layout;
-  const budget = useMemo(() => errors.length || step !== 3 ? null : estimateCassetteProjectBudget(project), [project, errors, step]);
+  const budgetLoader = useMemo(() => createCassetteBudgetLoader(), []);
+  const [budgetSnapshot, setBudgetSnapshot] = useState<CassetteBudgetSnapshot | null>(null);
+  const [budgetMessage, setBudgetMessage] = useState("");
+  const budgetKey = useMemo(() => errors.length ? null : cassetteBudgetProjectKey(project), [project, errors]);
+  const budget = budgetKey && step === 3 ? currentCassetteBudget(project, budgetSnapshot) : null;
+  useEffect(() => {
+    budgetLoader.cancel(); setBudgetSnapshot(null);
+    if (!budgetKey || step !== 3) { setBudgetMessage(""); return; }
+    let active = true;
+    setBudgetMessage("Получаем предварительную стоимость…");
+    const timer = setTimeout(() => {
+      void budgetLoader.load(project).then(snapshot => {
+        if (active && snapshot) { setBudgetSnapshot(snapshot); setBudgetMessage(""); }
+      }).catch(() => { if (active) setBudgetMessage("Стоимость пока недоступна. Можно скачать спецификацию и передать её специалисту."); });
+    }, 250);
+    return () => { active = false; clearTimeout(timer); budgetLoader.cancel(); };
+  }, [budgetKey, project, step, budgetLoader]);
   const coverage = useMemo(() => errors.length ? null : cassetteLayoutExportSummary(project), [project, errors]);
   const totals = layouts.reduce((sum, item) => ({ quantity: sum.quantity + item.layout.summary.quantity, complete: sum.complete + item.layout.summary.complete, edge: sum.edge + item.layout.summary.edge, affected: sum.affected + item.layout.summary.affected, removed: sum.removed + item.layout.summary.removed }), { quantity: 0, complete: 0, edge: 0, affected: 0, removed: 0 });
   const selected = layout?.panels.find(panel => panel.id === selectedId) ?? null;
@@ -78,7 +94,7 @@ export function CassetteProjectEditor() {
   }
   function exportFile(format: "json" | "csv" | "txt" | "ifc") {
     try {
-      const text = format === "json" ? serializeCassetteProject(project) : format === "csv" ? createCassetteProjectCsv(project) : format === "txt" ? createCassetteProjectBrief(project) : createCassetteLayoutIfc(project);
+      const text = format === "json" ? serializeCassetteProject(project) : format === "csv" ? createCassetteProjectCsv(project) : format === "txt" ? createCassetteProjectBrief(project, budgetSnapshot) : createCassetteLayoutIfc(project);
       download(`cassettes-${project.id}-r${project.revision}.${format}`, text, format === "json" ? "application/json" : format === "csv" ? "text/csv;charset=utf-8" : "text/plain;charset=utf-8");
       setFileError(""); setFileMessage(`${format.toUpperCase()}: файл подготовлен для скачивания, редакция ${project.revision}.`);
     } catch (error) { setFileMessage(""); setFileError(error instanceof Error ? error.message : "Не удалось подготовить файл."); }
@@ -140,7 +156,7 @@ export function CassetteProjectEditor() {
           <p className="mt-3 text-sm leading-6 text-white/65">Проёмы должны находиться внутри фасада и не пересекаться. Позиции у вырезов проверяет инженер.</p>
         </fieldset> : null}
         {step === 3 ? <section aria-label="Проверка результата"><h3 className="text-xl font-semibold">Проверьте раскладку</h3><p className="mt-4 text-sm leading-6 text-white/75">Сначала проверьте краевые позиции и кассеты у проёмов. Затем скачайте ведомость и файл проекта ниже.</p>
-          {budget ? <CassetteBudgetSummary budget={budget} /> : null}
+          {budget ? <CassetteBudgetSummary budget={budget} /> : <p role="status" className="mt-5 text-sm text-white/70">{budgetMessage || "Стоимость уточнит специалист."}</p>}
         </section> : null}
         <div className="mt-4 flex flex-wrap gap-2 border-t border-white/15 pt-3 sm:mt-7 sm:pt-5">{step > 0 ? <button type="button" className={secondaryClass} onClick={() => setStep(step - 1)}>← Назад</button> : null}{step < 3 ? <button type="button" className="min-h-12 flex-1 bg-steel-orange px-4 py-3 text-sm font-bold text-black hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" onClick={() => setStep(step + 1)}>Далее: {steps[step + 1].toLowerCase()} →</button> : <a href="#cassette-project-package" className="flex min-h-12 flex-1 items-center justify-center border border-steel-orange/50 px-4 py-3 text-sm font-semibold text-orange-200 focus-visible:outline focus-visible:outline-steel-orange">К файлам проекта ↓</a>}</div>
       </div>

@@ -198,7 +198,7 @@ async function reviewPart(
       }
       // A commercial estimate is not manufacturing approval. Keep the failed
       // geometry review and approved/published price unset in the audit.
-      return { signal: { ...held.signal, estimatedSalePriceRub: baseline, ...(knownScopeOnly ? { unpricedOperations } : {}), materialPriceDate, ...(cost.staleMaterialPriceUsed ? {staleMaterialPriceDate:cost.staleMaterialPriceUsed.sourceDate} : {}), ...((incompleteCountersinks || omittedWarnings.length || manufacturingConstraints.length || measuredStepBlank || manualBlank) ? {manufacturingWarnings:[
+      return { signal: { ...held.signal, estimatedSalePriceRub: baseline, ...(incompleteCountersinks ? { countersinkReviewScope: codes.has("countersink") ? "priced-count-only" as const : "not-priced" as const } : {}), ...(measuredStepBlank ? { additionalProcessingExcluded: true } : {}), ...(manufacturingConstraints.some(check => check.code === "feature-rules") ? { smallFeaturesNeedReview: true } : {}), ...(knownScopeOnly ? { unpricedOperations } : {}), materialPriceDate, ...(cost.staleMaterialPriceUsed ? {staleMaterialPriceDate:cost.staleMaterialPriceUsed.sourceDate} : {}), ...((incompleteCountersinks || omittedWarnings.length || manufacturingConstraints.length || measuredStepBlank || manualBlank) ? {manufacturingWarnings:[
         ...(manualBlank ? cad?.reviewReasons ?? [] : []),
         ...omittedWarnings,
         ...(incompleteCountersinks ? ["Распознавание зенковок неполное. Учтено только указанное количество; дополнительные конические поверхности требуют проверки и отдельной оценки."] : []),

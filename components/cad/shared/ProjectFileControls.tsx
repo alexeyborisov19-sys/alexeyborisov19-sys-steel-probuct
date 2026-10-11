@@ -61,7 +61,7 @@ export function ProjectFileControls({ project, filesByPartId, sourcesByPartId, r
     try {
       await onRestore(pending);
       setPending(null);
-      setMessage('Проект открыт. Старая стоимость не переносится. Проверьте восстановленные параметры перед новым расчётом.');
+      setMessage('Проект открыт. Старая стоимость не переносится. Проверьте параметры перед новым расчётом; выбранную сборку и её стоимость уточнит специалист.');
     } catch (error) { reportError(error); } finally { setBusy(false); }
   }
 

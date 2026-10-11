@@ -35,14 +35,14 @@ const project: InstantQuoteProject = {
   }],
 };
 
-for (const status of ["ready", "needs-review"] as const) test(`material price date accompanies ${status} prices`, () => {
+for (const status of ["ready", "needs-review"] as const) test(`supplier price date stays private for ${status} prices`, () => {
   const view = createClientCalculationView(project, [{partId:"part-1",status,
     approvedSalePriceRub:status==="ready"?100:null,estimatedSalePriceRub:status==="needs-review"?100:null,
     materialPriceDate:"2026-09-22T10:00:00.000Z"}]);
-  assert.equal(view.parts[0].price.materialPriceDate,"2026-09-22");
-  assert.match(view.parts[0].message,/2026-09-22/);
+  assert.equal(Object.hasOwn(view.parts[0].price,"materialPriceDate"),false);
+  assert.doesNotMatch(JSON.stringify(view),/2026-09-22|materialPriceDate/);
 });
 test("held prices do not display a misleading price date",()=>{
  const view=createClientCalculationView(project,[{partId:"part-1",status:"blocked",approvedSalePriceRub:100,materialPriceDate:"2026-09-22"}]);
- assert.equal(view.parts[0].price.materialPriceDate,undefined);
+ assert.equal(Object.hasOwn(view.parts[0].price,"materialPriceDate"),false);
 });

@@ -2,12 +2,16 @@ name: Product configurator quality
 on:
   pull_request:
     paths:
+      - 'package.json'
+      - 'package-lock.json'
       - 'components/cassette-project/**'
       - 'components/cad/shared/**'
       - 'components/ClientManufacturingWorkspace.tsx'
       - 'components/CadMeshViewer.tsx'
       - 'components/MetalCassetteCalculator.tsx'
       - 'components/CassetteProductSpecification.tsx'
+      - 'components/EngineeringAssistantLauncher.tsx'
+      - 'tests/assistant-launcher-consistency.test.ts'
       - 'lib/cassette-product-spec.ts'
       - 'tests/calculators-simple-flow.test.ts'
       - 'components/CassetteBim*'
@@ -19,6 +23,10 @@ on:
       - 'tests/trim-bim.test.ts'
       - 'components/commercial/Basket*'
       - 'lib/cassette-project/**'
+      - 'app/api/cassette-project-budget/**'
+      - 'lib/server/instant-quote/cassette-project-budget-handler.ts'
+      - 'tests/client-pricing-import-boundary.test.ts'
+      - 'scripts/audit-client-pricing-boundary.mjs'
       - 'lib/bim/**'
       - 'lib/instant-quote/project-file.ts'
       - 'lib/quote/basket*'
@@ -33,6 +41,9 @@ on:
       - 'lib/instant-quote/cad-view-controls.ts'
       - 'lib/instant-quote/manual-sheet.ts'
       - 'scripts/audit-basket-customer-actions.mjs'
+      - 'scripts/assert-print-pdf.mjs'
+      - 'components/instant-quote/ClientQuotePrintout.tsx'
+      - 'app/globals.css'
       - 'scripts/generate-ifc-validation-fixtures.ts'
       - 'scripts/validate-cassette-ifc.py'
       - '.github/workflows/product-configurator-quality.yml'
@@ -71,10 +82,13 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install Playwright video encoder for local interaction evidence
         run: npx playwright install ffmpeg
+      - name: Install PDF text verification utility
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: node scripts/audit-client-pricing-boundary.mjs
       - name: Local-only intercepted responsive project flows
         run: |
           npm start -- --hostname localhost --port 3106 > /tmp/configurator-server.log 2>&1 &

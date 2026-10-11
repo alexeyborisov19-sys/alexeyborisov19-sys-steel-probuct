@@ -19,3 +19,14 @@ test("assistant launcher stays compact on mobile before and after first activati
   assert.match(loadedAssistant, compactButton, "loaded launcher must keep the same compact mobile shell after closing");
   assert.match(loadedAssistant, hiddenMobileLabel, "loaded launcher label must remain hidden below sm after closing");
 });
+
+test("calculator routes suppress the launcher before either lazy or activated rendering", async () => {
+  const source = await readFile(lazyLauncherPath, "utf8");
+  const guard = source.slice(source.indexOf("// Configurators"), source.indexOf("if (!activated)"));
+  for (const route of ["/calculator-metallokassety", "/products/metallokassety/bim", "/products/dobornye-elementy/bim", "/products/korziny-dlya-konditsionerov", "/online-order"]) {
+    assert.ok(guard.includes(`pathname === "${route}"`), `${route} must not have a floating assistant over its controls`);
+  }
+  assert.match(guard, /return null/);
+  assert.match(guard, /startsWith\("\/internal\/"\)/);
+  assert.match(source, /if \(!activated\) return <LauncherButton/);
+});

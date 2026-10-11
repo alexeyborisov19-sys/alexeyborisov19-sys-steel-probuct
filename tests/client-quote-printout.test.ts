@@ -80,3 +80,12 @@ test("the disclaimer repeats the site's own terms rather than inventing new ones
   const terms = await source("app/(public)/legal/terms/page.tsx");
   assert.match(terms, /не является публичной офертой/);
 });
+
+test("quote printing removes the screen layout from pagination via a body portal", async () => {
+  const printout = await source("components/instant-quote/ClientQuotePrintout.tsx");
+  const css = await source("app/globals.css");
+  assert.match(printout, /createPortal\(/);
+  assert.match(printout, /document\.body/);
+  assert.match(css, /body:has\(> \.quote-print-root\) > :not\(\.quote-print-root\) \{ display: none !important; \}/);
+  assert.match(css, /html:has\(body > \.quote-print-root\) \{ color-scheme: light !important; \}/);
+});

@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ClientProjectCalculationView } from "@/lib/instant-quote/client-calculation-view";
 import { CALCULATION_DISCLAIMER, materialLabel, operationLabels } from "@/lib/instant-quote/client-labels";
 import { legalOperator } from "@/lib/legal";
@@ -27,9 +31,12 @@ export function ClientQuotePrintout({
   totalRub: number | null;
   preparedAt: Date;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
   const priced = calculation.parts.filter((part) => ["approved", "estimate"].includes(part.price.status) && part.price.totalRub != null);
 
-  return (
+  return createPortal(
     <section className="quote-print-root" aria-hidden="true">
       <header style={{ borderBottom: "2px solid #111", paddingBottom: 12, marginBottom: 16 }}>
         <img src={siteConfig.logo} alt={siteConfig.name} style={{ height: 40, width: "auto" }} />
@@ -61,7 +68,7 @@ export function ClientQuotePrintout({
           {calculation.parts.map((part, index) => (
             <tr key={part.partId}>
               <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{index + 1}</td>
-              <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{part.fileName}{part.price.materialPriceDate && <div style={{ marginTop: 4 }}>Прайс металла от {part.price.materialPriceDate}</div>}</td>
+              <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{part.fileName}</td>
               <td style={{ border: "1px solid #999", padding: "4px 6px" }}>{materialLabel(part.configuration.materialId)}</td>
               <td style={{ border: "1px solid #999", padding: "4px 6px" }}>
                 {part.configuration.thicknessMm == null ? "—" : `${part.configuration.thicknessMm} мм`}
@@ -96,6 +103,6 @@ export function ClientQuotePrintout({
       <p style={{ marginTop: 18, fontSize: 10, lineHeight: 1.6, color: "#333" }}>
         {CALCULATION_DISCLAIMER} Оплата на сайте не подключена.
       </p>
-    </section>
+    </section>, document.body
   );
 }

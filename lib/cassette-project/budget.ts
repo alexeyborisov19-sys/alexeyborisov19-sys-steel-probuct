@@ -1,3 +1,4 @@
+import 'server-only';
 import { getDefaultMetalCassetteRate, roundMoney, type MetalCassetteThickness } from '../metal-cassette-estimate';
 import { buildCassetteElevation, normalizeCassetteProject, type CassetteProject } from './model';
 
