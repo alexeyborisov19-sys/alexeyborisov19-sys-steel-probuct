@@ -104,7 +104,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
           </div>
           <div className="grid grid-cols-2 border border-white/12 bg-[#0c1013] p-1">
             <button type="button" onClick={() => setMode("area")} aria-pressed={mode === "area"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "area" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По площади</button>
-            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По стене</button>
+            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По размерам стены</button>
           </div>
         </div>
       </div>
@@ -131,7 +131,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
                 <input id="facade-area" inputMode="decimal" value={area} onChange={(event) => setArea(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-xl font-semibold outline-none focus:border-steel-orange" aria-describedby="area-help" />
                 <span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 bg-white/[.035] text-sm font-bold text-steel-orange">м²</span>
               </div>
-              <p id="area-help" className="mt-2 text-sm leading-6 text-white/70">Быстрая оценка для первого бюджета. Точная раскладка зависит от геометрии стен и проёмов.</p>
+              <p id="area-help" className="mt-2 text-sm leading-6 text-white/70">Оценка бюджета без раскладки. Проёмы и геометрию уточним по чертежу.</p>
             </div>
           ) : (
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -146,7 +146,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
               <div className="sm:col-span-2">
                 <label htmlFor="wall-openings" className="text-xs font-bold uppercase tracking-[.12em] text-white/75">Площадь окон и дверей <span className="font-normal normal-case tracking-normal text-white/70">необязательно</span></label>
                 <div className="mt-3 flex"><input id="wall-openings" inputMode="decimal" value={openings} onChange={(event) => setOpenings(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" /><span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 text-xs text-white/75">м²</span></div>
-                <p className="mt-2 text-sm leading-6 text-white/70">Положение проёмов влияет на реальную подрезку, поэтому по одной их площади результат остаётся предварительным.</p>
+                <p className="mt-2 text-sm leading-6 text-white/70">Площадь проёмов не учитывает их расположение и подрезку кассет.</p>
               </div>
             </div>
           )}
@@ -159,10 +159,10 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
               })}
             </div>
           </fieldset>
-          <div className="mt-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-3">
+          <div className="mt-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
             <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/70">Типовой формат</p><p className="mt-2 text-sm font-semibold">1170 × 545 мм</p></div>
             <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/70">Конструкция</p><p className="mt-2 text-sm font-semibold">{type === "open" ? "открытый шов" : "замковый стык"}</p></div>
-            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/70">Статус</p><p className="mt-2 text-sm font-semibold">предварительный расчёт</p></div>
+            
           </div>
         </div>
         <div className="flex min-w-0 flex-col bg-[radial-gradient(circle_at_100%_0%,rgba(224,86,36,.14),transparent_45%)] p-5 sm:p-8">
@@ -175,7 +175,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
             <p aria-live="polite" className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
               {status === "loading" ? "…" : typeof amount === "number" && amount > 0 ? `≈ ${money.format(amount)} ₽` : "—"}
             </p>
-            <p className="mt-3 text-sm leading-6 text-white/75">Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа.</p>
+            
             <p className="mt-3 text-sm leading-6 text-white/60">{CALCULATION_DISCLAIMER}</p>
           </div>
           <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
@@ -202,12 +202,12 @@ export function MetalCassetteCalculator() {
       <CalculatorLogo />
       <label className="block w-full text-sm text-white/80 sm:w-auto">Режим калькулятора металлокассет
         <select aria-label="Режим калькулятора металлокассет" value={view} onChange={event=>setView(event.target.value as typeof view)} className="mt-2 block min-h-12 w-full rounded-lg border border-white/30 bg-[#101417] px-3 py-2 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-          <option value="product">По размерам и количеству</option><option value="project">Проект и раскладка</option><option value="estimate">Быстрая оценка цены</option>
+          <option value="product">По размерам и количеству</option><option value="project">Раскладка фасада</option><option value="estimate">Быстрая оценка цены</option>
         </select>
       </label>
     </div>
     <div id="cassette-view-product" hidden={view !== "product"}><CassetteProductSpecification /></div>
     <div id="cassette-view-project" hidden={view !== "project"}><CassetteProjectEditor /></div>
-    <div id="cassette-view-estimate" hidden={view !== "estimate"}><p className="border border-white/15 bg-[#101417] p-4 text-sm leading-7 text-white/75">Быстрая оценка по типовым допущениям. Она не использует проектную раскладку и не является ценой её ведомости. Стоимость рассчитывается автоматически.</p><MetalCassetteQuickEstimate active={view === "estimate"} /></div>
+    <div id="cassette-view-estimate" hidden={view !== "estimate"}><p className="border border-white/15 bg-[#101417] p-4 text-sm leading-7 text-white/75">Быстрая оценка не учитывает вашу раскладку фасада. Итоговую стоимость уточнит инженер.</p><MetalCassetteQuickEstimate active={view === "estimate"} /></div>
   </div>;
 }
