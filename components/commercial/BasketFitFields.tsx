@@ -11,7 +11,7 @@ export function BasketFitFields({value,onChange}: {value?:BasketFit;onChange:(fi
     <BasketNumberInput value={fit[k]} emptyValue={null} min={['width','height','depth'].includes(k)?1:0} max={10000} placeholder="Введите, мм" className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base" onValue={v=>onChange({...fit,[k]:v})}/>
   </label>);
   return <section aria-label="Размеры блока и зазоры">
-    <h4 className="text-sm font-semibold text-slate-800">1. Габариты наружного блока</h4><p className="mt-2 text-sm leading-6 text-slate-600">Размеры самого блока с выступающими частями, без воздушных зазоров. Вводите миллиметры. Зазоры вокруг блока укажите отдельно.</p>
+    <h4 className="text-sm font-semibold text-slate-800">1. Габариты наружного блока</h4><p className="mt-2 text-sm leading-6 text-slate-600">Укажите габариты блока с выступающими частями, без зазоров. Все размеры — в миллиметрах.</p>
     <figure className="mt-3 max-w-md text-slate-700">
       <svg viewBox="0 0 360 130" className="block h-auto w-full" role="img" aria-label="Вид сверху: задний зазор, глубина самого блока и передний зазор измеряются отдельно">
         <path d="M30 30V95" stroke="currentColor" strokeWidth="6" />
@@ -22,17 +22,17 @@ export function BasketFitFields({value,onChange}: {value?:BasketFit;onChange:(fi
           <text x="67" y="112">Сзади</text><text x="288" y="112">Спереди</text>
         </g>
       </svg>
-      <figcaption className="text-xs leading-5 text-slate-600">Вид сверху, без масштаба. Блок и два воздушных зазора — три отдельных размера.</figcaption>
+      <figcaption className="text-xs leading-5 text-slate-600">Вид сверху, без масштаба: блок и зазоры измеряют отдельно.</figcaption>
     </figure>
     <div className="mt-4 grid grid-cols-2 gap-3">{fields(['width','height','depth'])}</div>
-    <details className="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-3"><summary className="text-sm font-semibold text-slate-800">Уточнить зазоры вокруг блока{size ? " · указаны" : " · нужны для расчёта"}</summary>
-    <p className="mt-2 text-xs leading-5 text-slate-600">Из инструкции вашей модели, с учётом трубок и обслуживания. Если дополнительный отступ не нужен, введите 0. Пустое поле означает, что размер пока неизвестен.</p>
+    <details className="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-3"><summary className="text-sm font-semibold text-slate-800">{size ? "Зазоры вокруг блока · указаны" : "Указать зазоры вокруг блока"}</summary>
+    <p className="mt-2 text-xs leading-5 text-slate-600">Укажите зазоры из инструкции кондиционера с учётом трубок и обслуживания. 0 — отступ не нужен; пустое поле — размер неизвестен.</p>
     <div className="mt-3 grid grid-cols-2 gap-3">{fields(['left','right','top','bottom','front','rear'])}</div>
     <BasketRearGapHint onApply={rear => onChange({...fit,rear})}/>
-    <p className="mt-3 text-xs leading-5 text-slate-600">Зазор сзади — от блока до наружной поверхности стены или облицовки. Глубина вентфасада задаётся отдельно на шаге «Крепление». Задний зазор всегда указывайте отдельно. Если замер выполнен от стены или облицовки до переднего края блока, сначала вычтите задний зазор из этого замера — получите глубину самого блока. Корзина открыта сверху — отступ сверху означает желаемое положение края панели.</p>
+    <p className="mt-3 text-xs leading-5 text-slate-600">Задний зазор измеряется от блока до стены или облицовки. Глубину фасада укажите на шаге «Крепление». Если измеряли расстояние до переднего края блока, вычтите задний зазор: получите глубину блока. Верхний отступ задаёт положение края панели — у корзины нет крышки.</p>
     </details>
     <div className="mt-4 rounded-xl border border-slate-300 bg-slate-50 p-4" role="status">
-      {size?<><b className="block">Расчётный внутренний размер: {size.width} × {size.height} × {size.depth} мм</b><span className="mt-2 block text-xs leading-5 text-slate-600">Предварительно, с округлением вверх до миллиметра. Наружные размеры с учётом панелей уточняются по чертежу.</span></>:<span className="text-sm text-slate-600">Предварительный эскиз: зазоры нужно уточнить. Откройте «Уточнить зазоры вокруг блока» — размер корзины появится после ввода шести отступов.</span>}
+      {size?<><b className="block">Расчётный внутренний размер: {size.width} × {size.height} × {size.depth} мм</b><span className="mt-2 block text-xs leading-5 text-slate-600">Размеры предварительные. Наружные габариты уточняются по чертежу с учётом панелей.</span></>:<span className="text-sm text-slate-600">Чтобы получить внутренние размеры корзины, откройте «Указать зазоры вокруг блока» и заполните шесть отступов.</span>}
     </div>
   </section>;
 }
@@ -41,7 +41,7 @@ export function BasketFitResult({fit,width,height,depth,calculated=false}:{fit?:
   const tooSmall=required&&(width<=required.width||height<=required.height||depth<=required.depth);
   return <section className="mt-5 border border-slate-300 p-4" aria-label="Проверка свободного пространства">
     <h4 className="font-semibold">Размеры: что проверено</h4>
-    {required?<><p className="mt-2">Нужен свободный внутренний объём: <b>{required.width} × {required.height} × {required.depth} мм</b>.</p><p className="mt-2 text-sm text-slate-600">{calculated?'Этот объём использован для расчёта. Наружные размеры уточняются по чертежу с учётом панелей и отгибов.':tooSmall?'Выбранную корзину нужно увеличить: её наружный размер не больше требуемого свободного объёма хотя бы по одной оси.':'Наружные размеры больше требуемого объёма. Проверьте внутренний просвет с учётом каркаса и панелей.'}</p></>:<p className="mt-2 text-sm text-slate-600">Для автоматического подбора на шаге «Размеры» выберите «По размерам блока» и укажите зазоры.</p>}
+    {required?<><p className="mt-2">Нужен свободный внутренний объём: <b>{required.width} × {required.height} × {required.depth} мм</b>.</p><p className="mt-2 text-sm text-slate-600">{calculated?'Этот объём использован для расчёта. Наружные размеры уточняются по чертежу с учётом панелей и отгибов.':tooSmall?'Корзина мала хотя бы по одному размеру. Увеличьте её и проверьте внутренний просвет.':'Наружные размеры больше требуемого объёма. Проверьте внутренний просвет с учётом каркаса и панелей.'}</p></>:<p className="mt-2 text-sm text-slate-600">Для автоматического подбора на шаге «Размеры» выберите «По размерам блока» и укажите зазоры.</p>}
     <p className="mt-2 text-xs text-slate-600">Подбор приблизительный. Воздухообмен, доступ к клапанам, опоры и анкеры проверяются по конкретному кондиционеру и основанию.</p>
   </section>;
 }

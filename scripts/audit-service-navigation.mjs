@@ -7,7 +7,7 @@ const browser = await chromium.launch({ ...(process.env.BROWSER_CHANNEL ? { chan
 const results = [];
 const cases = [
   ['/production/gibka-listovogo-metalla', 2],
-  ['/production/svarka-i-sborka-metalloizdeliy', 1],
+  ['/production/svarka-i-sborka-metalloizdeliy', 2],
   ['/production/lazernaya-rezka-metalla', 1],
   ['/production/poroshkovaya-okraska-metalla', 1],
 ];

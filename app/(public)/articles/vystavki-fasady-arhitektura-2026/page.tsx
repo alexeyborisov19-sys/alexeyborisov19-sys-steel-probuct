@@ -15,7 +15,7 @@ import { createPageMetadata } from "@/lib/seo";
 const pagePath = "/articles/vystavki-fasady-arhitektura-2026";
 const pageTitle = "Выставки фасадов и архитектурных инноваций — 2026–2027";
 const pageDescription = "Проверенный календарь фасадных и архитектурных выставок России, Китая и Дубая на 2026–2027 годы: даты, технологии, аудитория и официальные сайты.";
-const checkedAt = "2026-08-19";
+const checkedAt = "2026-10-11";
 
 export const metadata: Metadata = createPageMetadata({
   title: pageTitle,
@@ -135,7 +135,7 @@ const faqItems = [
   {
     question: "Какие выставки фасадов ещё пройдут в 2026 году?",
     answer:
-      "После 27 июля 2026 года в календаре остаются Фасадная неделя России в Москве, FENESTRATION BAU CHINA вместе с BAU China и CADE в Пекине, а также Big 5 Global в Дубае. Перед поездкой даты необходимо повторно проверить на официальном сайте организатора.",
+      "На 11 октября 2026 года впереди FENESTRATION BAU CHINA в Пекине 28–30 октября и Big 5 Global в Дубае 23–26 ноября. Московская Фасадная неделя завершилась в сентябре. Даты уточняйте на официальных сайтах.",
   },
   {
     question: "Какая выставка полезнее производителю металлических фасадов и металлокассет?",
@@ -175,59 +175,43 @@ const countryStyles = {
 const choiceRows: ExhibitionChoiceRow[] = [
   {
     task: "Металлические фасады и НВФ",
-    primary: "Фасадная неделя России / Building Skin Russia",
-    primaryDate: "21–24 сентября 2026 / 4–5 марта 2027",
-    alternative: "MosBuild / FBC",
-    alternativeDate: "MosBuild: 31 марта – 3 апреля 2026 / 30 марта – 2 апреля 2027; FBC: 28–30 октября 2026",
-    focus: "Металлокассеты, панели, подсистемы, крепёж, утепление и противопожарные узлы",
+    primary: "Building Skin Russia",
+    primaryDate: "4–5 марта 2027",
+    alternative: "MosBuild",
+    alternativeDate: "30 марта – 2 апреля 2027",
+    focus: "Подсистемы, облицовка, проектные решения и строительные узлы",
   },
   {
-    task: "Светопрозрачные фасады",
-    primary: "FBC / Windoor Facade Expo",
-    primaryDate: "28–30 октября / 11–13 марта 2026",
-    alternative: "Мир стекла",
-    alternativeDate: "4–6 марта 2026",
-    focus: "Профильные системы, модульные фасады, фурнитура, герметизация и монтажные решения",
-  },
-  {
-    task: "Архитектурное стекло",
-    primary: "China Glass",
-    primaryDate: "7–10 апреля 2026",
-    alternative: "Мир стекла",
-    alternativeDate: "4–6 марта 2026",
-    focus: "Фасадное стекло, закалка, ламинация, покрытия, стеклопакеты и оборудование переработки",
+    task: "Окна и светопрозрачные фасады",
+    primary: "FENESTRATION BAU CHINA",
+    primaryDate: "28–30 октября 2026",
+    alternative: "MosBuild",
+    alternativeDate: "30 марта – 2 апреля 2027",
+    focus: "Профильные системы, конструкции, фурнитура и фасадные технологии",
   },
   {
     task: "Архитектурные материалы и идеи",
-    primary: "CADE + FBC",
+    primary: "FENESTRATION BAU CHINA",
     primaryDate: "28–30 октября 2026",
     alternative: "АРХ Москва",
-    alternativeDate: "27–30 мая 2026 / 26–29 мая 2027",
-    focus: "Новые поверхности, выразительные фасады, цифровое проектирование и архитектурные концепции",
+    alternativeDate: "26–29 мая 2027",
+    focus: "Облицовка, материалы, архитектурная практика и новые решения",
   },
   {
     task: "Российский строительный рынок",
-    primary: "MosBuild",
-    primaryDate: "31 марта – 3 апреля 2026 / 30 марта – 2 апреля 2027",
-    alternative: "RosBuild / YugBuild",
-    alternativeDate: "RosBuild: 4–6 марта 2026 / 24–26 февраля 2027; YugBuild: 25–28 февраля 2026",
-    focus: "Готовые фасадные изделия, строительные материалы, комплектующие и контакты участников рынка",
+    primary: "RosBuild",
+    primaryDate: "24–26 февраля 2027",
+    alternative: "MosBuild",
+    alternativeDate: "30 марта – 2 апреля 2027",
+    focus: "Строительные материалы, поставки для объектов и отраслевые контакты",
   },
   {
-    task: "Высотные фасады и жаркий климат",
-    primary: "Zak World of Façades Dubai",
-    primaryDate: "25 июня 2026",
-    alternative: "Big 5 Global",
-    alternativeDate: "23–26 ноября 2026",
-    focus: "Высотные оболочки, солнцезащита, энергоэффективность, сложные узлы и инженерная практика",
-  },
-  {
-    task: "Международный рынок и ОАЭ",
-    primary: "Big 5 Global Dubai",
+    task: "Международные строительные материалы",
+    primary: "Big 5 Global",
     primaryDate: "23–26 ноября 2026",
-    alternative: "Zak World of Façades Dubai",
-    alternativeDate: "25 июня 2026",
-    focus: "Building Envelope, сертификация, материалы, подрядчики и международные поставки",
+    alternative: "FENESTRATION BAU CHINA",
+    alternativeDate: "28–30 октября 2026",
+    focus: "Рынок ОАЭ и Азии, строительные материалы и фасадные решения",
   },
 ];
 
@@ -262,7 +246,7 @@ export default function FacadeExhibitions2026Page() {
             description: pageDescription,
             path: pagePath,
             image: "/images/industries/business-center.png",
-            datePublished: checkedAt,
+            datePublished: "2026-08-19",
             dateModified: checkedAt,
             citations: [
               ...facadeExhibitions2026.map((event) => event.url),
@@ -315,7 +299,7 @@ export default function FacadeExhibitions2026Page() {
               ["16", "событий 2026–2027"],
               [String(upcoming.length), "ещё пройдут в 2026 году"],
               ["3", "страны и рынка"],
-              ["19.08", "дата проверки календаря"],
+              ["11.10", "дата проверки календаря"],
             ].map(([number, label]) => (
               <div key={label} className="bg-[#101519] p-6">
                 <p className="font-mono text-3xl font-bold text-steel-orange">{number}</p>
@@ -432,7 +416,7 @@ export default function FacadeExhibitions2026Page() {
               <p className="eyebrow">Полный календарь</p>
               <h2 className="mt-3 text-3xl font-semibold uppercase sm:text-4xl">Выставки по датам</h2>
             </div>
-            <p className="text-xs uppercase tracking-[.12em] text-white/38">Данные проверены 28 июля 2026</p>
+            <p className="text-xs uppercase tracking-[.12em] text-white/38">Предстоящие даты проверены 11 октября 2026</p>
           </div>
 
           <div className="mt-8 space-y-5">

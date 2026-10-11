@@ -13,7 +13,7 @@ export function BasketMountingResult({ design }: { design: BasketDesign }) {
     <h4 className="text-sm font-semibold text-slate-800">От несущей стены до задней стенки блока</h4>
     {m.wallToBlockRearMm !== null ? <>
       <p className="mt-2 text-xl font-semibold text-slate-800" role="status">{m.wallToBlockRearMm} мм</p>
-      <p className="mt-2 text-xs leading-5 text-slate-600">{m.wallKind === "wall" ? "Дополнительный вынос через фасад — 0 мм. Учтён только задний зазор блока." : "Расстояние учитывает фасад и зазор до блока. Фасад влияет на вынос крепления, а не на размер корзины."}</p>
+      <p className="mt-2 text-xs leading-5 text-slate-600">{m.wallKind === "wall" ? "Учтён только задний зазор до стены, без дополнительного слоя фасада." : "Учтены глубина фасада и задний зазор блока. Вынос крепления не меняет габариты корзины."}</p>
     </> : <p className="mt-2 text-sm leading-6 text-slate-600" role="status">{m.wallKind === "unknown" ? "Выберите основание крепления. Если оно пока неизвестно, можно продолжить расчёт корзины." : m.facadeMm === null ? "Укажите глубину вентфасада — добавим её к заднему зазору блока." : "Укажите задний зазор блока — расстояние появится сразу."}</p>}
     <p className="mt-3 text-xs leading-5 text-slate-600">Предварительное расстояние до блока. Длина и несущая способность кронштейнов требуют подбора.</p>
   </section>;
@@ -39,16 +39,16 @@ export function BasketMountingFields({ design, onChange }: { design: BasketDesig
       </div>
       <button type="button" aria-pressed={m.wallKind === "unknown"} onClick={() => onChange(setBasketWallKind(design, "unknown"))} className="mt-1 min-h-11 text-sm text-slate-600 underline underline-offset-4">Основание пока неизвестно</button>
     </fieldset>
-    {m.wallKind === "wall" && <p className="mt-2 text-sm leading-6 text-slate-600">Дополнительную глубину фасада вводить не нужно. Вентиляционный зазор от блока до стены сохраняется.</p>}
+    {m.wallKind === "wall" && <p className="mt-2 text-sm leading-6 text-slate-600">Глубину фасада указывать не нужно. Задний зазор блока остаётся.</p>}
     {m.wallKind === "ventilated" && <label className="mt-4 block text-sm font-medium text-slate-700">
       Глубина вентфасада, мм
       <BasketNumberInput className={control} value={design.facade} emptyValue={null} min={0} max={2000} placeholder="От несущей стены до облицовки" onValue={facade => onChange({ ...design, facade })}/>
       <span className="mt-2 block text-xs font-normal leading-5 text-slate-600">Весь слой от несущей стены до наружной плоскости облицовки: утепление, воздушный зазор и облицовка. Кронштейны закрепляются в несущем основании.</span>
     </label>}
     <label className="mt-4 block text-sm font-medium text-slate-700">
-      {m.wallKind === "wall" ? "От блока до стены, мм" : "От блока до облицовки / стены, мм"}
+      {m.wallKind === "wall" ? "Зазор от блока до стены, мм" : "Зазор от блока до облицовки, мм"}
       <BasketNumberInput className={control} value={m.rearMm} emptyValue={null} min={0} max={10000} placeholder="Задний зазор блока" onValue={rear => onChange(setBasketRearGap(design, rear))}/>
-      <span className="mt-2 block text-xs font-normal leading-5 text-slate-600">Тот же задний зазор, что на шаге «Размеры». Он учитывается один раз; изменение обновит оба шага.</span>
+      <span className="mt-2 block text-xs font-normal leading-5 text-slate-600">Этот зазор общий для шагов «Размеры» и «Крепление». Он учитывается один раз.</span>
     </label>
     <BasketWallSection design={design}/>
     <details className="mt-4 rounded-lg border border-slate-200 p-3">

@@ -27,8 +27,9 @@ const productPagesModifiedAt = new Date("2026-08-25T15:03:23.000Z");
 const commercialProductPagesModifiedAt = new Date("2026-08-25T14:58:46.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
+const weldingCalendarPath = "/articles/vystavki-svarka-2026-2027";
 const retiredPaths = new Set(["/vnutri", "/dimli", "/rehotka", "/korzina"]);
-const exhibitionCalendarsModifiedAt = new Date("2026-09-12T00:00:00.000Z");
+const exhibitionCalendarsModifiedAt = new Date("2026-10-11T00:00:00.000Z");
 const discoveryHubsModifiedAt = new Date("2026-09-13T00:00:00.000Z");
 const staticModifiedAt: Record<string, Date> = {
   "/customers": new Date(`${customerGuidesModifiedAt}T00:00:00.000Z`),
@@ -43,19 +44,19 @@ const staticModifiedAt: Record<string, Date> = {
   "/projects": discoveryHubsModifiedAt,
   "/projects/solovinaya-roshcha": new Date("2026-09-12T00:00:00.000Z"),
   "/products": discoveryHubsModifiedAt,
-  "/articles": new Date("2026-09-27T00:00:00.000Z"),
+  "/articles": new Date("2026-10-11T00:00:00.000Z"),
   "/articles/china-tech": new Date("2026-07-27T00:00:00.000Z"),
   "/articles/ploshchad-fasada-raskhod-metalla-metallokassety": new Date("2026-10-04T00:00:00.000Z"),
   "/articles/uzly-fasada-metallokassety": new Date("2026-10-04T00:00:00.000Z"),
   "/articles/metall-dlya-goroda-proekty-stal-produkt": new Date("2026-09-12T00:00:00.000Z"),
-  "/calculator-metallokassety": new Date("2026-09-28T00:00:00.000Z"),
-  "/online-order": new Date("2026-09-28T00:00:00.000Z"),
+  "/calculator-metallokassety": new Date("2026-10-11T00:00:00.000Z"),
+  "/online-order": new Date("2026-10-11T00:00:00.000Z"),
   "/products/metallokassety": new Date("2026-10-04T00:00:00.000Z"),
   "/products/dobornye-elementy/bim": new Date("2026-10-09T00:00:00.000Z"),
-  "/products/metallokassety/bim": new Date("2026-09-28T00:00:00.000Z"),
+  "/products/metallokassety/bim": new Date("2026-10-11T00:00:00.000Z"),
   "/products/akvilon": new Date("2026-10-04T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
-  "/products/korziny-dlya-konditsionerov": new Date("2026-10-03T00:00:00.000Z"),
+  "/products/korziny-dlya-konditsionerov": new Date("2026-10-11T00:00:00.000Z"),
   "/products/ventilyacionnye-reshetki": commercialProductPagesModifiedAt,
   "/products/metallicheskie-korpusa": new Date("2026-09-18T00:00:00.000Z"),
   "/products/zakladnye-detali": commercialProductPagesModifiedAt,
@@ -104,7 +105,7 @@ function sitemapPriority(path: string, isExhibitionCalendar: boolean) {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
-    "/", "/tools", "/company", "/company/facts", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety", "/online-order",
+    "/", "/tools", "/company", "/company/facts", "/contacts", "/production", "/solutions", "/industries", "/projects", "/projects/solovinaya-roshcha", "/products", "/articles", "/articles/china-tech", "/articles/vystavki-metalloobrabotka-kitay-2026", "/articles/vystavki-fasady-arhitektura-2026", "/articles/vystavki-svarka-2026-2027", "/articles/ploshchad-fasada-raskhod-metalla-metallokassety", "/articles/uzly-fasada-metallokassety", "/articles/metall-dlya-goroda-proekty-stal-produkt", "/calculator-metallokassety", "/online-order",
     "/products/metallokassety", "/products/metallokassety/bim", "/products/dobornye-elementy", "/products/dobornye-elementy/bim",
     "/legal/privacy", "/legal/personal-data-consent", "/legal/analytics-consent", "/legal/marketing-consent", "/legal/cookies", "/legal/services", "/legal/terms", "/legal/requisites",
   ];
@@ -122,7 +123,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [...new Set(paths)].filter((path) => !retiredPaths.has(path)).map((path) => {
     const isJournal = path === "/articles" || path.startsWith("/articles/");
-    const isExhibitionCalendar = path === facadeCalendarPath || path === metalworkingCalendarPath;
+    const isExhibitionCalendar = path === facadeCalendarPath || path === metalworkingCalendarPath || path === weldingCalendarPath;
     const isCalculator = path === "/calculator-metallokassety" || path === "/online-order";
     const currentArticle = articles.find((article) => `/articles/${article.slug}` === path);
     const isLegal = path.startsWith("/legal/");

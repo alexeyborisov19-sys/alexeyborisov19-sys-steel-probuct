@@ -61,9 +61,9 @@ const facadePracticeArticles = [
 const sectionCopy: Record<ArticleDirection, { number: string; eyebrow: string; title: string; description: string }> = {
   facades: {
     number: "02",
-    eyebrow: "Архитектурная лаборатория",
+    eyebrow: "Фасадные технологии",
     title: "Фасады и архитектурные инновации",
-    description: "Идеи и практические решения на пересечении архитектурного замысла, материалов и возможностей современного производства.",
+    description: "Материалы, узлы и технологии металлических фасадов: выбор, проектирование и применение.",
   },
   metalworking: {
     number: "03",
@@ -261,7 +261,7 @@ export default function ArticlesPage() {
               <section id="metalworking" className="scroll-mt-24 border-t border-white/10 py-14 sm:py-16">
                 <SectionHeading {...sectionCopy.metalworking} />
                 <Link href="/articles/china-tech" className="journal-feature-link group mt-7 grid overflow-hidden border border-steel-orange/35 bg-[#101519] md:grid-cols-[minmax(0,1fr)_300px]">
-                  <div className="flex flex-col justify-center p-6 sm:p-8"><p className="eyebrow">Мировые технологии</p><h3 className="mt-3 text-xl font-semibold uppercase">Инженерная разведка для современного производства</h3><p className="mt-3 text-sm leading-7 text-white/56">Роботизированная гибка, умные линии, лазерная обработка и цифровое управление.</p><span className="mt-5 text-xs font-bold uppercase text-steel-orange">Перейти в рубрику&nbsp; →</span></div>
+                  <div className="flex flex-col justify-center p-6 sm:p-8"><p className="eyebrow">Мировые технологии</p><h3 className="mt-3 text-xl font-semibold uppercase">Оборудование и технологии металлообработки</h3><p className="mt-3 text-sm leading-7 text-white/56">Роботизированная гибка, умные линии, лазерная обработка и цифровое управление.</p><span className="mt-5 text-xs font-bold uppercase text-steel-orange">Перейти в рубрику&nbsp; →</span></div>
                   <div className="relative min-h-56 overflow-hidden"><Image src="/images/web/cycle-bending.jpg" alt="Современная гибка листового металла" fill sizes="(max-width: 767px) 100vw, 300px" className="object-cover brightness-[1.16] transition duration-700 group-hover:scale-[1.035]" /></div>
                 </Link>
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">{articles.filter((article) => article.direction === "metalworking").map((article) => <ArticleCard key={article.slug} article={article} />)}</div>
@@ -272,10 +272,13 @@ export default function ArticlesPage() {
                 <UpcomingIndustryEvents />
                 <div className="mt-7 grid gap-4 xl:grid-cols-2">
                   <Link href="/articles/vystavki-metalloobrabotka-kitay-2026" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
-                    <span className="text-4xl font-bold tabular-nums text-steel-orange">14</span><p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Китай · 2026–2027</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Выставки металлообработки</h3><p className="mt-4 text-sm leading-7 text-white/56">Резка, гибка, станки, автоматизация и промышленная робототехника.</p><span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                    <span className="text-4xl font-bold tabular-nums text-steel-orange">15</span><p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Китай · 2026–2027</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Выставки металлообработки</h3><p className="mt-4 text-sm leading-7 text-white/56">Резка, гибка, станки, автоматизация и промышленная робототехника.</p><span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
                   </Link>
                   <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
                     <span className="text-4xl font-bold tabular-nums text-steel-orange">16</span><p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Россия · Китай · Дубай</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Фасады и архитектурные инновации</h3><p className="mt-4 text-sm leading-7 text-white/56">Фасадные системы, оболочка здания, стекло, панели, покрытия и проектирование.</p><span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                  </Link>
+                  <Link href="/articles/vystavki-svarka-2026-2027" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
+                    <span className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">Новый календарь</span><p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Россия · Китай · 2026–2027</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Выставки сварки и сварочных технологий</h3><p className="mt-4 text-sm leading-7 text-white/56">Профильные выставки и отраслевые экспозиции с датами и ссылками на организаторов.</p><span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
                   </Link>
                 </div>
               </section>

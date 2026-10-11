@@ -88,14 +88,14 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-[.16em] text-steel-orange">От модели к готовой детали</span>
                   <h2 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">Деталь по чертежу<br />или вашим размерам.</h2>
-                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">До 5 изделий: загрузите DXF или STEP либо укажите длину и ширину плоской заготовки до гибки и отверстия. До 50 МБ на файл и 100 МБ на проект. Выберите материал и количество. Посмотрите деталь и получите предварительный расчёт без регистрации.</p>
+                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">Рассчитайте до пяти изделий: загрузите DXF или STEP либо укажите длину и ширину плоской заготовки до гибки. Выберите материал и количество. Лимиты: 50 МБ на файл и 100 МБ на проект. Расчёт предварительный, регистрация не нужна.</p>
                   <button type="button" onClick={() => inputRef.current?.click()} className={`${actionClass} mt-7`}>Выбрать файлы <span aria-hidden="true" className="ml-5">↑</span></button>
                   <p className="mt-3 text-sm text-white/75">Или перетащите файлы в эту область</p>
                   <HandoffLink href="/contacts?source=online-order#contact-form" className="mt-6 inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4">Нужна помощь с деталью — обратиться к инженеру</HandoffLink>
                 </div>
                 <div className="rounded-xl border border-white/15 bg-[#0c1115] p-6">
                   <p className="mb-5 text-sm font-semibold">Что можно загрузить</p>
-                  {[ ["DXF", "Плоская деталь или развёртка"], ["STEP / STP", "Трёхмерная модель детали"], ["DWG", "Проверка геометрии инженером"] ].map(([format, description]) => <div key={format} className="flex items-center gap-4 border-t border-white/10 py-4"><span className="w-24 shrink-0 font-mono text-sm text-steel-orange">{format}</span><p className="text-sm leading-5 text-white/75">{description}</p></div>)}
+                  {[ ["DXF", "Плоская деталь или развёртка"], ["STEP / STP", "Трёхмерная модель детали"], ["DWG", "Передайте через форму заявки для проверки"] ].map(([format, description]) => <div key={format} className="flex items-center gap-4 border-t border-white/10 py-4"><span className="w-24 shrink-0 font-mono text-sm text-steel-orange">{format}</span><p className="text-sm leading-5 text-white/75">{description}</p></div>)}
                   <p className="mt-3 text-xs leading-5 text-white/55">Можно выбрать несколько файлов. Каждый файл — отдельная позиция проекта.</p>
                 </div>
               </div> : <>

@@ -55,7 +55,7 @@ test("cassette calculator publishes a qualified preliminary price without produc
   ]);
 
   assert.match(calculator, /Ориентировочная стоимость/);
-  assert.match(calculator, /Финальная цена подтверждается после проверки раскладки, чертежей и состава заказа/);
+  assert.match(calculator, /\{CALCULATION_DISCLAIMER\}/);
   assert.match(calculator, /Открыть форму обращения/);
   assert.match(calculator, /0\.65/);
   assert.match(calculator, /0\.7/);

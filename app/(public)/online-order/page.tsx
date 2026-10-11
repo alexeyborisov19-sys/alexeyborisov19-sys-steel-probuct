@@ -110,12 +110,12 @@ export default function OnlineOrderPage() {
         <section aria-labelledby="calculation-inputs" className="border-t border-white/10 py-10 sm:py-14">
           <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-10">
             <h2 id="calculation-inputs" className="text-2xl font-semibold">Что выбрать для расчёта: DXF, STEP или размеры</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/75">Предварительный расчёт бесплатный. Выберите способ по исходным данным; материал, количество и дополнительные операции задаются в калькуляторе.</p>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/75">Выберите способ расчёта. Материал, количество и операции укажите в калькуляторе.</p>
             <div className="mt-6 grid gap-5 md:grid-cols-3">
               {[
                 { title: "Есть плоский контур — DXF", text: "Подходит для расчёта лазерной резки по контуру детали или развёртки. Загружайте контуры реза без рамок, размеров и штампов. Количество гибов задаётся отдельно." },
                 { title: "Есть объёмная деталь — STEP / STP", text: "Подходит для просмотра 3D-геометрии и предварительного расчёта поддерживаемых листовых деталей. Гибы и толщина распознаются при возможности; сложные модели проверяет инженер. Предпросмотр не заменяет проверенную развёртку." },
-                { title: "Нет чертежа — внешние габариты", text: "Укажите длину, ширину, толщину и количество плоских заготовок. Добавьте группы отверстий с диаметром и количеством. До 5 изделий и 5 групп диаметров на изделие; отверстия условно круглые, их расположение не задаётся." },
+                { title: "Нет чертежа — размеры плоской заготовки", text: "Укажите длину, ширину, толщину и количество плоских заготовок. Добавьте группы отверстий с диаметром и количеством. До 5 изделий и 5 групп диаметров на изделие; отверстия условно круглые, их расположение не задаётся." },
               ].map((item) => (
                 <article key={item.title} className="rounded-xl border border-white/15 bg-white/5 p-5 sm:p-6">
                   <h3 className="text-lg font-semibold">{item.title}</h3>
@@ -132,8 +132,8 @@ export default function OnlineOrderPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[.16em] text-steel-orange">От КД до готовой партии</p>
               <h2 id="how-it-works" className="mt-3 text-2xl font-semibold">Как работает онлайн-расчёт</h2>
-              <p className="mt-4 max-w-lg text-sm leading-7 text-white/70">Геометрия из CAD или введённые вами габариты, выбранный металл, количество и указанные операции. Окончательную стоимость подтвердит специалист. Неоднозначную геометрию и незаданные параметры проверяет инженер.</p>
-              <p className="mt-3 max-w-lg text-sm leading-7 text-white/70">Расход листа до финальной раскладки оценивается по заготовке. Итоговые стоимость и сроки подтверждаются после проверки проекта.</p>
+              <p className="mt-4 max-w-lg text-sm leading-7 text-white/70">Калькулятор учитывает геометрию, материал, количество и выбранные операции. Неоднозначные параметры и окончательную стоимость проверяет инженер.</p>
+              <p className="mt-3 max-w-lg text-sm leading-7 text-white/70">До раскладки расход металла оценивается по заготовке. Точные сроки и стоимость согласуются после проверки проекта.</p>
               <AttributionLink href="/production" className="mt-5 inline-flex min-h-11 items-center text-sm text-steel-orange underline underline-offset-4">Возможности производства →</AttributionLink>
               <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/70"><AttributionLink href="/production/lazernaya-rezka-metalla" className="min-h-11 py-3 underline underline-offset-4">Лазерная резка</AttributionLink><AttributionLink href="/production/gibka-listovogo-metalla" className="min-h-11 py-3 underline underline-offset-4">Гибка листа</AttributionLink><AttributionLink href="/contacts#contact-form" className="min-h-11 py-3 underline underline-offset-4">Связаться с инженером</AttributionLink></div>
             </div>

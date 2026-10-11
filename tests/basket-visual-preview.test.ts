@@ -114,7 +114,7 @@ test("initial workflow has three steps, two sizing routes and folded advanced ga
   assert.match(html,/Подобрать по кондиционеру/);
   assert.match(html,/Пример формы · без масштаба/);
   const gaps=ui.fields(emptyBasketFit());
-  assert.match(gaps,/<details[^>]*><summary[^>]*>Уточнить зазоры вокруг блока/);
+  assert.match(gaps,/<details[^>]*><summary[^>]*>Указать зазоры вокруг блока/);
   assert.doesNotMatch(gaps,/<details[^>]* open/);
 });
 
@@ -130,9 +130,9 @@ test("customer result hides intermediate workload and facade formula",()=>{
 
 test('size guidance never folds rear air gap into physical block depth',()=>{
  const html=ui.fields(design.fit);
- assert.match(html,/Размеры самого блока с выступающими частями, без воздушных зазоров/);
- assert.match(html,/Задний зазор всегда указывайте отдельно/);
- assert.match(html,/сначала вычтите задний зазор из этого замера/);
+ assert.match(html,/Укажите габариты блока с выступающими частями, без зазоров/);
+ assert.match(html,/Задний зазор измеряется от блока до стены или облицовки/);
+ assert.match(html,/Если измеряли расстояние до переднего края блока, вычтите задний зазор/);
  assert.match(html,/role="img" aria-label="Вид сверху: задний зазор, глубина самого блока и передний зазор измеряются отдельно"/);
  assert.doesNotMatch(html,/Если зазор уже вошёл|Глубина всей установки/);
 });
