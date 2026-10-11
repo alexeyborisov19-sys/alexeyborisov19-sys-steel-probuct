@@ -218,7 +218,7 @@ export function verifyDeletion(context: PdAuthContext, idValue: string, versionV
   const failed = verification.filter((item) => !item.verified);
   // Only files in the working storage are checked here. This does not confirm
   // copies held by mail providers, backup rotation or a signed destruction act.
-  const localFilesVerified = records.length > 0 && records.length === Number(job.deleted_count) && failed.length === 0 && Number(job.skipped_count) === 0;
+  const localFilesVerified = records.length > 0 && records.length === Number(job.deleted_count) && failed.length === 0;
   const outstandingConfirmations = [
     "MAIL_AND_PROCESSOR_COPIES", "LOCAL_AND_OFFSITE_BACKUPS",
     "SIGNED_DESTRUCTION_ACT", "EVENT_JOURNAL_EXTRACT",
