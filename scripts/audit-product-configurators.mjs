@@ -360,7 +360,12 @@ try {
   await basket.getByLabel('Класс кондиционера',{exact:true}).selectOption('9');
   await basket.getByRole('button',{name:'Подставить ориентировочные размеры блока',exact:true}).click();
   await expect(basket.getByLabel('Ширина блока, мм',{exact:true})).toHaveValue('722');
+  await expect(basket).toContainText('Расчётный внутренний размер: 822 × 593 × 514 мм');
+  await basket.getByText(/^Уточнить зазоры вокруг блока/).click();
+  await expect(basket.getByLabel('Зазор сзади, мм',{exact:true})).toHaveValue('50');
+  await basket.getByLabel('Зазор сзади, мм',{exact:true}).fill('');
   await expect(basket).toContainText('Предварительный эскиз: зазоры нужно уточнить');
+  await basket.getByText(/^Уточнить зазоры вокруг блока/).click();
   await basket.getByText('Подобрать ориентир по мощности кондиционера',{exact:true}).click();
   await check(page,'baskets-preliminary',width,errors);
   await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
