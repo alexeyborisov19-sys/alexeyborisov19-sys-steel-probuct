@@ -53,9 +53,9 @@ jobs:
           for line in (app/'.env.production').read_text().splitlines():
               if '=' in line and not line.lstrip().startswith('#'):
                   k,v=line.split('=',1); env[k.strip()]=v.strip().strip('"').strip("'")
-          print('PD_ADMIN_ENABLED='+str(env.get('PD_ADMIN_ENABLED')=='true').lower())
           now=datetime.datetime.now(datetime.timezone.utc)
           issues=[]
+          if env.get('PD_ADMIN_ENABLED')!='true': issues.append('ADMIN_CONFIGURATION_REVIEW')
           for key,default in [('QUOTE_STORAGE_PATH','/var/lib/steelprodukt/quote-leads'),('ASSISTANT_LEAD_STORAGE_PATH','/var/lib/steelprodukt/assistant-leads'),('CONSENT_AUDIT_STORAGE_PATH','/var/lib/steelprodukt/consent-audit')]:
               root=pathlib.Path(env.get(key) or default); count=expired=invalid=0
               for file in root.glob('*.json'):
@@ -67,21 +67,20 @@ jobs:
                       if days<=0: raise ValueError()
                       expired+=int(created+datetime.timedelta(days=days)<=now)
                   except Exception: invalid+=1
-              print(key+': '+json.dumps({'exists':root.is_dir(),'records':count,'expired':expired,'invalid':invalid}))
               if not root.is_dir() or expired or invalid:
                   issues.append(key+'_REVIEW')
           dbpath=pathlib.Path(env.get('PD_ADMIN_DB_PATH') or '/var/lib/steelprodukt/admin/personal-data.sqlite')
           if dbpath.is_file():
               con=sqlite3.connect(dbpath.as_uri()+'?mode=ro',uri=True)
               for table,column in [('lead_workflow','internal_status'),('deletion_jobs','stage4_status')]:
-                  try: print(table+': '+json.dumps(con.execute('SELECT '+column+', COUNT(*) FROM '+table+' GROUP BY '+column).fetchall()))
-                  except sqlite3.Error: print(table+': SCHEMA_UNAVAILABLE')
+                  try: con.execute('SELECT '+column+' FROM '+table+' LIMIT 1').fetchone()
+                  except sqlite3.Error: issues.append('PD_DATABASE_SCHEMA_REVIEW')
               con.close()
           else:
               issues.append('PD_DATABASE_MISSING')
           root=pathlib.Path('/var/backups/steelprodukt')
           files=[f for f in root.glob('steelprodukt-pd-*.tar.gz.enc') if f.is_file() and not f.is_symlink()]
-          print('LOCAL_BACKUP='+json.dumps({'count':len(files),'older_than_30d':sum(now.timestamp()-f.stat().st_mtime>30*86400 for f in files),'latest_age_hours':round((now.timestamp()-max(f.stat().st_mtime for f in files))/3600,1) if files else None}))
+          # Do not publish customer volume, storage locations or backup inventory in public Actions logs.
           if not files or now.timestamp()-max(f.stat().st_mtime for f in files)>48*3600:
               issues.append('LOCAL_BACKUP_STALE_OR_MISSING')
           result=subprocess.run(['systemctl','is-active','steelprodukt-pd-offsite-backup.timer'],capture_output=True,text=True)
@@ -91,7 +90,7 @@ jobs:
               if state!='active': issues.append('INACTIVE_'+unit)
           report=dbpath.parent/'retention-monitor.json'
           if report.is_file():
-              value=json.loads(report.read_text()); print('RETENTION_CHECK='+json.dumps({key:value.get(key) for key in ['checkedAt','examined','indexed','expired','status','deletionPerformed','findings']}))
+              value=json.loads(report.read_text())
               if value.get('status') != 'NO_EXPIRED_LEADS': issues.append('RETENTION_REVIEW_REQUIRED')
               try:
                   checked=datetime.datetime.fromisoformat(str(value['checkedAt']).replace('Z','+00:00'))
@@ -99,7 +98,7 @@ jobs:
               except (KeyError, ValueError, TypeError): issues.append('RETENTION_REPORT_INVALID')
           else:
               issues.append('RETENTION_REPORT_MISSING')
-          print('BACKUP_TIMER='+result.stdout.strip())
+          print('LEGAL_BACKUP_TIMER='+('OK' if result.stdout.strip()=='active' else 'REVIEW_REQUIRED'))
           if result.stdout.strip()!='active': issues.append('OFFSITE_BACKUP_TIMER_INACTIVE')
           print('LEGAL_RUNTIME_AUDIT='+('REVIEW_REQUIRED' if issues else 'OK'))
           if issues:
