@@ -18,3 +18,17 @@ test('zero openings and old area-only links remain supported', () => {
   assert.match(cassetteHandoffSummary(new URLSearchParams('mode=wall&openings=0')), /Проёмы: 0/);
   assert.match(cassetteHandoffSummary(new URLSearchParams('area=100&quantity=170&thickness=0.7')), /100 м²/);
 });
+
+test('quantity handoff uses stated count and own face dimensions without inventing standard module', () => {
+  const summary = cassetteHandoffSummary(new URLSearchParams('mode=quantity&type=closed&faceWidth=600&faceHeight=1200&statedQuantity=300&area=216&quantity=300&thickness=1.2'));
+  assert.match(summary, /Способ расчёта: по количеству/);
+  assert.match(summary, /600×1200 мм/);
+  assert.match(summary, /Количество, указанное заказчиком: 300 шт/);
+  assert.match(summary, /Закрытая/);
+  assert.doesNotMatch(summary, /1170×545|₽|ставк/);
+});
+test('quantity handoff ignores invalid numbers rather than turning them into client quotes', () => {
+  const summary = cassetteHandoffSummary(new URLSearchParams('mode=quantity&faceWidth=-20&faceHeight=Infinity&statedQuantity=oops&quantity=NaN&area=3'));
+  assert.doesNotMatch(summary, /Infinity|NaN|oops|-20|1170×545|₽/);
+  assert.match(summary, /Расчёт количества ещё не получен/);
+});
