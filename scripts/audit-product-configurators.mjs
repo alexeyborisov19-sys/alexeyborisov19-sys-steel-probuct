@@ -298,14 +298,14 @@ try {
   await open(page,'/products/korziny-dlya-konditsionerov#selection');
   const basket=page.locator('[data-basket-configurator]');
   await expect(basket.getByRole('img',{name:'Вид сверху: задний зазор, глубина самого блока и передний зазор измеряются отдельно',exact:true})).toBeVisible();
-  await expect(basket.getByText('Размеры самого блока с выступающими частями, без воздушных зазоров. Вводите миллиметры. Зазоры вокруг блока укажите отдельно.',{exact:true})).toBeVisible();
-  await basket.getByText(/^Уточнить зазоры вокруг блока/).click();
+  await expect(basket.getByText('Укажите габариты блока с выступающими частями, без зазоров. Все размеры — в миллиметрах.',{exact:true})).toBeVisible();
+  await basket.getByText(/^Указать зазоры вокруг блока/).click();
   for(const [name,value] of [['Ширина блока, мм','800'],['Высота блока, мм','500'],['Глубина блока без зазоров, мм','300'],['Зазор слева, мм','50'],['Зазор справа, мм','50'],['Зазор сверху, мм','50'],['Зазор снизу, мм','50'],['Зазор спереди, мм','200'],['Зазор сзади, мм','50']])await basket.getByLabel(name,{exact:true}).fill(value);
   await expect(basket).toContainText('Расчётный внутренний размер: 900 × 600 × 550 мм');
-  await expect(basket).toContainText('Задний зазор всегда указывайте отдельно');
-  await basket.getByLabel('Зазор сзади, мм',{exact:true}).fill('');await expect(basket).toContainText('Предварительный эскиз: зазоры нужно уточнить');
+  await expect(basket).toContainText('Задний зазор измеряется от блока до стены или облицовки');
+  await basket.getByLabel('Зазор сзади, мм',{exact:true}).fill('');await expect(basket).toContainText('Чтобы получить внутренние размеры корзины, откройте «Указать зазоры вокруг блока»');
   await basket.getByLabel('Зазор сзади, мм',{exact:true}).fill('50');await expect(basket).toContainText('Расчётный внутренний размер: 900 × 600 × 550 мм');
-  await basket.getByText(/^Уточнить зазоры вокруг блока/).click();
+  await basket.getByText(/^Зазоры вокруг блока · указаны/).click();
   await basket.screenshot({path:`${output}/basket-dimensions-${width}-input.png`});
   await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
   if(width===390) {
@@ -395,11 +395,11 @@ try {
   await basket.getByRole('button',{name:'Подставить ориентировочные размеры блока',exact:true}).click();
   await expect(basket.getByLabel('Ширина блока, мм',{exact:true})).toHaveValue('722');
   await expect(basket).toContainText('Расчётный внутренний размер: 822 × 593 × 514 мм');
-  await basket.getByText(/^Уточнить зазоры вокруг блока/).click();
+  await basket.getByText(/^Зазоры вокруг блока · указаны/).click();
   await expect(basket.getByLabel('Зазор сзади, мм',{exact:true})).toHaveValue('50');
   await basket.getByLabel('Зазор сзади, мм',{exact:true}).fill('');
-  await expect(basket).toContainText('Предварительный эскиз: зазоры нужно уточнить');
-  await basket.getByText(/^Уточнить зазоры вокруг блока/).click();
+  await expect(basket).toContainText('Чтобы получить внутренние размеры корзины, откройте «Указать зазоры вокруг блока»');
+  await basket.getByText(/^Указать зазоры вокруг блока/).click();
   await basket.getByText('Подобрать ориентир по мощности кондиционера',{exact:true}).click();
   await check(page,'baskets-preliminary',width,errors);
   await basket.getByRole('button',{name:'Знаю размеры корзины',exact:true}).click();
