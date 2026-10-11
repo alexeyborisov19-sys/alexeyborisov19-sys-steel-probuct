@@ -20,11 +20,11 @@ const legalModifiedAt: Record<string, Date> = {
   "/legal/services": new Date(`${legalDocumentVersions.services}T00:00:00.000Z`),
   "/legal/terms": new Date(`${legalDocumentVersions.terms}T00:00:00.000Z`),
 };
-const productionServicesModifiedAt = new Date("2026-10-04T00:00:00.000Z");
+const productionServicesModifiedAt = new Date("2026-10-11T00:00:00.000Z");
 const solutionDetailsModifiedAt = new Date("2026-08-25T14:09:18.000Z");
 const industryPagesModifiedAt = new Date("2026-08-25T15:10:21.000Z");
-const productPagesModifiedAt = new Date("2026-08-25T15:03:23.000Z");
-const commercialProductPagesModifiedAt = new Date("2026-08-25T14:58:46.000Z");
+const productPagesModifiedAt = new Date("2026-10-11T00:00:00.000Z");
+const commercialProductPagesModifiedAt = new Date("2026-10-11T00:00:00.000Z");
 const metalworkingCalendarPath = "/articles/vystavki-metalloobrabotka-kitay-2026";
 const facadeCalendarPath = "/articles/vystavki-fasady-arhitektura-2026";
 const weldingCalendarPath = "/articles/vystavki-svarka-2026-2027";
@@ -54,7 +54,7 @@ const staticModifiedAt: Record<string, Date> = {
   "/products/metallokassety": new Date("2026-10-04T00:00:00.000Z"),
   "/products/dobornye-elementy/bim": new Date("2026-10-09T00:00:00.000Z"),
   "/products/metallokassety/bim": new Date("2026-10-11T00:00:00.000Z"),
-  "/products/akvilon": new Date("2026-10-04T00:00:00.000Z"),
+  "/products/akvilon": new Date("2026-10-11T00:00:00.000Z"),
   "/products/dobornye-elementy": new Date("2026-08-19T19:17:15.000Z"),
   "/products/korziny-dlya-konditsionerov": new Date("2026-10-11T00:00:00.000Z"),
   "/products/ventilyacionnye-reshetki": commercialProductPagesModifiedAt,
