@@ -66,7 +66,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
       ? Number.isFinite(wallArea) && wallArea > 0 && payload.openingsM2 >= wallArea
         ? "Площадь окон и дверей должна быть меньше площади стены."
         : "Укажите ширину, высоту стены и площадь проёмов."
-      : "Укажите целое количество кассет и ширину и высоту их лицевой части.";
+      : "Укажите целое количество кассет и размеры их лицевой части.";
   const requestKey = JSON.stringify(payload);
   const result = responseState?.key === requestKey ? responseState.value : null;
   const amount = result?.approximateTotalRub;
