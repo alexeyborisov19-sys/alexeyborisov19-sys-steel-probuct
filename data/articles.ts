@@ -1,5 +1,4 @@
 import { productionPracticeArticles } from "@/data/production-practice-articles";
-import { octoberEngineeringArticles } from "@/data/october-engineering-articles";
 import {
   additionalEngineeringArticles,
   articleEditorialEnhancements,
@@ -908,7 +907,6 @@ const enrichedBaseArticles = baseArticles.map((article): Article => {
 });
 
 const editorialArticles: Article[] = [
-  ...octoberEngineeringArticles,
   ...productionPracticeArticles,
   ...enrichedBaseArticles,
   ...additionalEngineeringArticles,
