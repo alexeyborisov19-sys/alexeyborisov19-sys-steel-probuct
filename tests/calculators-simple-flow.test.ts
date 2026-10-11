@@ -33,7 +33,7 @@ test('first screens expose product sizes, collapse secondary BIM tools, and show
 test('main route starts with blank quick price estimate and keeps the specification secondary',()=>{
   const main=readFileSync('components/MetalCassetteCalculator.tsx','utf8'),page=readFileSync('app/(public)/calculator-metallokassety/page.tsx','utf8');
   assert.match(main,/<select aria-label="Режим калькулятора металлокассет"/);assert.match(main,/useState<"product" \| "project" \| "estimate">\("estimate"\)/);assert.match(main,/<MetalCassetteQuickEstimate active=\{view === "estimate"\} \/>/);assert.match(main,/if \(!active\) return;/);assert.doesNotMatch(main,/view === "estimate" && <MetalCassetteQuickEstimate/);
-  assert.match(main,/if \\(!inputValid\\)/);assert.match(main,/const \\[area, setArea\\] = useState\\(""\\)/);
+  assert.match(main,/if \(!inputValid\)/);assert.match(main,/const \[area, setArea\] = useState\(""\)/);
   assert.doesNotMatch(page,/Её можно изменить вручную|Редактируемая цена за квадратный метр/);assert.match(page,/В быстром режиме оценки бюджета доступны/);assert.match(page,/толщину можно указать как исходные данные заказа или оставить на согласование/);
 });
 
