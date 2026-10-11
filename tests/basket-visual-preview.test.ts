@@ -131,7 +131,7 @@ test("customer result hides intermediate workload and facade formula",()=>{
 test('size guidance never folds rear air gap into physical block depth',()=>{
  const html=ui.fields(design.fit);
  assert.match(html,/Укажите габариты блока с выступающими частями, без зазоров/);
- assert.match(html,/Задний зазор всегда указывайте отдельно/);
+ assert.match(html,/Задний зазор измеряется от блока до стены или облицовки/);
  assert.match(html,/сначала вычтите задний зазор из этого замера/);
  assert.match(html,/role="img" aria-label="Вид сверху: задний зазор, глубина самого блока и передний зазор измеряются отдельно"/);
  assert.doesNotMatch(html,/Если зазор уже вошёл|Глубина всей установки/);
