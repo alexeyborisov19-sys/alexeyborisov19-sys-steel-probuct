@@ -103,14 +103,14 @@ export function CassetteProjectEditor() {
   return <div className="border border-white/15 bg-[#101417]" data-testid="cassette-project-editor">
     <div className="border-b border-white/15 p-4 sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="eyebrow hidden sm:block">Проект металлокассет</p><h2 className="text-xl font-semibold sm:mt-2 sm:text-3xl">Соберите раскладку своего фасада</h2><p className="mt-3 hidden max-w-2xl text-sm leading-7 text-white/75 sm:block">Меняйте параметры и сразу смотрите раскладку.</p></div>
+        <div><p className="eyebrow hidden sm:block">Проект металлокассет</p><h2 className="text-xl font-semibold sm:mt-2 sm:text-3xl">Соберите раскладку своего фасада</h2><p className="mt-3 hidden max-w-2xl text-sm leading-7 text-white/75 sm:block">Задайте размеры фасада и кассет — раскладка обновится автоматически.</p></div>
 
       </div>
       <details className="mt-2 border-t border-white/10 text-sm text-white/75 sm:mt-3 sm:pt-2"><summary className="min-h-11 cursor-pointer py-3 focus-visible:outline focus-visible:outline-steel-orange">Название, сохранение и файлы проекта</summary>
         <div className="flex flex-wrap gap-2"><button type="button" className={secondaryClass} onClick={undo} disabled={!history.length}>Отменить изменение</button><button type="button" className={secondaryClass} onClick={() => inputRef.current?.click()}>Открыть JSON</button><input ref={inputRef} type="file" accept=".json,application/json" onChange={importFile} className="sr-only" tabIndex={-1} aria-label="Открыть сохранённый проект металлокассет" /></div>
         <label htmlFor="cassette-project-name" className="mt-2 block max-w-xl text-sm text-white/80">Название проекта<input id="cassette-project-name" maxLength={80} value={project.name} onChange={event => edit({ ...project, name: event.target.value })} className={fieldClass} /></label>
         <p className="mt-3 break-all text-xs leading-6 text-white/65">Редакция {project.revision} · ID: {project.id === "draft" ? "создаётся…" : project.id}</p>
-        <p className="mt-2 text-sm leading-6 text-white/65">Проект хранится в этой вкладке. На шаге «Итог» скачайте JSON, чтобы продолжить позже.</p>
+        <p className="mt-2 text-sm leading-6 text-white/65">Проект не сохраняется автоматически. Скачайте JSON на шаге «Итог», чтобы продолжить позже.</p>
       </details>
     </div>
     <div className="border-b border-white/15 bg-[#0c1013] px-4 py-2 sm:px-7 sm:py-4">
