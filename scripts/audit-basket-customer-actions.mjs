@@ -46,7 +46,20 @@ try {
       }
       if (!['GET', 'HEAD'].includes(request.method())) {
         report.interceptedWrites.push({ width, method: request.method(), path: url.pathname });
-        // Even read-only quote POSTs stay intercepted. No production-price assertion is made.
+        // All writes remain intercepted. The one-click basket demonstration uses
+        // a local synthetic response for the published 900×600×550 reference only.
+        if (url.pathname === '/api/basket-estimate' && request.method() === 'POST') {
+          const input = request.postDataJSON();
+          if (input?.width === 900 && input?.height === 600 && input?.depth === 550
+            && input?.quantity === 1 && input?.design?.sizing === 'basket'
+            && input?.design?.appearance === undefined
+            && input?.design?.front?.pattern === 'wide-slots'
+            && input?.design?.side?.pattern === 'wide-slots') {
+            return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+              price: { unit: 7300, total: 7300, basis: 'confirmed' },
+            }) });
+          }
+        }
         return route.fulfill({ status: 503, contentType: 'application/json', body: '{"ok":false,"message":"Synthetic audit intercept"}' });
       }
       return route.continue();
@@ -64,6 +77,18 @@ try {
     const decline = page.getByRole('button', { name: 'Продолжить без аналитики', exact: true });
     if (await decline.isVisible()) await decline.click();
     const root = page.locator('[data-basket-configurator]');
+    // The basic basket price is now one deliberate customer click away.
+    // Use an isolated page: don't mutate the detailed legacy scenario inputs.
+    const quickPage = await context.newPage();
+    await quickPage.goto(`${base.origin}/products/korziny-dlya-konditsionerov#selection`, { waitUntil: 'domcontentloaded' });
+    const quick = quickPage.locator('[data-basket-configurator]');
+    await expect(quick.getByRole('button', { name: 'Показать пример стоимости →', exact: true })).toBeVisible();
+    await quick.getByRole('button', { name: 'Показать пример стоимости →', exact: true }).click();
+    await expect(quick).toContainText('Наружный размер: 900 × 600 × 550 мм');
+    await expect(quick).toContainText('10 длинных прорезей');
+    await expect(quick).toContainText('7 300 ₽');
+    await expect(quick).toContainText('Несущие кронштейны, анкеры и доставка не включены.');
+    await quickPage.close();
     const printout = page.locator('.basket-print-root');
     await expect(printout).toBeAttached();
     await expect(printout).toBeHidden();
