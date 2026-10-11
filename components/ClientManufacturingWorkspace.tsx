@@ -88,7 +88,7 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-[.16em] text-steel-orange">От модели к готовой детали</span>
                   <h2 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">Деталь по чертежу<br />или вашим размерам.</h2>
-                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">Рассчитайте до пяти изделий по DXF, STEP или размерам плоской заготовки. Выберите материал и количество. Лимиты: 50 МБ на файл и 100 МБ на проект. Расчёт предварительный, регистрация не нужна.</p>
+                  <p className="mt-4 max-w-lg text-base leading-7 text-white/70">Рассчитайте до пяти изделий: загрузите DXF или STEP либо укажите длину и ширину плоской заготовки до гибки. Выберите материал и количество. Лимиты: 50 МБ на файл и 100 МБ на проект. Расчёт предварительный, регистрация не нужна.</p>
                   <button type="button" onClick={() => inputRef.current?.click()} className={`${actionClass} mt-7`}>Выбрать файлы <span aria-hidden="true" className="ml-5">↑</span></button>
                   <p className="mt-3 text-sm text-white/75">Или перетащите файлы в эту область</p>
                   <HandoffLink href="/contacts?source=online-order#contact-form" className="mt-6 inline-flex min-h-11 items-center text-sm text-white/80 underline underline-offset-4">Нужна помощь с деталью — обратиться к инженеру</HandoffLink>
