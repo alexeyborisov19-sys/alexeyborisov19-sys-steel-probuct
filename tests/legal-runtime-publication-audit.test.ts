@@ -24,6 +24,9 @@ test("public legal audit covers every published legal page and its edition", () 
   assert.match(workflow, /audit-live-legal-publication\.py/);
   assert.match(workflow, /RETENTION_REVIEW_REQUIRED/);
   assert.match(workflow, /raise SystemExit\(2\)/);
+  // CI logs are publicly visible in this repository; do not emit customer counts.
+  assert.doesNotMatch(workflow, /print\(key\+': '\+json\.dumps/);
+  assert.doesNotMatch(workflow, /print\('LOCAL_BACKUP='\+json\.dumps/);
 });
 
 test("public legal audit script has valid Python syntax", (t) => {
