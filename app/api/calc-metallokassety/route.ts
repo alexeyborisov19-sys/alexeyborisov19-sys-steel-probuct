@@ -6,7 +6,7 @@ import { readJsonBody, PayloadTooLargeError } from "@/lib/security/request-body"
 import { assertSameOriginRequest, CrossSiteRequestError } from "@/lib/security/same-origin";
 import { CALCULATION_DISCLAIMER } from "@/lib/instant-quote/client-labels";
 import {
-  estimateMetalCassettes, metalCassetteThicknesses,
+  estimateMetalCassettes, estimateMetalCassettesByQuantity, metalCassetteThicknesses,
   type MetalCassetteEstimateInput, type MetalCassetteThickness, type MetalCassetteType,
 } from "@/lib/metal-cassette-estimate";
 
@@ -36,8 +36,41 @@ export async function POST(request: Request) {
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return invalid("Некорректные данные расчёта.");
   const payload = raw as Record<string, unknown>;
-  const mode = payload.mode === "wall" ? "wall" : payload.mode === "area" ? "area" : null;
+  const mode = payload.mode === "wall" ? "wall" : payload.mode === "area" ? "area" : payload.mode === "quantity" ? "quantity" : null;
   if (!mode || !isType(payload.type) || !isThickness(payload.thickness)) return invalid("Проверьте режим, тип кассеты и толщину.");
+
+  if (mode === "quantity") {
+    const quantity = asNumber(payload.quantity);
+    const moduleWidthMm = asNumber(payload.moduleWidthMm);
+    const moduleHeightMm = asNumber(payload.moduleHeightMm);
+    // These are software estimation limits, not manufacturing limits.
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100_000
+      || !positive(moduleWidthMm) || moduleWidthMm > 10_000
+      || !positive(moduleHeightMm) || moduleHeightMm > 10_000) {
+      return invalid("Для расчёта укажите 1–100 000 кассет и размеры лицевой части до 10 000 мм. Более крупный заказ передайте инженеру.");
+    }
+    if (payload.review === true) return invalid("Дополнительную инженерную проверку выполнит специалист после обращения.");
+    const ownSize = { type: payload.type, thickness: payload.thickness, quantity, moduleWidthMm, moduleHeightMm };
+    const baseline = estimateMetalCassettesByQuantity(ownSize);
+    const customPrice = asNumber(payload.pricePerM2);
+    const estimate = estimateMetalCassettesByQuantity({
+      ...ownSize,
+      ...(positive(customPrice) && customPrice < 1_000_000
+        ? { pricePerM2: Math.max(baseline.defaultRateRubM2, customPrice) } : {}),
+    });
+    if (!positive(estimate.netAreaM2) || !positive(estimate.approximateTotalRub)
+      || !Number.isSafeInteger(estimate.quantity) || !Number.isSafeInteger(estimate.approximateTotalRub)) {
+      return invalid("Для этого количества или размера невозможно рассчитать ориентир. Передайте параметры инженеру.");
+    }
+    return NextResponse.json({
+      netAreaM2: estimate.netAreaM2,
+      quantity: estimate.quantity,
+      approximateTotalRub: Math.max(baseline.approximateTotalRub, estimate.approximateTotalRub),
+      disclaimer: CALCULATION_DISCLAIMER,
+      marketVerified: false,
+    }, { headers: { "Cache-Control": "no-store" } });
+  }
+
   const input: MetalCassetteEstimateInput = { mode, type: payload.type, thickness: payload.thickness };
   if (mode === "area") {
     input.areaM2 = asNumber(payload.areaM2);
@@ -48,6 +81,9 @@ export async function POST(request: Request) {
     input.openingsM2 = payload.openingsM2 == null ? 0 : asNumber(payload.openingsM2);
     if (!positive(input.wallWidthMm) || !positive(input.wallHeightMm)
       || !Number.isFinite(input.openingsM2) || input.openingsM2 < 0) return invalid("Проверьте размеры стены и площадь проёмов.");
+    if (input.openingsM2 >= (input.wallWidthMm * input.wallHeightMm) / 1_000_000) {
+      return invalid("Площадь проёмов должна быть меньше площади стены.");
+    }
   }
   // The minimum is recomputed on the server from the published tariff. Browser
   // prices, guessed market means and developer-tools edits cannot reduce it.
