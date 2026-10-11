@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildSync } from "esbuild";
+import { PRODUCT_CALCULATION_NOTICE } from "../lib/product-calculation-notice";
 import { createRequire } from "node:module";
 import { buildCassetteElevation, createCassetteElevation, type CassetteElevation } from "../lib/cassette-project/model";
 import { cassettePolygon, cassetteRectPoints, createCassetteProjection } from "../components/cassette-project/cassette-visual-geometry";
@@ -148,12 +149,14 @@ test("customer text is escaped and cannot inject SVG or HTML", () => {
 test("customer budget exposes only approximate total and final quantity, never calculation arithmetic", () => {
   const html = budgetSummary({ totalRub: 3457, quantity: 4, reviewQuantity: 1, faceAreaM2: 1.96, byElevation: [{ rateRubM2: 1764 }] });
   assert.match(html, /≈ 3 457 ₽/);
-  assert.match(html, /4 позиций · все фасады проекта/);
+  assert.match(html, /4 позиции · все фасады проекта/);
   assert.match(html, /Базовый ориентир по площади лиц/);
   assert.match(html, /не коммерческое предложение/);
-  assert.match(html, /Предварительный ориентировочный расчёт\. Для уточнения спецификации и стоимости передайте проект специалисту/);
+  assert.ok(html.includes(PRODUCT_CALCULATION_NOTICE));
   assert.match(html, /требуют проверки конструкции и стоимости/);
   assert.doesNotMatch(html, /1764|1[,.]96|₽\/м|×|ставк|коэффициент|формул/);
+  assert.match(budgetSummary({ totalRub: 100, quantity: 1, reviewQuantity: 0 }), /1 позиция · все фасады проекта/);
+  assert.match(budgetSummary({ totalRub: 500, quantity: 5, reviewQuantity: 0 }), /5 позиций · все фасады проекта/);
   const empty = budgetSummary({ totalRub: 0, quantity: 0, reviewQuantity: 0 });
   assert.match(empty, /Нет позиций для расчёта/);
   assert.doesNotMatch(empty, /0 ₽/);
