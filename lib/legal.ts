@@ -24,9 +24,9 @@ export const legalOperator = {
 export const legalDocumentVersions = {
   privacy: "2026-10-11",
   personalDataConsent: "2026-10-01",
-  analyticsConsent: "2026-10-01",
+  analyticsConsent: "2026-10-11",
   marketingConsent: "2026-10-11",
-  cookies: "2026-10-01",
+  cookies: "2026-10-11",
   terms: "2026-10-01",
   services: "2026-10-01",
 } as const;
@@ -34,9 +34,9 @@ export const legalDocumentVersions = {
 export const legalDocumentDisplayDates = {
   privacy: "11 октября 2026 года",
   personalDataConsent: "1 октября 2026 года",
-  analyticsConsent: "1 октября 2026 года",
+  analyticsConsent: "11 октября 2026 года",
   marketingConsent: "11 октября 2026 года",
-  cookies: "1 октября 2026 года",
+  cookies: "11 октября 2026 года",
   terms: "1 октября 2026 года",
   services: "1 октября 2026 года",
 } as const;
