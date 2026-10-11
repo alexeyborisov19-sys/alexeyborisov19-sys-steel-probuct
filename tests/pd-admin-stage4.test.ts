@@ -383,7 +383,26 @@ test("legal hold and policy checks block deletion while approved fixture deletio
     assert.equal(existsSync(blocked.leadPath), true);
     assert.equal(existsSync(deletable.consentPath), true);
     const verified = verifyDeletion(fixture.officer, scan.id, executed.version);
-    assert.equal(verified.result, "DELETED");
+    // Local file cleanup is not legal confirmation of deletion from mail,
+    // processors and backups, and an unsigned draft is not the Order 179 act.
+    assert.equal(verified.result, "PARTIALLY_DELETED");
+    assert.equal(verified.localFilesVerified, true);
+    assert.equal(verified.legalDestructionConfirmed, false);
+    assert.ok(verified.outstandingConfirmations.includes("SIGNED_DESTRUCTION_ACT"));
+    const summary = fixture.database.prepare(
+      "SELECT status, stage4_status, failure_reason, report_path FROM deletion_jobs WHERE id = ?",
+    ).get(scan.id) as { status: string; stage4_status: string; failure_reason: string; report_path: string };
+    assert.equal(summary.status, "FAILED");
+    assert.equal(summary.stage4_status, "PARTIALLY_COMPLETED");
+    assert.equal(summary.failure_reason, "LOCAL_FILES_ONLY_EXTERNAL_CONFIRMATION_PENDING");
+    const report = JSON.parse(await readFile(summary.report_path, "utf8")) as {
+      verificationScope: string; localFilesVerified: boolean; legalDestructionConfirmed: boolean;
+      outstandingConfirmations: string[];
+    };
+    assert.equal(report.verificationScope, "LOCAL_WORKING_FILES_ONLY");
+    assert.equal(report.localFilesVerified, true);
+    assert.equal(report.legalDestructionConfirmed, false);
+    assert.ok(report.outstandingConfirmations.includes("MAIL_AND_PROCESSOR_COPIES"));
     const act = fixture.database.prepare("SELECT document_path, document_sha256 FROM deletion_acts WHERE deletion_job_id = ?").get(scan.id) as { document_path: string; document_sha256: string };
     const document = await readFile(act.document_path);
     assert.equal(document.subarray(0, 2).toString("utf8"), "PK");
@@ -412,6 +431,8 @@ test("symlink deletion is refused and reported as partial", async () => {
     assert.equal(existsSync(lead.leadPath), true);
     const verified = verifyDeletion(fixture.admin, scan.id, result.version);
     assert.equal(verified.result, "PARTIALLY_DELETED");
+    assert.equal(verified.localFilesVerified, false);
+    assert.equal(verified.legalDestructionConfirmed, false);
   } finally { fixture.close(); }
 });
 
