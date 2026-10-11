@@ -61,7 +61,7 @@ function expectedSchemaTypes(path) {
     && path !== "/products/dobornye-elementy/bim"
     && path !== "/products/metallokassety"
     && path !== "/products/dobornye-elementy"
-  ) expected.push("Product", "FAQPage");
+  ) expected.push("Service", "FAQPage");
   if (
     path.startsWith("/articles/")
     && ![
@@ -287,8 +287,14 @@ for (const publicUrl of urls) {
     }
   }
 
-  for (const type of expectedSchemaTypes(path)) {
+  const expectedTypes = expectedSchemaTypes(path);
+  for (const type of expectedTypes) {
     if (!types.has(type)) schemaErrors.push(`${path}: отсутствует schema.org ${type}`);
+  }
+  // Custom fabrication pages don't advertise a purchasable fixed-price item.
+  // A stray Product would reactivate Google's product-snippet validation issue.
+  if (path.startsWith("/products/") && expectedTypes.includes("Service") && types.has("Product")) {
+    schemaErrors.push(`${path}: изготовление по индивидуальному заказу ошибочно размечено как Product — без подтверждённых предложений или отзывов`);
   }
 
   if (title.length < 30 || title.length > 75) warnings.push(`${path}: длина title ${title.length} символов`);
@@ -427,4 +433,4 @@ if (warnings.length) {
   warnings.forEach((item) => console.log(`- ${item}`));
 }
 
-if (errors.length || schemaErrors.length) process.exitCode = 1;
+if (errors.length || schemaErrors.length || eligibilityLimitations.length) process.exitCode = 1;
