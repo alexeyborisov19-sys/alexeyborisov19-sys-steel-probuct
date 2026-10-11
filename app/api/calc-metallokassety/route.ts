@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       netAreaM2: estimate.netAreaM2,
       quantity: estimate.quantity,
-      approximateTotalRub: Math.max(baseline.approximateTotalRub, estimate.approximateTotalRub),
+      approximateTotalRub: estimate.approximateTotalRub,
       disclaimer: CALCULATION_DISCLAIMER,
       marketVerified: false,
     }, { headers: { "Cache-Control": "no-store" } });
