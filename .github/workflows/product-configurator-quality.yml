@@ -5,6 +5,7 @@ on:
       - 'components/cassette-project/**'
       - 'components/cad/shared/**'
       - 'components/ClientManufacturingWorkspace.tsx'
+      - 'components/CadMeshViewer.tsx'
       - 'components/MetalCassetteCalculator.tsx'
       - 'components/CassetteProductSpecification.tsx'
       - 'lib/cassette-product-spec.ts'
@@ -25,6 +26,12 @@ on:
       - 'tests/*basket*'
       - 'tests/*cassette*'
       - 'scripts/audit-product-configurators.mjs'
+      - 'scripts/audit-cad-*.mjs'
+      - 'scripts/cad-action-matrix.mjs'
+      - 'tests/cad-*.test.ts'
+      - 'lib/instant-quote/cad-input-workflow.ts'
+      - 'lib/instant-quote/cad-view-controls.ts'
+      - 'lib/instant-quote/manual-sheet.ts'
       - 'scripts/audit-basket-customer-actions.mjs'
       - 'scripts/generate-ifc-validation-fixtures.ts'
       - 'scripts/validate-cassette-ifc.py'
@@ -80,6 +87,8 @@ jobs:
           npm run seo:audit
           node --import tsx scripts/audit-product-configurators.mjs
           node --import tsx scripts/audit-basket-customer-actions.mjs
+          node scripts/audit-cad-input-workflow.mjs
+          node scripts/audit-cad-actions-twice.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

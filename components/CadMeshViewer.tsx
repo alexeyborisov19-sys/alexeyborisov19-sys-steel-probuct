@@ -5,6 +5,8 @@ import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent }
 import type { CadMeshPrimitive } from "@/lib/instant-quote/cad-model";
 import { calculateMeshBounds, calculateTriangleNormals, countMeshTriangles } from "@/lib/instant-quote/mesh";
 
+import { clampCadZoom, pinchCadZoom } from "@/lib/instant-quote/cad-view-controls";
+
 type ViewerMode = "solid" | "wireframe";
 
 type Mat4 = Float32Array;
@@ -161,6 +163,12 @@ export function CadMeshViewer({ meshes, className = "" }: { meshes: CadMeshPrimi
   const pitchRef = useRef(0.55);
   const zoomRef = useRef(1);
   const dragRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchDistanceRef = useRef<number | null>(null);
+  const pointerDistance = () => {
+    const [a, b] = [...pointersRef.current.values()];
+    return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : null;
+  };
   const [mode, setMode] = useState<ViewerMode>("solid");
   const [error, setError] = useState<string | null>(null);
   const bounds = useMemo(() => calculateMeshBounds(meshes), [meshes]);
@@ -292,11 +300,21 @@ export function CadMeshViewer({ meshes, className = "" }: { meshes: CadMeshPrimi
   }, [bounds, meshes, mode]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    dragRef.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     event.currentTarget.setPointerCapture(event.pointerId);
+    pinchDistanceRef.current = pointerDistance();
+    dragRef.current = pointersRef.current.size >= 2 ? null : { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointersRef.current.size >= 2) {
+      const distance = pointerDistance();
+      if (distance != null && pinchDistanceRef.current != null) zoomRef.current = pinchCadZoom(zoomRef.current, pinchDistanceRef.current, distance);
+      pinchDistanceRef.current = distance;
+      return;
+    }
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const dx = event.clientX - drag.x;
@@ -307,12 +325,15 @@ export function CadMeshViewer({ meshes, className = "" }: { meshes: CadMeshPrimi
   };
 
   const onPointerUp = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+    pointersRef.current.delete(event.pointerId);
+    pinchDistanceRef.current = pointerDistance();
+    const remaining = [...pointersRef.current.entries()][0];
+    dragRef.current = pointersRef.current.size === 1 && remaining ? { pointerId: remaining[0], ...remaining[1] } : null;
   };
 
   const onWheel = (event: ReactWheelEvent<HTMLCanvasElement>) => {
     event.preventDefault();
-    zoomRef.current = Math.max(0.35, Math.min(4, zoomRef.current * Math.exp(event.deltaY * 0.0012)));
+    zoomRef.current = clampCadZoom(zoomRef.current * Math.exp(event.deltaY * 0.0012));
   };
 
   const resetView = () => {
@@ -334,6 +355,7 @@ export function CadMeshViewer({ meshes, className = "" }: { meshes: CadMeshPrimi
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onLostPointerCapture={onPointerUp}
         onWheel={onWheel}
         aria-label="Интерактивная 3D-модель детали"
       />
@@ -359,7 +381,7 @@ export function CadMeshViewer({ meshes, className = "" }: { meshes: CadMeshPrimi
         <span className="border border-white/10 bg-black/55 px-2 py-1">{bounds.size.map((value) => Math.round(value * 10) / 10).join(" × ")} мм</span>
       </div>
 
-      <div className="pointer-events-none absolute bottom-4 right-4 text-right text-[9px] leading-relaxed text-white/28">drag — вращение<br />wheel — масштаб</div>
+      <div className="pointer-events-none absolute bottom-4 right-4 text-right text-[9px] leading-relaxed text-white/28">Потяните мышью или пальцем — вращение<br />Колесо или разведите пальцы — масштаб</div>
       {error && <div className="absolute inset-x-4 top-16 border border-red-400/25 bg-black/85 p-3 text-xs text-red-200">{error}</div>}
     </div>
   );
