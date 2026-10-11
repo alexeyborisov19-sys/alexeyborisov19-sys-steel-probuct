@@ -64,6 +64,7 @@ test("workspace uses readable HTML dimensions and explicitly limited neutral sha
   const html = workspace({ elevation, layout, selected: null, onSelect() {}, review: true });
   const outsideSvg = html.replace(/<svg[\s\S]*?<\/svg>/g, "");
   assert.match(outsideSvg, /2 020 × 1 020 мм/);
+  assert.match(outsideSvg, /2 ряда × 2 столбца · 4 позиции облицовки/);
   assert.match(outsideSvg, /1 000 × 500 мм/);
   assert.match(outsideSvg, /20 \/ 20 мм/);
   assert.match(outsideSvg, /без бортов и замков/);
