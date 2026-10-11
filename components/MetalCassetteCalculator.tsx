@@ -51,13 +51,22 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
   }), [mode, type, thickness, area, wallWidth, wallHeight, openings, pieceQuantity, faceWidth, faceHeight]);
   const wallArea = payload.wallWidthMm * payload.wallHeightMm / 1_000_000;
   const inputValid = mode === "area"
-    ? Number.isFinite(payload.areaM2) && payload.areaM2 > 0
+    ? Number.isFinite(payload.areaM2) && payload.areaM2 > 0 && payload.areaM2 <= 1_000_000
     : mode === "wall"
       ? Number.isFinite(wallArea) && wallArea > 0 && wallArea <= 1_000_000
+        && payload.wallWidthMm > 0 && payload.wallWidthMm <= 1_000_000
+        && payload.wallHeightMm > 0 && payload.wallHeightMm <= 1_000_000
         && Number.isFinite(payload.openingsM2) && payload.openingsM2 >= 0 && payload.openingsM2 < wallArea
       : Number.isSafeInteger(payload.quantity) && payload.quantity >= 1 && payload.quantity <= 100_000
         && Number.isFinite(payload.moduleWidthMm) && payload.moduleWidthMm > 0 && payload.moduleWidthMm <= 10_000
         && Number.isFinite(payload.moduleHeightMm) && payload.moduleHeightMm > 0 && payload.moduleHeightMm <= 10_000;
+  const inputHelp = mode === "area"
+    ? "Укажите площадь фасада в м²."
+    : mode === "wall"
+      ? Number.isFinite(wallArea) && wallArea > 0 && payload.openingsM2 >= wallArea
+        ? "Площадь окон и дверей должна быть меньше площади стены."
+        : "Укажите ширину, высоту стены и площадь проёмов."
+      : "Укажите целое количество кассет и ширину и высоту их лицевой части.";
   const requestKey = JSON.stringify(payload);
   const result = responseState?.key === requestKey ? responseState.value : null;
   const amount = result?.approximateTotalRub;
@@ -213,7 +222,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
               {status === "loading" ? "…" : typeof amount === "number" && amount > 0 ? `≈ ${money.format(amount)} ₽` : "—"}
             </p>
             
-            {status === "idle" ? <p role="status" className="mt-3 text-sm leading-6 text-white/75">Заполните размеры и количество, чтобы увидеть предварительную цену.</p> : null}
+            {status === "idle" ? <p role="status" className="mt-3 text-sm leading-6 text-white/75">{inputHelp}</p> : null}
             <p className="mt-3 text-sm leading-6 text-white/60">{CALCULATION_DISCLAIMER}</p>
           </div>
           <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
