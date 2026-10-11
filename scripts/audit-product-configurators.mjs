@@ -92,6 +92,10 @@ try {
   await expect(page.locator('#engineering-assistant-dialog')).toHaveCount(0);
   await expect(launcher).toBeVisible();
   await open(page,'/calculator-metallokassety');
+  const initialMode=page.getByLabel('Режим калькулятора металлокассет',{exact:true});
+  await expect(initialMode).toHaveValue('estimate');
+  await expect(page.locator('#cassette-quick-estimate')).toContainText('Заполните размеры');
+  await initialMode.selectOption('product');
   const spec=page.getByTestId('cassette-product-spec');
   await expect(spec.getByRole('img',{name:'Вид кассеты спереди: ширина по горизонтали, высота по вертикали',exact:true})).toBeVisible();
   await expect(spec.getByLabel('Ширина кассеты, мм · позиция 1',{exact:true})).toHaveValue('');
@@ -120,9 +124,52 @@ try {
   await estimate.getByLabel('Площадь фасада',{exact:true}).fill('137');
   await estimate.getByRole('button',{name:'1,0 мм',exact:true}).click();
   await estimate.getByRole('button',{name:/^Закрытая/}).click();
+  // Strict customer-first audit: actual dimensions and stated piece counts are now
+  // priced without asking the visitor to calculate m² or open the engineer-only mode.
+  await estimate.getByRole('button',{name:'По количеству',exact:true}).click();
+  const qty=estimate.locator('#cassette-piece-quantity');
+  await estimate.locator('#cassette-face-width').fill('600');
+  await estimate.locator('#cassette-face-height').fill('1200');
+  for(const kind of ['open','closed']) {
+    await estimate.getByRole('button',{name:kind==='open'?/^Открытая/:/^Закрытая/}).click();
+    for(const thickness of ['0,65','0,7','1,0','1,2']) {
+      await estimate.getByRole('button',{name:`${thickness} мм`,exact:true}).click();
+      for(const quantity of [1,10,300,100000]) {
+        const responsePromise=page.waitForResponse(response=>{
+          if(!response.url().endsWith('/api/calc-metallokassety')||response.request().method()!=='POST')return false;
+          try {
+            const payload=response.request().postDataJSON();
+            return payload.mode==='quantity'&&payload.type===kind&&payload.thickness===thickness.replace(',','.')&&payload.quantity===quantity;
+          }catch{return false;}
+        },{timeout:15000});
+        await qty.fill(String(quantity));
+        const response=await responsePromise;
+        assert.equal(response.status(),200,`Quantity estimate: ${kind}, ${thickness}, ${quantity}`);
+        const quote=await response.json();
+        assert.equal(quote.quantity,quantity);
+        assert.equal(quote.netAreaM2,quantity*0.72);
+        assert.ok(quote.approximateTotalRub>0&&Number.isSafeInteger(quote.approximateTotalRub));
+        assert.equal(quote.marketVerified,false);
+      }
+    }
+  }
+  await expect(estimate.locator('#cassette-piece-quantity')).toHaveValue('100000');
+  await expect(estimate.locator('#cassette-quick-estimate')).toContainText('₽');
+  const quantityHref=await estimate.getByRole('link',{name:/Открыть форму обращения/}).getAttribute('href');
+  const quantityParams=new URL(quantityHref,'https://www.steelprodukt.ru').searchParams;
+  assert.equal(quantityParams.get('mode'),'quantity');
+  assert.equal(quantityParams.get('faceWidth'),'600');
+  assert.equal(quantityParams.get('faceHeight'),'1200');
+  assert.equal(quantityParams.get('statedQuantity'),'100000');
+  await qty.fill('100001');
+  await expect(estimate).toContainText('Заполните размеры');
+  await qty.fill('0');
+  await expect(estimate).toContainText('Заполните размеры');
   await mode.selectOption('product');await expect(spec.getByLabel('Ширина кассеты, мм · позиция 1',{exact:true})).toHaveValue('600');
-  await mode.selectOption('estimate');await expect(estimate.getByLabel('Площадь фасада',{exact:true})).toHaveValue('137');
-  await expect(estimate.getByRole('button',{name:'1,0 мм',exact:true})).toHaveAttribute('aria-pressed','true');await expect(estimate.getByRole('button',{name:/^Закрытая/})).toHaveAttribute('aria-pressed','true');
+  await mode.selectOption('estimate');
+  await estimate.getByRole('button',{name:'По площади',exact:true}).click();
+  await expect(estimate.getByLabel('Площадь фасада',{exact:true})).toHaveValue('137');
+  await expect(estimate.getByRole('button',{name:'1,2 мм',exact:true})).toHaveAttribute('aria-pressed','true');await expect(estimate.getByRole('button',{name:/^Закрытая/})).toHaveAttribute('aria-pressed','true');
   await mode.selectOption('product');
   await spec.getByRole('button',{name:'Добавить другой размер',exact:true}).click();
   for(const [label,value] of [['Ширина кассеты, мм','900'],['Высота кассеты, мм','300'],['Количество, шт.','4']]) await spec.getByLabel(`${label} · позиция 3`,{exact:true}).fill(value);
