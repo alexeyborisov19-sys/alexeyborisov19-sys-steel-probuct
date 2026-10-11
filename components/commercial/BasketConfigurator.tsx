@@ -154,11 +154,11 @@ export function BasketConfigurator() {
           {step === 2 && byBlock && !dimensionsValid && <div className={styles.referenceWarning}>
             <p>Размер корзины не определён: зазоры не подтверждены. Можно передать известные данные для подбора.</p>
             <button type="button" className="mt-3 min-h-11 w-full rounded-lg border border-orange-300 bg-white px-3 py-2 text-sm font-semibold" disabled={!preliminaryValid} onClick={() => download(true)}>Скачать предварительное задание · TXT ↓</button>
-            <AttributionLink href="/contacts" className="mt-2 block py-3 text-center text-sm font-semibold underline underline-offset-4">Передать специалисту →</AttributionLink>
+            <AttributionLink href="/contacts" className="mt-2 block py-3 text-center text-sm font-semibold underline underline-offset-4">Открыть форму обращения →</AttributionLink>
             <p className="mt-2 text-xs">Скачайте задание и приложите его к обращению. Это данные для подбора, не спецификация готовой корзины.</p>
           </div>}
           {step === 2 && !(byBlock && !dimensionsValid) && <div className={styles.actions}>
-            {valid ? <AttributionLink href={href} className={styles.primary}>Передать специалисту →</AttributionLink> : <button disabled className={styles.primary}>Уточните параметры</button>}
+            {valid ? <AttributionLink href={href} className={styles.primary}>Открыть форму обращения →</AttributionLink> : <button disabled className={styles.primary}>Уточните параметры</button>}
             <button type="button" disabled={!valid || (items.length >= 100 && editing === null)} onClick={savePosition}>{editing===null?"Добавить в спецификацию":`Сохранить позицию ${editing+1}`}</button>
             {editing!==null && <button type="button" onClick={()=>{setEditing(null);setSaved("");}}>Выйти без сохранения позиции</button>}
             <button type="button" disabled={!valid} onClick={() => download()}>Скачать задание · TXT ↓</button>

@@ -11,13 +11,25 @@ export function BasketFitFields({value,onChange}: {value?:BasketFit;onChange:(fi
     <BasketNumberInput value={fit[k]} emptyValue={null} min={['width','height','depth'].includes(k)?1:0} max={10000} placeholder="Введите, мм" className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base" onValue={v=>onChange({...fit,[k]:v})}/>
   </label>);
   return <section aria-label="Размеры блока и зазоры">
-    <h4 className="text-sm font-semibold text-slate-800">1. Габариты наружного блока</h4><p className="mt-2 text-sm leading-6 text-slate-600">Из паспорта вашей модели, с учётом выступающих частей. Вводите миллиметры: ширину, высоту и глубину.</p>
+    <h4 className="text-sm font-semibold text-slate-800">1. Габариты наружного блока</h4><p className="mt-2 text-sm leading-6 text-slate-600">Размеры самого блока с выступающими частями, без воздушных зазоров. Вводите миллиметры. Зазоры вокруг блока укажите отдельно.</p>
+    <figure className="mt-3 max-w-md text-slate-700">
+      <svg viewBox="0 0 360 130" className="block h-auto w-full" role="img" aria-label="Вид сверху: задний зазор, глубина самого блока и передний зазор измеряются отдельно">
+        <path d="M30 30V95" stroke="currentColor" strokeWidth="6" />
+        <rect x="105" y="40" width="140" height="50" fill="white" stroke="currentColor" strokeWidth="2" />
+        <path d="M34 60H100M250 60H326M34 54V66M100 54V66M250 54V66M326 54V66M105 27H245M105 21V33M245 21V33" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        <g fill="currentColor" fontSize="14" textAnchor="middle">
+          <text x="175" y="17">Глубина блока</text><text x="175" y="70">Блок с выступами</text>
+          <text x="67" y="112">Сзади</text><text x="288" y="112">Спереди</text>
+        </g>
+      </svg>
+      <figcaption className="text-xs leading-5 text-slate-600">Вид сверху, без масштаба. Блок и два воздушных зазора — три отдельных размера.</figcaption>
+    </figure>
     <div className="mt-4 grid grid-cols-2 gap-3">{fields(['width','height','depth'])}</div>
     <details className="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-3"><summary className="text-sm font-semibold text-slate-800">Уточнить зазоры вокруг блока{size ? " · указаны" : " · нужны для расчёта"}</summary>
     <p className="mt-2 text-xs leading-5 text-slate-600">Из инструкции вашей модели, с учётом трубок и обслуживания. Если дополнительный отступ не нужен, введите 0. Пустое поле означает, что размер пока неизвестен.</p>
     <div className="mt-3 grid grid-cols-2 gap-3">{fields(['left','right','top','bottom','front','rear'])}</div>
     <BasketRearGapHint onApply={rear => onChange({...fit,rear})}/>
-    <p className="mt-3 text-xs leading-5 text-slate-600">Зазор сзади — от блока до наружной поверхности стены или облицовки. Глубина вентфасада задаётся отдельно на шаге «Крепление». Если зазор уже вошёл в измеренную глубину, не прибавляйте его второй раз. Корзина открыта сверху — отступ сверху означает желаемое положение края панели.</p>
+    <p className="mt-3 text-xs leading-5 text-slate-600">Зазор сзади — от блока до наружной поверхности стены или облицовки. Глубина вентфасада задаётся отдельно на шаге «Крепление». Задний зазор всегда указывайте отдельно. Если замер выполнен от стены или облицовки до переднего края блока, сначала вычтите задний зазор из этого замера — получите глубину самого блока. Корзина открыта сверху — отступ сверху означает желаемое положение края панели.</p>
     </details>
     <div className="mt-4 rounded-xl border border-slate-300 bg-slate-50 p-4" role="status">
       {size?<><b className="block">Расчётный внутренний размер: {size.width} × {size.height} × {size.depth} мм</b><span className="mt-2 block text-xs leading-5 text-slate-600">Предварительно, с округлением вверх до миллиметра. Наружные размеры с учётом панелей уточняются по чертежу.</span></>:<span className="text-sm text-slate-600">Предварительный эскиз: зазоры нужно уточнить. Откройте «Уточнить зазоры вокруг блока» — размер корзины появится после ввода шести отступов.</span>}

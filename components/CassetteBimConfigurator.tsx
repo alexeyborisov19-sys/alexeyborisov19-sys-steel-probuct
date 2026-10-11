@@ -11,7 +11,7 @@ import { CassetteBimShapePreview } from "./CassetteBimShapePreview";
 import styles from "./CassetteBimConfigurator.module.css";
 
 const initial: CassetteBimInput = { ...cassetteProfiles.open, profile:"open", columns:3,rows:2,mark:"К-01",finish:"По проекту" };
-const fields = [["widthMm", "Ширина лица, мм"], ["heightMm", "Высота лица, мм"], ["depthMm", "Глубина борта, мм"], ["jointMm", "Шов, мм"], ["columns", "Колонки"], ["rows", "Ряды"]] as const;
+const fields = [["widthMm", "Ширина кассеты, мм"], ["heightMm", "Высота кассеты, мм"], ["depthMm", "Глубина борта, мм"], ["jointMm", "Шов, мм"], ["columns", "Колонки"], ["rows", "Ряды"]] as const;
 type Colours = NonNullable<CassetteBimInput["panelColours"]>;
 const format = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 3 });
 
@@ -112,10 +112,12 @@ export function CassetteBimConfigurator() {
       <summary><span>Кассета и размеры</span><small>{valid ? `${p.columns} × ${p.rows} кассет · ${format(p.widthMm)} × ${format(p.heightMm)} мм` : "Проверьте параметры"}</small></summary>
       <div className={styles.fields}>
         <label className={styles.profileField}>Исполнение<select value={p.profile} onChange={e=>chooseProfile(e.target.value as CassetteProfile,p.thicknessMm)}>{Object.entries(cassetteProfiles).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
-        {p.profile==='corner' && <label>Второе крыло, мм<input type="number" value={p.returnWidthMm} onChange={e=>setP({...p,returnWidthMm:Number(e.target.value)})}/></label>}
-        {fields.filter(([key]) => key === "widthMm" || key === "heightMm").map(([key, label]) => <label key={key}>{label}<input type="number" step="any" value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
+        {p.profile==='corner' && <label>Ширина второго крыла, мм<input type="number" value={p.returnWidthMm} onChange={e=>setP({...p,returnWidthMm:Number(e.target.value)})}/></label>}
+        {fields.filter(([key]) => key === "widthMm" || key === "heightMm").map(([key, label]) => <label key={key}>{key === "widthMm" && p.profile === "corner" ? "Ширина первого крыла, мм" : label}<input aria-describedby="bim-visible-dimensions-help" type="number" step="any" value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
         <label>Толщина, мм<select value={p.thicknessMm} onChange={e => chooseProfile(p.profile!,Number(e.target.value))}>{(p.profile === "corner" ? [1] : [0.7, 1]).map(t => <option key={t} value={t}>{t}</option>)}</select></label>
       </div>
+      <p id="bim-visible-dimensions-help" className={styles.hint}>Размеры видимой части кассеты, без загнутых краёв. У угловой кассеты ширина задаётся отдельно для каждого крыла.</p>
+      <p className={styles.hint}>При смене типа или толщины размеры вернутся к исходным.</p>
       <details className={styles.extra}><summary>Раскладка, шов и марка</summary>
         <div className={styles.fields}>
           {fields.filter(([key]) => key !== "widthMm" && key !== "heightMm").map(([key, label]) => <label key={key}>{label}<input type="number" readOnly={key === "depthMm"} disabled={key === "columns" && p.profile === "corner"} min={key === "jointMm" ? 0 : undefined} step={key === "rows" || key === "columns" ? 1 : "any"} value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
@@ -124,7 +126,7 @@ export function CassetteBimConfigurator() {
         <p className={styles.hint}>Шов задаётся между лицевыми габаритами. Для полных бортов без наложения в этой компоновке требуется не меньше {format(cassetteMinimumJoint(p))} мм. Меньший шов возможен только с отдельно проверенным узлом стыковки.</p>
       </details>
       <details className={styles.extra}><summary>Исходная геометрия и покрытие</summary>
-        <p className={styles.hint}>Открытый и закрытый типы — по исходным STEP-моделям 0,7 и 1 мм. Угловая — по рабочему чертежу, без отверстий и радиусов. Смена типа или толщины возвращает исходные размеры. Изменение ширины и высоты адаптирует центральную часть; глубина и гибы сохраняются.</p>
+        <p className={styles.hint}>Открытый и закрытый типы — по исходным STEP-моделям 0,7 и 1 мм. Угловая — по рабочему чертежу, без отверстий и радиусов. Изменение ширины и высоты адаптирует центральную часть; глубина и гибы сохраняются.</p>
         <label>Покрытие по проекту<input maxLength={120} value={p.finish} onChange={e => setP({ ...p, finish: e.target.value })} /></label>
       </details>
     </details>
@@ -156,7 +158,8 @@ export function CassetteBimConfigurator() {
           </div> : <p className={styles.empty}>Заполните корректные размеры для предпросмотра.</p>}
         </div>
         <p className={styles.caption}>Условная схема, вид спереди. Ряды считаются снизу, колонки — слева. Геометрия IFC строится по введённым размерам.</p>
-        {valid && <dl className={styles.metrics}><div><dt>Количество</dt><dd>{summary.quantity} <small>шт.</small></dd></div><div><dt>Площадь лиц</dt><dd>{format(summary.faceAreaM2)} <small>м²</small></dd></div><div><dt>Габариты блока</dt><dd className={styles.dimensions}>{format(summary.overallWidthMm)} × {format(summary.overallHeightMm)} <small>мм</small></dd></div></dl>}
+        {valid && <p className={styles.hint}>Размеры показаны без выступающих монтажных полок. {p.profile === "corner" ? "У угловой кассеты указан размер первого крыла со швами, а площадь включает оба крыла без бортов и швов." : "Площадь не включает борта и швы."}</p>}
+        {valid && <dl className={styles.metrics}><div><dt>Количество</dt><dd>{summary.quantity} <small>шт.</small></dd></div><div><dt>Площадь видимой части</dt><dd>{format(summary.faceAreaM2)} <small>м²</small></dd></div><div><dt>Видимая часть со швами</dt><dd className={styles.dimensions}>{format(summary.overallWidthMm)} × {format(summary.overallHeightMm)} <small>мм</small></dd></div></dl>}
         <details className={styles.colourSchedule}><summary>Ведомость цветов <span>{colourGroups.size}</span></summary><ul aria-label="Спецификация по цветам">{[...colourGroups].map(([finish, group]) => <li key={finish}><span className={styles.smallSwatch} style={{ backgroundColor: group.hex || "#dce1e3" }} /><strong>{finish}</strong><span>{group.count} шт.</span><span>{format(group.count * cassetteFaceWidth(p) * p.heightMm / 1e6)} м²</span></li>)}</ul><p className={styles.caption}>Площадь лицевой поверхности без швов. Не площадь окраски с бортами.</p></details>
       </section>
       <section className={styles.paintSection} aria-labelledby="bim-paint-title">
@@ -188,7 +191,7 @@ export function CassetteBimConfigurator() {
       {pendingProject && <div className={styles.restorePrompt}>
         <p><strong>{pendingProject.mark}</strong>: {pendingProject.columns} × {pendingProject.rows} кассет. Заменить текущую раскладку? Несохранённые изменения будут потеряны.</p>
         <button type="button" className={styles.darkButton} onClick={restoreProject}>Заменить раскладку</button>
-        <button type="button" className={styles.secondary} onClick={() => { ++importEpoch.current; setPendingProject(null); setNotice("Открытие отменено. Текущий проект сохранён."); }}>Отмена</button>
+        <button type="button" className={styles.secondary} onClick={() => { ++importEpoch.current; setPendingProject(null); setNotice("Открытие отменено. Текущая раскладка не изменена."); }}>Отмена</button>
       </div>}
     </section>
     <p className={styles.scopeNote}>{bimScope}</p>

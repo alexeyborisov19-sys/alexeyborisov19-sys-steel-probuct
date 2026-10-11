@@ -139,7 +139,7 @@ export function createCassetteCsv(p: CassetteBimInput) {
   const rows = [["Марка","Ширина, мм","Высота, мм","Глубина, мм","Толщина, мм","Покрытие","Количество","Площадь лица всего, м²","Статус","Исполнение","Второе крыло, мм","Идентификатор панели"]];
   for (let row=0; row<p.rows; row++) for (let col=0; col<p.columns; col++) {
     const tag = `${p.mark}-${String(row*p.columns+col+1).padStart(3,"0")}`;
-    rows.push([tag,String(p.widthMm),String(p.heightMm),String(p.depthMm),String(p.thicknessMm),p.panelColours?.[`${row}:${col}`]?.ral || p.finish || "По проекту","1",String(cassetteFaceWidth(p)*p.heightMm/1e6),bimScope,p.profile ? cassetteProfiles[p.profile].label : "Прямые борта",p.profile === "corner" ? String(p.returnWidthMm) : "",p.projectId ? `${p.projectId}/${row}:${col}` : ""]);
+    rows.push([tag,String(p.widthMm),String(p.heightMm),String(p.depthMm),String(p.thicknessMm),p.panelColours?.[`${row}:${col}`]?.ral || p.finish || "По проекту","1",String(cassetteFaceWidth(p)*p.heightMm/1e6),bimScope + " Ширина и высота — видимая часть без загнутых краёв; глубина — борт. У угловой кассеты ширина относится к первому крылу, площадь включает оба крыла. Это не полные наружные габариты.",p.profile ? cassetteProfiles[p.profile].label : "Прямые борта",p.profile === "corner" ? String(p.returnWidthMm) : "",p.projectId ? `${p.projectId}/${row}:${col}` : ""]);
   }
   return "\uFEFF"+rows.map(row=>row.map(safe).join(";")).join("\r\n");
 }
