@@ -64,6 +64,17 @@ try {
     const decline = page.getByRole('button', { name: 'Продолжить без аналитики', exact: true });
     if (await decline.isVisible()) await decline.click();
     const root = page.locator('[data-basket-configurator]');
+    // The basic basket price is now one deliberate customer click away.
+    // Use an isolated page: don't mutate the detailed legacy scenario inputs.
+    const quickPage = await context.newPage();
+    await quickPage.goto(`${base.origin}/products/korziny-dlya-konditsionerov#selection`, { waitUntil: 'domcontentloaded' });
+    const quick = quickPage.locator('[data-basket-configurator]');
+    await expect(quick.getByRole('button', { name: 'Показать пример стоимости →', exact: true })).toBeVisible();
+    await quick.getByRole('button', { name: 'Показать пример стоимости →', exact: true }).click();
+    await expect(quick).toContainText('Наружный размер: 900 × 600 × 550 мм');
+    await expect(quick).toContainText('10 длинных прорезей');
+    await expect(quick).toContainText('кронштейны и доставка не включены');
+    await quickPage.close();
     const printout = page.locator('.basket-print-root');
     await expect(printout).toBeAttached();
     await expect(printout).toBeHidden();
