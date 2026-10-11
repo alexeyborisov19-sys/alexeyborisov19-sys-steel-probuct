@@ -18,7 +18,6 @@ const report = {
   candidateHead: process.env.CANDIDATE_HEAD_SHA || null, pullRequestHead: process.env.PR_HEAD_SHA || null, workflowSha: process.env.GITHUB_SHA || null,
   origin: base.origin, actions: [], unsupported: [], checks: [], interceptedWrites: [], blockedExternal: [],
   limits: ['Synthetic customer data only. No lead, email, vendor or POST reaches a server.',
-    'Basket specification printing is not implemented: no print/PDF control or print template exists; global print CSS hides the specification.',
     'Manufacturer PDF links are inspected without opening a vendor site.',
     'This script runs each viewport once. Two independent CI replay jobs establish repetition.'],
 };
@@ -64,6 +63,13 @@ try {
     const decline = page.getByRole('button', { name: 'Продолжить без аналитики', exact: true });
     if (await decline.isVisible()) await decline.click();
     const root = page.locator('[data-basket-configurator]');
+    const printout = page.locator('.basket-print-root');
+    await expect(printout).toBeAttached();
+    await expect(printout).toBeHidden();
+    await page.emulateMedia({ media: 'print' });
+    await expect(printout).toContainText('В спецификацию ещё не добавлены позиции');
+    await expect(printout).toBeVisible();
+    await page.emulateMedia({ media: 'screen' });
     const nav = root.getByRole('navigation', { name: 'Шаги подбора корзины' });
     const step = async name => { await nav.getByRole('button', { name: new RegExp(name) }).click(); await expect(nav.getByRole('button', { name: new RegExp(name) })).toHaveAttribute('aria-current', 'step'); };
     const details = async text => {
@@ -198,27 +204,55 @@ try {
       assert.equal(url.protocol, 'https:'); assert.equal(url.hostname, 'www.daikin.eu'); assert.ok(url.pathname.endsWith('.pdf'));
     });
     await quality('saved-order');
-    // Printing is not an available basket action. Keep this observed limitation
-    // separate from supported-action PASS counts; do not label a blank PDF usable.
-    await expect(root.getByRole('button', { name: /Печать|PDF/ })).toHaveCount(0);
-    await page.emulateMedia({ media: 'print' });
-    await expect(root.getByRole('heading', { name: 'Спецификация корзин', exact: true, includeHidden: true })).toBeHidden();
-    await expect(root.locator('.quote-print-root')).toHaveCount(0);
-    const unsupportedPdf = await page.pdf({ path: `${output}/unsupported-blank-print-${width}.pdf`, format: 'A4', printBackground: true });
-    assert.equal(unsupportedPdf.subarray(0, 5).toString(), '%PDF-');
-    report.unsupported.push({ id: 'BASKET-CUSTOMER-016', width, status: 'UNSUPPORTED', description: 'Basket print/PDF is not implemented; the specification is hidden in print media.', evidence: `unsupported-blank-print-${width}.pdf` });
-    await page.emulateMedia({ media: 'screen' });
-    await expect(root.getByRole('heading', { name: 'Спецификация корзин', exact: true })).toBeVisible();
-    await expect(root.getByRole('heading', { name: customer.mark, exact: true })).toHaveCount(2);
+    await action('016', 'Browser Print exports actual saved multi-position specification to PDF', async () => {
+      // Save a distinct second mark, then leave an unsaved editor change.
+      await root.getByRole('button', { name: 'Изменить позицию 2', exact: true }).click();
+      await details('Модель и примечания к позиции');
+      await field('Марка / зона установки').fill('QA-КР-02');
+      await field('Количество, шт.').fill('3');
+      await details('Уточнить зазоры вокруг блока');
+      await field('Ширина блока, мм').fill('900');
+      await step('Результат');
+      await root.getByRole('button', { name: 'Сохранить позицию 2', exact: true }).click();
+      await root.getByRole('button', { name: 'Изменить позицию 2', exact: true }).click();
+      await details('Модель и примечания к позиции');
+      await field('Марка / зона установки').fill('QA-UNSAVED-PRINT');
+      await step('Результат');
+      const printout = page.locator('.basket-print-root');
+      await expect(printout).toBeHidden();
+      await page.emulateMedia({ media: 'print' });
+      await expect(printout).toBeVisible();
+      const path = `${output}/specification-${width}.pdf`;
+      await page.pdf({ path, format: 'A4', printBackground: true });
+      const extracted = execFileSync('pdftotext', ['-layout', path, '-'], { encoding: 'utf8' });
+      const pages = extracted.replace(/\f$/, '').split('\f');
+      assert.ok(pages.length >= 2, 'Both full saved briefs should paginate');
+      for (const [index, content] of pages.entries()) assert.ok(content.trim().length > 0, `Blank PDF page ${index + 1}`);
+      const text = extracted.replace(/\s+/g, ' ');
+      const first = text.slice(text.indexOf('ПОЗИЦИЯ 1'), text.indexOf('ПОЗИЦИЯ 2'));
+      const second = text.slice(text.indexOf('ПОЗИЦИЯ 2'));
+      for (const expected of ['QA-КР-01', '900 × 600 × 550', 'Количество: 2 шт.']) assert.ok(first.includes(expected), `First PDF position omitted ${expected}`);
+      for (const expected of ['QA-КР-02', '1000 × 600 × 550', 'Количество: 3 шт.']) assert.ok(second.includes(expected), `Second PDF position omitted ${expected}`);
+      assert.ok(pages.at(-1).replace(/\s+/g, ' ').includes('Стоимость всего заказа уточняется после проверки комплектации инженером.'), 'PDF footer missing');
+      for (const expected of ['QA-КР-01', 'QA-КР-02', 'Позиций: 2; корзин: 5', '900 × 600 × 550', 'Количество: 2 шт.', 'RAL 6005', 'Материал и толщина', 'предварительн', 'Несохранённые изменения']) assert.ok(text.includes(expected), `PDF omitted ${expected}`);
+      assert.equal(text.includes('QA-UNSAVED-PRINT'), false);
+      assert.equal(text.includes('Открыть форму обращения'), false);
+      await writeFile(`${output}/specification-${width}.txt`, text);
+      await page.emulateMedia({ media: 'screen' });
+      await expect(printout).toBeHidden();
+      await expect(root.getByRole('heading', { name: 'Спецификация корзин', exact: true })).toBeVisible();
+      await root.getByRole('button', { name: 'Выйти без сохранения позиции', exact: true }).click();
+    });
     await action('017', 'Handoff link reaches the local contact form with dimensions and RAL; all writes remain blocked', async () => {
       const link = root.getByRole('link', { name: 'Открыть форму обращения →', exact: true });
       const target = new URL(await link.getAttribute('href'), base.origin);
       assert.equal(target.origin, base.origin); assert.equal(target.pathname, '/contacts');
-      for (const [key, value] of Object.entries({ basketWidth: '900', basketHeight: '600', basketDepth: '550', basketQuantity: '2', basketRal: '6005' })) assert.equal(target.searchParams.get(key), value);
+      for (const [key, value] of Object.entries({ basketWidth: '1000', basketHeight: '600', basketDepth: '550', basketQuantity: '3', basketRal: '6005' })) assert.equal(target.searchParams.get(key), value);
       assert.equal(target.searchParams.has('review'), false);
       await link.click();
       await expect(page.locator('#contact-form')).toBeVisible();
       assert.equal(new URL(page.url()).pathname, '/contacts');
+      await expect(page.locator('.basket-print-root')).toHaveCount(0);
     });
     assert.deepEqual(errors, []);
     await context.close();

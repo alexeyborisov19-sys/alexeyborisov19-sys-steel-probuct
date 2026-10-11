@@ -64,6 +64,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install Playwright video encoder for local interaction evidence
         run: npx playwright install ffmpeg
+      - name: Install PDF text verification utility
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
