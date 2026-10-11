@@ -26,17 +26,19 @@ const productionProofs = [
   },
 ] as const;
 
+/** Commercial catalogue item is a custom fabrication service, not an in-stock Product. */
+export function manufacturingLandingServiceSchema(landing: CommercialProductLanding) {
+  return serviceSchema({
+    name: landing.title,
+    description: landing.description,
+    path: `/products/${landing.slug}`,
+    serviceType: "Изготовление металлоизделий по технической документации заказчика",
+  });
+}
+
 export function CommercialProductLandingPage({ landing }: { landing: CommercialProductLanding }) {
   return <>
-    <JsonLd data={[
-      serviceSchema({
-        name: landing.title,
-        description: landing.description,
-        path: `/products/${landing.slug}`,
-        serviceType: "Изготовление металлоизделий по технической документации заказчика",
-      }),
-      faqSchema(landing.faq),
-    ]} />
+    <JsonLd data={[manufacturingLandingServiceSchema(landing), faqSchema(landing.faq)]} />
     <PageLayout
       path={`/products/${landing.slug}`}
       eyebrow={landing.eyebrow}
