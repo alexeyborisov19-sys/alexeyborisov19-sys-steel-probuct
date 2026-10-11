@@ -2,6 +2,7 @@ name: Audit legal runtime controls
 
 on:
   push:
+    branches: [main]
     paths:
       - '.github/workflows/legal-controls-audit.yml'
   workflow_dispatch:
@@ -14,6 +15,15 @@ permissions:
   contents: read
 
 jobs:
+  verify_public:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out current legal editions
+        uses: actions/checkout@v5
+      - name: Confirm all eight legal pages are published
+        run: python3 scripts/audit-live-legal-publication.py
+
   diagnose:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
@@ -49,6 +59,7 @@ jobs:
                   k,v=line.split('=',1); env[k.strip()]=v.strip().strip('"').strip("'")
           print('PD_ADMIN_ENABLED='+str(env.get('PD_ADMIN_ENABLED')=='true').lower())
           now=datetime.datetime.now(datetime.timezone.utc)
+          issues=[]
           for key,default in [('QUOTE_STORAGE_PATH','/var/lib/steelprodukt/quote-leads'),('ASSISTANT_LEAD_STORAGE_PATH','/var/lib/steelprodukt/assistant-leads'),('CONSENT_AUDIT_STORAGE_PATH','/var/lib/steelprodukt/consent-audit')]:
               root=pathlib.Path(env.get(key) or default); count=expired=invalid=0
               for file in root.glob('*.json'):
@@ -61,6 +72,8 @@ jobs:
                       expired+=int(created+datetime.timedelta(days=days)<=now)
                   except Exception: invalid+=1
               print(key+': '+json.dumps({'exists':root.is_dir(),'records':count,'expired':expired,'invalid':invalid}))
+              if not root.is_dir() or expired or invalid:
+                  issues.append(key+'_REVIEW')
           dbpath=pathlib.Path(env.get('PD_ADMIN_DB_PATH') or '/var/lib/steelprodukt/admin/personal-data.sqlite')
           if dbpath.is_file():
               con=sqlite3.connect(dbpath.as_uri()+'?mode=ro',uri=True)
@@ -68,15 +81,33 @@ jobs:
                   try: print(table+': '+json.dumps(con.execute('SELECT '+column+', COUNT(*) FROM '+table+' GROUP BY '+column).fetchall()))
                   except sqlite3.Error: print(table+': SCHEMA_UNAVAILABLE')
               con.close()
+          else:
+              issues.append('PD_DATABASE_MISSING')
           root=pathlib.Path('/var/backups/steelprodukt')
           files=[f for f in root.glob('steelprodukt-pd-*.tar.gz.enc') if f.is_file() and not f.is_symlink()]
           print('LOCAL_BACKUP='+json.dumps({'count':len(files),'older_than_30d':sum(now.timestamp()-f.stat().st_mtime>30*86400 for f in files),'latest_age_hours':round((now.timestamp()-max(f.stat().st_mtime for f in files))/3600,1) if files else None}))
+          if not files or now.timestamp()-max(f.stat().st_mtime for f in files)>48*3600:
+              issues.append('LOCAL_BACKUP_STALE_OR_MISSING')
           result=subprocess.run(['systemctl','is-active','steelprodukt-pd-offsite-backup.timer'],capture_output=True,text=True)
           for unit in ['steelprodukt-pd-retention-check.timer','steelprodukt-pd-export-expiry.timer']:
-              print(unit+'='+subprocess.run(['systemctl','is-active',unit],capture_output=True,text=True).stdout.strip())
+              state=subprocess.run(['systemctl','is-active',unit],capture_output=True,text=True).stdout.strip()
+              print(unit+'='+state)
+              if state!='active': issues.append('INACTIVE_'+unit)
           report=dbpath.parent/'retention-monitor.json'
           if report.is_file():
               value=json.loads(report.read_text()); print('RETENTION_CHECK='+json.dumps({key:value.get(key) for key in ['checkedAt','examined','indexed','expired','status','deletionPerformed','findings']}))
+              if value.get('status') != 'NO_EXPIRED_LEADS': issues.append('RETENTION_REVIEW_REQUIRED')
+              try:
+                  checked=datetime.datetime.fromisoformat(str(value['checkedAt']).replace('Z','+00:00'))
+                  if now-checked>datetime.timedelta(hours=48): issues.append('RETENTION_REPORT_STALE')
+              except (KeyError, ValueError, TypeError): issues.append('RETENTION_REPORT_INVALID')
+          else:
+              issues.append('RETENTION_REPORT_MISSING')
           print('BACKUP_TIMER='+result.stdout.strip())
+          if result.stdout.strip()!='active': issues.append('OFFSITE_BACKUP_TIMER_INACTIVE')
+          print('LEGAL_RUNTIME_AUDIT='+('REVIEW_REQUIRED' if issues else 'OK'))
+          if issues:
+              print('::error title=Personal data controls require review::'+','.join(sorted(set(issues))))
+              raise SystemExit(2)
           PYTHON
           REMOTE
