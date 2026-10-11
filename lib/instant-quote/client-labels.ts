@@ -22,14 +22,13 @@ export const OPERATION_LABELS: Record<ManufacturingOperation, string> = {
 
 /** Shared notice: applies to customer-entered parameters as well as uploaded models. */
 export const CALCULATION_DISCLAIMER = PRODUCT_CALCULATION_NOTICE + ". " +
-  "Расчёт выполнен автоматически по предоставленным данным и является предварительным. "
-  + "Расчёт носит ориентировочный характер. Он не является публичной офертой: "
-  + "окончательные цена, сроки, характеристики и условия поставки определяются "
-  + "коммерческим предложением и договором после проверки инженером.";
+  "Расчёт не является публичной офертой. Окончательные цена, сроки, " +
+  "характеристики и условия поставки согласуются после проверки инженером " +
+  "и определяются коммерческим предложением и договором.";
 
 /** Keep the non-offer statement next to every displayed or spoken preliminary price. */
 export const CALCULATION_DISCLAIMER_SHORT =
-  "Предварительный автоматический расчёт. Носит ориентировочный характер. Не является офертой.";
+  "Предварительный расчёт. Цена ориентировочная и не является публичной офертой.";
 
 /** Never imply that an optional/unconfigured provider actually checked the result. */
 export const AI_REVIEW_UNAVAILABLE_NOTICE =
