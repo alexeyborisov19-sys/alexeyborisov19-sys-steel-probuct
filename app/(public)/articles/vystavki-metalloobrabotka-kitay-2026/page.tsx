@@ -144,7 +144,7 @@ export default function ChinaExhibitions2026Page() {
             description: pageDescription,
             path: pagePath,
             image: "/images/web/cycle-laser-cutting.jpg",
-            datePublished: checkedAt,
+            datePublished: "2026-08-19",
             dateModified: checkedAt,
             citations: [
               ...chinaExhibitions2026.map((event) => event.url),
