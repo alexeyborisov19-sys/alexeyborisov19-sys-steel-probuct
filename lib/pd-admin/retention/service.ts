@@ -254,7 +254,7 @@ export function verifyDeletion(context: PdAuthContext, idValue: string, versionV
     return auditedTransaction(context, {
       userId: context.user.id, sessionId: context.session.id, action: "DELETION_ACT_CREATED", targetType: "DELETION_JOB", targetId: id,
       legalBasis: "DELETION_VERIFICATION", result: "PARTIAL", ipHash: context.ipHash,
-       metadata: { count: records.length, items: failed.length, status: "PARTIALLY_COMPLETED", scope: "LOCAL_WORKING_FILES_ONLY", complianceConfirmed: false },
+       metadata: { count: records.length, items: failed.length, status: "PARTIALLY_COMPLETED" },
     }, (database) => {
       const updateRecord = database.prepare("UPDATE deletion_records SET verification_status = ?, verified_at = ?, verified_by = ?, act_id = ? WHERE id = ?");
       for (const item of verification) updateRecord.run(item.verified ? "VERIFIED" : "FAILED", now, context.user.id, actId, item.id);
