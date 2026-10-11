@@ -218,7 +218,7 @@ export function verifyDeletion(context: PdAuthContext, idValue: string, versionV
   const failed = verification.filter((item) => !item.verified);
   // Only files in the working storage are checked here. This does not confirm
   // copies held by mail providers, backup rotation or a signed destruction act.
-  const localFilesVerified = records.length > 0 && failed.length === 0 && Number(job.skipped_count) === 0;
+  const localFilesVerified = records.length > 0 && records.length === Number(job.deleted_count) && failed.length === 0 && Number(job.skipped_count) === 0;
   const outstandingConfirmations = [
     "MAIL_AND_PROCESSOR_COPIES", "LOCAL_AND_OFFSITE_BACKUPS",
     "SIGNED_DESTRUCTION_ACT", "EVENT_JOURNAL_EXTRACT",
@@ -264,7 +264,7 @@ export function verifyDeletion(context: PdAuthContext, idValue: string, versionV
         .run(actId, id, actNumber, now, JSON.stringify(records.map((record) => record.request_id)), records.length, context.user.id, context.user.id,
           "PARTIALLY_DELETED", JSON.stringify(report.preserved),
            JSON.stringify([...failed.map((item) => item.request_id), ...outstandingConfirmations]), reportSha, actPath, actSha);
-      const updated = database.prepare(`UPDATE deletion_jobs SET status = ?, stage4_status = ?, completed_at = ?, report_path = ?, report_sha256 = ?, act_path = ?, act_sha256 = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?`)
+      const updated = database.prepare(`UPDATE deletion_jobs SET status = ?, stage4_status = ?, failure_reason = 'LOCAL_FILES_ONLY_EXTERNAL_CONFIRMATION_PENDING', completed_at = ?, report_path = ?, report_sha256 = ?, act_path = ?, act_sha256 = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ?`)
         .run("FAILED", "PARTIALLY_COMPLETED", now, reportPath, reportSha, actPath, actSha, now, id, version);
       assertChanged(updated.changes);
       return {
