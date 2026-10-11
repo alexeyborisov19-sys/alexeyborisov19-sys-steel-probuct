@@ -1,7 +1,9 @@
 import type { Article } from "@/data/articles";
+import { octoberEngineeringArticles } from "@/data/october-engineering-articles";
 
 // Practical editorial recommendations; worked examples are hypothetical, not customer cases.
 export const productionPracticeArticles: Article[] = [
+  ...octoberEngineeringArticles,
   {
     slug: "nesting-raskladka-lista-kak-schitat-ekonomiyu",
     category: "Подготовка производства",
