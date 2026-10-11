@@ -246,7 +246,7 @@ export default function FacadeExhibitions2026Page() {
             description: pageDescription,
             path: pagePath,
             image: "/images/industries/business-center.png",
-            datePublished: checkedAt,
+            datePublished: "2026-08-19",
             dateModified: checkedAt,
             citations: [
               ...facadeExhibitions2026.map((event) => event.url),
