@@ -277,6 +277,9 @@ export default function ArticlesPage() {
                   <Link href="/articles/vystavki-fasady-arhitektura-2026" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
                     <span className="text-4xl font-bold tabular-nums text-steel-orange">16</span><p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Россия · Китай · Дубай</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Фасады и архитектурные инновации</h3><p className="mt-4 text-sm leading-7 text-white/56">Фасадные системы, оболочка здания, стекло, панели, покрытия и проектирование.</p><span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
                   </Link>
+                  <Link href="/articles/vystavki-svarka-2026-2027" className="journal-event-card group border border-white/12 bg-[#101519] p-6 transition hover:border-steel-orange">
+                    <span className="text-xs font-bold uppercase tracking-[.12em] text-steel-orange">Новый календарь</span><p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-white/42">Россия · Китай · 2026–2027</p><h3 className="mt-3 text-xl font-semibold uppercase leading-tight">Выставки сварки и сварочных технологий</h3><p className="mt-4 text-sm leading-7 text-white/56">Профильные выставки и отраслевые экспозиции с датами и ссылками на организаторов.</p><span className="mt-6 inline-flex text-xs font-bold uppercase text-steel-orange">Открыть календарь&nbsp; →</span>
+                  </Link>
                 </div>
               </section>
             </div>
