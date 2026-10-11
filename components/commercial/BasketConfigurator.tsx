@@ -95,6 +95,15 @@ export function BasketConfigurator() {
           </div>
           {editing !== null && <p className={styles.editingNotice}>Редактируется позиция {editing + 1}{review.mark ? ` · ${review.mark}` : ""}. Изменения попадут в спецификацию после сохранения.</p>}
           <div hidden={step !== 0}>
+            {byBlock && !design.fit && <div className="my-4 rounded-lg border border-orange-300 bg-orange-50 p-4 text-slate-900">
+              <p className="text-sm font-semibold">Нужна цена без полного подбора?</p>
+              <p className="mt-2 text-sm leading-6">Посмотрите цену базовой окрашенной корзины 900 × 600 × 550 мм с 10 прорезями на каждой панели. Это пример, а не подбор под ваш кондиционер; кронштейны и доставка не включены.</p>
+              <button type="button" className="mt-3 min-h-12 w-full rounded-lg bg-orange-800 px-4 py-3 text-sm font-semibold text-white sm:w-auto" onClick={() => {
+                setDimensions({ ...dimensions, width: "900", height: "600", depth: "550" });
+                setDesign({ ...design, sizing: "basket", appearance: undefined, front: { ...design.front, pattern: "wide-slots" }, side: { ...design.side, pattern: "wide-slots" } });
+                go(2);
+              }}>Показать пример стоимости →</button>
+            </div>}
             <div className="my-5 flex gap-2" role="group" aria-label="Способ определения размеров">
               {([['basket','Знаю размеры корзины'],['block','Подобрать по кондиционеру']] as const).map(([value,label])=><button key={value} type="button" aria-pressed={(byBlock?'block':'basket')===value} onClick={()=>{
                 const fit=basketFitForSizing(design,value);
