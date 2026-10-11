@@ -388,7 +388,7 @@ try {
   const manualPayload=await manualResponse.json();assert.equal(manualPayload.ok,true);assert.ok(manualPayload.preview?.drawing);
   await expect(page.getByText('Предпросмотр недоступен',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('img',{name:'2D CAD preview',exact:true})).toBeVisible();
-  await expect(page.getByText(/Фактический контур, развёртка после гибки и расположение отверстий не подтверждены/)).toBeVisible();
+  await expect(page.getByText(/Фактический контур и расположение отверстий не подтверждены/)).toBeVisible();
   await expect(controls).toContainText('Не прикреплены исходные CAD: 1');await expect(page.locator('#cad-project-title')).toHaveValue('QA local project');
   const attachment=controls.getByLabel('Исходный CAD позиции 2: fixture.dxf',{exact:true});
   await attachment.setInputFiles({name:'fixture.dxf',mimeType:'application/dxf',buffer:Buffer.from(cad.toString().replace('400','401'))});

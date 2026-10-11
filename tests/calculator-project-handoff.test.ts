@@ -33,8 +33,10 @@ test("a thickness read from the model is selected, not left at the default", asy
 
   // A new position starts at 1 mm. If a 3 mm STEP left that untouched, the
   // customer would be quoted the wrong metal and the wrong laser rate.
-  assert.match(workspace, /nearestThicknessOption\(preview\.cad\.thicknessFromModelMm\)/);
-  assert.match(workspace, /setPartThickness\(next, partId, measuredThickness\)/);
+  assert.match(workspace, /applyCadDetectedConfiguration\(next, partId, preview\.cad, editedFieldsByPartId\.current\.get\(partId\)\)/);
+  const detection = await readFile(new URL("../lib/instant-quote/cad-input-workflow.ts", import.meta.url), "utf8");
+  assert.match(detection, /nearestThicknessOption\(detected\.thicknessFromModelMm\)/);
+  assert.match(detection, /configuration\.thicknessMm = thickness/);
   // and it is said out loud rather than applied silently
   assert.match(workspace, /modelReadings\(preview\.cad\)/);
 });
@@ -48,7 +50,7 @@ test("the request carries the calculation number the engineer can open", async (
   // The internal production report is filed under the calculation id, so a
   // request that carries it can be matched to work already done instead of
   // being quoted a second time from the attachments.
-  assert.match(workspace, /calc: calculation\.projectId/);
+  assert.match(workspace, /calc: currentCalculation\.projectId/);
   assert.match(form, /params\.get\("calc"\)/);
   assert.match(form, /Номер расчёта/);
   // Only that opaque id travels: no basis, rate or geometry rides along.
