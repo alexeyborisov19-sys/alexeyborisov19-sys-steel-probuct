@@ -51,13 +51,9 @@ export async function POST(request: Request) {
     }
     if (payload.review === true) return invalid("Дополнительную инженерную проверку выполнит специалист после обращения.");
     const ownSize = { type: payload.type, thickness: payload.thickness, quantity, moduleWidthMm, moduleHeightMm };
-    const baseline = estimateMetalCassettesByQuantity(ownSize);
-    const customPrice = asNumber(payload.pricePerM2);
-    const estimate = estimateMetalCassettesByQuantity({
-      ...ownSize,
-      ...(positive(customPrice) && customPrice < 1_000_000
-        ? { pricePerM2: Math.max(baseline.defaultRateRubM2, customPrice) } : {}),
-    });
+    // This public mode uses the approved base rate only. A forged client
+    // pricePerM2 must not become a quotation or affect the response.
+    const estimate = estimateMetalCassettesByQuantity(ownSize);
     if (!positive(estimate.netAreaM2) || !positive(estimate.approximateTotalRub)
       || !Number.isSafeInteger(estimate.quantity) || !Number.isSafeInteger(estimate.approximateTotalRub)) {
       return invalid("Для этого количества или размера невозможно рассчитать ориентир. Передайте параметры инженеру.");
