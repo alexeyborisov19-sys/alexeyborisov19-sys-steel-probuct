@@ -31,7 +31,8 @@ test("cassette budget and facade grid use consistent understandable labels", asy
   assert.match(landing, /По размерам стены/);
   assert.doesNotMatch(landing, /По стене — точнее|целые ряды и колонны/);
   assert.match(visual, /столбцов/);
-  assert.match(visual, /позиций облицовки/);
+  assert.match(visual, /countWithWord\(layout\.summary\.quantity/);
+  assert.match(visual, /облицовки/);
   assert.doesNotMatch(visual, /колонок|Ряд\.колонка/);
 });
 
