@@ -14,3 +14,8 @@ test('basket print uses the same complete brief and preliminary notice without c
   assert.match(source, /quote-print-root basket-print-root/);
   assert.doesNotMatch(source, /fetch\(|dangerouslySetInnerHTML|window\.print|<button/);
 });
+
+test('basket print explicitly uses light paper without changing screen color scheme', async () => {
+  const css = await readFile('app/globals.css', 'utf8');
+  assert.match(css, /@media print\s*\{\s*html:has\(body > \.basket-print-root\) \{ color-scheme: light !important; \}/);
+});

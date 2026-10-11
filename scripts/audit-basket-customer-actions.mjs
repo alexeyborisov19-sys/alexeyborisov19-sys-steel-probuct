@@ -227,7 +227,13 @@ try {
       const extracted = execFileSync('pdftotext', ['-layout', path, '-'], { encoding: 'utf8' });
       const pages = extracted.replace(/\f$/, '').split('\f');
       assert.ok(pages.length >= 2, 'Both full saved briefs should paginate');
-      for (const [index, content] of pages.entries()) assert.ok(content.trim().length > 0, `Blank PDF page ${index + 1}`);
+      for (const [index, content] of pages.entries()) {
+        assert.ok(content.trim().length > 0, `Blank PDF page ${index + 1}`);
+        const ppm = execFileSync('pdftoppm', ['-f', String(index + 1), '-singlefile', '-scale-to', '100', path]);
+        const header = /^P6\s+(\d+)\s+(\d+)\s+255\s/.exec(ppm.toString('ascii', 0, 64));
+        assert.ok(header, 'Expected RGB PDF raster');
+        assert.ok([...ppm.subarray(header[0].length, header[0].length + 3)].every(channel => channel >= 250), `Dark paper margin on page ${index + 1}`);
+      }
       const text = extracted.replace(/\s+/g, ' ');
       const first = text.slice(text.indexOf('ПОЗИЦИЯ 1'), text.indexOf('ПОЗИЦИЯ 2'));
       const second = text.slice(text.indexOf('ПОЗИЦИЯ 2'));
