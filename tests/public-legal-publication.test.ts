@@ -37,23 +37,20 @@ test("published services page describes controls without exposing internal imple
 });
 
 test("public legal version identifiers match their displayed dates", async () => {
-  const legal = await readFile(join(root, "lib/legal.ts"), "utf8");
-
-  assert.match(legal, /privacy: "2026-10-01"/);
-  assert.match(legal, /personalDataConsent: "2026-10-01"/);
-  assert.match(legal, /analyticsConsent: "2026-10-01"/);
-  assert.match(legal, /marketingConsent: "2026-10-01"/);
-  assert.match(legal, /cookies: "2026-10-01"/);
-  assert.match(legal, /terms: "2026-10-01"/);
-  assert.match(legal, /services: "2026-10-01"/);
-
-  assert.match(legal, /privacy: "1 октября 2026 года"/);
-  assert.match(legal, /personalDataConsent: "1 октября 2026 года"/);
-  assert.match(legal, /analyticsConsent: "1 октября 2026 года"/);
-  assert.match(legal, /marketingConsent: "1 октября 2026 года"/);
-  assert.match(legal, /cookies: "1 октября 2026 года"/);
-  assert.match(legal, /terms: "1 октября 2026 года"/);
-  assert.match(legal, /services: "1 октября 2026 года"/);
+  const { legalDocumentVersions, legalDocumentDisplayDates } = await import("../lib/legal");
+  const months = [
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+  ];
+  for (const [key, date] of Object.entries(legalDocumentVersions)) {
+    assert.match(date, /^\d{4}-\d{2}-\d{2}$/);
+    const [year, month, day] = date.split("-").map(Number);
+    assert.equal(
+      legalDocumentDisplayDates[key as keyof typeof legalDocumentDisplayDates],
+      `${day} ${months[month - 1]} ${year} года`,
+      `${key}: displayed edition must match its version`,
+    );
+  }
 });
 
 test("every public form leads with the separate consent document", async () => {
