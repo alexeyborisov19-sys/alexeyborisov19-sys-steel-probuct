@@ -3,7 +3,7 @@ name: Yandex read-only audit
 on:
   workflow_dispatch:
   push:
-    branches: [report/matched-yandex-20261009]
+    branches: [report/completed-analytics-20261011]
     paths: [".github/workflows/yandex-readonly-audit.yml"]
 permissions:
   contents: read
@@ -17,20 +17,26 @@ jobs:
       YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
       YD_CLIENT_LOGIN: ${{ secrets.YANDEX_DIRECT_CLIENT_LOGIN }}
       RUN_MATCHED_REPORT: '1'
-      MATCHED_DIRECT_ONLY: '1'
     steps:
       - name: Read matched Direct and Metrika aggregates
         shell: bash
         run: |
           cat > /tmp/matched-report.mjs <<'NODE'
           import { writeFileSync } from 'node:fs';
-          export const config = Object.freeze({date1:'2026-10-02',date2:'2026-10-08',campaign:714391927,counter:112542227,goal:612680821,timezone:'+03:00',attribution:'last'});
+          export function completedWindow(now=new Date()) {
+            if(!Number.isFinite(now.getTime())) throw new Error('Invalid report clock');
+            const moscowDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+            const today=new Date(moscowDate+'T00:00:00Z');
+            const iso=days=>new Date(today.getTime()-days*86400000).toISOString().slice(0,10);
+            return {date1:iso(7),date2:iso(1)};
+          }
+          export const config = Object.freeze({...completedWindow(),campaign:714391927,counter:112542227,goal:612680821,timezone:'+03:00',attribution:'last'});
           export function normToken(raw='') { let v=String(raw).trim().replace(/^(OAuth|Bearer)\s+/i,''); const m=v.match(/(?:^|[#?&])access_token=([^&#\s]+)/i); if(m) { try {v=decodeURIComponent(m[1]);} catch {v=m[1];} } return v.trim(); }
-          export function directSpec() {return {params:{SelectionCriteria:{DateFrom:config.date1,DateTo:config.date2,Filter:[{Field:'CampaignId',Operator:'EQUALS',Values:[String(config.campaign)]}]},FieldNames:['Date','CampaignId','Clicks','Conversions'],Goals:[String(config.goal)],AttributionModels:['LC'],ReportName:'Matched SteelProdukt 20261002-20261008 goal612680821 LC',ReportType:'CAMPAIGN_PERFORMANCE_REPORT',DateRangeType:'CUSTOM_DATE',Format:'TSV',IncludeVAT:'NO',IncludeDiscount:'NO'}};}
+          export function directSpec() {return {params:{SelectionCriteria:{DateFrom:config.date1,DateTo:config.date2,Filter:[{Field:'CampaignId',Operator:'EQUALS',Values:[String(config.campaign)]}]},FieldNames:['Date','CampaignId','Clicks','Conversions'],Goals:[String(config.goal)],AttributionModels:['LC'],ReportName:`Matched SteelProdukt ${config.date1}-${config.date2} goal612680821 LC`,ReportType:'CAMPAIGN_PERFORMANCE_REPORT',DateRangeType:'CUSTOM_DATE',Format:'TSV',IncludeVAT:'NO',IncludeDiscount:'NO'}};}
           export function metrikaParams(kind) { const ad=kind==='clicks'; const prefix=ad?'ym:ad:':'ym:s:'; const dimension=prefix+'last'+(ad?'DirectOrder':'DirectClickOrder'); return {ids:String(config.counter),date1:config.date1,date2:config.date2,timezone:config.timezone,attribution:'last',accuracy:'full',dimensions:dimension,filters:`${dimension}=='${config.campaign}'`,metrics:[...(ad?[prefix+'clicks']:[]),prefix+'visits',prefix+'goal'+config.goal+'reaches',prefix+'goal'+config.goal+'visits'].join(','),limit:'100',lang:'en'}; }
           const pick=(o,keys)=>Object.fromEntries(keys.filter(k=>o?.[k]!==undefined).map(k=>[k,o[k]]));
           export function errorInfo(r) {return {status:r.status,error_code:Number.isFinite(Number(r.body?.error?.error_code??r.body?.code))?Number(r.body?.error?.error_code??r.body?.code):null,body_omitted:true};}
-          export function summarizeMetrika(r,params) { if(r.status!==200||!Array.isArray(r.body?.totals))return {requested:params,...errorInfo(r),totals:null}; const b=r.body;return {status:r.status,requested:params,response_query:pick(b.query,['ids','date1','date2','timezone','attribution','accuracy','dimensions','metrics','filters','limit','offset']),...pick(b,['total_rows','sampled','sample_share','sample_size','sample_space','data_lag','contains_sensitive_data','totals']),rows:(b.data||[]).map(x=>({campaign_ids:(x.dimensions||[]).map(d=>d.id),metrics:x.metrics})),generated_at:new Date().toISOString()}; }
+          export function summarizeMetrika(r,params) { if(r.status!==200||!Array.isArray(r.body?.totals)||r.body.totals.length!==3||!r.body.totals.every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0))return {requested:params,...errorInfo(r),totals:null}; const b=r.body;return {status:r.status,requested:params,response_query:pick(b.query,['ids','date1','date2','timezone','attribution','accuracy','dimensions','metrics','filters','limit','offset']),...pick(b,['total_rows','sampled','sample_share','sample_size','sample_space','data_lag','contains_sensitive_data','totals']),rows:(b.data||[]).map(x=>({campaign_ids:(x.dimensions||[]).map(d=>d.id),metrics:x.metrics})),generated_at:new Date().toISOString()}; }
           export function parseDirect(text) {
             const lines=text.trim().split(/\r?\n/);
             const expected=['Date','CampaignId','Clicks',`Conversions_${config.goal}_LC`];
@@ -45,14 +51,20 @@ jobs:
             return {fields:expected,rows,totals:{clicks:rows.reduce((s,r)=>s+r.clicks,0),selected_goal_converted_visits:rows.some(r=>r.selected_goal_converted_visits===null)?null:rows.reduce((s,r)=>s+r.selected_goal_converted_visits,0)}};
           }
           export async function request(url,token,{direct=false,body,headers={}}={},fetcher=fetch) {if(!token)return {status:0,body:{code:'MISSING_TOKEN'}};try{const r=await fetcher(url,{method:body?'POST':'GET',headers:{Authorization:`${direct?'Bearer':'OAuth'} ${token}`,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(30000)});const raw=await r.text();let parsed;try{parsed=JSON.parse(raw);}catch{parsed=null;}return {status:r.status,body:parsed,raw,request_id:r.headers.get('requestId'),retry_in:r.headers.get('retryIn')};}catch{return {status:0,body:{code:'NETWORK_ERROR'}};}}
-          export async function main(env=process.env) {const ym=normToken(env.YM_TOKEN||env.YANDEX_OAUTH_TOKEN),yd=normToken(env.YD_TOKEN||env.YANDEX_OAUTH_TOKEN);const login=String(env.YD_CLIENT_LOGIN||'').trim();const report={generated_at:new Date().toISOString(),parameters:config,timezone_policy:{direct:'Europe/Moscow; fixed by Direct reporting service',metrika_requested:config.timezone},queries:{direct:directSpec()},limits:['Direct reports conversions by attributed click date; Metrika visit reports use visit date. Equal calendar periods cannot remove this difference.','Clicks, visits, goal reaches and converted visits are different units; multiple clicks can be one visit and one visit can contain repeated goal reaches.','These aggregates cannot establish lost leads or isolate consent blocking, page abandonment, ad blockers or robot filtering.','Counter settings below are current settings, not historical configuration. No advertising or website settings were changed.']};
+          export function evidenceStatus(result) { return [201,202].includes(result?.status)?'pending':result?.status===200&&result?.totals!=null?'available':'unavailable'; }
+          export async function main(env=process.env) {const ym=normToken(env.YM_TOKEN||env.YANDEX_OAUTH_TOKEN),yd=normToken(env.YD_TOKEN||env.YANDEX_OAUTH_TOKEN);const login=String(env.YD_CLIENT_LOGIN||'').trim();const report={generated_at:new Date().toISOString(),parameters:config,period:{label:'Last 7 completed calendar days',inclusive:true,time_zone:'Europe/Moscow',date_from:config.date1,date_to:config.date2,latest_requested_complete_date:config.date2,latest_available_date:null},timezone_policy:{direct:'Europe/Moscow; fixed by Direct reporting service',metrika_requested:config.timezone},queries:{direct:directSpec()},limits:['Direct reports conversions by attributed click date; Metrika visit reports use visit date. Equal calendar periods cannot remove this difference.','Clicks, visits, goal reaches and converted visits are different units; multiple clicks can be one visit and one visit can contain repeated goal reaches.','These aggregates cannot establish lost leads or isolate consent blocking, page abandonment, ad blockers or robot filtering.','Counter settings below are current settings, not historical configuration. No advertising or website settings were changed.']};
           if(env.MATCHED_DIRECT_ONLY!=='1') {
           const counter=await request(`https://api-metrika.yandex.net/management/v1/counter/${config.counter}?field=filters,goals`,ym);if(counter.status===200&&counter.body?.counter){const c=counter.body.counter;report.counter={status:200,...pick(c,['id','time_zone_name','time_zone_offset','filter_robots','code_status']),filters:Array.isArray(c.filters)?c.filters.map(f=>({...pick(f,['id','attr','type','action','status','with_subdomains']),match_value_present:Boolean(f.value||f.start_ip||f.end_ip),match_value_omitted:true})):null,selected_goal:(c.goals||[]).filter(g=>g.id===config.goal).map(g=>({...pick(g,['id','name','type']),conditions:(g.conditions||[]).map(v=>pick(v,['type','url']))}))};}else report.counter=errorInfo(counter);
-          for(const kind of ['summary','clicks']){const p=metrikaParams(kind);const actual={...p,...(kind==='clicks'&&login?{direct_client_logins:login}:{})};const r=await request('https://api-metrika.yandex.net/stat/v1/data?'+new URLSearchParams(actual),ym);report['metrika_'+kind]=summarizeMetrika(r,p);report['metrika_'+kind].direct_client_login_supplied=kind==='clicks'&&Boolean(login);}
+          for(const kind of ['summary']){const p=metrikaParams(kind);const actual={...p,...(kind==='clicks'&&login?{direct_client_logins:login}:{})};const r=await request('https://api-metrika.yandex.net/stat/v1/data?'+new URLSearchParams(actual),ym);report['metrika_'+kind]=summarizeMetrika(r,p);report['metrika_'+kind].direct_client_login_supplied=kind==='clicks'&&Boolean(login);}
           }
           const headers={'Accept-Language':'en',processingMode:'auto',skipReportHeader:'true',skipReportSummary:'true',...(login?{'Client-Login':login}:{})};let d;const attempts=[];for(let i=0;i<12;i++){d=await request('https://api.direct.yandex.com/json/v501/reports',yd,{direct:true,body:directSpec(),headers});attempts.push({status:d.status,request_id:d.request_id});if(![201,202].includes(d.status))break;await new Promise(r=>setTimeout(r,Math.min(30,Math.max(2,Number(d.retry_in)||5))*1000));}report.direct={status:d.status,attempts,...(d.status===200?parseDirect(d.raw):{...errorInfo(d),totals:null})};
+          report.metrika_ad_clicks={evidence_status:'not_requested',reason:'Previously denied ym:ad scope; not retried or substituted'};
+          report.direct.evidence_status=evidenceStatus(report.direct);
+          if(report.metrika_summary) report.metrika_summary.evidence_status=evidenceStatus(report.metrika_summary);
+          report.evidence_status=report.direct.evidence_status==='available'&&report.metrika_summary?.evidence_status==='available'?'available':'incomplete';
+          report.completed_at=new Date().toISOString();
           // Only this narrow allowlisted aggregate object is ever logged. No raw API errors, headers, tokens or client logins.
           const output=JSON.stringify(report,null,2);writeFileSync('/tmp/matched-report.json',output);console.log('MATCHED_REPORT_BEGIN\n'+output+'\nMATCHED_REPORT_END');return report;}
-          if(process.env.RUN_MATCHED_REPORT==='1') await main();
+          if(process.env.RUN_MATCHED_REPORT==='1') { const report=await main(); if(report.evidence_status!=='available') process.exitCode=2; }
           NODE
           node /tmp/matched-report.mjs
