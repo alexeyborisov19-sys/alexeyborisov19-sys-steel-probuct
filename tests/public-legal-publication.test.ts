@@ -176,3 +176,18 @@ test("analytics and cookie documents disclose withdrawal limits and carry curren
   assert.match(analytics, /Вебвизор включён в настройках счётчика/);
   assert.match(cookies, /Для счётчика № 112542227 включён Вебвизор/);
 });
+
+test("updated consent pages identify the operator grammatically and use the current editions", async () => {
+  const [analytics, personal] = await Promise.all([
+    readFile(join(root, "app/(public)/legal/analytics-consent/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/personal-data-consent/page.tsx"), "utf8"),
+  ]);
+  const { legalDocumentVersions } = await import("../lib/legal");
+  assert.equal(legalDocumentVersions.analyticsConsent, "2026-10-11");
+  assert.equal(legalDocumentVersions.personalDataConsent, "2026-10-11");
+  for (const document of [analytics, personal]) {
+    assert.match(document, /выражаю согласие на обработку/);
+    assert.match(document, /оператором персональных данных: \{legalOperator\.name\}/);
+    assert.doesNotMatch(document, /даю \{legalOperator\.name\}/);
+  }
+});
