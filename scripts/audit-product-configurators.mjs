@@ -94,7 +94,7 @@ try {
   await open(page,'/calculator-metallokassety');
   const initialMode=page.getByLabel('Режим калькулятора металлокассет',{exact:true});
   await expect(initialMode).toHaveValue('estimate');
-  await expect(page.locator('#cassette-quick-estimate')).toContainText('Заполните размеры');
+  await expect(page.locator('#cassette-quick-estimate')).toContainText('Укажите площадь фасада в м².');
   await initialMode.selectOption('product');
   const spec=page.getByTestId('cassette-product-spec');
   await expect(spec.getByRole('img',{name:'Вид кассеты спереди: ширина по горизонтали, высота по вертикали',exact:true})).toBeVisible();
@@ -162,9 +162,9 @@ try {
   assert.equal(quantityParams.get('faceHeight'),'1200');
   assert.equal(quantityParams.get('statedQuantity'),'100000');
   await qty.fill('100001');
-  await expect(estimate).toContainText('Заполните размеры');
+  await expect(estimate).toContainText('Укажите целое количество кассет');
   await qty.fill('0');
-  await expect(estimate).toContainText('Заполните размеры');
+  await expect(estimate).toContainText('Укажите целое количество кассет');
   await mode.selectOption('product');await expect(spec.getByLabel('Ширина кассеты, мм · позиция 1',{exact:true})).toHaveValue('600');
   await mode.selectOption('estimate');
   await estimate.getByRole('button',{name:'По площади',exact:true}).click();
