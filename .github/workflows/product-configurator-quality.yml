@@ -2,6 +2,8 @@ name: Product configurator quality
 on:
   pull_request:
     paths:
+      - 'package.json'
+      - 'package-lock.json'
       - 'components/cassette-project/**'
       - 'components/cad/shared/**'
       - 'components/ClientManufacturingWorkspace.tsx'
