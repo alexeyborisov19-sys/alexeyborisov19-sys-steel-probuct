@@ -5,8 +5,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { PageLayout } from "@/components/PageLayout";
 import { ProductPricingFactors } from "@/components/ProductPricingFactors";
 import { productionEquipment } from "@/data/manufacturing-facts";
-import { faqSchema } from "@/lib/schema";
-import { absoluteUrl, siteConfig } from "@/lib/site";
+import { faqSchema, serviceSchema } from "@/lib/schema";
 
 const productionProofs = [
   {
@@ -27,29 +26,17 @@ const productionProofs = [
   },
 ] as const;
 
-export function productSchema(landing: CommercialProductLanding) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "@id": `${absoluteUrl(`/products/${landing.slug}`)}#product`,
-    name: landing.title,
-    description: landing.description,
-    category: landing.category,
-    image: absoluteUrl(landing.image),
-    url: absoluteUrl(`/products/${landing.slug}`),
-    brand: { "@type": "Brand", name: siteConfig.name },
-    manufacturer: { "@id": `${siteConfig.url}/#organization` },
-    additionalProperty: landing.specifications.map((spec) => ({
-      "@type": "PropertyValue",
-      name: spec.label,
-      value: spec.value,
-    })),
-  };
-}
-
 export function CommercialProductLandingPage({ landing }: { landing: CommercialProductLanding }) {
   return <>
-    <JsonLd data={[productSchema(landing), faqSchema(landing.faq)]} />
+    <JsonLd data={[
+      serviceSchema({
+        name: landing.title,
+        description: landing.description,
+        path: `/products/${landing.slug}`,
+        serviceType: "Изготовление металлоизделий по технической документации заказчика",
+      }),
+      faqSchema(landing.faq),
+    ]} />
     <PageLayout
       path={`/products/${landing.slug}`}
       eyebrow={landing.eyebrow}
