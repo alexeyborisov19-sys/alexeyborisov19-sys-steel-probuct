@@ -81,6 +81,6 @@ test("commercial search preview intent is not split from on-page metadata and si
   assert.match(productionRoute, /service\.description/);
   assert.match(sitemap, /\.\.\.commercialProductLandings\.map/);
   assert.match(sitemap, /\.\.\.productionServices\.map/);
-  assert.match(calculator, /по площади, стене или числу кассет/);
+  assert.match(calculator, /по площади, стене или числу изделий/);
   assert.match(calculator, /Оценка стоимости по количеству кассет/);
 });
