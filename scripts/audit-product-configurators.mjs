@@ -65,9 +65,9 @@ async function installSafetyRoutes(context) {
     const request=route.request(),url=new URL(request.url());
     if(url.protocol==='data:'||url.protocol==='blob:') return route.continue();
     if(url.origin!==origin) return route.abort();
-    // Local CAD preview is read-only geometry analysis. Every other write, including lead/analytics endpoints, is intercepted.
-    if(!['GET','HEAD'].includes(request.method()) && !['/api/online-order/cad/analyze','/api/basket-order-quote','/api/cassette-project-budget'].includes(url.pathname)) {
-      if(url.pathname==='/api/calc-metallokassety') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({netAreaM2:100,quantity:149,approximateTotalRub:176400})});
+    // Only local read-only estimate/geometry POSTs are allowed. Every lead, analytics,
+    // order or other write remains intercepted; never send these requests to production.
+    if(!['GET','HEAD'].includes(request.method()) && !['/api/online-order/cad/analyze','/api/basket-order-quote','/api/cassette-project-budget','/api/calc-metallokassety','/api/basket-estimate'].includes(url.pathname)) {
       return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false,code:'CALCULATION_UNAVAILABLE',message:'Local audit intercept'})});
     }
     return route.continue();
