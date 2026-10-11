@@ -77,8 +77,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     netAreaM2: estimate.netAreaM2,
     quantity: estimate.quantity,
-    defaultRateRubM2: estimate.defaultRateRubM2,
-    approximateRateRubM2: estimate.approximateRateRubM2,
     approximateTotalRub: Math.max(baseline.approximateTotalRub, estimate.approximateTotalRub),
     disclaimer: CALCULATION_DISCLAIMER,
     marketVerified: false,

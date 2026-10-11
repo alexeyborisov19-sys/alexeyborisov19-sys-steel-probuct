@@ -21,7 +21,6 @@ test("accepts the quantities a CAD file cannot carry", () => {
   assert.deepEqual(parsed.parts[0].operationInputs, {
     bendCount: 4,
     weldLengthM: 1.5,
-    assemblyMinutes: 30,
     powderSides: 2,
   });
 });

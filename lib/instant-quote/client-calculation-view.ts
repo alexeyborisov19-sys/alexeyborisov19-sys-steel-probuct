@@ -1,5 +1,5 @@
 import type { InstantQuoteProject, ManufacturingOperation } from "@/lib/instant-quote/domain";
-import { CALCULATION_DISCLAIMER_SHORT, AI_REVIEW_UNAVAILABLE_NOTICE } from "@/lib/instant-quote/client-labels";
+import { CALCULATION_DISCLAIMER_SHORT, AI_REVIEW_UNAVAILABLE_NOTICE, OPERATION_LABELS } from "@/lib/instant-quote/client-labels";
 
 export type ClientCalculationSignal = {
   partId: string;
@@ -12,6 +12,9 @@ export type ClientCalculationSignal = {
   materialPriceDate?: string;
   /** Fixed server-derived manufacturing warnings; no private rates/evidence. */
   manufacturingWarnings?: string[];
+  smallFeaturesNeedReview?: boolean;
+  additionalProcessingExcluded?: boolean;
+  countersinkReviewScope?: "priced-count-only" | "not-priced";
   unpricedOperations?: ManufacturingOperation[];
   unavailableReason?: "laser-rate" | "material-price" | "material-price-stale" | "operation-input" | "operation-rate";
   /** Server-owned outcome, never inferred from the existence of a price. */
@@ -38,7 +41,6 @@ export type ClientPartCalculationView = {
   price: {
     status: "not-published" | "approved" | "estimate";
     totalRub?: number;
-    materialPriceDate?: string;
     unpricedOperations?: ManufacturingOperation[];
   };
   message: string;
@@ -53,11 +55,11 @@ export type ClientProjectCalculationView = {
 };
 
 const unavailableMessages = {
-  "laser-rate": "Для выбранных материала и толщины ещё не задан тариф лазерной резки.",
-  "material-price": "Для выбранных материала и толщины нет подтверждённой актуальной цены металла.",
-  "material-price-stale": "Цена металла устарела. Для расчёта требуется обновить прайс поставщика.",
-  "operation-input": "Для расчёта заполните параметры выбранных операций: количество гибов, длину шва, площадь обработки или время сборки.",
-  "operation-rate": "Для одной из выбранных операций ещё не задан подтверждённый тариф.",
+  "laser-rate": "Для выбранных параметров стоимость уточнит специалист.",
+  "material-price": "Стоимость выбранного материала уточнит специалист.",
+  "material-price-stale": "Данные для оценки устарели. Актуальную стоимость уточнит специалист.",
+  "operation-input": "Уточните параметры выбранных операций: количество гибов и отверстий, длину шва или стороны обработки.",
+  "operation-rate": "Для выбранной обработки стоимость уточнит специалист.",
 } satisfies Record<NonNullable<ClientCalculationSignal["unavailableReason"]>, string>;
 
 function rub(value: number) {
@@ -89,8 +91,6 @@ export function createClientCalculationView(
       const approvedSalePrice = signal?.approvedSalePriceRub;
       const staleTime=signal?.staleMaterialPriceDate ? Date.parse(signal.staleMaterialPriceDate):NaN;
       const staleDate=Number.isFinite(staleTime)?new Date(staleTime).toISOString().slice(0,10):null;
-      const priceTime = Date.parse(signal?.materialPriceDate ?? signal?.staleMaterialPriceDate ?? "");
-      const priceDate = Number.isFinite(priceTime) ? new Date(priceTime).toISOString().slice(0, 10) : null;
       const status = signal?.status ?? "pending";
       // A stale amount must not survive a failed/unfinished calculation or review.
       const hasApprovedSalePrice = status === "ready" && Number.isFinite(approvedSalePrice)
@@ -109,7 +109,7 @@ export function createClientCalculationView(
         : status === "blocked"
           ? "Для этой детали требуется уточнение перед расчётом."
           : status === "needs-review"
-            ? "Для итоговой цены требуется проверка исходных и производственных данных."
+            ? "Для итоговой цены специалисту нужно проверить параметры заказа."
             : status === "ready"
               ? "Предварительный расчёт завершён."
               : "Деталь принята в расчёт.";
@@ -130,8 +130,9 @@ export function createClientCalculationView(
           heightMm: part.geometry?.heightMm ?? null,
           depthMm: part.geometry?.depthMm ?? null,
         },
-        price: { ...price, ...(hasEstimate && unpricedOperations.length ? { unpricedOperations } : {}), ...((hasApprovedSalePrice || hasEstimate) && priceDate ? { materialPriceDate: priceDate } : {}) },
-        message: `${message} ${(hasApprovedSalePrice || hasEstimate) && priceDate && !staleDate ? `Прайс металла от ${priceDate}. ` : ""}${hasEstimate && staleDate ? `Цена металла взята из последнего сохранённого прайса от ${staleDate}. Прайс устарел; актуальную закупочную цену должен подтвердить инженер. ` : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? signal.manufacturingWarnings.join(" ")+" " : ""}${hasEstimate && signal?.estimatedRateUsed === true ? "Ставка резки рассчитана по соседним толщинам и требует подтверждения. " : ""}${(hasApprovedSalePrice || hasEstimate) && signal?.marketVerified !== true ? "Среднерыночный ориентир не подтверждён. " : ""}${hasEstimate ? "Полная технологическая проверка не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
+        price: { ...price, ...(hasEstimate && unpricedOperations.length ? { unpricedOperations } : {}) },
+        message: `${message} ${hasEstimate && staleDate ? "Данные для оценки устарели. Актуальную стоимость уточнит специалист. " : ""}${hasEstimate && unpricedOperations.length ? `Не включены в показанную стоимость: ${unpricedOperations.map(operation => OPERATION_LABELS[operation]).join(", ")}. Их стоимость уточнит специалист. ` : ""}${hasEstimate && signal?.countersinkReviewScope === "priced-count-only" ? "Зенковка учтена только в указанном количестве. Дополнительные зенковки требуют проверки и отдельной оценки. " : ""}${hasEstimate && signal?.countersinkReviewScope === "not-priced" ? "Зенковки распознаны не полностью и не включены в стоимость. Если они нужны, уточните количество и стоимость со специалистом. " : ""}${hasEstimate && signal?.additionalProcessingExcluded === true ? "Фаски и дополнительная обработка, не выбранная в заказе, не включены в стоимость. Уточните их со специалистом. " : ""}${hasEstimate && signal?.smallFeaturesNeedReview === true ? "Есть слишком маленькие отверстия или узкие перемычки: специалист проверит, нужно ли изменить геометрию. " : ""}${hasEstimate && signal?.manufacturingWarnings?.length ? "Параметры детали и состав выбранных работ требуют уточнения специалистом. Изготовление требует отдельного согласования. " : ""}${hasEstimate ? "Полная проверка возможности изготовления не завершена. " : hasApprovedSalePrice && signal?.aiReviewed !== true ? `${AI_REVIEW_UNAVAILABLE_NOTICE} ` : ""}${CALCULATION_DISCLAIMER_SHORT}`,
+
       };
     }),
   };

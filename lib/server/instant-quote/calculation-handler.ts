@@ -33,6 +33,8 @@ import {
 } from "@/lib/security/uploads";
 
 const ROUTE = "online-calculation";
+// Existing preliminary assembly assumption, now server-owned rather than disclosed as a customer norm.
+const PUBLIC_ASSEMBLY_ESTIMATE_MINUTES = 10;
 
 type RunCalculationInputs = {
   internalNotes?: string[];
@@ -352,7 +354,7 @@ async function buildAuthoritativeProject(
     if (item.operationInputs.bendCount != null) declared.bendCount = item.operationInputs.bendCount;
     if (item.operationInputs.countersinkCount != null) declared.countersinkCount = item.operationInputs.countersinkCount;
     if (item.operationInputs.weldLengthM != null) declared.weldLengthM = item.operationInputs.weldLengthM;
-    if (item.operationInputs.assemblyMinutes != null) declared.assemblyMinutes = item.operationInputs.assemblyMinutes;
+    if (item.operations.includes("assembly")) declared.assemblyMinutes = PUBLIC_ASSEMBLY_ESTIMATE_MINUTES;
     if (Object.keys(declared).length > 0) declaredFactualByPartId[item.clientPartId] = declared;
     if (item.operationInputs.powderSides != null) powderSidesByPartId[item.clientPartId] = item.operationInputs.powderSides;
     if (item.operationInputs.surfacePreparationSides != null) surfacePreparationSidesByPartId[item.clientPartId] = item.operationInputs.surfacePreparationSides;

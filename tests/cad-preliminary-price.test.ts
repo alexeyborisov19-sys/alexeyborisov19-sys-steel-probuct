@@ -145,7 +145,7 @@ for (const missing of ["laser-rate", "material-price", "material-price-stale", "
  const view=createClientCalculationView(f.project,result.signals);
  assert.equal(view.parts[0].price.status,"not-published");
  assert.doesNotMatch(view.parts[0].message,/SECRET|987654/);
- assert.match(view.parts[0].message,missing==="laser-rate"?/тариф лазерной резки/:missing==="material-price-stale"?/устарела/:missing==="material-price"?/цены металла/:missing==="bend-count"?/параметры/:/тариф/);
+ assert.match(view.parts[0].message,missing==="material-price-stale"?/устарели/:missing==="bend-count"?/параметры/:/стоимость|Стоимость/);
 });
 test("derived rate alone can never become an approved price",async()=>{
  const f=fixture();f.cost.estimatedRateUsed=true;
@@ -154,7 +154,7 @@ test("derived rate alone can never become an approved price",async()=>{
  assert.equal(result.signals[0].status,"needs-review");assert.equal(result.signals[0].approvedSalePriceRub,null);
  assert.equal(result.signals[0].estimatedRateUsed,true);
  const view=createClientCalculationView(f.project,result.signals);
- assert.equal(view.parts[0].price.status,"estimate");assert.match(view.parts[0].message,/по соседним толщинам/);
+ assert.equal(view.parts[0].price.status,"estimate");assert.doesNotMatch(view.parts[0].message,/по соседним толщинам/); assert.match(view.parts[0].message,/проверка/);
 });
 test("50-piece batch rounding uses exact line products and AI batch amounts",async()=>{
  const f=reviewFixture();f.part.configuration.quantity=50;f.cost.quantity=50;
@@ -188,7 +188,8 @@ for(const kind of ['hole','ligament','table','thickness'] as const)test(`owner a
  assert.equal(result.signals[0].approvedSalePriceRub,null);assert.equal(result.audits[0].publishedRubBatch,null);
  const view=createClientCalculationView(f.project,result.signals);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
  assert.match(view.parts[0].message,/Изготовление требует отдельного согласования/);
- assert.doesNotMatch(view.parts[0].message,/owner-2026|owner-confirmation/);
+ assert.doesNotMatch(view.parts[0].message,/owner-2026|owner-confirmation|не меньше|перемычка —/);
+ if(kind === "hole" || kind === "ligament") assert.match(view.parts[0].message,/маленькие отверстия или узкие перемычки/);
 });
 test('invalid measured topology never obtains owner manufacturing-rule waiver',async()=>{
  const f=fixture();const flatFeatures={supported:false,invalidGeometry:true as const,reasons:['Контур пересекается.'],holeCount:0,minHoleDiameterMm:null,minLigamentMm:null,minPartSideMm:null};
@@ -202,7 +203,7 @@ for(const marker of [true,false])test(`STEP blank estimate needs protected evide
  f.calculation.parts[0].dfmReviewReasons.push(reason);
  const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{...(marker?{preliminaryGeometrySource:'measured-step-blank' as const}:{}),reviewReasons:[reason]}},f.policy,{caller:null,requireAiReview:false});
  assert.equal(Boolean(result.signals[0].estimatedSalePriceRub),marker);assert.equal(result.signals[0].status,'needs-review');assert.equal(result.audits[0].publishedRubBatch,null);
- if(marker)assert.match(createClientCalculationView(f.project,result.signals).parts[0].message,/Фаски, зенковки.*не включены/);
+ if(marker)assert.match(createClientCalculationView(f.project,result.signals).parts[0].message,/Фаски.*не включены/);
 });
 test('last-known stale metal price forces warning estimate even with fully valid geometry',async()=>{
  const f=fixture();f.cost.staleMaterialPriceUsed={sourceDate:'2026-09-14T21:16:00.000Z'};
@@ -210,7 +211,7 @@ test('last-known stale metal price forces warning estimate even with fully valid
  const result=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{flatFeatures}},f.policy,{caller:null,requireAiReview:false});
  assert.equal(result.signals[0].status,'needs-review');assert.equal(result.signals[0].estimatedSalePriceRub,1200);
  assert.equal(result.signals[0].approvedSalePriceRub,null);assert.equal(result.audits[0].publishedRubBatch,null);
- const view=createClientCalculationView(f.project,result.signals);assert.match(view.parts[0].message,/2026-09-14/);assert.match(view.parts[0].message,/Прайс устарел/);assert.doesNotMatch(view.parts[0].message,/T21:16/);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
+ const view=createClientCalculationView(f.project,result.signals);assert.doesNotMatch(view.parts[0].message,/2026-09-14/);assert.match(view.parts[0].message,/Данные для оценки устарели/);assert.doesNotMatch(view.parts[0].message,/T21:16/);assert.equal(view.parts[0].price.status,'estimate');assert.equal(view.paymentEnabled,false);
 });
 
 for(const [operation,code,label] of [
@@ -227,7 +228,7 @@ for(const [operation,code,label] of [
  assert.equal(view.parts[0].price.totalRub,1200);
  assert.equal(view.parts[0].price.status,'estimate');
  assert.deepEqual(view.parts[0].price.unpricedOperations,[operation]);
- assert.match(view.parts[0].message,/не включен/);
+ assert.match(view.parts[0].message,/Не включены/);
  assert.doesNotMatch(view.parts[0].message,/Private details/);
  assert.equal(isClientCalculationView(view),true);
 });

@@ -48,7 +48,8 @@ test("area rates below the calculator cannot lower the final price", async () =>
 test("a model failure cannot publish a supposedly AI-reviewed area price", async () => {
   const result = await reviewCassetteAreaCalculation(input, { requireAiReview: true, aiReviewCaller: async () => null });
   assert.equal(result.publicResult.approximateTotalRub, null);
-  assert.equal(result.publicResult.approximateRateRubM2, null);
+  assert.equal("approximateRateRubM2" in result.publicResult, false);
+  assert.equal("defaultRateRubM2" in result.publicResult, false);
   assert.equal(result.publicResult.marketVerified, false);
   assert.equal(result.publicResult.reviewStatus, "needs-review");
 });

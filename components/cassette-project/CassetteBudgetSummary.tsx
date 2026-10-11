@@ -1,7 +1,7 @@
 import { PRODUCT_CALCULATION_NOTICE } from "@/lib/product-calculation-notice";
-import type { estimateCassetteProjectBudget } from "@/lib/cassette-project/budget";
+import type { PublicCassetteBudget } from "@/lib/cassette-project/public-budget";
 
-type BudgetResult = Pick<ReturnType<typeof estimateCassetteProjectBudget>, "totalRub" | "quantity" | "reviewQuantity">;
+type BudgetResult = Pick<PublicCassetteBudget, "totalRub" | "quantity" | "reviewQuantity">;
 const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 
 /** Only the customer's result belongs here; rate/basis arithmetic stays internal. */

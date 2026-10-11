@@ -88,10 +88,10 @@ test("explicitly cleared values remain unknown instead of silently returning", (
   assert.deepEqual(operationTableDefaultInputPatch("surface-preparation", { surfacePreparationSides: undefined }, {}), {});
 });
 
-test("assembly and both area operations receive their approved defaults", () => {
+test("assembly has no client time input and area operations keep customer side defaults", () => {
   assert.deepEqual(
     operationTableDefaultInputPatch("assembly", {}),
-    { assemblyMinutes: OPERATION_TABLE_DEFAULTS.assemblyMinutes },
+    {},
   );
   assert.deepEqual(
     operationTableDefaultInputPatch("powder-coating", {}),
@@ -119,7 +119,6 @@ test("all selected priced operations can be completed in one pass", () => {
       bendCount: 2,
       weldLengthM: 1,
       countersinkCount: 6,
-      assemblyMinutes: 10,
       surfacePreparationSides: 2,
       powderSides: 2,
     },

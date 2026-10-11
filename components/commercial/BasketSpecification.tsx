@@ -1,4 +1,5 @@
 "use client";
+import { BasketPrintout } from "./BasketPrintout";
 import { BasketOrderSummary } from "./BasketOrderSummary";
 import { basketAppearancePatterns } from "@/data/basket-appearance-patterns";
 import { basketAcDimensionDisclaimer } from "@/lib/quote/basket-ac-reference";
@@ -32,6 +33,7 @@ export function BasketSpecification({ items, onChange, onEdit, editing = null }:
     return ["СПЕЦИФИКАЦИЯ КОРЗИН — предварительное задание", `Позиций: ${list.length}; корзин: ${list.reduce((sum, item) => sum + item.quantity, 0)}.`, "Это перечень запрошенных изделий, не производственная ведомость крепежа и не подтверждённая стоимость заказа.", ...list.map(item => `ПОЗИЦИЯ ${items.indexOf(item) + 1}\n${basketBriefText(item)}`)].join("\n\n");
   }
   return <section aria-labelledby="basket-spec-title" className={styles.specification}>
+    <BasketPrintout items={items} editing={editing} />
     <div className={styles.specHeading}><div><p className={styles.eyebrow}>ПРОЕКТ / ДО 100 ПОЗИЦИЙ</p><h3 id="basket-spec-title">Спецификация корзин</h3></div><span>{items.length} / {MAX_BASKET_POSITIONS}</span></div>
     <p className={styles.help}>Добавляйте размеры и исполнения по одному. Файл версии 2 сохраняет модель блока и пожелания к доступу; старые файлы версии 1 открываются здесь. Данные не сохраняются автоматически.</p>
     {items.length > 0 && <dl className={styles.specMetrics}>

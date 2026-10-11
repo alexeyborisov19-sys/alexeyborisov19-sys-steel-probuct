@@ -231,6 +231,8 @@ test("incomplete countersink recognition remains an explicit preliminary lower b
   assert.equal(output.signals[0].estimatedSalePriceRub, 1200);
   assert.equal(output.signals[0].approvedSalePriceRub, null);
   assert.match(output.signals[0].manufacturingWarnings!.join(" "), /Распознавание зенковок неполное/);
+  assert.equal(output.signals[0].countersinkReviewScope, "not-priced");
+  assert.match(createClientCalculationView(f.project,output.signals).parts[0].message,/Зенковки распознаны не полностью и не включены/);
   assert.equal(output.audits[0].publishedRubBatch, null);
 });
 
@@ -275,4 +277,17 @@ test("open DXF paths can receive a warned estimate without claiming exact area o
   assert.ok(output.signals[0].estimatedSalePriceRub! > 0);
   assert.equal(output.signals[0].approvedSalePriceRub,null);
   assert.match(output.signals[0].manufacturingWarnings!.join(" "), /Открытые участки/);
+});
+
+test("incomplete priced countersinks expose only their stated scope", async () => {
+  const f=fixture();
+  f.part.configuration.operations.push("countersink");
+  const line={...f.cost.lines[1],code:"countersink" as const};
+  f.cost.lines.push(line);
+  f.cost.confirmedDirectCostRubEach+=line.amountRubEach;
+  f.cost.confirmedDirectCostRubBatch+=line.amountRubBatch;
+  const output=await reviewCadProjectCalculation(f.project,f.calculation,{[f.part.id]:{countersinkRecognitionIncomplete:true}},f.policy,{requireAiReview:false});
+  assert.equal(output.signals[0].countersinkReviewScope,"priced-count-only");
+  assert.match(createClientCalculationView(f.project,output.signals).parts[0].message,/Зенковка учтена только в указанном количестве/);
+  assert.equal(output.signals[0].approvedSalePriceRub,null);
 });

@@ -50,8 +50,23 @@ test('all seven processing toggles and numeric/sides unknown states have individ
   assert.deepEqual(ids, ['operation-bending', 'operation-welding', 'operation-countersink', 'operation-assembly', 'operation-surface-preparation', 'operation-powder-coating', 'operation-packaging', 'operation-counts-unknown', 'operation-sides-unknown']);
   assert.ok(source.includes('await step(`operation-${id}`'));
   assert.match(source, /Disabled operation inputs must not leak into the manifest/);
-  for (const key of ['bendCount', 'weldLengthM', 'countersinkCount', 'assemblyMinutes', 'surfacePreparationSides', 'powderSides']) assert.ok(source.includes(key));
+  for (const key of ['bendCount', 'weldLengthM', 'countersinkCount', 'surfacePreparationSides', 'powderSides']) assert.ok(source.includes(key));
   assert.ok(source.includes('Не знаю — уточнит инженер'));
+});
+
+test('assembly replay asserts selection-only UI and no customer time in requests or project JSON', () => {
+  const operations = source.slice(source.indexOf('async operations('), source.indexOf('async preview2d('));
+  assert.match(operations, /\['assembly', 'Сборка', null\]/);
+  assert.match(operations, /if \(id === 'assembly'\)/);
+  assert.match(operations, /getByRole\('spinbutton'\)\)\.toHaveCount\(0\)/);
+  assert.match(operations, /getByLabel\('Сборка, мин на деталь', \{ exact: true \}\)\)\.toHaveCount\(0\)/);
+  assert.ok(operations.includes("toContainText('Состав сборки и окончательную стоимость уточнит специалист.')"));
+  assert.match(operations, /Object\.hasOwn\(part\.operationInputs, 'assemblyMinutes'\), false/);
+  assert.match(operations, /saved\.positions\[0\]\.configuration\.operations\.includes\('assembly'\)/);
+  assert.match(operations, /Object\.hasOwn\(saved\.positions\[0\]\.configuration\.operationInputs, 'assemblyMinutes'\), false/);
+  const numericInputs = operations.slice(operations.indexOf("await step('operation-counts-unknown'"), operations.indexOf("await step('operation-sides-unknown'"));
+  assert.doesNotMatch(numericInputs, /assemblyMinutes|Сборка/);
+  assert.deepEqual([...numericInputs.matchAll(/'([^']+)', '[0-9.]+'\]/g)].map(match => match[1]), ['bendCount', 'weldLengthM', 'countersinkCount']);
 });
 
 test('CAD browser replay rejects non-loopback origins and ambiguous URL forms before launch', () => {

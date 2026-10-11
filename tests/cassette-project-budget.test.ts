@@ -1,3 +1,5 @@
+import "../scripts/repo-alias-hook.mjs";
+import {cassetteBudgetProjectKey} from '../lib/cassette-project/public-budget';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {estimateCassetteProjectBudget} from '../lib/cassette-project/budget';
@@ -10,7 +12,7 @@ test('budget uses exact panel faces rather than facade area or fixed standard mo
 });
 test('opening-affected residual stays in budget and quantity with explicit manufacturing unknowns',()=>{
  const p=project();p.elevations[0].openings=[{id:'O1',name:'Проём',xMm:100,yMm:100,widthMm:200,heightMm:200}];const b=estimateCassetteProjectBudget(p);assert.equal(b.faceAreaM2,1.96);assert.equal(b.quantity,4);assert.equal(b.reviewQuantity,1);assert.equal(b.totalRub,3457);assert.match(b.assumptions,/не определены/);assert.match(b.assumptions,/не коммерческое предложение/);
- const brief=createCassetteProjectBrief(p);assert.ok(brief.includes(b.assumptions));assert.match(brief,/3457 руб/);
+ const brief=createCassetteProjectBrief(p,{projectKey:cassetteBudgetProjectKey(p),value:{projectId:b.projectId,revision:b.revision,currency:b.currency,totalRub:b.totalRub,faceAreaM2:b.faceAreaM2,quantity:b.quantity,reviewQuantity:b.reviewQuantity,assumptions:b.assumptions}});assert.ok(brief.includes(b.assumptions));assert.match(brief,/3457 руб/);
 });
 test('opening wholly in a joint does not reduce face budget and full removal is excluded',()=>{
  const p=project();p.elevations[0].openings=[{id:'O1',name:'Шов',xMm:1000,yMm:0,widthMm:20,heightMm:500}];assert.equal(estimateCassetteProjectBudget(p).totalRub,3528);

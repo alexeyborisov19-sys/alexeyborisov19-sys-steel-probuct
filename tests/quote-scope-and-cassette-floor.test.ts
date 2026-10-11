@@ -17,13 +17,16 @@ test("a browser-supplied low cassette price cannot undercut the server calculati
   const baseline = await (await POST(request(input))).json();
   const forged = await (await POST(request({ ...input, pricePerM2: 1 }))).json();
   assert.equal(forged.approximateTotalRub, baseline.approximateTotalRub);
-  assert.equal(forged.approximateRateRubM2, baseline.defaultRateRubM2);
+  assert.equal(forged.approximateTotalRub, 176400);
+  assert.equal("defaultRateRubM2" in forged, false);
+  assert.equal("approximateRateRubM2" in forged, false);
   assert.equal(forged.disclaimer, CALCULATION_DISCLAIMER);
   assert.equal(forged.marketVerified, false);
 });
 test("a higher explicitly entered cassette rate remains a what-if estimate, not market verification", async () => {
   const estimate = await (await POST(request({ ...input, pricePerM2: 3000 }))).json();
-  assert.equal(estimate.approximateRateRubM2, 3000);
+  assert.equal(estimate.approximateTotalRub, 300000);
+  assert.equal("approximateRateRubM2" in estimate, false);
   assert.equal(estimate.marketVerified, false);
 });
 for (const payload of [null, [], {}, { ...input, areaM2: -1 }, { ...input, areaM2: "no" }, { ...input, areaM2: 0 }]) {

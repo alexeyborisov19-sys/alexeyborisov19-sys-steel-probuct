@@ -35,6 +35,26 @@ async function check(page,name,width,errors) {
   const workspace = page.locator(name.startsWith('cassette-spec') ? '[data-testid="cassette-product-spec"]' : name === 'cassettes' ? '[data-testid="cassette-project-editor"]' : name.startsWith('baskets') ? '[data-basket-configurator]' : name === 'bim' ? '#bim-workspace' : name === 'trim' ? '[data-testid="trim-bim-workspace"]' : 'section[aria-label="Файл проекта"]');
   await workspace.evaluate(element => window.scrollTo(0, Math.max(0, element.getBoundingClientRect().top + window.scrollY - 80)));
   await page.screenshot({path:`${output}/${name}-${width}-workspace.png`});
+  if (['cassette-spec-input','bim','trim'].includes(name)) {
+    await expect(page.locator('.assistant-launcher')).toHaveCount(0);
+    for (const [kind,control] of [['input',workspace.locator('input:visible:not([type="file"]):not([type="hidden"]):not([disabled])').first()],['button',workspace.locator('button:visible:not([disabled])').first()]]) {
+    await control.evaluate(element=>{
+      element.scrollIntoView({block:'center',behavior:'instant'});
+      window.scrollBy({top:element.getBoundingClientRect().bottom-(innerHeight-30),behavior:'instant'});
+      element.focus({preventScroll:true});
+    });
+    await expect(control).toBeFocused();
+    const hit=await control.evaluate(element=>{
+      const box=element.getBoundingClientRect();
+      const x=box.right-6,y=Math.min(box.bottom-6,box.top+box.height/2);
+      const target=document.elementFromPoint(x,y);
+      return {visible:x>=0&&x<innerWidth&&y>=0&&y<innerHeight,unobstructed:target===element||element.contains(target)};
+    });
+    assert.equal(hit.visible,true,`${name}: focused ${kind} hit point is in viewport`);
+    assert.equal(hit.unobstructed,true,`${name}: floating UI must not cover focused ${kind}`);
+    await page.screenshot({path:`${output}/${name}-${width}-focused-${kind}-hit-target.png`});
+    }
+  }
   const a11y=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
   results.push({name,width,overflow,errors:[...errors],violations:a11y.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))});
@@ -46,8 +66,8 @@ async function installSafetyRoutes(context) {
     if(url.protocol==='data:'||url.protocol==='blob:') return route.continue();
     if(url.origin!==origin) return route.abort();
     // Local CAD preview is read-only geometry analysis. Every other write, including lead/analytics endpoints, is intercepted.
-    if(!['GET','HEAD'].includes(request.method()) && !['/api/online-order/cad/analyze','/api/basket-order-quote'].includes(url.pathname)) {
-      if(url.pathname==='/api/calc-metallokassety') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({netAreaM2:100,quantity:149,defaultRateRubM2:1764,approximateRateRubM2:1764,approximateTotalRub:176400})});
+    if(!['GET','HEAD'].includes(request.method()) && !['/api/online-order/cad/analyze','/api/basket-order-quote','/api/cassette-project-budget'].includes(url.pathname)) {
+      if(url.pathname==='/api/calc-metallokassety') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({netAreaM2:100,quantity:149,approximateTotalRub:176400})});
       return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({ok:false,code:'CALCULATION_UNAVAILABLE',message:'Local audit intercept'})});
     }
     return route.continue();
@@ -64,6 +84,13 @@ try {
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:width===390,reducedMotion:'reduce',serviceWorkers:'block'});
   const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await installSafetyRoutes(context);
+  await open(page,'/');
+  const launcher=page.getByRole('button',{name:'Открыть инженерного помощника',exact:true});
+  await expect(launcher).toBeVisible();await launcher.click();
+  await expect(page.locator('#engineering-assistant-dialog')).toBeVisible();
+  await page.locator('#engineering-assistant-dialog').getByRole('button',{name:'Закрыть',exact:true}).click();
+  await expect(page.locator('#engineering-assistant-dialog')).toHaveCount(0);
+  await expect(launcher).toBeVisible();
   await open(page,'/calculator-metallokassety');
   const spec=page.getByTestId('cassette-product-spec');
   await expect(spec.getByRole('img',{name:'Вид кассеты спереди: ширина по горизонтали, высота по вертикали',exact:true})).toBeVisible();
@@ -127,7 +154,14 @@ try {
   await editor.getByRole('button',{name:'3. Проёмы',exact:true}).click();
   await editor.getByRole('button',{name:'+ Прямоугольный проём',exact:true}).click();
   for(const [key,value] of [['widthMm','200'],['heightMm','200'],['xMm','100'],['yMm','100']]) await page.locator(`#cassette-opening-O1-${key}`).fill(value);
+  const projectQuoteResponse=page.waitForResponse(response=>response.url().endsWith('/api/cassette-project-budget')&&response.request().method()==='POST');
   await editor.getByRole('button',{name:'4. Итог',exact:true}).click();
+  const quoteResponse=await projectQuoteResponse;assert.equal(quoteResponse.status(),200);
+  const projectQuote=await quoteResponse.json();
+  assert.deepEqual(Object.keys(projectQuote).sort(),['projectId','revision','currency','totalRub','faceAreaM2','quantity','reviewQuantity','assumptions'].sort());
+  assert.equal(projectQuote.totalRub,3457);assert.equal(projectQuote.quantity,4);
+  await expect(editor.getByTestId('cassette-project-budget')).toBeVisible();
+  const pricedBrief=await downloaded(page,editor.getByRole('button',{name:'Задание инженеру TXT',exact:true}));assert.ok(pricedBrief.includes('3457 руб.'));assert.ok(!/rateRubM2|1815|1583/.test(pricedBrief));
   await expect(editor).toContainText('IFC: 3 прямоугольных участков кассет; 1 непрямоугольных');
   const saved=await downloaded(page,editor.getByRole('button',{name:'Сохранить проект JSON',exact:true}));
   const ifc=await downloaded(page,editor.getByRole('button',{name:'IFC раскладки (упрощённый)',exact:true}));

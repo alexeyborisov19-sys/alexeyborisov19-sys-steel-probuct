@@ -51,8 +51,7 @@ export async function reviewCassetteAreaCalculation(input: MetalCassetteEstimate
   const blocked = review.status === "needs-review" || ((options.requireAiReview ?? quoteAiReviewRequired()) && review.status !== "passed");
   // This public projection excludes all source offers, stage evidence and private price policy.
   const publicResult = {
-    netAreaM2: chosen.netAreaM2, quantity: chosen.quantity, defaultRateRubM2: base.defaultRateRubM2,
-    approximateRateRubM2: blocked ? null : decision.finalRubBatch / chosen.netAreaM2,
+    netAreaM2: chosen.netAreaM2, quantity: chosen.quantity,
     approximateTotalRub: blocked ? null : decision.finalRubBatch,
     reviewStatus: blocked ? "needs-review" : review.status === "passed" ? "passed" : "unavailable",
     marketVerified: !blocked && decision.marketMeanRubBatch !== null,

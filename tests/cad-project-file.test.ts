@@ -116,7 +116,7 @@ test('all operation inputs survive independently, including large bounded hole g
   project.parts[0].configuration.operations = ['laser-cutting', 'bending', 'countersink', 'welding', 'assembly', 'powder-coating', 'surface-preparation', 'packaging'];
   project.parts[0].configuration.operationInputs = { bendCount: 3, countersinkCount: 2000, weldLengthM: 1.5, assemblyMinutes: 12.5, powderSides: 1, surfacePreparationSides: 2 };
   const saved = await createCadProjectFile(project, files, {}, 1);
-  assert.deepEqual(prepareCadProjectRestore(saved).project.parts[0].configuration.operationInputs, { bendCount: 3, countersinkCount: 2000, weldLengthM: 1.5, assemblyMinutes: 12.5, powderSides: 1, surfacePreparationSides: 2 });
+  assert.deepEqual(prepareCadProjectRestore(saved).project.parts[0].configuration.operationInputs, { bendCount: 3, countersinkCount: 2000, weldLengthM: 1.5, powderSides: 1, surfacePreparationSides: 2 });
   const large = new File([createManualSheetDxf({ lengthMm: 10000, widthMm: 10000, holes: true, holeGroups: [{ count: 200000, diameterMm: 1 }] })], files[project.parts[0].id].name);
   const largeSaved = await createCadProjectFile(project, { ...files, [project.parts[0].id]: large }, {}, 1);
   const restored = prepareCadProjectRestore(largeSaved);

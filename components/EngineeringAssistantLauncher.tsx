@@ -53,7 +53,7 @@ export function EngineeringAssistantLauncher() {
   const [activated, setActivated] = useState(false);
   const pathname = usePathname();
   // Configurators have their own engineer handoff; a floating launcher obscures their controls.
-  if (pathname === "/products/korziny-dlya-konditsionerov" || pathname === "/online-order" || pathname?.startsWith("/internal/")) return null;
+  if (pathname === "/calculator-metallokassety" || pathname === "/products/metallokassety/bim" || pathname === "/products/dobornye-elementy/bim" || pathname === "/products/korziny-dlya-konditsionerov" || pathname === "/online-order" || pathname?.startsWith("/internal/")) return null;
   if (!activated) return <LauncherButton onClick={() => setActivated(true)} />;
   return (
     <Suspense fallback={<LauncherButton loading />}>

@@ -6,6 +6,7 @@
  * for each width and replay. External requests and ALL real writes are blocked.
  */
 import assert from 'node:assert/strict';
+import { assertPrintablePdf } from './assert-print-pdf.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -377,7 +378,7 @@ export const CAD_ACTION_SCENARIOS = {
   async operations({ page, step }) {
     await upload(page);
     const options = [
-      ['bending', 'Гибка', 'bendCount'], ['welding', 'Сварка', 'weldLengthM'], ['countersink', 'Зенковка', 'countersinkCount'], ['assembly', 'Сборка', 'assemblyMinutes'],
+      ['bending', 'Гибка', 'bendCount'], ['welding', 'Сварка', 'weldLengthM'], ['countersink', 'Зенковка', 'countersinkCount'], ['assembly', 'Сборка', null],
       ['surface-preparation', 'Подготовка поверхности', 'surfacePreparationSides'], ['powder-coating', 'Порошковая окраска', 'powderSides'], ['packaging', 'Упаковка', null],
     ];
     for (const [id, name, input] of options) await step(`operation-${id}`, async () => {
@@ -388,18 +389,32 @@ export const CAD_ACTION_SCENARIOS = {
       let part = (await settledQuote(page)).manifest.parts[0];
       assert.ok(part.operations.includes(id));
       if (input) assert.equal(typeof part.operationInputs[input], 'number', `${name} gets its actual table default`);
+      if (id === 'assembly') {
+        const assembly = button.locator('..');
+        await expect(assembly).toContainText('Состав сборки и окончательную стоимость уточнит специалист.');
+        await expect(assembly.getByRole('spinbutton')).toHaveCount(0);
+        await expect(page.getByLabel('Сборка, мин на деталь', { exact: true })).toHaveCount(0);
+        assert.equal(Object.hasOwn(part.operationInputs, 'assemblyMinutes'), false, 'Assembly time is server-owned and absent from the customer request');
+        const saved = await downloadedProject(page);
+        assert.ok(saved.positions[0].configuration.operations.includes('assembly'));
+        assert.equal(Object.hasOwn(saved.positions[0].configuration.operationInputs, 'assemblyMinutes'), false, 'Project JSON must not export internal assembly minutes');
+      }
       await button.click();
       await expect(button).toHaveAttribute('aria-pressed', 'false');
       part = (await settledQuote(page)).manifest.parts[0];
       assert.equal(part.operations.includes(id), false);
       if (input) assert.equal(Object.hasOwn(part.operationInputs, input), false, 'Disabled operation inputs must not leak into the manifest');
+      if (id === 'assembly') {
+        await expect(button.locator('..')).not.toContainText('Состав сборки и окончательную стоимость уточнит специалист.');
+        assert.equal(Object.hasOwn(part.operationInputs, 'assemblyMinutes'), false, 'Disabled assembly must not send internal minutes either');
+      }
       await button.click();
       await expect(button).toHaveAttribute('aria-pressed', 'true');
     });
     await step('operation-counts-unknown', async () => {
       for (const [name, label, field, value] of [
         ['Гибка', 'Гибов на деталь', 'bendCount', '7'], ['Сварка', 'Длина шва, м', 'weldLengthM', '1.7'],
-        ['Зенковка', 'Зенковок на деталь', 'countersinkCount', '9'], ['Сборка', 'Сборка, мин на деталь', 'assemblyMinutes', '13'],
+        ['Зенковка', 'Зенковок на деталь', 'countersinkCount', '9'],
       ]) {
         const input = page.getByLabel(label, { exact: true });
         await input.fill(value);
@@ -629,14 +644,23 @@ export const CAD_ACTION_SCENARIOS = {
       await page.emulateMedia({ media: 'print' });
       const print = page.locator('.quote-print-root');
       await expect(print).toBeVisible();
+      assert.equal(await print.evaluate(element => element.parentElement === document.body), true, 'Print document must escape the screen layout');
       await expect(print.locator('tbody tr')).toHaveCount(2);
       await expect(print).toContainText('Предварительный расчёт');
       await expect(print).toContainText('не является публичной офертой');
       assert.match((await print.innerText()).replace(/\s/g, ''), /Итогопредварительно:3600₽/);
-      const pdf = await page.pdf({ path: `${prefix}-quote.pdf`, format: 'A4', printBackground: true });
+      const pdfPath = `${prefix}-quote.pdf`;
+      const pdf = await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
       assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
       assert.ok(pdf.byteLength > 1000, 'A real browser PDF artifact is required');
+      const { pages, text } = assertPrintablePdf(pdfPath);
+      assert.equal(pages.length, 1, 'The two-row synthetic quote must fit one A4 page');
+      for (const expected of ['Пластина QA', 'original.step', 'Оцинкованная сталь', 'Сталь х/к', '100 × 60 × 2 мм', 'не является публичной офертой', 'Оплата на сайте не подключена.']) assert.ok(text.includes(expected), `PDF omitted ${expected}`);
+      assert.match(text, /Пластина QA.*?100 × 60 × 2 мм\s+7\s/);
+      assert.match(text, /original\.step.*?100 × 60 × 2 мм\s+11\s/);
+      assert.match(text.replace(/\s/g, ''), /Итогопредварительно:3600₽/);
       await page.emulateMedia({ media: 'screen' });
+      await expect(print).toBeHidden();
     });
     await page.locator('#cad-project-title').fill('Текущий несохранённый проект');
     await page.locator('#part-quantity').fill('57');

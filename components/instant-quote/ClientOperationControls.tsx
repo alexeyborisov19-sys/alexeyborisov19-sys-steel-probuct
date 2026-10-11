@@ -17,7 +17,7 @@ const OPERATION_OPTIONS: ReadonlyArray<{ id: ManufacturingOperation; label: stri
   { id: "packaging", label: "Упаковка" },
 ];
 
-type CountableField = "bendCount" | "countersinkCount" | "weldLengthM" | "assemblyMinutes";
+type CountableField = "bendCount" | "countersinkCount" | "weldLengthM";
 
 const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
   field: CountableField;
@@ -31,29 +31,23 @@ const OPERATION_QUANTITY: Partial<Record<ManufacturingOperation, {
     label: "Гибов на деталь",
     step: 1,
     max: 500,
-    note: `Если CAD не дал достоверное количество, подставляется табличное значение ${OPERATION_TABLE_DEFAULTS.bendCount}. Проверьте его по чертежу.`,
+    note: `Проверьте количество гибов по чертежу. Если не знаете, его уточнит специалист.`,
   },
   welding: {
     field: "weldLengthM",
     label: "Длина шва, м",
     step: 0.1,
     max: 500,
-    note: `Ваша оценка: по умолчанию подставляется табличное значение ${OPERATION_TABLE_DEFAULTS.weldLengthM} м шва на изделие. Тип соединения, катет и доступ к шву подтвердит технолог.`,
+    note: `Укажите длину сварного шва на одном изделии, если она известна. Детали соединения уточнит специалист.`,
   },
   countersink: {
     field: "countersinkCount",
     label: "Зенковок на деталь",
     step: 1,
     max: 100_000,
-    note: `Для ручного ввода используется количество заданных отверстий. Если ни ручной ввод, ни STEP не дали количество, подставляется табличное значение ${OPERATION_TABLE_DEFAULTS.countersinkCount}. Измените его, если зенкуются не все отверстия.`,
+    note: `Укажите, сколько отверстий нужно зенковать на одном изделии. Проверьте распознанное количество; если не знаете, его уточнит специалист.`,
   },
-  assembly: {
-    field: "assemblyMinutes",
-    label: "Сборка, мин на деталь",
-    step: 1,
-    max: 10_000,
-    note: `Ваша оценка: по умолчанию подставляется табличная норма ${OPERATION_TABLE_DEFAULTS.assemblyMinutes} минут на деталь. Значение можно изменить. Норму сборки определит технолог при проверке.`,
-  },
+
 };
 
 type SidesField = "powderSides" | "surfacePreparationSides";
@@ -130,6 +124,7 @@ export function ClientOperationControls({
                 <span aria-hidden="true">{enabled ? "✓" : ""}</span>
               </button>
 
+              {enabled && option.id === "assembly" && <p className="mt-1 px-4 text-xs leading-relaxed text-white/70">Состав сборки и окончательную стоимость уточнит специалист.</p>}
               {enabled && quantity && (
                 <label className="mt-1 flex items-center gap-3 border border-white/10 bg-[#090c0e] px-4 py-2">
                   <span className="grow text-xs uppercase tracking-[.1em] text-white/70">{quantity.label}</span>
