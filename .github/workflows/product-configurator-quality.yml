@@ -7,6 +7,8 @@ on:
       - 'components/ClientManufacturingWorkspace.tsx'
       - 'components/MetalCassetteCalculator.tsx'
       - 'components/CassetteProductSpecification.tsx'
+      - 'components/EngineeringAssistantLauncher.tsx'
+      - 'tests/assistant-launcher-consistency.test.ts'
       - 'lib/cassette-product-spec.ts'
       - 'tests/calculators-simple-flow.test.ts'
       - 'components/CassetteBim*'
