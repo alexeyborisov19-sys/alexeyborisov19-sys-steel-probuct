@@ -16,11 +16,11 @@ const report = {
   head: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   tree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).trim(),
   candidateHead: process.env.CANDIDATE_HEAD_SHA || null, pullRequestHead: process.env.PR_HEAD_SHA || null, workflowSha: process.env.GITHUB_SHA || null,
-  origin: base.origin, actions: [], checks: [], interceptedWrites: [], blockedExternal: [],
+  origin: base.origin, actions: [], unsupported: [], checks: [], interceptedWrites: [], blockedExternal: [],
   limits: ['Synthetic customer data only. No lead, email, vendor or POST reaches a server.',
-    'No basket print/PDF button exists. Browser print-media PDF is a rendering check, not a tested application print action.',
+    'Basket specification printing is not implemented: no print/PDF control or print template exists; global print CSS hides the specification.',
     'Manufacturer PDF links are inspected without opening a vendor site.',
-    'This script runs each viewport once. Two independent CI runs establish repetition.'],
+    'This script runs each viewport once. Two independent CI replay jobs establish repetition.'],
 };
 if (report.candidateHead) assert.equal(report.head, report.candidateHead, 'Audit checkout must match exact candidate HEAD');
 let browser;
@@ -198,14 +198,18 @@ try {
       assert.equal(url.protocol, 'https:'); assert.equal(url.hostname, 'www.daikin.eu'); assert.ok(url.pathname.endsWith('.pdf'));
     });
     await quality('saved-order');
-    await action('016', 'Browser print media renders visible specification and valid PDF bytes (no app print control)', async () => {
-      await page.emulateMedia({ media: 'print' });
-      await expect(root.getByRole('heading', { name: 'Спецификация корзин', exact: true })).toBeVisible();
-      await expect(root.getByRole('heading', { name: customer.mark, exact: true })).toHaveCount(2);
-      const pdf = await page.pdf({ path: `${output}/customer-print-${width}.pdf`, format: 'A4', printBackground: true });
-      assert.equal(pdf.subarray(0, 5).toString(), '%PDF-'); assert.ok(pdf.length > 1000);
-      await page.emulateMedia({ media: 'screen' });
-    });
+    // Printing is not an available basket action. Keep this observed limitation
+    // separate from supported-action PASS counts; do not label a blank PDF usable.
+    await expect(root.getByRole('button', { name: /Печать|PDF/ })).toHaveCount(0);
+    await page.emulateMedia({ media: 'print' });
+    await expect(root.getByRole('heading', { name: 'Спецификация корзин', exact: true, includeHidden: true })).toBeHidden();
+    await expect(root.locator('.quote-print-root')).toHaveCount(0);
+    const unsupportedPdf = await page.pdf({ path: `${output}/unsupported-blank-print-${width}.pdf`, format: 'A4', printBackground: true });
+    assert.equal(unsupportedPdf.subarray(0, 5).toString(), '%PDF-');
+    report.unsupported.push({ id: 'BASKET-CUSTOMER-016', width, status: 'UNSUPPORTED', description: 'Basket print/PDF is not implemented; the specification is hidden in print media.', evidence: `unsupported-blank-print-${width}.pdf` });
+    await page.emulateMedia({ media: 'screen' });
+    await expect(root.getByRole('heading', { name: 'Спецификация корзин', exact: true })).toBeVisible();
+    await expect(root.getByRole('heading', { name: customer.mark, exact: true })).toHaveCount(2);
     await action('017', 'Handoff link reaches the local contact form with dimensions and RAL; all writes remain blocked', async () => {
       const link = root.getByRole('link', { name: 'Открыть форму обращения →', exact: true });
       const target = new URL(await link.getAttribute('href'), base.origin);
