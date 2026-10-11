@@ -43,7 +43,7 @@ test("public legal version identifiers match their displayed dates", async () =>
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
   ];
   for (const [key, date] of Object.entries(legalDocumentVersions)) {
-    assert.match(date, /^\\d{4}-\\d{2}-\\d{2}$/);
+    assert.match(date, /^\d{4}-\d{2}-\d{2}$/);
     const [year, month, day] = date.split("-").map(Number);
     assert.equal(
       legalDocumentDisplayDates[key as keyof typeof legalDocumentDisplayDates],
