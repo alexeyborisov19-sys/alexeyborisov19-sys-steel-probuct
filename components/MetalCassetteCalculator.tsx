@@ -7,7 +7,7 @@ import { CassetteProjectEditor } from "@/components/cassette-project/CassettePro
 import { useEffect, useMemo, useState } from "react";
 import { CALCULATION_DISCLAIMER } from "@/lib/instant-quote/client-labels";
 
-type Mode = "area" | "wall";
+type Mode = "area" | "wall" | "quantity";
 type CassetteType = "open" | "closed";
 type Thickness = "0.65" | "0.7" | "1.0" | "1.2";
 type Estimate = {
@@ -27,12 +27,15 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
   const [mode, setMode] = useState<Mode>("area");
   const [type, setType] = useState<CassetteType>("open");
   const [thickness, setThickness] = useState<Thickness>("0.7");
-  const [area, setArea] = useState("100");
-  const [wallWidth, setWallWidth] = useState("12000");
-  const [wallHeight, setWallHeight] = useState("6000");
+  const [area, setArea] = useState("");
+  const [wallWidth, setWallWidth] = useState("");
+  const [wallHeight, setWallHeight] = useState("");
+  const [pieceQuantity, setPieceQuantity] = useState("");
+  const [faceWidth, setFaceWidth] = useState("");
+  const [faceHeight, setFaceHeight] = useState("");
   const [openings, setOpenings] = useState("0");
   const [responseState, setResponseState] = useState<{ key: string; value: Estimate } | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   function selectType(nextType: CassetteType) {
@@ -44,12 +47,27 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
   const payload = useMemo(() => ({
     mode, type, thickness, areaM2: numeric(area), wallWidthMm: numeric(wallWidth),
     wallHeightMm: numeric(wallHeight), openingsM2: numeric(openings),
-  }), [mode, type, thickness, area, wallWidth, wallHeight, openings]);
+    quantity: numeric(pieceQuantity), moduleWidthMm: numeric(faceWidth), moduleHeightMm: numeric(faceHeight),
+  }), [mode, type, thickness, area, wallWidth, wallHeight, openings, pieceQuantity, faceWidth, faceHeight]);
+  const wallArea = payload.wallWidthMm * payload.wallHeightMm / 1_000_000;
+  const inputValid = mode === "area"
+    ? Number.isFinite(payload.areaM2) && payload.areaM2 > 0
+    : mode === "wall"
+      ? Number.isFinite(wallArea) && wallArea > 0 && wallArea <= 1_000_000
+        && Number.isFinite(payload.openingsM2) && payload.openingsM2 >= 0 && payload.openingsM2 < wallArea
+      : Number.isSafeInteger(payload.quantity) && payload.quantity >= 1 && payload.quantity <= 100_000
+        && Number.isFinite(payload.moduleWidthMm) && payload.moduleWidthMm > 0 && payload.moduleWidthMm <= 10_000
+        && Number.isFinite(payload.moduleHeightMm) && payload.moduleHeightMm > 0 && payload.moduleHeightMm <= 10_000;
   const requestKey = JSON.stringify(payload);
   const result = responseState?.key === requestKey ? responseState.value : null;
   const amount = result?.approximateTotalRub;
   useEffect(() => {
     if (!active) return;
+    if (!inputValid) {
+      setStatus("idle");
+      setErrorMessage(null);
+      return;
+    }
     const controller = new AbortController();
     let disposed = false;
     let deadline: ReturnType<typeof setTimeout> | undefined;
@@ -77,14 +95,16 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
       } finally { clearTimeout(deadline); }
     }, 140);
     return () => { disposed = true; window.clearTimeout(timer); clearTimeout(deadline); controller.abort(); };
-  }, [active, payload, requestKey, retry]);
+  }, [active, inputValid, payload, requestKey, retry]);
   const specialistHref = {
     pathname: "/contacts",
     query: {
       source: "calculator-metallokassety", mode, type, thickness,
-      ...(mode === "wall"
-        ? { wallWidth: String(payload.wallWidthMm), wallHeight: String(payload.wallHeightMm), openings: String(payload.openingsM2) }
-        : { inputArea: String(payload.areaM2) }),
+      ...(mode === "quantity"
+        ? { faceWidth: String(payload.moduleWidthMm), faceHeight: String(payload.moduleHeightMm), statedQuantity: String(payload.quantity) }
+        : mode === "wall"
+          ? { wallWidth: String(payload.wallWidthMm), wallHeight: String(payload.wallHeightMm), openings: String(payload.openingsM2) }
+          : { inputArea: String(payload.areaM2) }),
       ...(result ? { area: String(result.netAreaM2), quantity: String(result.quantity) } : {}),
     },
     hash: "contact-form",
@@ -99,12 +119,13 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
           <div>
             <h2 className="text-2xl font-semibold uppercase leading-tight sm:text-3xl">Калькулятор металлокассет</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/60">
-              Укажите площадь или габариты стены, тип кассеты и толщину. Получите предварительную стоимость партии.
+              Узнайте ориентировочную стоимость по площади, размерам стены или числу кассет. Выберите тип и толщину.
             </p>
           </div>
-          <div className="grid grid-cols-2 border border-white/12 bg-[#0c1013] p-1">
+          <div role="group" aria-label="Способ расчёта стоимости" className="grid grid-cols-3 border border-white/12 bg-[#0c1013] p-1">
             <button type="button" onClick={() => setMode("area")} aria-pressed={mode === "area"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "area" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По площади</button>
-            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По размерам стены</button>
+            <button type="button" onClick={() => setMode("wall")} aria-pressed={mode === "wall"} className={`min-h-11 px-3 text-xs font-bold uppercase transition ${mode === "wall" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По стене</button>
+            <button type="button" onClick={() => setMode("quantity")} aria-pressed={mode === "quantity"} className={`min-h-11 px-2 text-xs font-bold uppercase transition ${mode === "quantity" ? "bg-steel-orange text-black" : "text-white/60 hover:text-white"}`}>По количеству</button>
           </div>
         </div>
       </div>
@@ -128,12 +149,12 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
             <div className="mt-6">
               <label htmlFor="facade-area" className="text-xs font-bold uppercase tracking-[.12em] text-white/75">Площадь фасада</label>
               <div className="mt-3 flex">
-                <input id="facade-area" inputMode="decimal" value={area} onChange={(event) => setArea(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-xl font-semibold outline-none focus:border-steel-orange" aria-describedby="area-help" />
+                <input id="facade-area" inputMode="decimal" placeholder="Например, 100" value={area} onChange={(event) => setArea(event.target.value)} className="min-w-0 flex-1 border border-white/18 bg-[#0c1013] px-4 py-4 text-xl font-semibold outline-none focus:border-steel-orange" aria-describedby="area-help" />
                 <span className="flex min-w-16 items-center justify-center border-y border-r border-white/18 bg-white/[.035] text-sm font-bold text-steel-orange">м²</span>
               </div>
               <p id="area-help" className="mt-2 text-sm leading-6 text-white/70">Оценка бюджета без раскладки. Проёмы и геометрию уточним по чертежу.</p>
             </div>
-          ) : (
+          ) : mode === "wall" ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="wall-width" className="text-xs font-bold uppercase tracking-[.12em] text-white/75">Ширина стены</label>
@@ -149,6 +170,22 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
                 <p className="mt-2 text-sm leading-6 text-white/70">Площадь проёмов не учитывает их расположение и подрезку кассет.</p>
               </div>
             </div>
+          ) : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label htmlFor="cassette-piece-quantity" className="text-xs font-bold uppercase tracking-[.12em] text-white/75">Количество кассет</label>
+                <input id="cassette-piece-quantity" inputMode="numeric" value={pieceQuantity} onChange={(event) => setPieceQuantity(event.target.value)} placeholder="Например, 300" className="mt-2 w-full border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" aria-describedby="quantity-help" />
+              </div>
+              <div>
+                <label htmlFor="cassette-face-width" className="text-xs font-bold uppercase tracking-[.12em] text-white/75">Ширина лицевой части, мм</label>
+                <input id="cassette-face-width" inputMode="decimal" value={faceWidth} onChange={(event) => setFaceWidth(event.target.value)} placeholder="Например, 600" className="mt-2 w-full border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" />
+              </div>
+              <div>
+                <label htmlFor="cassette-face-height" className="text-xs font-bold uppercase tracking-[.12em] text-white/75">Высота лицевой части, мм</label>
+                <input id="cassette-face-height" inputMode="decimal" value={faceHeight} onChange={(event) => setFaceHeight(event.target.value)} placeholder="Например, 1200" className="mt-2 w-full border border-white/18 bg-[#0c1013] px-4 py-4 text-lg font-semibold outline-none focus:border-steel-orange" />
+              </div>
+              <p id="quantity-help" className="sm:col-span-2 text-sm leading-6 text-white/70">Цена оценивается по общей площади лицевых частей. Расход металла на борта и замки, подрезка и узлы уточняются инженером.</p>
+            </div>
           )}
           <fieldset className="mt-6">
             <legend className="text-xs font-bold uppercase tracking-[.12em] text-white/75">Толщина металла</legend>
@@ -160,7 +197,7 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
             </div>
           </fieldset>
           <div className="mt-6 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/70">Типовой формат</p><p className="mt-2 text-sm font-semibold">1170 × 545 мм</p></div>
+            <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/70">{mode === "quantity" ? "Лицевая часть" : "Типовой формат"}</p><p className="mt-2 text-sm font-semibold">{mode === "quantity" ? (inputValid ? `${faceWidth} × ${faceHeight} мм` : "Укажите размеры") : "1170 × 545 мм"}</p></div>
             <div className="bg-[#0c1013] p-4"><p className="text-xs uppercase tracking-[.1em] text-white/70">Конструкция</p><p className="mt-2 text-sm font-semibold">{type === "open" ? "открытый шов" : "замковый стык"}</p></div>
             
           </div>
@@ -176,11 +213,12 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
               {status === "loading" ? "…" : typeof amount === "number" && amount > 0 ? `≈ ${money.format(amount)} ₽` : "—"}
             </p>
             
+            {status === "idle" ? <p role="status" className="mt-3 text-sm leading-6 text-white/75">Заполните размеры и количество, чтобы увидеть предварительную цену.</p> : null}
             <p className="mt-3 text-sm leading-6 text-white/60">{CALCULATION_DISCLAIMER}</p>
           </div>
           <dl className="mt-7 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
-            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/70">Площадь облицовки</dt><dd className="mt-2 text-xl font-semibold text-steel-orange">{result ? `${decimal.format(result.netAreaM2)} м²` : "—"}</dd></div>
-            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/70">Количество кассет</dt><dd className="mt-2 text-xl font-semibold">{result && result.quantity > 0 ? `≈ ${money.format(result.quantity)} шт.` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/70">{mode === "quantity" ? "Площадь лицевых частей" : "Площадь облицовки"}</dt><dd className="mt-2 text-xl font-semibold text-steel-orange">{result ? `${decimal.format(result.netAreaM2)} м²` : "—"}</dd></div>
+            <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/70">Количество кассет</dt><dd className="mt-2 text-xl font-semibold">{result && result.quantity > 0 ? `${mode === "quantity" ? "" : "≈ "}${money.format(result.quantity)} шт.` : "—"}</dd></div>
             <div className="bg-[#0d1114] p-4"><dt className="text-xs uppercase tracking-[.1em] text-white/70">Толщина</dt><dd className="mt-2 text-lg font-semibold">{thickness.replace(".", ",")} мм</dd></div>
           </dl>
           {status === "error" ? <div className="mt-4 rounded-lg border border-red-300/30 p-4"><p role="alert" className="text-sm leading-6 text-red-200">{errorMessage}</p><button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 min-h-11 rounded border border-white/30 px-4 py-2 text-sm">Повторить расчёт</button></div> : null}
@@ -196,18 +234,18 @@ function MetalCassetteQuickEstimate({ active }: { active: boolean }) {
 
 
 export function MetalCassetteCalculator() {
-  const [view, setView] = useState<"product" | "project" | "estimate">("product");
+  const [view, setView] = useState<"product" | "project" | "estimate">("estimate");
   return <div id="calculator-metallokasset" className="mt-12 scroll-mt-24 sm:mt-16">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <CalculatorLogo />
       <label className="block w-full text-sm text-white/80 sm:w-auto">Режим калькулятора металлокассет
         <select aria-label="Режим калькулятора металлокассет" value={view} onChange={event=>setView(event.target.value as typeof view)} className="mt-2 block min-h-12 w-full rounded-lg border border-white/30 bg-[#101417] px-3 py-2 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-          <option value="product">По размерам и количеству</option><option value="project">Раскладка фасада</option><option value="estimate">Быстрая оценка цены</option>
+          <option value="estimate">Узнать примерную цену</option><option value="product">Составить спецификацию</option><option value="project">Раскладка фасада</option>
         </select>
       </label>
     </div>
     <div id="cassette-view-product" hidden={view !== "product"}><CassetteProductSpecification /></div>
     <div id="cassette-view-project" hidden={view !== "project"}><CassetteProjectEditor /></div>
-    <div id="cassette-view-estimate" hidden={view !== "estimate"}><p className="border border-white/15 bg-[#101417] p-4 text-sm leading-7 text-white/75">Быстрая оценка не учитывает вашу раскладку фасада. Итоговую стоимость уточнит инженер.</p><MetalCassetteQuickEstimate active={view === "estimate"} /></div>
+    <div id="cassette-view-estimate" hidden={view !== "estimate"}><p className="border border-white/15 bg-[#101417] p-4 text-sm leading-7 text-white/75">Выберите способ расчёта и введите свои размеры. Итоговую цену подтвердит инженер.</p><MetalCassetteQuickEstimate active={view === "estimate"} /></div>
   </div>;
 }
