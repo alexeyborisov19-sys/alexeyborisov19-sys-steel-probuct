@@ -37,7 +37,7 @@ async function check(page,name,width,errors) {
   await page.screenshot({path:`${output}/${name}-${width}-workspace.png`});
   if (['cassette-spec-input','bim','trim'].includes(name)) {
     await expect(page.locator('.assistant-launcher')).toHaveCount(0);
-    for (const [kind,control] of [['input',workspace.locator('input[type="number"]:visible:not([disabled])').first()],['button',workspace.locator('button:visible:not([disabled])').first()]]) {
+    for (const [kind,control] of [['input',workspace.locator('input:visible:not([type="file"]):not([type="hidden"]):not([disabled])').first()],['button',workspace.locator('button:visible:not([disabled])').first()]]) {
     await control.evaluate(element=>{
       element.scrollIntoView({block:'center',behavior:'instant'});
       window.scrollBy({top:element.getBoundingClientRect().bottom-(innerHeight-30),behavior:'instant'});
