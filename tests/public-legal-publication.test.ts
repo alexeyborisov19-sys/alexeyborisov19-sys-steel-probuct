@@ -162,3 +162,17 @@ test("the assistant's consent checkbox carries only the consent, the policy is a
   assert.match(label, /legalLinks\.personalDataConsent/);
   assert.doesNotMatch(label, /legalLinks\.privacy|Ознакомлен/);
 });
+
+test("analytics and cookie documents disclose withdrawal limits and carry current editions", async () => {
+  const [analytics, cookies] = await Promise.all([
+    readFile(join(root, "app/(public)/legal/analytics-consent/page.tsx"), "utf8"),
+    readFile(join(root, "app/(public)/legal/cookies/page.tsx"), "utf8"),
+  ]);
+  const { legalDocumentVersions } = await import("../lib/legal");
+  assert.equal(legalDocumentVersions.analyticsConsent, "2026-10-11");
+  assert.equal(legalDocumentVersions.cookies, "2026-10-11");
+  assert.match(analytics, /Ранее переданные сервису сведения не удаляются автоматически/);
+  assert.match(cookies, /Отзыв разрешения на сайте сам по себе не удаляет сведения/);
+  assert.match(analytics, /Вебвизор включён в настройках счётчика/);
+  assert.match(cookies, /Для счётчика № 112542227 включён Вебвизор/);
+});
