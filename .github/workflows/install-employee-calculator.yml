@@ -1,4 +1,4 @@
-name: Publish protected employee calculator 0.1.11
+name: Publish protected employee calculator 0.1.12
 on:
   workflow_dispatch:
     inputs:
@@ -29,11 +29,11 @@ jobs:
           printf '%s\n' "$EMPLOYEE_DOWNLOAD_DEPLOY_KEY" > delivery-ssh/key
           ssh-keyscan -H github.com > delivery-ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i $PWD/delivery-ssh/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$PWD/delivery-ssh/known_hosts"
-          git clone --depth 1 --single-branch --branch delivery/employee-0.1.11 --filter=blob:none --no-checkout git@github.com:alexeyborisov19-sys/steelprodukt-employee-desktop.git package-source
-          git -C package-source sparse-checkout set deliveries/0.1.11
+          git clone --depth 1 --single-branch --branch delivery/employee-0.1.12 --filter=blob:none --no-checkout git@github.com:alexeyborisov19-sys/steelprodukt-employee-desktop.git package-source
+          git -C package-source sparse-checkout set deliveries/0.1.12
           git -C package-source checkout
-          cp package-source/deliveries/0.1.11/SteelProdukt-Employee-0.1.11-x64.exe package/
-          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.11-x64.exe | sha256sum --check
+          cp package-source/deliveries/0.1.12/SteelProdukt-Employee-0.1.12-x64.exe package/
+          printf '%s  %s\n' "$EXPECTED_SHA" package/SteelProdukt-Employee-0.1.12-x64.exe | sha256sum --check
       - name: Prepare server access
         env:
           BEGET_HOST: ${{ secrets.BEGET_HOST }}
@@ -67,23 +67,23 @@ jobs:
           . ./.env.production
           set +a
           test -f "$STEEL_PRODUCT_PRIVATE_CALCULATION_BASIS_PATH"
-          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.11-x64.exe" | sha256sum --check
+          printf '%s  %s\n' "$EXPECTED_SHA" "$STAGE/SteelProdukt-Employee-0.1.12-x64.exe" | sha256sum --check
           export EMPLOYEE_ROOT=/var/lib/steelprodukt/employee-app
           install -d -m 700 -o nodejs -g nodejs "$EMPLOYEE_ROOT"
-          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.11-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.11-x64.exe"
+          install -m 600 -o nodejs -g nodejs "$STAGE/SteelProdukt-Employee-0.1.12-x64.exe" "$EMPLOYEE_ROOT/SteelProdukt-Employee-0.1.12-x64.exe"
           python3 - <<'PY'
           import os,json,pathlib
-          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.11-x64.exe'
-          (root/'release-before-0.1.11.json').write_bytes((root/'release.json').read_bytes())
-          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.11',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
+          root=pathlib.Path(os.environ['EMPLOYEE_ROOT']);name='SteelProdukt-Employee-0.1.12-x64.exe'
+          (root/'release-before-0.1.12.json').write_bytes((root/'release.json').read_bytes())
+          (root/'release.json.next').write_text(json.dumps(dict(version='0.1.12',url='https://www.steelprodukt.ru/downloads/employee/'+name,bytes=(root/name).stat().st_size,sha256=os.environ['EXPECTED_SHA'])))
           (root/'release.json.next').replace(root/'release.json')
-          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.11').write_text(old)
+          env=pathlib.Path('.env.production');old=env.read_text();(root/'environment-before-0.1.12').write_text(old)
           values={'STEEL_EMPLOYEE_INSTALLER_PATH':'','STEEL_EMPLOYEE_UPDATE_FILE':str(root/name)}
           lines=[line for line in old.splitlines() if line.split('=',1)[0] not in values]
           env.write_text('\n'.join(lines+[k+'='+v for k,v in values.items()])+'\n')
           PY
           chown nodejs:nodejs "$EMPLOYEE_ROOT/release.json"
-          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.11.json" "$EMPLOYEE_ROOT/environment-before-0.1.11" .env.production
+          chmod 600 "$EMPLOYEE_ROOT/release.json" "$EMPLOYEE_ROOT/release-before-0.1.12.json" "$EMPLOYEE_ROOT/environment-before-0.1.12" .env.production
           chmod 755 "$STAGE"
           printf 'cd %q\npm2 restart ecosystem.config.cjs --env production --update-env\n' "$APP_PATH" > "$STAGE/restart.sh"
           chmod 644 "$STAGE/restart.sh"
@@ -105,10 +105,10 @@ jobs:
            const url='https://www.steelprodukt.ru/api/employee-app/feed';
            const request=action=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({action}),redirect:'error',signal:AbortSignal.timeout(300000)});
            const initial=await request('bootstrap');assert.equal(initial.status,200);const bootstrap=await initial.json();assert(bootstrap.ok&&bootstrap.basis?.rateBook&&bootstrap.settings?.operations&&bootstrap.settings?.commercial);
-           const response=await request('release');assert.equal(response.status,200);const {release}=await response.json();assert.equal(release.version,'0.1.11');assert.equal(release.sha256,process.argv[2]);
+           const response=await request('release');assert.equal(response.status,200);const {release}=await response.json();assert.equal(release.version,'0.1.12');assert.equal(release.sha256,process.argv[2]);
            const download=await request('download');assert.equal(download.status,200);assert.equal(download.headers.get('cache-control'),'private, no-store');const hash=createHash('sha256');let bytes=0;assert(download.body);for await(const chunk of download.body){hash.update(chunk);bytes+=chunk.length}assert.equal(bytes,release.bytes);assert.equal(hash.digest('hex'),release.sha256);
            const anonymous=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release'}),redirect:'error'});assert.equal(anonymous.status,403);assert.equal((await fetch(release.url,{redirect:'error'})).status,404);
-           console.log('Password-free application feed, bootstrap, version 0.1.11, download hash and anonymous denial: verified.');
+           console.log('Password-free application feed, bootstrap, version 0.1.12, download hash and anonymous denial: verified.');
           })().catch(()=>{console.error('Protected application feed verification failed. No key or private prices were logged.');process.exitCode=1});
           NODE
           chmod 644 "$STAGE/feed-verify.mjs"
