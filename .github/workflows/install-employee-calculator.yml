@@ -96,4 +96,23 @@ jobs:
           printf 'cd %q\nnode --env-file=.env.production --import tsx scripts/verify-employee-private-release.ts\n' "$APP_PATH" > "$STAGE/verify.sh"
           chmod 644 "$STAGE/verify.sh"
           sudo -iu nodejs bash "$STAGE/verify.sh"
+          cat > "$STAGE/feed-verify.mjs" <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          (async()=>{
+           const key=process.env.STEEL_EMPLOYEE_DISTRIBUTION_KEY;
+           assert(/^[a-f0-9]{64}$/.test(key??''));
+           const url='https://www.steelprodukt.ru/api/employee-app/feed';
+           const request=action=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({action}),redirect:'error',signal:AbortSignal.timeout(300000)});
+           const initial=await request('bootstrap');assert.equal(initial.status,200);const bootstrap=await initial.json();assert(bootstrap.ok&&bootstrap.basis?.rateBook&&bootstrap.settings?.operations&&bootstrap.settings?.commercial);
+           const response=await request('release');assert.equal(response.status,200);const {release}=await response.json();assert.equal(release.version,'0.1.11');assert.equal(release.sha256,process.argv[2]);
+           const download=await request('download');assert.equal(download.status,200);assert.equal(download.headers.get('cache-control'),'private, no-store');const hash=createHash('sha256');let bytes=0;assert(download.body);for await(const chunk of download.body){hash.update(chunk);bytes+=chunk.length}assert.equal(bytes,release.bytes);assert.equal(hash.digest('hex'),release.sha256);
+           const anonymous=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'release'}),redirect:'error'});assert.equal(anonymous.status,403);assert.equal((await fetch(release.url,{redirect:'error'})).status,404);
+           console.log('Password-free application feed, bootstrap, version 0.1.11, download hash and anonymous denial: verified.');
+          })().catch(()=>{console.error('Protected application feed verification failed. No key or private prices were logged.');process.exitCode=1});
+          NODE
+          chmod 644 "$STAGE/feed-verify.mjs"
+          printf 'cd %q\nnode --env-file=.env.production %q %q\n' "$APP_PATH" "$STAGE/feed-verify.mjs" "$EXPECTED_SHA" > "$STAGE/feed-verify.sh"
+          chmod 644 "$STAGE/feed-verify.sh"
+          sudo -iu nodejs bash "$STAGE/feed-verify.sh"
           REMOTE
