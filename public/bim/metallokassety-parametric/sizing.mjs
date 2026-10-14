@@ -1,6 +1,7 @@
+import { normalizeCoordinationMesh, COORDINATE_GRID_MM } from './numeric-mesh.mjs';
 // Geometric coordination model, not a manufacturing or native BIM-family solver.
 // Resize only globally straight mesh strips; all non-parallel faces are protected.
-export const VERSION = 'sp-cassette-sizing-1';
+export const VERSION = 'sp-cassette-sizing-2';
 const TOL = 1e-5;
 const GUARD_MM = 0.25;
 const round = n => Math.round(n * 1e6) / 1e6;
@@ -118,7 +119,7 @@ export function prepareMesh(mesh) {
   return {vertices,faces:triangles,stats:meshStats(vertices,triangles),axes:mesh.axes};
 }
 
-export function resize(mesh, dimensions) {
+export function resizeRaw(mesh, dimensions) {
   if (!Array.isArray(dimensions) || dimensions.length !== 3 || dimensions.some(n => typeof n !== 'number' || !Number.isFinite(n))) throw new Error('Введите три числовых габарита.');
   mesh.axes.forEach((a,i) => {
     if (!a.editable && Math.abs(dimensions[i]-a.original) > 0.001) throw new Error(`Ось ${'XYZ'[i]} фиксирована: нет прямого участка для изменения размера.`);
@@ -136,6 +137,21 @@ export function resize(mesh, dimensions) {
   // Any changed facet orientation would mean a hole, bend, or slope was deformed.
   if (stats.normals.some((n,i) => dot(n,mesh.stats.normals[i]) < 1-1e-6)) throw new Error('Перестройка изменила форму участка. Скачивание заблокировано.');
   return { vertices, faces: mesh.faces, stats, dimensions: targets };
+}
+
+export function resize(mesh, dimensions) {
+  const raw=resizeRaw(mesh,dimensions);
+  const result=normalizeCoordinationMesh(raw.vertices,raw.faces);
+  const stats=meshStats(result.vertices,result.faces);
+  if(stats.size.some((value,i)=>Math.abs(value-raw.dimensions[i])>COORDINATE_GRID_MM+1e-7))throw new Error('Габариты превысили точность численного представления.');
+  // Bound volume drift by the swept surface under the maximum vertex motion,
+  // rather than a fixed percentage that penalizes very thin, large sheets.
+  const volumeDrift=Math.abs(stats.volume-raw.stats.volume);
+  const volumeBudget=Math.max(stats.area,raw.stats.area)*Math.sqrt(3)*COORDINATE_GRID_MM/2;
+  if(volumeDrift>volumeBudget+1e-6)throw new Error('Численное изменение объёма превысило бюджет перемещения поверхности.');
+  result.normalization.volumeDriftMm3=volumeDrift;
+  result.normalization.volumeBudgetMm3=volumeBudget;
+  return {...result,stats,dimensions:raw.dimensions};
 }
 
 const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
@@ -182,7 +198,8 @@ export function createIfc(model, geometry, mark = '') {
     ...geometry.stats.size.map((n,i)=>property('BoundingSize'+'XYZ'[i],'IFCLENGTHMEASURE',n)),
     property('SourceMeasuredSheetThickness','IFCLENGTHMEASURE',model.measured_thickness_mm),
     property('DimensionMeaning','IFCLABEL','Габариты X/Y/Z исходных осей; не лицевые размеры и не развёртка'),
-    property('Mark','IFCLABEL',mark || model.id)
+    property('Mark','IFCLABEL',mark || model.id),
+    property('NumericalCoordinateGrid','IFCLENGTHMEASURE',COORDINATE_GRID_MM)
   ]);
   const coord=add('IFCCARTESIANPOINTLIST3D',list(geometry.vertices.map(p=>list(p.map(real)))));
   const faceSet=add('IFCTRIANGULATEDFACESET',coord,'$','.T.',list(geometry.faces.map(f=>list(f.map(i=>String(i+1))))),'$');

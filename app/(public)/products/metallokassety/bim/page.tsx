@@ -2,6 +2,7 @@ import { AttributionLink } from "@/components/AttributionLink";
 import { PageLayout } from "@/components/PageLayout";
 import { CassetteBimConfigurator } from "@/components/CassetteBimConfigurator";
 import { CassetteBimLibrary } from "@/components/CassetteBimLibrary";
+import { CassetteJointGuide } from "@/components/CassetteJointGuide";
 import { JsonLd } from "@/components/JsonLd";
 import { faqSchema } from "@/lib/schema";
 import { absoluteUrl } from "@/lib/site";
@@ -14,13 +15,15 @@ const faq = [
   {question: "Подходит ли модель для заказа в производство?", answer: "Нет. Она предназначена для архитектурной компоновки и подсчёта элементов. Открытый и закрытый типы воспроизводят исходные STEP с точностью сетки 0,1 мм; изменённые размеры и узлы стыковки согласуются по рабочей документации."},
 ];
 export default function CassetteBimPage() {
-  return <PageLayout compactHero breadcrumbs={[{name:"Главная",path:"/"},{name:"Продукция",path:"/products"},{name:"Металлокассеты",path:"/products/metallokassety"},{name:"BIM-модель",path:"/products/metallokassety/bim"}]} path="/products/metallokassety/bim" eyebrow="Инструменты проектировщика" title="BIM-модель металлокассет" description="Задайте размеры, выберите кассеты и назначьте RAL. Скачайте IFC и спецификацию — бесплатно, без регистрации.">
+  return <PageLayout compactHero breadcrumbs={[{name:"Главная",path:"/"},{name:"Продукция",path:"/products"},{name:"Металлокассеты",path:"/products/metallokassety"},{name:"BIM-модель",path:"/products/metallokassety/bim"}]} path="/products/metallokassety/bim" eyebrow="Инструменты проектировщика" title="Бесплатная BIM-библиотека" description="Выберите кассету или добор, скачайте IFC или настройте размеры. Раскладка фасада и карта примыканий — отдельные инструменты.">
     <JsonLd data={[faqSchema(faq), {"@context":"https://schema.org","@type":"WebApplication",name:"Генератор IFC-модели металлокассет",url:absoluteUrl("/products/metallokassety/bim"),applicationCategory:"DesignApplication",operatingSystem:"Современный веб-браузер",isAccessibleForFree:true,inLanguage:"ru-RU",featureList:["Настройка размеров и швов","Поэлементная окраска RAL","Экспорт IFC4","Спецификация CSV"]}]} />
     <section aria-labelledby="bim-config-title" className="bg-[#e9eeec] py-8 text-slate-900 sm:py-10">
       <div className="container">
-        <h2 id="bim-config-title" className="sr-only">Настройка BIM-модели металлокассет</h2>
+        <nav aria-label="Разделы BIM-библиотеки" className="mb-5 flex flex-wrap gap-3 text-sm font-semibold text-orange-800"><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-library">Модели изделий</a><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-joints">Узлы и примыкания</a><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-config-title">Раскладка фасада</a></nav>
+        <CassetteBimLibrary />
+        <CassetteJointGuide />
+        <h2 id="bim-config-title" className="mt-10 mb-4 scroll-mt-28 text-2xl font-semibold">Раскладка фасадного фрагмента</h2>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600"><p>IFC4 · поэлементная окраска RAL · спецификация CSV</p><a className="font-semibold text-orange-800 underline underline-offset-4" href="#bim-passport">О модели и ограничениях ↓</a></div>
-        <p className="mb-5 text-sm"><a href="#bim-library" className="font-semibold text-orange-800 underline underline-offset-4">15 готовых образцов — библиотека IFC ↓</a></p>
         <CassetteBimConfigurator />
         <div id="bim-passport" className="mt-8 scroll-mt-28 rounded-xl border border-slate-300 bg-white p-5 sm:p-7">
           <h2 className="text-xl font-semibold">Что вы скачиваете</h2>
@@ -42,7 +45,6 @@ export default function CassetteBimPage() {
           {faq.map(item=><details key={item.question} className="border-b border-slate-200 py-4"><summary className="cursor-pointer text-sm font-medium">{item.question}</summary><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{item.answer}</p></details>)}
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4"><p className="max-w-xl text-sm leading-6 text-slate-600">Для изготовления согласуйте рабочие чертежи и узлы. Модель не содержит расчёта нагрузок и производственных развёрток. Скачанные файлы нужно приложить к обращению самостоятельно.</p><div className="flex flex-wrap gap-5 text-sm font-semibold text-orange-800"><AttributionLink className="underline underline-offset-4" href="/products/metallokassety#calculator-metallokasset">Рассчитать металлокассеты</AttributionLink><AttributionLink className="underline underline-offset-4" href="/contacts#contact-form">Открыть форму обращения</AttributionLink></div></div>
         </div>
-        <CassetteBimLibrary />
       </div>
     </section>
   </PageLayout>;

@@ -16,7 +16,7 @@ test("all 15 size-adaptation sources match their fixed IFC files", () => {
     const content = read(`public/bim/metallokassety/IFC4_coordination/${model.id}.ifc`);
     assert.equal(createHash("sha256").update(content).digest("hex"), model.ifcSha256);
   }
-  for (const file of ["sizing.mjs", "app.mjs", "renderer.mjs", "style.css", "index.html"]) {
+  for (const file of ["sizing.mjs", "numeric-mesh.mjs", "app.mjs", "renderer.mjs", "style.css", "index.html"]) {
     assert(read(`public/bim/metallokassety-parametric/${file}`).length > 1000, file);
   }
   // The complete boundary/geometry suite runs independently in cassette-ifc-quality.
@@ -25,7 +25,8 @@ test("all 15 size-adaptation sources match their fixed IFC files", () => {
 });
 
 test("BIM library links to size adaptation and preserves source downloads", () => {
-  const source = read("components/CassetteBimLibrary.tsx");
+  // Downloads moved into the reusable client catalog; retain the same checks.
+  const source = read("components/CassetteBimLibrary.tsx") + read("components/CassetteBimCatalog.tsx");
   assert.match(source, /metallokassety-parametric\/index\.html/);
   assert.match(source, /Изменить размеры/);
   assert.match(source, /IFC4_coordination/);
