@@ -22,7 +22,7 @@ export function CassetteBimCatalog({ models }: { models: Model[] }) {
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-testid="bim-model-cards">
       {visible.map(model => <article key={model.id} data-model-id={model.id} className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-white">
         <div className="relative border-b border-slate-200 bg-slate-50 px-4 pt-4">
-          <span className="text-xs font-semibold tracking-wide text-slate-600">{model.id.startsWith("SP-CAS-") ? "МЕТАЛЛОКАССЕТА" : "ДОБОРНЫЙ ЭЛЕМЕНТЕЛЬ"}</span>
+          <span className="text-xs font-semibold tracking-wide text-slate-600">{model.id.startsWith("SP-CAS-") ? "МЕТАЛЛОКАССЕТА" : "ДОБОРНЫЙ ЭЛЕМЕНТ"}</span>
           <svg viewBox="0 0 280 170" className="h-40 w-full" role="img" aria-label={`Исходная геометрия: ${model.name}`}><path d={model.wireframe} fill="none" stroke="currentColor" strokeWidth="1.1" vectorEffect="non-scaling-stroke" className="text-slate-700" /></svg>
         </div>
         <div className="flex flex-1 flex-col p-5">
