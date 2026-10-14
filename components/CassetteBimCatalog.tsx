@@ -29,7 +29,14 @@ export function CassetteBimCatalog({ models }: { models: Model[] }) {
           <p className="text-xs font-medium text-slate-500">{model.id}</p><h3 className="mt-1 text-base font-semibold leading-6">{model.name}</h3>
           <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm"><dt className="text-slate-600">Габариты X/Y/Z</dt><dd className="text-right">{model.bboxMm.map(format).join(" × ")} мм</dd><dt className="text-slate-600">Толщина исходника</dt><dd className="text-right">{format(model.thicknessMm)} мм</dd></dl>
           <a href={`${sizing}?model=${model.id}`} className="mt-5 flex min-h-11 items-center justify-center rounded-lg bg-orange-800 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-orange-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700" aria-label={`Изменить размеры: ${model.name}`}>Размеры и 3D-просмотр</a>
-          <details className="mt-4 border-t border-slate-200 pt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">Скачать исходный IFC</summary><div className="mt-2 grid gap-3 text-sm font-semibold text-orange-800"><a href={`${base}/IFC4_coordination/${model.id}.ifc`} download className="min-h-11 rounded-md border border-slate-300 px-3 py-3 underline underline-offset-4">Координационная сетка · IFC4</a><a href={`${base}/IFC4_exact_geometry/${model.id}.ifc`} download className="min-h-11 rounded-md border border-slate-300 px-3 py-3 underline underline-offset-4">Точная исходная геометрия · IFC4</a><p className="font-normal leading-6 text-slate-600">Два представления одной детали. Размеры этих исходных файлов фиксированы.</p></div></details>
+          <div className="mt-4 border-t border-slate-200 pt-3">
+            <p className="text-sm font-semibold">Скачать исходный IFC</p>
+            <div className="mt-2 grid gap-2 text-sm font-semibold text-orange-800">
+              <a href={`${base}/IFC4_coordination/${model.id}.ifc`} download aria-label={`Скачать координационный IFC: ${model.name}`} className="flex min-h-11 items-center rounded-md border border-slate-300 px-3 py-3 underline underline-offset-4 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700">Координационная сетка · IFC4</a>
+              <a href={`${base}/IFC4_exact_geometry/${model.id}.ifc`} download aria-label={`Скачать точный исходный IFC: ${model.name}`} className="flex min-h-11 items-center rounded-md border border-slate-300 px-3 py-3 underline underline-offset-4 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700">Точная исходная геометрия · IFC4</a>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-600">Два представления одной детали. Размеры исходных файлов фиксированы.</p>
+          </div>
         </div>
       </article>)}
     </div>
