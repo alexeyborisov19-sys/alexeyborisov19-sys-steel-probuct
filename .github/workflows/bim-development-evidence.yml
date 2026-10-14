@@ -1,0 +1,34 @@
+name: Prepare isolated BIM development evidence
+on:
+  push:
+    branches: ['feat/bim-library-20261014']
+    paths: ['.github/workflows/bim-development-evidence.yml']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Bundle only BIM development source
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bim-recovery/wheels
+          git archive --format=tar.gz --output=/tmp/bim-recovery/source.tar.gz HEAD public/bim scripts components data/bim lib/bim 'app/(public)/products/metallokassety/bim' .github/workflows tests package.json package-lock.json AGENTS.md
+          printf '%s\n' "$GITHUB_SHA" > /tmp/bim-recovery/SOURCE_COMMIT
+      - name: Download official validation runtime wheels
+        run: python3 -m pip download --only-binary=:all: --dest /tmp/bim-recovery/wheels 'ifcopenshell-mcp==0.9.0' 'pytest>=8,<10'
+      - name: Save isolated evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bim-development-recovery
+          path: /tmp/bim-recovery
+          retention-days: 1
+          if-no-files-found: error
