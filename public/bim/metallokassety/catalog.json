@@ -1,0 +1,263 @@
+{
+  "version": "2026-10-14",
+  "modelCount": 15,
+  "cassetteCount": 9,
+  "trimCount": 6,
+  "models": [
+    {
+      "id": "SP-CAS-01",
+      "name": "Кассета 0.7мм ЗТ",
+      "category": "Металлокассета",
+      "fixing_type": "Закрытый тип (по имени исходника)",
+      "bbox_mm": [
+        565.0000002,
+        19.700000100003617,
+        561.9565140999929
+      ],
+      "measured_thickness_mm": 0.7,
+      "source_file": "Кассета 0.7мм ЗТ.STEP",
+      "mesh_triangles": 3644,
+      "mesh_volume_deviation_percent": 0.0012815753723482352,
+      "vertexCount": 10932,
+      "lineCount": 3736
+    },
+    {
+      "id": "SP-CAS-02",
+      "name": "Кассета 0.7мм ОТ",
+      "category": "Металлокассета",
+      "fixing_type": "Открытый тип (по имени исходника)",
+      "bbox_mm": [
+        583.6000000000005,
+        20.000000100000356,
+        583.6000000000001
+      ],
+      "measured_thickness_mm": 0.7,
+      "source_file": "Кассета 0.7мм ОТ.STEP",
+      "mesh_triangles": 4268,
+      "mesh_volume_deviation_percent": 0.0010831343787581942,
+      "vertexCount": 12804,
+      "lineCount": 4344
+    },
+    {
+      "id": "SP-CAS-03",
+      "name": "Кассета 1мм ЗТ",
+      "category": "Металлокассета",
+      "fixing_type": "Закрытый тип (по имени исходника)",
+      "bbox_mm": [
+        1190.0000002,
+        20.000000100009444,
+        561.4334800613067
+      ],
+      "measured_thickness_mm": 1.0,
+      "source_file": "Кассета 1мм ЗТ.STEP",
+      "mesh_triangles": 3676,
+      "mesh_volume_deviation_percent": 0.0011374146974707598,
+      "vertexCount": 11028,
+      "lineCount": 3768
+    },
+    {
+      "id": "SP-CAS-04",
+      "name": "Кассета 1мм ОТ",
+      "category": "Металлокассета",
+      "fixing_type": "Открытый тип (по имени исходника)",
+      "bbox_mm": [
+        1208.0000000000055,
+        20.000000100001653,
+        583.0000000000002
+      ],
+      "measured_thickness_mm": 1.0,
+      "source_file": "Кассета 1мм ОТ.STEP",
+      "mesh_triangles": 4300,
+      "mesh_volume_deviation_percent": 0.0008996325081782522,
+      "vertexCount": 12900,
+      "lineCount": 4376
+    },
+    {
+      "id": "SP-CAS-05",
+      "name": "Кассета угловая закрытый тип",
+      "category": "Металлокассета",
+      "fixing_type": "Закрытый тип (по имени исходника)",
+      "bbox_mm": [
+        500.000000200001,
+        300.0000002,
+        431.4334800613076
+      ],
+      "measured_thickness_mm": 1.0,
+      "source_file": "Кассета угловая закрытый тип.STEP",
+      "mesh_triangles": 6740,
+      "mesh_volume_deviation_percent": 0.0014143267004847403,
+      "vertexCount": 20220,
+      "lineCount": 6628
+    },
+    {
+      "id": "SP-CAS-06",
+      "name": "Кассета угловая открытый тип",
+      "category": "Металлокассета",
+      "fixing_type": "Открытый тип (по имени исходника)",
+      "bbox_mm": [
+        589.300000100001,
+        319.3000001000005,
+        358.6000000000008
+      ],
+      "measured_thickness_mm": 0.7,
+      "source_file": "Кассета угловая открытый тип.STEP",
+      "mesh_triangles": 5988,
+      "mesh_volume_deviation_percent": 0.0010525354603791817,
+      "vertexCount": 17964,
+      "lineCount": 5648
+    },
+    {
+      "id": "SP-TRIM-07",
+      "name": "Откос",
+      "category": "Доборный элемент",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        1400.0,
+        119.30000000000001,
+        120.00000000000043
+      ],
+      "measured_thickness_mm": 0.7,
+      "source_file": "Откос.STEP",
+      "mesh_triangles": 1556,
+      "mesh_volume_deviation_percent": 0.0008727796926689445,
+      "vertexCount": 4668,
+      "lineCount": 1560
+    },
+    {
+      "id": "SP-TRIM-08",
+      "name": "Парапет",
+      "category": "Доборный элемент",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        1999.9999999999998,
+        100.00000000000004,
+        500.0000000000005
+      ],
+      "measured_thickness_mm": 0.7,
+      "source_file": "Парапет.STEP",
+      "mesh_triangles": 2064,
+      "mesh_volume_deviation_percent": 0.00031974831005107066,
+      "vertexCount": 6192,
+      "lineCount": 2064
+    },
+    {
+      "id": "SP-CAS-09",
+      "name": "Стандартная кассета 1 сливное",
+      "category": "Металлокассета",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        348.0000000000024,
+        20.000000100000307,
+        368.00000000000045
+      ],
+      "measured_thickness_mm": 1.0,
+      "source_file": "Стандартная кассета 1 сливное.STEP",
+      "mesh_triangles": 4808,
+      "mesh_volume_deviation_percent": 0.0016447074940803357,
+      "vertexCount": 14424,
+      "lineCount": 4880
+    },
+    {
+      "id": "SP-CAS-10",
+      "name": "Стандартная кассета 2 сливных",
+      "category": "Металлокассета",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        678.0000000000014,
+        20.000000100000204,
+        583.0000000000005
+      ],
+      "measured_thickness_mm": 1.0,
+      "source_file": "Стандартная кассета 2 сливных.STEP",
+      "mesh_triangles": 5316,
+      "mesh_volume_deviation_percent": 0.001065418483017436,
+      "vertexCount": 15948,
+      "lineCount": 5384
+    },
+    {
+      "id": "SP-CAS-11",
+      "name": "Стандартная кассета 3 сливных",
+      "category": "Металлокассета",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        1018.0000000000045,
+        20.00000010000026,
+        583.0000000000002
+      ],
+      "measured_thickness_mm": 1.0,
+      "source_file": "Стандартная кассета 3 сливных.STEP",
+      "mesh_triangles": 5824,
+      "mesh_volume_deviation_percent": 0.0009383129392690042,
+      "vertexCount": 17472,
+      "lineCount": 5888
+    },
+    {
+      "id": "SP-TRIM-12",
+      "name": "Стартовая планка",
+      "category": "Доборный элемент",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        2000.0000000000007,
+        10.324375854318973,
+        36.433479961306745
+      ],
+      "measured_thickness_mm": 1.0,
+      "source_file": "Стартовая планка.STEP",
+      "mesh_triangles": 1468,
+      "mesh_volume_deviation_percent": 0.0037002894598943585,
+      "vertexCount": 4404,
+      "lineCount": 1480
+    },
+    {
+      "id": "SP-TRIM-13",
+      "name": "Угол внутренний",
+      "category": "Доборный элемент",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        3000.0,
+        50.6,
+        50.6
+      ],
+      "measured_thickness_mm": 0.5,
+      "source_file": "Угол внутренний.STEP",
+      "mesh_triangles": 3348,
+      "mesh_volume_deviation_percent": 0.0012621597998022204,
+      "vertexCount": 10044,
+      "lineCount": 3344
+    },
+    {
+      "id": "SP-TRIM-14",
+      "name": "Угол",
+      "category": "Доборный элемент",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        2500.0,
+        30.000000000000018,
+        20.0
+      ],
+      "measured_thickness_mm": 0.5,
+      "source_file": "Угол.STEP",
+      "mesh_triangles": 1804,
+      "mesh_volume_deviation_percent": 0.002138981344518064,
+      "vertexCount": 5412,
+      "lineCount": 1808
+    },
+    {
+      "id": "SP-TRIM-15",
+      "name": "отлив",
+      "category": "Доборный элемент",
+      "fixing_type": "Не указан в имени исходного файла",
+      "bbox_mm": [
+        2000.0,
+        241.4814565722669,
+        123.50756417693894
+      ],
+      "measured_thickness_mm": 0.5,
+      "source_file": "отлив.STEP",
+      "mesh_triangles": 1868,
+      "mesh_volume_deviation_percent": 0.0009300415650210605,
+      "vertexCount": 5604,
+      "lineCount": 1872
+    }
+  ]
+}
