@@ -1,0 +1,66 @@
+name: Cassette IFC geometry and browser quality
+on:
+  pull_request:
+    paths:
+      - 'public/bim/**'
+      - 'components/CassetteBimLibrary.tsx'
+      - 'app/(public)/products/metallokassety/bim/**'
+      - 'scripts/*cassette*'
+      - '.github/workflows/cassette-ifc-quality.yml'
+  push:
+    branches: ['feat/bim-library-20261014']
+    paths:
+      - 'public/bim/**'
+      - 'scripts/*cassette*'
+      - '.github/workflows/cassette-ifc-quality.yml'
+permissions:
+  contents: read
+concurrency:
+  group: cassette-ifc-quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BIM_SIZING_OUTPUT_DIR: artifacts/cassette-parametric
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify unchanged source release
+        run: python3 scripts/install-cassette-library.py --check
+      - name: Test all 15 models at original and boundary sizes
+        run: node scripts/test-cassette-parametric.mjs
+      - name: Install locked browser dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser navigation, sizes, downloads, mobile and fallback
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory public >/tmp/cassette-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/bim/metallokassety-parametric/index.html >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/audit-cassette-parametric.mjs
+      - name: Install official IfcMCP validation library (no MCP server)
+        run: python3 -m pip install 'ifcopenshell-mcp==0.9.0'
+      - name: IFC schema, EXPRESS and independent geometry readback
+        run: python3 scripts/validate-cassette-ifcmcp.py --exports artifacts/cassette-parametric --report artifacts/cassette-parametric/ifcmcp-report.json
+      - name: Save validation evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cassette-parametric-validation
+          path: artifacts/cassette-parametric
+          if-no-files-found: error
+          retention-days: 7

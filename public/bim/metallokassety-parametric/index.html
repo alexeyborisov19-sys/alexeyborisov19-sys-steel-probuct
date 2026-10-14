@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IFC-модели кассет и доборов по размерам | Сталь Продукт</title>
+<meta name="robots" content="noindex,follow"><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><a href="/products/metallokassety/bim#bim-library">СТАЛЬ ПРОДУКТ <span>/ BIM-библиотека</span></a><span>15 исходных моделей · IFC4</span></header>
+<main>
+<div class="intro"><p class="eyebrow">МОДЕЛЬ ПО ВАШИМ РАЗМЕРАМ</p><h1>Металлокассеты и доборные элементы</h1><p>Выберите исходный образец, задайте габариты и скачайте перестроенный IFC.</p></div>
+<div class="workspace">
+<section class="stage" aria-labelledby="preview-title">
+<div class="stage-heading"><h2 id="preview-title">3D-просмотр</h2><span id="model-code">Загрузка</span></div>
+<div class="toolbar" aria-label="Управление видом"><button type="button" data-view="iso">Объёмный вид</button><button type="button" data-view="front">Спереди</button><button type="button" data-view="rear">Сзади</button><button type="button" id="fit">Вписать</button><button type="button" id="zoom-in" aria-label="Приблизить">+</button><button type="button" id="zoom-out" aria-label="Отдалить">−</button><label><input id="edges" type="checkbox" checked> Контуры</label></div>
+<div class="viewport"><canvas id="canvas" tabindex="0" aria-label="Трёхмерная модель. Перетаскивание или стрелки вращают; плюс и минус меняют масштаб."></canvas><div class="overlay"><b id="preview-size">Загружается исходная геометрия…</b><span id="preview-state"></span></div><span class="axes">X · ширина/длина &nbsp; Y · глубина &nbsp; Z · высота</span></div>
+<p class="hint" id="render-note">Перетаскивайте модель для вращения. Масштаб просмотра не меняет размеры IFC.</p>
+</section>
+<section class="parameters" aria-labelledby="parameters-title">
+<h2 id="parameters-title">Образец и размеры</h2>
+<label class="field">Исходная модель<select id="model" disabled aria-describedby="source-details"></select></label>
+<p id="source-details" class="hint"></p>
+<p class="notice"><b>Габариты X/Y/Z, не лицевые размеры.</b> Гибы и отверстия не масштабируются: меняется длина прямых участков. Положение отверстий и пригодность детали требуют согласования по рабочему чертежу.</p>
+<div class="dimension-fields" id="dimensions"></div>
+<label class="field">Марка в файле IFC<input id="mark" maxlength="80" placeholder="Например, К-01" autocomplete="off"></label>
+<div class="button-row"><button type="button" id="apply" class="secondary" disabled>Применить размеры</button><button type="button" id="reset" disabled>Исходные размеры</button></div>
+<p id="status" role="status" aria-live="polite">Загрузка библиотеки…</p><p id="error" role="alert" hidden></p>
+<button type="button" id="download" class="primary" disabled>Скачать IFC с этими размерами</button>
+<div class="button-row"><button type="button" id="save-project" disabled>Сохранить настройки</button><label class="file-button">Открыть настройки<input type="file" id="load-project" accept=".json,application/json"></label></div>
+<div id="pending" class="notice" hidden><p id="pending-text"></p><button type="button" id="confirm-import">Применить загруженные настройки</button><button type="button" id="cancel-import">Отмена</button></div>
+<p class="hint">Настройки JSON позволяют вернуться к размерам в этом конфигураторе. Изменение свойств скачанного IFC в Revit или Archicad само по себе не перестраивает геометрию.</p>
+<details><summary>Исходные файлы без изменения размеров</summary><div class="source-links"><a id="source-mesh" download>Исходный координационный IFC</a><a id="source-exact" download>Исходный точный IFC</a><a href="../metallokassety/SteelProdukt_BIM_IFC_Public.zip" download>Все 15 образцов — ZIP</a><a href="../metallokassety/index.html">Каталог фиксированных образцов</a></div></details>
+</section></div>
+<section class="limitations"><h2>Что меняется и что сохраняется</h2><div class="limitations-grid"><div><h3>Геометрия, а не подпись</h3><p>Изменяются координаты замкнутой сетки. Превью, габариты и геометрические количества IFC рассчитываются по одному результату. Толщина берётся из исходного образца; материал, масса и RAL автоматически не назначаются.</p></div><div><h3>Ограниченные диапазоны</h3><p>Диапазоны защищают форму исходной геометрии, но не задают допустимые размеры производства. Если по оси нет прямого участка для перестройки, она фиксирована. Для другого профиля нужен отдельный чертёж.</p></div><div><h3>Для координации проекта</h3><p>Это IFC4 с треугольной сеткой, не семейство RFA и не производственная развёртка. Импорт в Revit/Archicad и инженерное утверждение конкретного изделия отдельно не подтверждены.</p></div></div><p class="hint">Расчёт выполняется в браузере. Параметры и файлы настроек не отправляются на сервер; загружаются только исходные модели с этого сайта.</p><p><a href="/products/metallokassety/bim">← Вернуться к раскладке фасада и BIM-библиотеке</a></p></section>
+</main><footer>Сталь Продукт · Геометрия по предоставленным STEP · Не выпуск в производство</footer>
+<script type="module" src="app.mjs"></script></body></html>
