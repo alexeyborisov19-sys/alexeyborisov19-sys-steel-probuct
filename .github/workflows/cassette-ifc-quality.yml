@@ -52,6 +52,7 @@ jobs:
             sleep 1
           done
           node scripts/audit-cassette-parametric.mjs
+          node scripts/audit-oriented-cassette-viewer.mjs
       - name: Install official IfcMCP validation library (no MCP server)
         # The EXPRESS rule executor imports _pytest for assertion diagnostics.
         run: python3 -m pip install 'ifcopenshell-mcp==0.9.0' 'pytest>=8,<10'
@@ -64,6 +65,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: cassette-parametric-validation
-          path: artifacts/cassette-parametric
+          path: |
+            artifacts/cassette-parametric
+            artifacts/cassette-upright
           if-no-files-found: error
           retention-days: 7
