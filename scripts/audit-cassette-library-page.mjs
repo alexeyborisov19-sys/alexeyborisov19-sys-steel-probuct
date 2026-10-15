@@ -18,7 +18,7 @@ async function downloadSource(card,folder,filename){
   await expect(link).toHaveCount(1);
   await expect(link).toBeVisible();
   const href=await link.getAttribute('href');
-  assert.match(href,/^\/bim\/metallokassety\/IFC4_(coordination|exact_geometry)\/SP-(CAS|TRIM)-\d{2}\.ifc$/);
+  assert.match(href,/^\/bim\/metallokassety(?:-oriented)?\/IFC4_(coordination|exact_geometry)\/SP-(CAS|TRIM)-\d{2}\.ifc$/);
   // Exercise the actual visible link. No force-click, DOM opening or API fetch
   // substitutes for the download that the visitor must be able to perform.
   const [download]=await Promise.all([page.waitForEvent('download'),link.click()]);
