@@ -10,7 +10,7 @@ export type CassetteSolid = { vertices: Vec3[]; faces: number[][] };
 export const cassetteProfiles = {
   open: { label: 'Открытый тип · ОТ', widthMm:545, heightMm:545, depthMm:20, thicknessMm:.7, jointMm:45, returnWidthMm:330 },
   closed: { label: 'Закрытое крепление · верхний зацеп', widthMm:565, heightMm:530, depthMm:19.7, thicknessMm:.7, jointMm:35, returnWidthMm:330 },
-  corner: { label: 'Угловая кассета · 90°', widthMm:290, heightMm:380, depthMm:20, thicknessMm:1, jointMm:45, returnWidthMm:330 },
+  corner: { label: 'Угловая кассета · 90° (условная схема)', widthMm:290, heightMm:380, depthMm:20, thicknessMm:1, jointMm:45, returnWidthMm:330 },
 } as const;
 export function cassetteSource(p:CassetteBimInput) {
  const closed=p.profile==='closed';
