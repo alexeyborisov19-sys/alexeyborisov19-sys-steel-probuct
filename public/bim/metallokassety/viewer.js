@@ -2,11 +2,38 @@
 'use strict';
 const models=JSON.parse(document.getElementById('models').textContent);
 const $=id=>document.getElementById(id), sel=$('model'),canvas=$('canvas');
-for(const [i,m] of models.entries()){const o=document.createElement('option');o.value=i;o.textContent=m.id+' — '+m.name;sel.append(o)}
+const uprightClosed=new Set(['SP-CAS-01','SP-CAS-03','SP-CAS-05']);
+const series=new Map([
+ ['SP-CAS-01','Премиум'],['SP-CAS-03','Премиум'],['SP-CAS-05','Премиум'],
+ ['SP-CAS-02','Стандарт'],['SP-CAS-04','Стандарт'],['SP-CAS-06','Стандарт'],
+]);
+const displayName=m=>(series.has(m.id)?'«'+series.get(m.id)+'» · ':'')+m.name;
+for(const [i,m] of models.entries()){const o=document.createElement('option');o.value=i;o.textContent=m.id+' — '+displayName(m);sel.append(o)}
 let current=0,yaw=-1.10,pitch=.47,zoom=1,drag=null,gl=null,program=null,meshBuffer=null,lineBuffer=null,locations={},ctx2d=null,softMesh=null,softLines=null;
 const fmt=x=>Number(x).toLocaleString('ru-RU',{maximumFractionDigits:3});
 function decode(s){const str=atob(s),b=new Uint8Array(str.length);for(let i=0;i<str.length;i++)b[i]=str.charCodeAt(i);return b}
-function download(variant){const m=models[current];const a=document.createElement('a');a.href=(variant==='exact'?'IFC4_exact_geometry/':'IFC4_coordination/')+m.id+'.ifc';a.download=m.id+(variant==='exact'?'_Exact':'_BIM')+'.ifc';a.click()}
+function download(variant){
+ const m=models[current],a=document.createElement('a');
+ const root=uprightClosed.has(m.id)?'../metallokassety-oriented/':'';
+ a.href=root+(variant==='exact'?'IFC4_exact_geometry/':'IFC4_coordination/')+m.id+'.ifc';
+ a.download=m.id+(uprightClosed.has(m.id)?'_UPRIGHT':'')+(variant==='exact'?'_Exact':'_BIM')+'.ifc';
+ a.click();
+}
+function displayArrays(m){
+ if(m._displayArrays)return m._displayArrays;
+ const mesh=new Float32Array(decode(m.vertices).buffer),lines=new Float32Array(decode(m.lines).buffer);
+ if(uprightClosed.has(m.id)){
+  // Rigid 180-degree turn about Y: x'=maxX-x, z'=maxZ-z.
+  // Normals use the same rotation (no translation), all triangles unchanged.
+  // The read-only source preview assets are preserved.
+  let maxX=-Infinity,maxZ=-Infinity;
+  for(let i=0;i<mesh.length;i+=6){maxX=Math.max(maxX,mesh[i]);maxZ=Math.max(maxZ,mesh[i+2]);}
+  for(let i=0;i<mesh.length;i+=6){mesh[i]=maxX-mesh[i];mesh[i+2]=maxZ-mesh[i+2];mesh[i+3]=-mesh[i+3];mesh[i+5]=-mesh[i+5];}
+  for(let i=0;i<lines.length;i+=3){lines[i]=maxX-lines[i];lines[i+2]=maxZ-lines[i+2];}
+ }
+ m._displayArrays={mesh,lines};
+ return m._displayArrays;
+}
 const pendingModels=new Map();
 function ensureModel(index){
  if(pendingModels.has(index))return;
@@ -18,8 +45,10 @@ function ensureModel(index){
  pendingModels.set(index,task);
 }
 
-function change(index){current=Number(index);sel.value=current;const m=models[current];$('name').textContent=m.name;$('category').textContent=m.category;$('fixing').textContent=m.fixing_type==='Не указан в имени исходного файла'?'Тип крепления не указан в имени исходника':m.fixing_type;$('overlayId').textContent=m.id;$('overlayText').textContent='Геометрия прочитана из готового IFC';$('counter').textContent=(current+1)+' / '+models.length;
-$('properties').replaceChildren();const rows=[['Габарит X',fmt(m.bbox_mm[0])+' мм'],['Габарит Y',fmt(m.bbox_mm[1])+' мм'],['Габарит Z',fmt(m.bbox_mm[2])+' мм'],['Измеренная толщина',fmt(m.measured_thickness_mm)+' мм'],['Элемент IFC',m.category==='Металлокассета'?'IfcCovering / CLADDING':'IfcBuildingElementProxy'],['Геометрия просмотра',m.mesh_triangles.toLocaleString('ru-RU')+' треугольников']];for(const [k,v]of rows){const row=document.createElement('div');row.className='row';const label=document.createElement('span'),value=document.createElement('strong');label.textContent=k;value.textContent=v;row.append(label,value);$('properties').append(row)}$('source').textContent='Исходник: '+m.source_file;zoom=1;yaw=-1.10;pitch=.47;if(!m.vertices){$('overlayText').textContent='Загрузка 3D-модели…';document.body.dataset.rendered='loading';if(ctx2d){softMesh=null;softLines=null;ctx2d.clearRect(0,0,canvas.width,canvas.height)}if(gl)gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);ensureModel(current);return}if(ctx2d){softMesh=new Float32Array(decode(m.vertices).buffer);softLines=new Float32Array(decode(m.lines).buffer);render()}if(gl){gl.bindBuffer(gl.ARRAY_BUFFER,meshBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(decode(m.vertices).buffer),gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(decode(m.lines).buffer),gl.STATIC_DRAW);render()}}
+function change(index){current=Number(index);sel.value=current;const m=models[current];$('name').textContent=displayName(m);$('category').textContent=m.category;$('fixing').textContent=m.fixing_type==='Не указан в имени исходного файла'?'Тип крепления не указан в имени исходника':m.fixing_type;$('overlayId').textContent=m.id;$('overlayText').textContent='Геометрия прочитана из готового IFC';$('counter').textContent=(current+1)+' / '+models.length;
+$('properties').replaceChildren();const rows=[['Габарит X',fmt(m.bbox_mm[0])+' мм'],['Габарит Y',fmt(m.bbox_mm[1])+' мм'],['Габарит Z',fmt(m.bbox_mm[2])+' мм'],['Измеренная толщина',fmt(m.measured_thickness_mm)+' мм'],['Элемент IFC',m.category==='Металлокассета'?'IfcCovering / CLADDING':'IfcBuildingElementProxy'],['Геометрия просмотра',m.mesh_triangles.toLocaleString('ru-RU')+' треугольников']];for(const [k,v]of rows){const row=document.createElement('div');row.className='row';const label=document.createElement('span'),value=document.createElement('strong');label.textContent=k;value.textContent=v;row.append(label,value);$('properties').append(row)}$('source').textContent='Исходник: '+m.source_file+(uprightClosed.has(m.id)?' · верхний угловой замок ориентирован вверх (+Z)':'');zoom=1;yaw=-1.10;pitch=.47;if(!m.vertices){$('overlayText').textContent='Загрузка 3D-модели…';document.body.dataset.rendered='loading';if(ctx2d){softMesh=null;softLines=null;ctx2d.clearRect(0,0,canvas.width,canvas.height)}if(gl)gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);ensureModel(current);return}const display=displayArrays(m);
+if(ctx2d){softMesh=display.mesh;softLines=display.lines;render()}
+if(gl){gl.bindBuffer(gl.ARRAY_BUFFER,meshBuffer);gl.bufferData(gl.ARRAY_BUFFER,display.mesh,gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuffer);gl.bufferData(gl.ARRAY_BUFFER,display.lines,gl.STATIC_DRAW);render()}}
 function normalize(v){const n=Math.hypot(...v);return v.map(x=>x/n)}function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]}
 function multiply(a,b){const out=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)for(let k=0;k<4;k++)out[c*4+r]+=a[k*4+r]*b[c*4+k];return out}
 function matrices(aspect){const back=[Math.cos(pitch)*Math.cos(yaw),Math.cos(pitch)*Math.sin(yaw),Math.sin(pitch)],right=normalize(cross([0,0,1],back)),up=cross(back,right);const view=new Float32Array([right[0],up[0],back[0],0,right[1],up[1],back[1],0,right[2],up[2],back[2],0,0,0,-3,1]);const h=1.17/zoom,w=h*aspect;const projection=new Float32Array([1/w,0,0,0,0,1/h,0,0,0,0,-.1,0,0,0,0,1]);return multiply(projection,view)}
