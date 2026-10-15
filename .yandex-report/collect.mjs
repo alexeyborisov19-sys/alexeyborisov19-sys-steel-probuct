@@ -1,4 +1,4 @@
-// Read-only search visibility pass (2026-10-15 17:00 MSK): Yandex Webmaster summary, queries, indexing,
+// Read-only search visibility pass (2026-10-15 17:10 MSK): Yandex Webmaster summary, queries, indexing,
 // query analytics for commercial pages, Metrika organic visits. Nothing is changed anywhere.
 // Writes the full result to /tmp/report.json. Only endpoint labels and HTTP statuses go to the log,
 // because this repository is public and its Actions logs are public too.
@@ -16,6 +16,8 @@ function normToken(raw = "") {
 
 async function get(label, url, token) {
   let status = 0, body = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+  if (attempt) await new Promise((r) => setTimeout(r, 5000));
   try {
     const res = await fetch(url, {
       headers: { Authorization: `OAuth ${token}`, Accept: "application/json" },
@@ -26,6 +28,8 @@ async function get(label, url, token) {
     try { body = text ? JSON.parse(text) : {}; } catch { body = text.slice(0, 2000); }
   } catch (e) {
     body = { error: "NETWORK_ERROR", code: e?.cause?.code || e?.name || "UNKNOWN" };
+  }
+  if (status) break;
   }
   out.calls.push({ label, status });
   console.log(`${label}: HTTP ${status}`);
