@@ -1,4 +1,4 @@
-// Read-only search visibility pass (2026-10-15 17:40 MSK): Yandex Webmaster summary, queries, indexing,
+// Read-only search visibility pass (2026-10-15 19:12 MSK): Yandex Webmaster summary, queries, indexing,
 // query analytics for commercial pages, Metrika organic visits. Nothing is changed anywhere.
 // Writes the full result to /tmp/report.json. Only endpoint labels and HTTP statuses go to the log,
 // because this repository is public and its Actions logs are public too.
