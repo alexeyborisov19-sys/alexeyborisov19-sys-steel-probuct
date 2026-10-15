@@ -1,0 +1,99 @@
+name: Import approved cassette IFC library
+
+on:
+  push:
+    branches: ['feat/bim-library-20261014']
+    paths:
+      - 'release-assets/SteelProdukt_BIM_Web_2026-10-14.zip'
+      - '.github/workflows/import-cassette-library.yml'
+      - 'scripts/audit-cassette-library.mjs'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cassette-library-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the exact source commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Fetch the approved public package when not already installed
+        run: |
+          set -euo pipefail
+          if [ -f public/bim/metallokassety/SHA256SUMS.txt ]; then
+            python3 scripts/install-cassette-library.py --check
+          elif [ ! -f release-assets/SteelProdukt_BIM_Web_2026-10-14.zip ]; then
+            mkdir -p release-assets
+            curl --fail --location --silent --show-error --retry 2 \
+              --connect-timeout 20 --max-time 180 --max-filesize 6000000 \
+              --proto '=https' --proto-redir '=https' \
+              'https://at.adobe.com/3Knikx9HFSxsQs5b' \
+              --output release-assets/SteelProdukt_BIM_Web_2026-10-14.zip
+          fi
+      - name: Verify and install only approved files
+        run: |
+          set -euo pipefail
+          if [ ! -f public/bim/metallokassety/SHA256SUMS.txt ]; then
+            python3 scripts/install-cassette-library.py
+          fi
+          python3 scripts/install-cassette-library.py --check
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests including library completeness
+        run: npm test
+      - name: Install Chromium for the library audit
+        run: npx playwright install --with-deps chromium
+      - name: Check every model and all IFC downloads
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory public > /tmp/cassette-library-http.log 2>&1 &
+          HTTP_PID=$!
+          trap 'kill "$HTTP_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/bim/metallokassety/index.html > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/audit-cassette-library.mjs
+      - name: Save audit evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cassette-library-browser-audit
+          path: artifacts/cassette-library
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Commit verified assets to the feature branch only
+        env:
+          SOURCE_BRANCH: ${{ github.ref_name }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$SOURCE_BRANCH" = 'feat/bim-library-20261014'
+          git fetch origin "$SOURCE_BRANCH"
+          test "$(git rev-parse FETCH_HEAD)" = "$SOURCE_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/bim/metallokassety
+          git rm --ignore-unmatch release-assets/SteelProdukt_BIM_Web_2026-10-14.zip
+          if ! git diff --cached --quiet; then
+            git commit -m 'Add all 55 verified public cassette BIM library assets'
+            git push origin "HEAD:refs/heads/$SOURCE_BRANCH"
+          fi
+          printf 'Verified asset commit: `%s`\n' "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Production has not been published by this workflow. Merge and verify Publish to Beget separately.' >> "$GITHUB_STEP_SUMMARY"

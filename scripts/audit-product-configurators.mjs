@@ -271,7 +271,7 @@ try {
   await page.getByText('Раскладка, шов и марка',{exact:true}).click();
   await page.getByLabel('Открыть BIM-проект JSON',{exact:false}).setInputFiles({name:'bim.json',mimeType:'application/json',buffer:Buffer.from(bimJson)});
   await page.getByRole('button',{name:'Отмена',exact:true}).click();
-  await expect(page.getByRole('status')).toContainText('Текущая раскладка не изменена');
+  await expect(page.locator('#bim-workspace').getByRole('status')).toContainText('Текущая раскладка не изменена');
   const cancelledBim=JSON.parse(await downloaded(page,page.getByRole('button',{name:'Сохранить BIM-проект JSON',exact:true})));assert.equal(cancelledBim.input.mark,'changed');
   await page.getByLabel('Открыть BIM-проект JSON',{exact:false}).setInputFiles({name:'bim.json',mimeType:'application/json',buffer:Buffer.from(bimJson)});
   await page.getByRole('button',{name:'Заменить раскладку',exact:true}).click();
@@ -301,7 +301,7 @@ try {
   await page.getByText('Цвета и выбор кассет',{exact:true}).click();
   await page.getByText('Исходная геометрия и покрытие',{exact:true}).click();await page.getByLabel('Покрытие по проекту',{exact:true}).fill('По образцу заказчика');await page.getByText('Исходная геометрия и покрытие',{exact:true}).click();
   const finishCsv=await downloaded(page,page.getByRole('button',{name:'Спецификация CSV',exact:true}));assert.ok(finishCsv.includes('По образцу заказчика'));
-  await page.getByLabel('Открыть BIM-проект JSON',{exact:false}).setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{')});await expect(page.getByRole('status')).toContainText('Не удалось прочитать JSON');
+  await page.getByLabel('Открыть BIM-проект JSON',{exact:false}).setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{')});await expect(page.locator('#bim-workspace').getByRole('status')).toContainText('Не удалось прочитать JSON');
   const inspection=page.getByTestId('cassette-bim-inspection');
   await expect(inspection.locator('canvas')).toHaveAttribute('data-depth-renderer','ready');
   await inspection.screenshot({path:`${output}/bim-${width}-single.png`});

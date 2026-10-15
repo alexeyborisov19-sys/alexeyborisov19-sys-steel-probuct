@@ -1,0 +1,436 @@
+{
+  "version": "sp-joint-guide-1",
+  "checkedOn": "2026-10-14",
+  "purpose": "Карта данных для согласования узлов, не библиотека утверждённых монтажных узлов",
+  "ownCatalog": "Stal_Product_Katalog_Primykanij_v01.pdf · рабочая редакция 01, не инженерное утверждение",
+  "sources": [
+    {
+      "id": "ruukki-102",
+      "manufacturer": "Ruukki",
+      "title": "Liberta Original 102 / 102 Grande",
+      "url": "https://www.ruukki.com/docs/default-source/b2b-documents/facades/rainscreen-panels/installation-instructions/liberta-original-102-102-grande-fastening_instruction.pdf?sfvrsn=32637958260284030000",
+      "revision": "01/2012, дата на чертеже",
+      "inspection": "PDF и чертёж просмотрены",
+      "application": "Разделение модульных размеров и горизонтального/вертикального видимого стыка; не размеры для изделий Сталь Продукт."
+    },
+    {
+      "id": "ruukki-500",
+      "manufacturer": "Ruukki",
+      "title": "Liberta Elegant 500 / 500 Grande",
+      "url": "https://www.ruukki.com/docs/default-source/b2b-documents/facades/rainscreen-panels/installation-instructions/liberta-elegant-500-and-500-grande-installation-instruction-190401.pdf?sfvrsn=37638115468134200000",
+      "revision": "01/2023, дата на чертеже",
+      "inspection": "Обе страницы PDF и чертежи просмотрены",
+      "application": "Видимый стык, зазор внутри замка и монтажная последовательность — отдельные условия; не подтверждение нашего замка."
+    },
+    {
+      "id": "ruukki-550",
+      "manufacturer": "Ruukki",
+      "title": "Liberta Elegant 550",
+      "url": "https://www.ruukki.com/docs/default-source/b2b-documents/facades/rainscreen-panels/installation-instructions/liberta-elegant-550-installation-instruction.pdf?sfvrsn=30637958257186930000",
+      "revision": "04/2019, дата на чертеже",
+      "inspection": "PDF прочитан, первая страница с чертежом просмотрена",
+      "application": "Скрытое крепление по двум направлениям не равно любому другому закрытому профилю."
+    },
+    {
+      "id": "alucobond-systems",
+      "manufacturer": "ALUCOBOND / 3A Composites",
+      "title": "Systems",
+      "url": "https://www.alucobond.com/en/systems/",
+      "revision": "Дата редакции на странице не установлена",
+      "inspection": "Публичное описание систем",
+      "application": "Подвесные, винтовые и SZ20-системы различаются по механизму соединения. Это композитные панели, не наши стальные кассеты."
+    },
+    {
+      "id": "taldom-fk",
+      "manufacturer": "Талдом-Профиль",
+      "title": "Фасадные кассеты",
+      "url": "https://www.taldom-profil.ru/production/fk/",
+      "revision": "Дата редакции на странице не установлена",
+      "inspection": "Публичная карточка производителя",
+      "application": "Рядовые и угловые формы, открытое и замковое крепление разделены по сериям; чужие диапазоны не переносим."
+    },
+    {
+      "id": "alt-bim",
+      "manufacturer": "АЛЬТ / Альтернатива",
+      "title": "BIM-проектирование",
+      "url": "https://www.alt-msk.ru/services/bim-proektirovanie/",
+      "revision": "Дата редакции на странице не установлена",
+      "inspection": "Публичное описание услуги, не проверка скачанных RVT",
+      "application": "Связка технического задания, модели, согласования и проектной документации."
+    },
+    {
+      "id": "steni-bim",
+      "manufacturer": "Steni",
+      "title": "BIM",
+      "url": "https://www.steni.com/bim",
+      "revision": "Дата редакции на странице не установлена",
+      "inspection": "Публичное описание и перечень обучающих сценариев",
+      "application": "Ориентир интерфейса: размеры, ориентация, углы, отверстия и ведомость. Не источник геометрии стальных замков."
+    },
+    {
+      "id": "alga-series",
+      "manufacturer": "Завод АЛГА",
+      "title": "Фасадные кассеты СТАНДАРТ",
+      "url": "https://www.zavodalga.ru/products/fasadnye-kassety-Standart/",
+      "revision": "Дата редакции на странице не установлена",
+      "inspection": "Публичный перечень серий; карточка 5000 полностью не получена",
+      "application": "Разные серии для открытого, скрытого крепления и разного характера рустов. Не универсальная настройка одной кассеты."
+    }
+  ],
+  "cases": [
+    {
+      "id": "joint-horizontal",
+      "title": "Рядовой горизонтальный стык",
+      "group": "Рядовые стыки",
+      "ownCatalogPages": [
+        7,
+        8
+      ],
+      "sourceIds": [
+        "ruukki-102",
+        "ruukki-500"
+      ],
+      "open": "Лицевой шов и зоны монтажных полок рассматриваются отдельно от полного габарита детали.",
+      "closed": "Видимый шов, зацеп и свободное пространство внутри замка задаются отдельно; верх и низ несимметричны.",
+      "required": [
+        "Лицевой горизонтальный шов",
+        "Модуль по высоте",
+        "Рабочий зацеп или полки",
+        "Траектория взаимного перемещения"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "joint-vertical",
+      "title": "Рядовой вертикальный стык",
+      "group": "Рядовые стыки",
+      "ownCatalogPages": [
+        7,
+        8
+      ],
+      "sourceIds": [
+        "ruukki-102",
+        "ruukki-550"
+      ],
+      "open": "Проверяются боковые полки и доступность зоны крепления, а не только расстояние между лицами.",
+      "closed": "Боковые отгибы и способ скрытого крепления должны соответствовать именно выбранной серии.",
+      "required": [
+        "Лицевой вертикальный шов",
+        "Модуль по ширине",
+        "Положение боковых отгибов",
+        "Доступ к соединению"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "window-sill",
+      "title": "Низ оконного проёма",
+      "group": "Окна",
+      "ownCatalogPages": [
+        10,
+        11
+      ],
+      "sourceIds": [
+        "ruukki-500"
+      ],
+      "open": "Отлив и окончания относятся к отдельным изделиям; геометрия кассеты сама не задаёт оконное примыкание.",
+      "closed": "Примыкание согласуется с рабочей зоной зацепа и крайней кассетой у проёма.",
+      "required": [
+        "Геометрия оконной рамы",
+        "Контур отлива и торцевых окончаний",
+        "Проектный водоотвод",
+        "Габарит движения крайней кассеты"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "window-head",
+      "title": "Верх оконного проёма",
+      "group": "Окна",
+      "ownCatalogPages": [
+        12,
+        13
+      ],
+      "sourceIds": [
+        "ruukki-500"
+      ],
+      "open": "Откос, облицовка и проектные защитные элементы проверяются в совместном разрезе.",
+      "closed": "Помимо конечного положения нужна проверка возможности установки замыкающей кассеты.",
+      "required": [
+        "Разрез проёма",
+        "Геометрия верхнего откоса",
+        "Зона замыкающей кассеты",
+        "Проектное противопожарное решение"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "window-jamb",
+      "title": "Боковое оконное примыкание",
+      "group": "Окна",
+      "ownCatalogPages": [
+        14,
+        15
+      ],
+      "sourceIds": [],
+      "open": "Откос и замыкающий профиль привязываются к оконной раме и архитектурной сетке.",
+      "closed": "Боковой добор должен быть проверен относительно коробчатого борта и пути движения кассеты.",
+      "required": [
+        "Глубина проёма",
+        "Контуры откоса и замыкающего профиля",
+        "Край облицовки",
+        "Проектный технологический зазор"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "corner-outside",
+      "title": "Наружный угол",
+      "group": "Углы",
+      "ownCatalogPages": [
+        16
+      ],
+      "sourceIds": [
+        "taldom-fk",
+        "alga-series"
+      ],
+      "open": "Угловая кассета и две рядовые кассеты с отдельным добором — разные составы модели.",
+      "closed": "Нужны отдельные привязки крыльев и проверка замков по обе стороны угла.",
+      "required": [
+        "Угол между плоскостями",
+        "Ширина каждого крыла",
+        "Выбранный состав изделий",
+        "Траектория установки"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "corner-inside",
+      "title": "Внутренний угол",
+      "group": "Углы",
+      "ownCatalogPages": [
+        17
+      ],
+      "sourceIds": [
+        "ruukki-550"
+      ],
+      "open": "Проверяется доступность монтажных полок обеих крайних кассет.",
+      "closed": "Совместная геометрия двух плоскостей не должна подменять проверку собираемости.",
+      "required": [
+        "Угол между плоскостями",
+        "Видимые швы обеих сторон",
+        "Окончания бортов",
+        "Зона доступа"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "facade-base",
+      "title": "Цоколь и начало облицовки",
+      "group": "Завершения",
+      "ownCatalogPages": [
+        18
+      ],
+      "sourceIds": [],
+      "open": "Стартовый элемент и водоотвод — отдельные части проектного узла.",
+      "closed": "Стартовая планка должна соответствовать геометрии замка данной кассеты.",
+      "required": [
+        "Отметка начала облицовки",
+        "Сечение стартового элемента",
+        "Проектные воздухоприток и водоотвод",
+        "Первое замковое соединение"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "facade-parapet",
+      "title": "Парапет и верх облицовки",
+      "group": "Завершения",
+      "ownCatalogPages": [
+        19
+      ],
+      "sourceIds": [
+        "ruukki-500"
+      ],
+      "open": "Парапетная крышка, её стыки и верх кассет рассматриваются совместно, а не одним жёстким телом.",
+      "closed": "Для верхней кассеты требуется проверка замыкающего соединения и доступа.",
+      "required": [
+        "Разрез верха стены",
+        "Геометрия крышки и окончаний",
+        "Проектные температурные перемещения",
+        "Зона замыкающей кассеты"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "building-movement",
+      "title": "Деформационный шов здания",
+      "group": "Особые участки",
+      "ownCatalogPages": [
+        20
+      ],
+      "sourceIds": [],
+      "open": "Два независимых поля облицовки должны оставаться независимыми в модели узла.",
+      "closed": "Замковые и доборные элементы не получают жёсткую связь через шов по умолчанию.",
+      "required": [
+        "Проектные относительные перемещения",
+        "Независимые связи левого и правого полей",
+        "Компенсационный элемент",
+        "Крайние положения для проверки"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "fire-opening",
+      "title": "Пожарное обрамление проёма",
+      "group": "Особые участки",
+      "ownCatalogPages": [
+        21
+      ],
+      "sourceIds": [],
+      "open": "Обычный откос нельзя автоматически объявлять противопожарным элементом.",
+      "closed": "Наличие замка не подтверждает пожарную пригодность всего фасадного решения.",
+      "required": [
+        "Подтверждённое решение применяемой НФС",
+        "Состав и границы противопожарных элементов",
+        "Привязка к проёму",
+        "Ревизия проектного документа"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "service-grille",
+      "title": "Вентиляционная решётка",
+      "group": "Инженерные проёмы",
+      "ownCatalogPages": [
+        22
+      ],
+      "sourceIds": [],
+      "open": "Рамка, кассеты и доборы согласуются с фактическим инженерным проёмом.",
+      "closed": "Проверяется возможность обслуживания без неподтверждённого демонтажа замкового ряда.",
+      "required": [
+        "Инженерный проём",
+        "Требуемое свободное сечение",
+        "Геометрия рамки",
+        "Зона обслуживания"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "service-hatch",
+      "title": "Ревизионный люк",
+      "group": "Инженерные проёмы",
+      "ownCatalogPages": [
+        23
+      ],
+      "sourceIds": [],
+      "open": "Подвижная створка и неподвижная рамка — отдельные элементы с собственными габаритами.",
+      "closed": "Проверяется движение створки относительно замковых кассет и соседних доборов.",
+      "required": [
+        "Контуры рамки и створки",
+        "Траектория открытия",
+        "Зона обслуживания",
+        "Согласованный состав узла"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    },
+    {
+      "id": "service-screen",
+      "title": "Экран или корзина кондиционера",
+      "group": "Инженерные проёмы",
+      "ownCatalogPages": [
+        24
+      ],
+      "sourceIds": [],
+      "open": "Декоративный экран не считается опорой оборудования без отдельного подтверждения.",
+      "closed": "Примыкания согласуются с доступом к оборудованию и собираемостью соседних кассет.",
+      "required": [
+        "Габариты оборудования",
+        "Проектные вентиляционные просветы",
+        "Независимое крепление оборудования",
+        "Зона обслуживания"
+      ],
+      "status": "requires-project-verification",
+      "approvedDrawing": null,
+      "assemblyPose": null,
+      "geometryCollisionCheck": null,
+      "assemblyPathCheck": null
+    }
+  ],
+  "readiness": {
+    "scenarioCount": 28,
+    "approvedAssemblies": 0,
+    "manufacturerDimensionsAdopted": false,
+    "competitorGeometryCopied": false,
+    "substructureInOwnBillOfMaterials": false
+  },
+  "unavailableSources": [
+    {
+      "manufacturer": "КРАСПАН",
+      "url": "https://www.kraspan.ru/download/albums/",
+      "limitation": "Полные альбомы требуют регистрации; не получены."
+    },
+    {
+      "manufacturer": "АЛЬТ / Альтернатива",
+      "url": "https://www.alt-msk.ru/",
+      "limitation": "Связанный PDF альбома кассет не получен; его чертежи не проверены."
+    },
+    {
+      "manufacturer": "Металл Профиль",
+      "url": "https://metallprofil.ru/about/bim/",
+      "limitation": "Прямое открытие вернуло HTTP 429; поисковые выдержки не заменяют проверку библиотеки."
+    }
+  ]
+}

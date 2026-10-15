@@ -1,0 +1,10 @@
+{
+  "version": "2026-10-14",
+  "archive": "release-assets/SteelProdukt_BIM_Web_2026-10-14.zip",
+  "archiveSha256": "feed85aa2eecc84953d9b054b6e1fc43a124b11d68bf06d21cbc61adaeeec395",
+  "destination": "public/bim/metallokassety",
+  "modelCount": 15,
+  "archiveBytes": 5359710,
+  "fileCount": 55,
+  "manifestSha256": "c80a36df24de48cb0a1ad6ee09e03dfd8dddbdd3b5dce7b1fff917a35b916f9d"
+}
