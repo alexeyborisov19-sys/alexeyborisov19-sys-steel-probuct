@@ -1,4 +1,4 @@
-// Read-only search visibility pass (2026-10-15 17:10 MSK): Yandex Webmaster summary, queries, indexing,
+// Read-only search visibility pass (2026-10-15 17:20 MSK): Yandex Webmaster summary, queries, indexing,
 // query analytics for commercial pages, Metrika organic visits. Nothing is changed anywhere.
 // Writes the full result to /tmp/report.json. Only endpoint labels and HTTP statuses go to the log,
 // because this repository is public and its Actions logs are public too.
@@ -31,6 +31,13 @@ async function get(label, url, token) {
   }
   if (status) break;
   }
+  if (!status) {
+    for (const family of [4, 6]) {
+      const r = await httpsGet(url, token, family);
+      out.calls.push({ label: `${label}:https_family${family}`, status: r.status, err: r.err });
+      if (r.status) { status = r.status; try { body = r.text ? JSON.parse(r.text) : {}; } catch { body = r.text.slice(0, 2000); } break; }
+    }
+  }
   out.calls.push({ label, status });
   console.log(`${label}: HTTP ${status}`);
   return { ok: status >= 200 && status < 300, status, body };
@@ -38,6 +45,40 @@ async function get(label, url, token) {
 
 const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 const today = day(0);
+
+// ---------------- NETWORK DIAGNOSTICS (no tokens involved) ----------------
+import dns from "node:dns/promises";
+import net from "node:net";
+import https from "node:https";
+out.netdiag = {};
+for (const host of ["api.webmaster.yandex.net", "api-metrika.yandex.net", "webmaster.yandex.ru"]) {
+  const d = { a: [], aaaa: [], tcp: {} };
+  try { d.a = await dns.resolve4(host); } catch (e) { d.a_err = e.code; }
+  try { d.aaaa = await dns.resolve6(host); } catch (e) { d.aaaa_err = e.code; }
+  for (const ip of [...d.a.slice(0, 3), ...d.aaaa.slice(0, 2)]) {
+    d.tcp[ip] = await new Promise((resolve) => {
+      const t0 = Date.now();
+      const sock = net.connect({ host: ip, port: 443 });
+      sock.setTimeout(10000);
+      sock.on("connect", () => { sock.destroy(); resolve(`ok ${Date.now() - t0}ms`); });
+      sock.on("timeout", () => { sock.destroy(); resolve("timeout 10s"); });
+      sock.on("error", (e) => resolve(`err ${e.code}`));
+    });
+  }
+  out.netdiag[host] = d;
+}
+console.log("NETDIAG:", JSON.stringify(out.netdiag));
+// Fallback transport: node:https with a forced address family.
+function httpsGet(url, token, family) {
+  return new Promise((resolve) => {
+    const req = https.get(url, { family, headers: { Authorization: `OAuth ${token}`, Accept: "application/json" }, timeout: 30000 }, (res) => {
+      let data = ""; res.setEncoding("utf8"); res.on("data", (c) => (data += c));
+      res.on("end", () => resolve({ status: res.statusCode, text: data }));
+    });
+    req.on("timeout", () => { req.destroy(); resolve({ status: 0, err: "TIMEOUT" }); });
+    req.on("error", (e) => resolve({ status: 0, err: e.code || "ERR" }));
+  });
+}
 
 // ---------------- WEBMASTER ----------------
 const wmCandidates = [
