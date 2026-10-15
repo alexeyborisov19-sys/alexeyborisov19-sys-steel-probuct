@@ -11,7 +11,7 @@ export type CassetteBimInput = {
   /** Stable row:column keys (zero based). */
   panelColours?: Record<string, { ral: string; hex: string }>;
 };
-export const bimScope = PRODUCT_CALCULATION_NOTICE + ". " + "Координационная модель. ОТ и ЗТ — геометрия из STEP, угловая — упрощённая по чертежу. Изменение ширины и высоты адаптирует центральную часть; борта и толщина сохраняются. Крепёж и подсистема не входят; узел стыковки требует согласования. Не для изготовления или расчёта нагрузок.";
+export const bimScope = PRODUCT_CALCULATION_NOTICE + ". " + "Координационная модель. ОТ и ЗТ — геометрия из STEP, угловая закрытая — геометрия из SP-CAS-05, но пока только в исходных габаритах. Изменение ширины и высоты адаптирует центральную часть; борта и толщина сохраняются. Крепёж и подсистема не входят; узел стыковки требует согласования. Не для изготовления или расчёта нагрузок.";
 export function validateCassetteBim(p: CassetteBimInput): string[] {
   const errors: string[] = [];
   if (p.projectId !== undefined && !/^[A-Za-z0-9_-]{1,80}$/.test(p.projectId)) errors.push("Некорректный идентификатор проекта.");
