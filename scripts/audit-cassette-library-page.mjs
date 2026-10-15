@@ -68,6 +68,19 @@ try{
   await joint.locator('summary').click();
   await expect(joint).not.toHaveAttribute('open','');
 
+  // Preserve original ordering while associating only evidenced models with a series.
+  for(const [id,series] of [['SP-CAS-01','Премиум'],['SP-CAS-02','Стандарт'],['SP-CAS-03','Премиум'],['SP-CAS-04','Стандарт'],['SP-CAS-05','Премиум'],['SP-CAS-06','Стандарт']]){
+    const card=page.locator('article[data-model-id="'+id+'"]');
+    await expect(card.getByText('Серия «'+series+'»',{exact:false})).toBeVisible();
+    if(['SP-CAS-01','SP-CAS-03','SP-CAS-05'].includes(id)){
+      for(const name of ['IFC4_coordination','IFC4_exact_geometry']){
+        await expect(card.locator('a[href*="/bim/metallokassety-oriented/'+name+'/'+id+'.ifc"]')).toHaveCount(1);
+      }
+    }
+  }
+  await expect(page.locator('article[data-model-id="SP-CAS-09"] a[href*="metallokassety-premium"]')).toHaveCount(0);
+  await expect(page.locator('a[href="/bim/metallokassety-oriented/index.html"]')).toHaveCount(1);
+
   // Both source formats must be visible for every card without opening details.
   await expect(cards.locator('a[download]')).toHaveCount(30);
   for(const link of await cards.locator('a[download]').all())await expect(link).toBeVisible();
