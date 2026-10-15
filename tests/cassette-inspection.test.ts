@@ -114,7 +114,7 @@ test("resizing the face translates edge zones without scaling native folds, hole
 });
 
 test("corner remains isolated even when a caller requests neighbor or exploded inspection", () => {
-  const p: CassetteBimInput = { ...input(), profile: "corner", widthMm: 290, heightMm: 380, depthMm: 20, thicknessMm: 1, returnWidthMm: 330, columns: 1 };
+  const p: CassetteBimInput = { ...input(), profile: "corner", widthMm: 500, heightMm: 431.433143262, depthMm: 20, thicknessMm: 1, returnWidthMm: 300, columns: 1 };
   assert.equal(canInspectCassetteNeighbours(p), false);
   for (const mode of ["single", "neighbours", "exploded"] as const) {
     assert.equal(createCassetteInspectionInstances(p, cassetteGeometry(p), mode, "vertical").length, 1);
