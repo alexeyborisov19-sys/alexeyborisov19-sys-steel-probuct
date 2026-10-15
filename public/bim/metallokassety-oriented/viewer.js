@@ -25,10 +25,21 @@ function displayArrays(m){
  if(uprightClosed.has(m.id)){
   // Rigid 180-degree turn around Y with a translation of the origin.
   // Rotate positions and normals identically without changing face winding.
-  let maxX=-Infinity,maxZ=-Infinity;
-  for(let i=0;i<mesh.length;i+=6){maxX=Math.max(maxX,mesh[i]);maxZ=Math.max(maxZ,mesh[i+2]);}
-  for(let i=0;i<mesh.length;i+=6){mesh[i]=maxX-mesh[i];mesh[i+2]=maxZ-mesh[i+2];mesh[i+3]=-mesh[i+3];mesh[i+5]=-mesh[i+5];}
-  for(let i=0;i<lines.length;i+=3){lines[i]=maxX-lines[i];lines[i+2]=maxZ-lines[i+2];}
+  // Display arrays are centred around their own bounding-box midpoint.
+  // Rotating around that midpoint keeps the object inside the camera view.
+  let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+  for(let i=0;i<mesh.length;i+=6){
+   minX=Math.min(minX,mesh[i]);maxX=Math.max(maxX,mesh[i]);
+   minZ=Math.min(minZ,mesh[i+2]);maxZ=Math.max(maxZ,mesh[i+2]);
+  }
+  const pivotX=minX+maxX,pivotZ=minZ+maxZ;
+  for(let i=0;i<mesh.length;i+=6){
+    mesh[i]=pivotX-mesh[i];mesh[i+2]=pivotZ-mesh[i+2];
+    mesh[i+3]=-mesh[i+3];mesh[i+5]=-mesh[i+5];
+  }
+  for(let i=0;i<lines.length;i+=3){
+    lines[i]=pivotX-lines[i];lines[i+2]=pivotZ-lines[i+2];
+  }
  }
  m._displayArrays={mesh,lines};
  return m._displayArrays;
