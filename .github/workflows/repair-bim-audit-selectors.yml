@@ -1,0 +1,50 @@
+name: Repair isolated BIM audit selectors
+on:
+  push:
+    branches: ['feat/bim-library-20261014']
+    paths: ['.github/workflows/repair-bim-audit-selectors.yml']
+permissions:
+  contents: write
+concurrency:
+  group: repair-bim-audit-selectors
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.ref == 'refs/heads/feat/bim-library-20261014'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/bim-library-20261014
+          fetch-depth: 1
+      - name: Apply exact test-only repair
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git hash-object scripts/audit-product-configurators.mjs)" = "6edd448ed589375dfb286b70b65557b2c7285211"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/audit-product-configurators.mjs')
+          source = p.read_text()
+          old = "page.getByRole('status')"
+          new = "page.locator('#bim-workspace').getByRole('status')"
+          assert source.count(old) == 2, 'Unexpected selector count; no changes applied'
+          for message in ['Текущая раскладка не изменена', 'Не удалось прочитать JSON']:
+              assert f"expect({old}).toContainText('{message}')" in source, 'Unexpected assertion; no changes applied'
+          p.write_text(source.replace(old, new))
+          PY
+          node --check scripts/audit-product-configurators.mjs
+          git diff --check
+          test "$(git diff --name-only)" = "scripts/audit-product-configurators.mjs"
+          git diff --stat
+          git diff -- scripts/audit-product-configurators.mjs
+      - name: Commit only the test fix to its existing feature branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- scripts/audit-product-configurators.mjs
+          git commit -m 'test(bim): scope import notices to the BIM workspace'
+          git push origin HEAD:refs/heads/feat/bim-library-20261014
+          git rev-parse HEAD
