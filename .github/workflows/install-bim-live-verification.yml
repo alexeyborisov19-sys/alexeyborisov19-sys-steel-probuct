@@ -1,0 +1,108 @@
+name: Verify published BIM release (read only)
+
+on:
+  push:
+    branches: ['audit/bim-live-verification-20261015']
+    paths: ['.github/workflows/install-bim-live-verification.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steelprodukt-bim-production-readonly
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Compare six live closed-cassette IFCs and public scripts to checked source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from urllib.parse import urlparse
+
+          root = Path('public')
+          domain = 'https://www.steelprodukt.ru'
+          paths = [
+              f'bim/metallokassety-oriented/{kind}/{model}.ifc'
+              for model in ('SP-CAS-01', 'SP-CAS-03', 'SP-CAS-05')
+              for kind in ('IFC4_coordination', 'IFC4_exact_geometry')
+          ] + [
+              'bim/metallokassety-oriented/index.html',
+              'bim/metallokassety-oriented/viewer.js',
+              'bim/metallokassety-oriented/viewer.css',
+              'bim/metallokassety-parametric/models.json',
+              'bim/metallokassety-parametric/app.mjs',
+              'bim/metallokassety-parametric/sizing.mjs',
+          ]
+
+          def fetch(path):
+              target=domain+'/'+path.lstrip('/')
+              with urlopen(Request(target,headers={'User-Agent':'SteelProdukt-ReadOnly-BIM-QA/1.0'}),timeout=35) as response:
+                  assert response.status==200,(path,response.status)
+                  assert response.url==target,(path,response.url)
+                  return response.read()
+
+          report={'sourceSha': __import__('os').environ.get('GITHUB_SHA',''),
+                  'readOnly':True, 'checked':[], 'pages':[]}
+          for path in paths:
+              reference=(root/path).read_bytes()
+              live=fetch(path)
+              before=hashlib.sha256(reference).hexdigest()
+              after=hashlib.sha256(live).hexdigest()
+              assert before==after,(path,'content mismatch',before,after)
+              assert len(live)>100,(path,'empty file')
+              if path.endswith('.ifc'):
+                  assert live.startswith(b'ISO-10303-21;') and live.rstrip().endswith(b'END-ISO-10303-21;')
+              report['checked'].append({'path':'/'+path,'bytes':len(live),'sha256':after})
+
+          for page,markers in [
+              ('products/metallokassety/bim', [b'SP-CAS-01',b'SP-CAS-03',b'SP-CAS-05',b'\xd0\x9f\xd1\x80\xd0\xb5\xd0\xbc\xd0\xb8\xd1\x83\xd0\xbc']),
+              ('bim/metallokassety-oriented/index.html',[b'SP-CAS-01',b'SP-CAS-03',b'SP-CAS-05']),
+              ('bim/metallokassety-parametric/index.html',[b'app.mjs',b'id="model"']),
+          ]:
+              body=fetch(page)
+              assert all(mark in body for mark in markers),(page,'marker missing')
+              report['pages'].append({'path':'/'+page,'status':200,'bytes':len(body)})
+          output=Path('artifacts/bim-live-production');output.mkdir(parents=True,exist_ok=True)
+          (output/'hashes.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print(json.dumps({'PASS':'6 live IFC4 files, 6 static assets, 3 pages','version':report['sourceSha'],
+                            'sha256':{e['path']:e['sha256'] for e in report['checked'] if e['path'].endswith('.ifc')}},indent=2))
+          PY
+      - name: Install browser QA dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium for read-only live smoke
+        run: npx playwright install --with-deps chromium
+      - name: Verify 3D viewer and source downloads on live site
+        env:
+          BIM_AUDIT_BASE_URL: https://www.steelprodukt.ru
+        run: node scripts/audit-oriented-cassette-viewer.mjs
+      - name: Verify live 15 cards, names, filters and downloads without submissions
+        env:
+          BROWSER_AUDIT_BASE_URL: https://www.steelprodukt.ru
+        run: node scripts/audit-cassette-library-page.mjs
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bim-live-release-validation
+          path: |
+            artifacts/bim-live-production/
+            artifacts/cassette-upright/
+            output/browser-audit/cassette-library/
+          if-no-files-found: ignore
+          retention-days: 7
