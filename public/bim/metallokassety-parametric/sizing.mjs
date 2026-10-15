@@ -190,7 +190,10 @@ export function createIfc(model, geometry, mark = '') {
   const pset=(name,properties)=>add('IFCPROPERTYSET',id(),'$',quoted(name),'$',list(properties));
   const source=pset('SP_Source',[
     property('SourceModelId','IFCIDENTIFIER',model.id),property('SourceFile','IFCLABEL',model.source_file),
-    property('CoordinationSourceSHA256','IFCIDENTIFIER',model.ifcSha256),property('WebGeometryVersion','IFCLABEL',VERSION),
+    property('CoordinationSourceSHA256','IFCIDENTIFIER',model.orientedCoordSha256 || model.ifcSha256),
+    property('OriginalSourceSHA256','IFCIDENTIFIER',model.ifcSha256),
+    property('UpperLockOrientation','IFCLABEL',model.orientation || 'Original source orientation'),
+    property('WebGeometryVersion','IFCLABEL',VERSION),
     property('GeometryEditMethod','IFCLABEL','Изменение прямых участков сетки; защитные зоны гибов и отверстий'),
     property('NativeParametricEditing','IFCBOOLEAN',false),property('ManufacturingApproved','IFCBOOLEAN',false)
   ]);

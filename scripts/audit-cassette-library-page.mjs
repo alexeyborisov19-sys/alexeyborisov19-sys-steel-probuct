@@ -18,7 +18,7 @@ async function downloadSource(card,folder,filename){
   await expect(link).toHaveCount(1);
   await expect(link).toBeVisible();
   const href=await link.getAttribute('href');
-  assert.match(href,/^\/bim\/metallokassety\/IFC4_(coordination|exact_geometry)\/SP-(CAS|TRIM)-\d{2}\.ifc$/);
+  assert.match(href,/^\/bim\/metallokassety(?:-oriented)?\/IFC4_(coordination|exact_geometry)\/SP-(CAS|TRIM)-\d{2}\.ifc$/);
   // Exercise the actual visible link. No force-click, DOM opening or API fetch
   // substitutes for the download that the visitor must be able to perform.
   const [download]=await Promise.all([page.waitForEvent('download'),link.click()]);
@@ -67,6 +67,19 @@ try{
   await expect(joint.getByText('Видимый шов, зацеп и свободное пространство внутри замка',{exact:false})).toBeVisible();
   await joint.locator('summary').click();
   await expect(joint).not.toHaveAttribute('open','');
+
+  // Preserve original ordering while associating only evidenced models with a series.
+  for(const [id,series] of [['SP-CAS-01','Премиум'],['SP-CAS-02','Стандарт'],['SP-CAS-03','Премиум'],['SP-CAS-04','Стандарт'],['SP-CAS-05','Премиум'],['SP-CAS-06','Стандарт']]){
+    const card=page.locator('article[data-model-id="'+id+'"]');
+    await expect(card.getByText('Серия «'+series+'»',{exact:false})).toBeVisible();
+    if(['SP-CAS-01','SP-CAS-03','SP-CAS-05'].includes(id)){
+      for(const name of ['IFC4_coordination','IFC4_exact_geometry']){
+        await expect(card.locator('a[href*="/bim/metallokassety-oriented/'+name+'/'+id+'.ifc"]')).toHaveCount(1);
+      }
+    }
+  }
+  await expect(page.locator('article[data-model-id="SP-CAS-09"] a[href*="metallokassety-premium"]')).toHaveCount(0);
+  await expect(page.locator('a[href="/bim/metallokassety-oriented/index.html"]')).toHaveCount(1);
 
   // Both source formats must be visible for every card without opening details.
   await expect(cards.locator('a[download]')).toHaveCount(30);

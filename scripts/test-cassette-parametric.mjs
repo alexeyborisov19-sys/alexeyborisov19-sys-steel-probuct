@@ -11,8 +11,9 @@ assert.equal(models.length,15);assert.equal(new Set(models.map(m=>m.id)).size,15
 const save=process.env.BIM_SIZING_OUTPUT_DIR; if(save)fs.mkdirSync(save,{recursive:true});
 let cases=0;
 for(const model of models){
- const raw=fs.readFileSync(path.join(dir,`metallokassety/IFC4_coordination/${model.id}.ifc`),'utf8');
- assert.equal(createHash('sha256').update(raw).digest('hex'),model.ifcSha256);
+ const folder=model.orientedCoordSha256?'metallokassety-oriented':'metallokassety';
+ const raw=fs.readFileSync(path.join(dir,`${folder}/IFC4_coordination/${model.id}.ifc`),'utf8');
+ assert.equal(createHash('sha256').update(raw).digest('hex'),model.orientedCoordSha256||model.ifcSha256);
  const mesh=prepareMesh(readMesh(raw)),original=mesh.stats.size;
  assert(mesh.axes.some(a=>a.editable));
  const vectors=[original,mesh.axes.map(a=>a.min),mesh.axes.map(a=>a.max)];

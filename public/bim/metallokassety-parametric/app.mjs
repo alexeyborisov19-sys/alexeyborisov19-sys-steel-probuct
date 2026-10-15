@@ -16,18 +16,22 @@ function updatePreview(){
 function apply(){if(!mesh)return;try{const next=resize(mesh,currentDimensions());const mark=$('mark').value;if(mark.length>80||/[\x00-\x1f]/.test(mark))throw new Error('Проверьте марку.');geometry=next;updatePreview();}catch(e){dirty=true;$('download').disabled=true;$('save-project').disabled=true;error(e.message);$('preview-state').textContent='Размеры не применены';}}
 async function sourceMesh(model){
   if(cache.has(model.id)){const value=cache.get(model.id);cache.delete(model.id);cache.set(model.id,value);return value;}
-  const response=await fetch('../metallokassety/IFC4_coordination/'+model.id+'.ifc',{credentials:'omit'});
+  const oriented=Boolean(model.orientedCoordSha256);
+  const response=await fetch('../'+(oriented?'metallokassety-oriented':'metallokassety')+'/IFC4_coordination/'+model.id+'.ifc',{credentials:'omit'});
   if(!response.ok)throw new Error('Исходный IFC недоступен: HTTP '+response.status);
   const text=await response.text();if(text.length>3000000)throw new Error('Исходный IFC слишком велик.');
   const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));const hex=[...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  if(hex!==model.ifcSha256)throw new Error('Контрольная сумма исходного IFC не совпала. Скачивание заблокировано.');
+  if(hex!==(model.orientedCoordSha256 || model.ifcSha256))throw new Error('Контрольная сумма IFC не совпала. Скачивание заблокировано.');
   const prepared=prepareMesh(readMesh(text));cache.set(model.id,prepared);while(cache.size>2)cache.delete(cache.keys().next().value);return prepared;
 }
 function fields(){
   $('dimensions').replaceChildren();const order=[0,2,1];
   for(const i of order){const a=mesh.axes[i],label=document.createElement('label'),input=document.createElement('input'),hint=document.createElement('small');label.className='field';label.append('Габарит '+'XYZ'[i]+', мм');input.id='dim-'+i;input.type='number';input.step='any';input.inputMode='decimal';input.value=String(Math.round(a.original*1000)/1000);input.readOnly=!a.editable;input.setAttribute('aria-describedby','dim-help-'+i);if(a.editable){input.min=a.min;input.max=a.max;hint.textContent=fmt(a.min)+'–'+fmt(a.max)+' мм';}else hint.textContent='Фиксированный профиль';hint.id='dim-help-'+i;input.addEventListener('input',invalidate);label.append(input,hint);$('dimensions').append(label);}
-  $('source-details').textContent=selected.category+' · толщина исходника '+fmt(selected.measured_thickness_mm)+' мм';
-  $('source-mesh').href='../metallokassety/IFC4_coordination/'+selected.id+'.ifc';$('source-exact').href='../metallokassety/IFC4_exact_geometry/'+selected.id+'.ifc';
+  $('source-details').textContent=selected.category+' · толщина исходника '+fmt(selected.measured_thickness_mm)+' мм'+(selected.orientedCoordSha256?' · верхний угловой отгиб ориентирован вверх (+Z)':'');
+  const base=selected.orientedCoordSha256?'metallokassety-oriented':'metallokassety';
+  $('source-mesh').href='../'+base+'/IFC4_coordination/'+selected.id+'.ifc';$('source-exact').href='../'+base+'/IFC4_exact_geometry/'+selected.id+'.ifc';
+  $('source-mesh').textContent=selected.orientedCoordSha256?'Координационный IFC · замок сверху':'Исходный координационный IFC';
+  $('source-exact').textContent=selected.orientedCoordSha256?'Точный IFC · замок сверху':'Исходный точный IFC';
 }
 async function selectModel(id,settings=null){
   const request=++epoch,model=models.find(m=>m.id===id);if(!model)return;

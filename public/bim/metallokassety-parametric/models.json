@@ -1,17 +1,155 @@
 [
-{"id":"SP-CAS-01","name":"Кассета 0.7мм ЗТ","category":"Металлокассета","fixing_type":"Закрытый тип (по имени исходника)","measured_thickness_mm":0.7,"source_file":"Кассета 0.7мм ЗТ.STEP","ifcSha256":"2c116027a16ed2bd6a71855c532955548b3905221424d1e5ad9aaea2ddfb66cf"},
-{"id":"SP-CAS-02","name":"Кассета 0.7мм ОТ","category":"Металлокассета","fixing_type":"Открытый тип (по имени исходника)","measured_thickness_mm":0.7,"source_file":"Кассета 0.7мм ОТ.STEP","ifcSha256":"f6616e48513e978eb737634367c9317beee7a7cc4fd1b91d022cb00a9642d22f"},
-{"id":"SP-CAS-03","name":"Кассета 1мм ЗТ","category":"Металлокассета","fixing_type":"Закрытый тип (по имени исходника)","measured_thickness_mm":1.0,"source_file":"Кассета 1мм ЗТ.STEP","ifcSha256":"eb0e444d61bb5fd94e62bae48afd33fa6c154ef905e742dca338d6f22c233977"},
-{"id":"SP-CAS-04","name":"Кассета 1мм ОТ","category":"Металлокассета","fixing_type":"Открытый тип (по имени исходника)","measured_thickness_mm":1.0,"source_file":"Кассета 1мм ОТ.STEP","ifcSha256":"68bcafffe175d2b94888c6f10ad9edb9bf7ef4919bf2617ff3a566c5076dcee6"},
-{"id":"SP-CAS-05","name":"Кассета угловая закрытый тип","category":"Металлокассета","fixing_type":"Закрытый тип (по имени исходника)","measured_thickness_mm":1.0,"source_file":"Кассета угловая закрытый тип.STEP","ifcSha256":"ae2f4b057a48d987b2b936b57674aa47636b8fa507a6afe218127870fdbef895"},
-{"id":"SP-CAS-06","name":"Кассета угловая открытый тип","category":"Металлокассета","fixing_type":"Открытый тип (по имени исходника)","measured_thickness_mm":0.7,"source_file":"Кассета угловая открытый тип.STEP","ifcSha256":"9da9f62c0aae2c384e8fc05c52f83966e7bc01e41f8fe7b17d70f464dbae8263"},
-{"id":"SP-TRIM-07","name":"Откос","category":"Доборный элемент","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":0.7,"source_file":"Откос.STEP","ifcSha256":"87cd82370e79639edf76857c3f652288bb87ef414d4da31bcc102f001f9f1e24"},
-{"id":"SP-TRIM-08","name":"Парапет","category":"Доборный элемент","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":0.7,"source_file":"Парапет.STEP","ifcSha256":"555c499e1b21ffbb93cdcf950d407674ead807be7e20c181984a2e2593f9abd8"},
-{"id":"SP-CAS-09","name":"Стандартная кассета 1 сливное","category":"Металлокассета","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":1.0,"source_file":"Стандартная кассета 1 сливное.STEP","ifcSha256":"65d6d456fcbe5eec9d05dd4915cf1716dc0c98ea1116e322b070779c9aeacf8f"},
-{"id":"SP-CAS-10","name":"Стандартная кассета 2 сливных","category":"Металлокассета","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":1.0,"source_file":"Стандартная кассета 2 сливных.STEP","ifcSha256":"76b7380971c0a4e9644b4c10b781a7d773f680b9d835382cd3d992fa6699b1d9"},
-{"id":"SP-CAS-11","name":"Стандартная кассета 3 сливных","category":"Металлокассета","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":1.0,"source_file":"Стандартная кассета 3 сливных.STEP","ifcSha256":"c415e37f51d96c784952878e2c6d39497df55a81b4772d9cf743ec8556d89f44"},
-{"id":"SP-TRIM-12","name":"Стартовая планка","category":"Доборный элемент","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":1.0,"source_file":"Стартовая планка.STEP","ifcSha256":"8ef8eea6e3eea89573460d8e915ab85994947b9534fdc1e6898ce29a042dc33d"},
-{"id":"SP-TRIM-13","name":"Угол внутренний","category":"Доборный элемент","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":0.5,"source_file":"Угол внутренний.STEP","ifcSha256":"e73a7cb509ca50c4fc5b18754c673ab6a094db1a4fed84c121886088c89c01b3"},
-{"id":"SP-TRIM-14","name":"Угол","category":"Доборный элемент","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":0.5,"source_file":"Угол.STEP","ifcSha256":"27f75dae416416834d49c3da91d79b3645c381a9b3827051003d53813ad2f856"},
-{"id":"SP-TRIM-15","name":"отлив","category":"Доборный элемент","fixing_type":"Не указан в имени исходного файла","measured_thickness_mm":0.5,"source_file":"отлив.STEP","ifcSha256":"19cb8d4fd18c6720dc442a5726a412786f732aac509b043bcf37d27141f9731b"}
+  {
+    "id": "SP-CAS-01",
+    "name": "Кассета 0.7мм ЗТ",
+    "category": "Металлокассета",
+    "fixing_type": "Закрытый тип (по имени исходника)",
+    "measured_thickness_mm": 0.7,
+    "source_file": "Кассета 0.7мм ЗТ.STEP",
+    "ifcSha256": "2c116027a16ed2bd6a71855c532955548b3905221424d1e5ad9aaea2ddfb66cf",
+    "orientedCoordSha256": "81cd929620716750a1e5c2f7c80e138272465de72825fbd4316e32177a428ee6",
+    "orientation": "angled-upper-lock-on-positive-Z"
+  },
+  {
+    "id": "SP-CAS-02",
+    "name": "Кассета 0.7мм ОТ",
+    "category": "Металлокассета",
+    "fixing_type": "Открытый тип (по имени исходника)",
+    "measured_thickness_mm": 0.7,
+    "source_file": "Кассета 0.7мм ОТ.STEP",
+    "ifcSha256": "f6616e48513e978eb737634367c9317beee7a7cc4fd1b91d022cb00a9642d22f",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-CAS-03",
+    "name": "Кассета 1мм ЗТ",
+    "category": "Металлокассета",
+    "fixing_type": "Закрытый тип (по имени исходника)",
+    "measured_thickness_mm": 1,
+    "source_file": "Кассета 1мм ЗТ.STEP",
+    "ifcSha256": "eb0e444d61bb5fd94e62bae48afd33fa6c154ef905e742dca338d6f22c233977",
+    "orientedCoordSha256": "cb63cbec0536f66c3ffdb7acc42496cae7db0df6e736175fd473d6b09ea7b3d0",
+    "orientation": "angled-upper-lock-on-positive-Z"
+  },
+  {
+    "id": "SP-CAS-04",
+    "name": "Кассета 1мм ОТ",
+    "category": "Металлокассета",
+    "fixing_type": "Открытый тип (по имени исходника)",
+    "measured_thickness_mm": 1,
+    "source_file": "Кассета 1мм ОТ.STEP",
+    "ifcSha256": "68bcafffe175d2b94888c6f10ad9edb9bf7ef4919bf2617ff3a566c5076dcee6",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-CAS-05",
+    "name": "Кассета угловая закрытый тип",
+    "category": "Металлокассета",
+    "fixing_type": "Закрытый тип (по имени исходника)",
+    "measured_thickness_mm": 1,
+    "source_file": "Кассета угловая закрытый тип.STEP",
+    "ifcSha256": "ae2f4b057a48d987b2b936b57674aa47636b8fa507a6afe218127870fdbef895",
+    "orientedCoordSha256": "c76db0b2ff9e3bbe71dfd9ae438d0de3da1d51072d451a13855e3dbcd05b03e2",
+    "orientation": "angled-upper-lock-on-positive-Z"
+  },
+  {
+    "id": "SP-CAS-06",
+    "name": "Кассета угловая открытый тип",
+    "category": "Металлокассета",
+    "fixing_type": "Открытый тип (по имени исходника)",
+    "measured_thickness_mm": 0.7,
+    "source_file": "Кассета угловая открытый тип.STEP",
+    "ifcSha256": "9da9f62c0aae2c384e8fc05c52f83966e7bc01e41f8fe7b17d70f464dbae8263",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-TRIM-07",
+    "name": "Откос",
+    "category": "Доборный элемент",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 0.7,
+    "source_file": "Откос.STEP",
+    "ifcSha256": "87cd82370e79639edf76857c3f652288bb87ef414d4da31bcc102f001f9f1e24",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-TRIM-08",
+    "name": "Парапет",
+    "category": "Доборный элемент",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 0.7,
+    "source_file": "Парапет.STEP",
+    "ifcSha256": "555c499e1b21ffbb93cdcf950d407674ead807be7e20c181984a2e2593f9abd8",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-CAS-09",
+    "name": "Стандартная кассета 1 сливное",
+    "category": "Металлокассета",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 1,
+    "source_file": "Стандартная кассета 1 сливное.STEP",
+    "ifcSha256": "65d6d456fcbe5eec9d05dd4915cf1716dc0c98ea1116e322b070779c9aeacf8f",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-CAS-10",
+    "name": "Стандартная кассета 2 сливных",
+    "category": "Металлокассета",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 1,
+    "source_file": "Стандартная кассета 2 сливных.STEP",
+    "ifcSha256": "76b7380971c0a4e9644b4c10b781a7d773f680b9d835382cd3d992fa6699b1d9",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-CAS-11",
+    "name": "Стандартная кассета 3 сливных",
+    "category": "Металлокассета",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 1,
+    "source_file": "Стандартная кассета 3 сливных.STEP",
+    "ifcSha256": "c415e37f51d96c784952878e2c6d39497df55a81b4772d9cf743ec8556d89f44",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-TRIM-12",
+    "name": "Стартовая планка",
+    "category": "Доборный элемент",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 1,
+    "source_file": "Стартовая планка.STEP",
+    "ifcSha256": "8ef8eea6e3eea89573460d8e915ab85994947b9534fdc1e6898ce29a042dc33d",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-TRIM-13",
+    "name": "Угол внутренний",
+    "category": "Доборный элемент",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 0.5,
+    "source_file": "Угол внутренний.STEP",
+    "ifcSha256": "e73a7cb509ca50c4fc5b18754c673ab6a094db1a4fed84c121886088c89c01b3",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-TRIM-14",
+    "name": "Угол",
+    "category": "Доборный элемент",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 0.5,
+    "source_file": "Угол.STEP",
+    "ifcSha256": "27f75dae416416834d49c3da91d79b3645c381a9b3827051003d53813ad2f856",
+    "orientedCoordSha256": null
+  },
+  {
+    "id": "SP-TRIM-15",
+    "name": "отлив",
+    "category": "Доборный элемент",
+    "fixing_type": "Не указан в имени исходного файла",
+    "measured_thickness_mm": 0.5,
+    "source_file": "отлив.STEP",
+    "ifcSha256": "19cb8d4fd18c6720dc442a5726a412786f732aac509b043bcf37d27141f9731b",
+    "orientedCoordSha256": null
+  }
 ]

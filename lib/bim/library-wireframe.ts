@@ -15,8 +15,10 @@ const unit = (p: Point): Point => p.map(n => n / Math.hypot(...p)) as Point;
 export function libraryWireframe(modelId: string): string {
   const source = sources.find(item => item.id === modelId);
   if (!source || !catalog.some(item => item.id === modelId)) throw new Error("Unknown BIM source");
-  const bytes = readFileSync(path.join(process.cwd(), "public/bim/metallokassety/IFC4_coordination", `${modelId}.ifc`));
-  if (createHash("sha256").update(bytes).digest("hex") !== source.ifcSha256) throw new Error("BIM thumbnail source checksum mismatch");
+  const preferred=source.orientedCoordSha256;
+  const folder=preferred?"public/bim/metallokassety-oriented/IFC4_coordination":"public/bim/metallokassety/IFC4_coordination";
+  const bytes = readFileSync(path.join(process.cwd(), folder, `${modelId}.ifc`));
+  if (createHash("sha256").update(bytes).digest("hex") !== (preferred||source.ifcSha256)) throw new Error("BIM thumbnail source checksum mismatch");
   const text = bytes.toString("ascii");
   const pointsRecord = text.match(/^#\d+=IFCCARTESIANPOINTLIST3D\((.*)\);$/m);
   const facesRecord = text.match(/^#\d+=IFCTRIANGULATEDFACESET\((.*)\);$/m);
