@@ -1,4 +1,4 @@
-// Read-only search visibility pass (2026-10-15 17:20 MSK): Yandex Webmaster summary, queries, indexing,
+// Read-only search visibility pass (2026-10-15 17:30 MSK): Yandex Webmaster summary, queries, indexing,
 // query analytics for commercial pages, Metrika organic visits. Nothing is changed anywhere.
 // Writes the full result to /tmp/report.json. Only endpoint labels and HTTP statuses go to the log,
 // because this repository is public and its Actions logs are public too.
@@ -66,6 +66,22 @@ for (const host of ["api.webmaster.yandex.net", "api-metrika.yandex.net", "webma
     });
   }
   out.netdiag[host] = d;
+}
+for (const host of ["api.webmaster.yandex.ru", "api.webmaster.yandex.com"]) {
+  try { out.netdiag[host] = { a: await dns.resolve4(host) }; } catch (e) { out.netdiag[host] = { a_err: e.code }; }
+}
+// Is the Webmaster API also served by another Yandex front (same SNI/Host)? Unauthenticated probe only.
+out.netdiag.alt_front = {};
+for (const ip of [...new Set([...(out.netdiag["webmaster.yandex.ru"].a || []), ...(out.netdiag["api.webmaster.yandex.ru"]?.a || [])])].slice(0, 3)) {
+  out.netdiag.alt_front[ip] = await new Promise((resolve) => {
+    const req = https.request({ host: ip, servername: "api.webmaster.yandex.net", path: "/v4/user", headers: { Host: "api.webmaster.yandex.net", Accept: "application/json" }, timeout: 15000 }, (res) => {
+      let data = ""; res.setEncoding("utf8"); res.on("data", (c) => (data += c));
+      res.on("end", () => resolve({ status: res.statusCode, body: data.slice(0, 200), cert_ok: res.socket.authorized }));
+    });
+    req.on("timeout", () => { req.destroy(); resolve({ err: "TIMEOUT" }); });
+    req.on("error", (e) => resolve({ err: e.code || String(e.message).slice(0, 120) }));
+    req.end();
+  });
 }
 console.log("NETDIAG:", JSON.stringify(out.netdiag));
 // Fallback transport: node:https with a forced address family.
