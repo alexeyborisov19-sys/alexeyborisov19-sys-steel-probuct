@@ -112,7 +112,7 @@ export function CassetteBimConfigurator() {
       <summary><span>Кассета и размеры</span><small>{valid ? `${p.columns} × ${p.rows} кассет · ${format(p.widthMm)} × ${format(p.heightMm)} мм` : "Проверьте параметры"}</small></summary>
       <div className={styles.fields}>
         <label className={styles.profileField}>Исполнение<select value={p.profile} onChange={e=>chooseProfile(e.target.value as CassetteProfile,p.thicknessMm)}>{Object.entries(cassetteProfiles).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
-        {p.profile==='corner' && <label>Габарит второго крыла исходника, мм<input type="number" readOnly value={p.returnWidthMm}/></label>}
+        {p.profile==='corner' && <label>Ширина второго крыла, мм (фиксированный габарит исходника)<input type="number" readOnly value={p.returnWidthMm}/></label>}
         {fields.filter(([key]) => key === "widthMm" || key === "heightMm").map(([key, label]) => <label key={key}>{key === "widthMm" && p.profile === "corner" ? "Ширина первого крыла, мм (фиксированный габарит исходника)" : key === "heightMm" && p.profile === "corner" ? "Полная высота исходной угловой модели, мм" : label}<input aria-describedby="bim-visible-dimensions-help" type="number" step="any" readOnly={p.profile === "corner"} value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
         <label>Толщина, мм<select value={p.thicknessMm} onChange={e => chooseProfile(p.profile!,Number(e.target.value))}>{(p.profile === "corner" ? [1] : [0.7, 1]).map(t => <option key={t} value={t}>{t}</option>)}</select></label>
       </div>
