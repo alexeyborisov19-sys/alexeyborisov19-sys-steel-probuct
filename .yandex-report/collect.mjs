@@ -1,4 +1,4 @@
-// Read-only search visibility pass (2026-10-15 17:30 MSK): Yandex Webmaster summary, queries, indexing,
+// Read-only search visibility pass (2026-10-15 17:40 MSK): Yandex Webmaster summary, queries, indexing,
 // query analytics for commercial pages, Metrika organic visits. Nothing is changed anywhere.
 // Writes the full result to /tmp/report.json. Only endpoint labels and HTTP statuses go to the log,
 // because this repository is public and its Actions logs are public too.
@@ -70,18 +70,32 @@ for (const host of ["api.webmaster.yandex.net", "api-metrika.yandex.net", "webma
 for (const host of ["api.webmaster.yandex.ru", "api.webmaster.yandex.com"]) {
   try { out.netdiag[host] = { a: await dns.resolve4(host) }; } catch (e) { out.netdiag[host] = { a_err: e.code }; }
 }
-// Is the Webmaster API also served by another Yandex front (same SNI/Host)? Unauthenticated probe only.
-out.netdiag.alt_front = {};
-for (const ip of [...new Set([...(out.netdiag["webmaster.yandex.ru"].a || []), ...(out.netdiag["api.webmaster.yandex.ru"]?.a || [])])].slice(0, 3)) {
-  out.netdiag.alt_front[ip] = await new Promise((resolve) => {
-    const req = https.request({ host: ip, servername: "api.webmaster.yandex.net", path: "/v4/user", headers: { Host: "api.webmaster.yandex.net", Accept: "application/json" }, timeout: 15000 }, (res) => {
-      let data = ""; res.setEncoding("utf8"); res.on("data", (c) => (data += c));
-      res.on("end", () => resolve({ status: res.statusCode, body: data.slice(0, 200), cert_ok: res.socket.authorized }));
-    });
-    req.on("timeout", () => { req.destroy(); resolve({ err: "TIMEOUT" }); });
-    req.on("error", (e) => resolve({ err: e.code || String(e.message).slice(0, 120) }));
-    req.end();
-  });
+// Live indexability probe of key public pages (plain GET, no tokens).
+out.site = {};
+const SITE = "https://www.steelprodukt.ru";
+const PAGES = ["/", "/products/metallokassety", "/products/akvilon", "/products/pozharnye-otsechki", "/calculator-metallokassety",
+  "/online-order", "/production", "/production/lazernaya-rezka-metalla", "/production/gibka-listovogo-metalla",
+  "/production/poroshkovaya-okraska-metalla", "/production/svarka-i-sborka-metalloizdeliy", "/solutions/custom", "/contacts",
+  "/articles/vystavki-metalloobrabotka-kitay-2026"];
+const pick = (html, re) => (html.match(re) || [])[1] || null;
+for (const path of PAGES) {
+  try {
+    const t0 = Date.now();
+    const res = await fetch(SITE + path, { headers: { "User-Agent": "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)" }, redirect: "manual", signal: AbortSignal.timeout(30000) });
+    const html = res.status === 200 ? await res.text() : "";
+    out.site[path] = { status: res.status, ms: Date.now() - t0, location: res.headers.get("location"), x_robots: res.headers.get("x-robots-tag"),
+      robots: pick(html, /<meta[^>]+name="robots"[^>]+content="([^"]*)"/i), canonical: pick(html, /<link[^>]+rel="canonical"[^>]+href="([^"]*)"/i),
+      title: pick(html, /<title>([^<]*)<\/title>/i), h1: (pick(html, /<h1[^>]*>([\s\S]*?)<\/h1>/i) || "").replace(/<[^>]+>/g, "").slice(0, 120), bytes: html.length };
+  } catch (e) { out.site[path] = { err: e?.cause?.code || e?.name }; }
+}
+for (const [label, url] of [["robots", SITE + "/robots.txt"], ["sitemap", SITE + "/sitemap.xml"], ["apex_http", "http://steelprodukt.ru/"], ["apex_https", "https://steelprodukt.ru/"]]) {
+  try {
+    const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(30000) });
+    const text = res.status === 200 ? await res.text() : "";
+    out.site[label] = { status: res.status, location: res.headers.get("location"),
+      ...(label === "robots" ? { text: text.slice(0, 1500) } : {}),
+      ...(label === "sitemap" ? { urls: (text.match(/<loc>/g) || []).length, sample_lastmod: (text.match(/<lastmod>([^<]+)/) || [])[1] || null } : {}) };
+  } catch (e) { out.site[label] = { err: e?.cause?.code || e?.name }; }
 }
 console.log("NETDIAG:", JSON.stringify(out.netdiag));
 // Fallback transport: node:https with a forced address family.
