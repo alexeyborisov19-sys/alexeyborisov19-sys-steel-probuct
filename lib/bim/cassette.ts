@@ -32,6 +32,13 @@ export function validateCassetteBim(p: CassetteBimInput): string[] {
   if (p.profile && p.jointMm < cassetteMinimumJoint(p)) errors.push(`Шов: не меньше ${cassetteMinimumJoint(p)} мм для размещения полных бортов без пересечений. Меньший шов требует проверенного узла стыковки.`);
   if (p.profile === "corner" && (p.depthMm !== 20 || p.thicknessMm !== 1)) errors.push("Угловой профиль проверен для борта 20 мм и толщины 1 мм.");
   if (p.profile === "corner" && (p.columns !== 1 || !Number.isFinite(p.returnWidthMm) || p.returnWidthMm! <= p.depthMm+2*p.thicknessMm || p.returnWidthMm! > 10000 || p.widthMm <= p.depthMm+2*p.thicknessMm)) errors.push("Угловые кассеты располагаются в одну колонку; оба крыла должны быть больше глубины борта и двух толщин.");
+  // Until true size-adaptive corner geometry is independently checked, export only
+  // the exact SP-CAS-05 source dimensions; do not fake a parameterised model.
+  if (p.profile === "corner" && (
+    Math.abs(p.widthMm - cassetteProfiles.corner.widthMm) > 0.0001 ||
+    Math.abs(p.heightMm - cassetteProfiles.corner.heightMm) > 0.0001 ||
+    Math.abs((p.returnWidthMm ?? 0) - cassetteProfiles.corner.returnWidthMm) > 0.0001
+  )) errors.push("Угловая ЗТ доступна только в исходном типоразмере 500 × 431,433 × 300 мм. Перестройка крыльев и высоты пока не подтверждена.");
   return errors;
 }
 export function cassetteBimSummary(p: CassetteBimInput) {
