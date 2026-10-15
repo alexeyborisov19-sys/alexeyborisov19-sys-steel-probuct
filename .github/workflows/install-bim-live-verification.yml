@@ -73,7 +73,7 @@ jobs:
           for page,markers in [
               ('products/metallokassety/bim', [b'SP-CAS-01',b'SP-CAS-03',b'SP-CAS-05',b'\xd0\x9f\xd1\x80\xd0\xb5\xd0\xbc\xd0\xb8\xd1\x83\xd0\xbc']),
               ('bim/metallokassety-oriented/index.html',[b'SP-CAS-01',b'SP-CAS-03',b'SP-CAS-05']),
-              ('bim/metallokassety-parametric/index.html',[b'models.json',b'app.mjs']),
+              ('bim/metallokassety-parametric/index.html',[b'app.mjs',b'id="model"']),
           ]:
               body=fetch(page)
               assert all(mark in body for mark in markers),(page,'marker missing')
