@@ -42,7 +42,7 @@ export function cassetteGeometry(p:CassetteBimInput):CassetteSolid[] {
   // Source coordinate frame was rigidly changed from IFC XYZ to local X(height-return)
   // axes: [X, Z, -Y]. This preserves all bending, hooks and bore geometry.
   // Native parametric reshaping of this closed corner is not yet certified.
-  return [{vertices:closedCorner10.vertices as Vec3[],faces:closedCorner10.faces}];
+  return [{vertices:closedCorner10.vertices.map(([x,y,z]):Vec3=>[x,y,z]),faces:closedCorner10.faces}];
  }
  const solids=[box(0,0,0,w,h,t),box(0,0,t,t,h,d-t),box(w-t,0,t,t,h,d-t),box(t,0,t,w-2*t,t,d-t),box(t,h-t,t,w-2*t,t,d-t)];
  return solids;
