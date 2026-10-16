@@ -2,6 +2,13 @@
 import type { EngineeringLeadState } from "@/lib/assistant/types";
 import { mergeAiProposal, parseAiProposal, type AiMergeOutcome } from "@/lib/quote-engine/ai-proposal";
 import { completeWithConfiguredModel } from "@/lib/server/quote-engine/model-completion";
+import { localAiTimeoutMs } from "@/lib/server/quote-engine/local-completion";
+import { localAiSelected, type ServiceEnvironment } from "@/lib/server/quote-engine/service-policy";
+
+/** Provider-specific limit; model inference must not be cut short by the old 12.5s wrapper. */
+export function aiExtractionDeadlineMs(environment: ServiceEnvironment = process.env): number {
+  return localAiSelected(environment) ? 6_000 + localAiTimeoutMs(environment) : 12_500;
+}
 
 const EXTRACTION_SYSTEM_PROMPT = [
   "Ты — разборщик заявок на изготовление металлических изделий.",
@@ -52,7 +59,7 @@ export async function extractWithAi(
     const snapshot = JSON.parse(JSON.stringify(state)) as EngineeringLeadState;
     const raw = await Promise.race([
       caller(message, snapshot),
-      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), 12_500); }),
+      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), aiExtractionDeadlineMs()); }),
     ]);
     return mergeAiProposal(state, parseAiProposal(stripCodeFence(raw)), message);
   } catch {
