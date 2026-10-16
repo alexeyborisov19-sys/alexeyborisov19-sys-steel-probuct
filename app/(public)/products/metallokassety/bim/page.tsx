@@ -1,5 +1,6 @@
 import { AttributionLink } from "@/components/AttributionLink";
 import { PageLayout } from "@/components/PageLayout";
+import { CalculatorEngineeringHelp } from "@/components/CalculatorEngineeringHelp";
 import { CassetteBimConfigurator } from "@/components/CassetteBimConfigurator";
 import { CassetteBimLibrary } from "@/components/CassetteBimLibrary";
 import { CassetteJointGuide } from "@/components/CassetteJointGuide";
@@ -20,6 +21,7 @@ export default function CassetteBimPage() {
     <section aria-labelledby="bim-config-title" className="bg-[#e9eeec] py-8 text-slate-900 sm:py-10">
       <div className="container">
         <nav aria-label="Разделы BIM-библиотеки" className="mb-5 flex flex-wrap gap-3 text-sm font-semibold text-orange-800"><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-library">Модели изделий</a><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-joints">Узлы и примыкания</a><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-config-title">Раскладка фасада</a></nav>
+        <div className="mb-5"><CalculatorEngineeringHelp calculator="bim-cassettes" appearance="light" /></div>
         <CassetteBimLibrary />
         <CassetteJointGuide />
         <h2 id="bim-config-title" className="mt-10 mb-4 scroll-mt-28 text-2xl font-semibold">Раскладка фасадного фрагмента</h2>
