@@ -4,18 +4,27 @@ import dynamic from "next/dynamic";
 import { useCallback, useRef, useState } from "react";
 import { trackLeadEvent } from "@/lib/analytics";
 import {
+  buildProductCalculatorAssistantDraft,
   buildPublicCalculatorAssistantDraft,
+  type CalculatorHelpKind,
   type PublicCalculatorDraftInput,
 } from "@/lib/assistant/calculator-draft";
 
-// Load the existing engineering assistant only after an explicit user click.
-// No additional third-party chat runtime and no automatic model request.
 const EngineeringAssistant = dynamic(
   () => import("@/components/EngineeringAssistant").then((module) => module.EngineeringAssistant),
   { ssr: false },
 );
 
-export function CalculatorEngineeringHelp(props: PublicCalculatorDraftInput) {
+type HelpProps = (
+  | ({ calculator?: "cad" } & PublicCalculatorDraftInput)
+  | { calculator: CalculatorHelpKind }
+) & { appearance?: "dark" | "light" };
+
+/**
+ * Inline entry for public calculators only. Opens a reviewable text draft:
+ * no files, customer details, CAD bytes, or prices are automatically sent.
+ */
+export function CalculatorEngineeringHelp(props: HelpProps) {
   const openerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -26,11 +35,15 @@ export function CalculatorEngineeringHelp(props: PublicCalculatorDraftInput) {
   }, []);
 
   function openAssistant() {
-    // This collects only visible, non-confidential inputs, with no CAD payload,
-    // filename, calculated price or contact details. The text remains editable.
-    setDraft(buildPublicCalculatorAssistantDraft(props));
+    const text = props.calculator && props.calculator !== "cad"
+      ? buildProductCalculatorAssistantDraft(props.calculator)
+      : buildPublicCalculatorAssistantDraft(props);
+    setDraft(text.slice(0, 1400));
     setOpen(true);
-    trackLeadEvent("assistant_opened", { assistant: "engineering", page_context: "dxf-online-order" });
+    trackLeadEvent("assistant_opened", {
+      assistant: "engineering",
+      page_context: props.calculator ?? "dxf-online-order",
+    });
   }
 
   return (
@@ -41,10 +54,14 @@ export function CalculatorEngineeringHelp(props: PublicCalculatorDraftInput) {
         onClick={openAssistant}
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="Подготовить вопрос по выбранным параметрам. Ничего не отправляется автоматически."
-        className="inline-flex min-h-12 items-center rounded-lg border border-steel-orange/60 px-4 py-3 text-sm font-semibold text-orange-300 transition hover:bg-steel-orange/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-orange"
+        title="Открыть инженерного помощника с вопросом, который можно исправить перед отправкой"
+        className={`inline-flex min-h-12 items-center rounded-lg border px-4 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-orange ${
+          props.appearance === "light"
+            ? "border-orange-700/50 bg-white text-orange-900 hover:bg-orange-50"
+            : "border-steel-orange/60 text-orange-300 hover:bg-steel-orange/10"
+        }`}
       >
-        Помощь ИИ-инженера
+        Спросить ИИ-инженера
       </button>
       {open && (
         <EngineeringAssistant
