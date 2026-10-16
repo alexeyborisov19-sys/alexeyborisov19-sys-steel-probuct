@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { aiExtractionDeadlineMs } from "../lib/server/quote-engine/ai-extraction";
 import {
   completeLocally,
   localAiConfigured,
@@ -29,6 +30,12 @@ test("bounded local inference timeout supports CPU/GPU cold starts", () => {
   assert.equal(localAiTimeoutMs({ ...env, STEEL_PRODUCT_LOCAL_AI_TIMEOUT_MS: "60000" }), 60_000);
   assert.equal(localAiTimeoutMs({ ...env, STEEL_PRODUCT_LOCAL_AI_TIMEOUT_MS: "999999" }), 90_000);
   assert.equal(localAiTimeoutMs({ ...env, STEEL_PRODUCT_LOCAL_AI_TIMEOUT_MS: "-1" }), 45_000);
+});
+
+test("quote field extraction deadline matches local-model inference window", () => {
+  assert.equal(aiExtractionDeadlineMs(env), 51_000);
+  assert.equal(aiExtractionDeadlineMs({ ...env, STEEL_PRODUCT_LOCAL_AI_TIMEOUT_MS: "60000" }), 66_000);
+  assert.equal(aiExtractionDeadlineMs({ ...env, STEEL_PRODUCT_LOCAL_AI_ENABLED: "false" }), 12_500);
 });
 
 test("Qwen inference is only sent to localhost after manifest digest check", async () => {
