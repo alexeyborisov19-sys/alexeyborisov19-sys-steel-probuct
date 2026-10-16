@@ -21,7 +21,7 @@ type AssistantMessage = {
   content: string;
 };
 
-type ChatMessage = AssistantMessage & { id: string };
+type ChatMessage = AssistantMessage & { id: string; source?: "ai" | "knowledge" | "calculation" };
 type AssistantResponse = {
   answer?: string;
   message?: string;
@@ -321,6 +321,7 @@ export function EngineeringAssistant({
         id: makeId(),
         role: "assistant",
         content: payload.text || "Уточните, пожалуйста.",
+        source: "calculation",
       }]);
       if (payload.kind === "priced" || payload.kind === "blocked") {
         // The guided flow has reached its answer — hand off to the same
@@ -386,6 +387,7 @@ export function EngineeringAssistant({
         id: makeId(),
         role: "assistant",
         content: payload.answer || "Уточните задачу, пожалуйста.",
+        source: payload.mode === "ai" ? "ai" : "knowledge",
       }]);
       setSuggestions(payload.suggestions ?? []);
     } catch (error) {
@@ -515,7 +517,7 @@ export function EngineeringAssistant({
             <header className="relative flex items-center gap-3 border-b border-white/10 bg-[linear-gradient(105deg,rgba(234,91,12,.17),rgba(15,18,20,.96)_52%)] px-4 py-4">
               <EngineerBrandMark />
               <div className="min-w-0 flex-1">
-                <p className="whitespace-nowrap text-xs font-bold leading-none uppercase tracking-[.16em] text-steel-orange">ИИ-инженер</p>
+                <p className="whitespace-nowrap text-xs font-bold leading-none uppercase tracking-[.16em] text-steel-orange">Инженерный помощник</p>
                 <h2 className="mt-1 truncate text-sm font-semibold leading-none text-white">Помощник «Сталь Продукт»</h2>
                 <p className="mt-1 truncate text-xs leading-none text-white/45">{pageContext.label}</p>
               </div>
@@ -563,6 +565,15 @@ export function EngineeringAssistant({
                           : "max-w-[92%] border-l-2 border-steel-orange bg-[#15191c] px-4 py-3 text-sm leading-relaxed text-white/78"
                         }>
                           <p className="whitespace-pre-line">{message.content}</p>
+                          {message.role === "assistant" && message.source ? (
+                            <p className="mt-2 border-t border-white/10 pt-2 text-[11px] leading-4 text-white/55">
+                              {message.source === "ai"
+                                ? "Ответ нейросети · важные параметры проверит инженер"
+                                : message.source === "calculation"
+                                  ? "Результат расчётного механизма · предварительно"
+                                  : "Ответ по проверенной справке · нейросеть не использовалась"}
+                            </p>
+                          ) : null}
                           {message.role === "assistant" && voiceOutputSupported ? (
                             <button
                               type="button"
