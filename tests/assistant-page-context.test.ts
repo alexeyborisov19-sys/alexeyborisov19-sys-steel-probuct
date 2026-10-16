@@ -146,7 +146,7 @@ test("page suggestions override generic suggestions only for page-specific quest
     generic,
   );
   assert.notDeepEqual(contextual, generic);
-  assert.ok(contextual.includes("Что означает формат кассеты?"));
+  assert.ok(contextual.includes("Как учитываются русты и замки?"));
 
   const productionContextual = assistantSuggestionsForPage(
     "Какие исходные данные нужны для гибки?",
