@@ -3,6 +3,12 @@ import { localAiSelected, type ServiceEnvironment } from "@/lib/server/quote-eng
 
 // Never takes a URL, key or model from a browser. No model pull, cloud endpoint or fallback.
 const ROOT = "http://127.0.0.1:11434";
+/** Inference on a locally hosted 9B model can exceed the 10s metadata limit. */
+export function localAiTimeoutMs(environment: ServiceEnvironment = process.env): number {
+  const configured = environment.STEEL_PRODUCT_LOCAL_AI_TIMEOUT_MS ?? "";
+  if (!/^[1-9][0-9]{0,5}$/.test(configured)) return 45_000;
+  return Math.min(90_000, Math.max(15_000, Number(configured)));
+}
 function object(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
@@ -46,15 +52,17 @@ export async function completeLocally(
   if (active >= 2) return null;
   active += 1;
   try {
-    const signal = AbortSignal.timeout(10_000);
-    const tags = await boundedJson(await request(`${ROOT}/api/tags`, { cache: "no-store", redirect: "error", signal }));
+    const tags = await boundedJson(await request(`${ROOT}/api/tags`, {
+      cache: "no-store", redirect: "error", signal: AbortSignal.timeout(5_000),
+    }));
     const installed = Array.isArray(tags?.models) ? tags.models.find((item) => object(item)?.name === model) : null;
     const manifest = object(installed), details = object(manifest?.details);
     if (!manifest || manifest.digest !== digest || details?.format !== "gguf"
       || typeof manifest.size !== "number" || manifest.size < 10_000_000
       || manifest.remote_host != null || manifest.remote_model != null) return null;
     const result = await boundedJson(await request(`${ROOT}/api/generate`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", redirect: "error", signal,
+      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", redirect: "error",
+      signal: AbortSignal.timeout(localAiTimeoutMs(environment)),
       body: JSON.stringify({ model, system, prompt, stream: false, format: "json", think: false, keep_alive: 0,
         options: { temperature: 0, num_predict: maxTokens, num_ctx: 8192, num_thread: 2 } }),
     }));
