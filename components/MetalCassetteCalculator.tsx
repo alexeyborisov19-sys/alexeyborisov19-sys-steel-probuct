@@ -1,6 +1,7 @@
 "use client";
 import { AttributionLink } from "@/components/AttributionLink";
 import { CalculatorLogo } from "@/components/CalculatorLogo";
+import { CalculatorEngineeringHelp } from "@/components/CalculatorEngineeringHelp";
 import { CassetteProductSpecification } from "@/components/CassetteProductSpecification";
 import { CassetteProjectEditor } from "@/components/cassette-project/CassetteProjectEditor";
 
@@ -247,6 +248,7 @@ export function MetalCassetteCalculator() {
   return <div id="calculator-metallokasset" className="mt-12 scroll-mt-24 sm:mt-16">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <CalculatorLogo />
+      <CalculatorEngineeringHelp calculator="metal-cassettes" />
       <label className="block w-full text-sm text-white/80 sm:w-auto">Режим калькулятора металлокассет
         <select aria-label="Режим калькулятора металлокассет" value={view} onChange={event=>setView(event.target.value as typeof view)} className="mt-2 block min-h-12 w-full rounded-lg border border-white/30 bg-[#101417] px-3 py-2 text-base text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
           <option value="estimate">Узнать примерную цену</option><option value="product">Составить спецификацию</option><option value="project">Раскладка фасада</option>
