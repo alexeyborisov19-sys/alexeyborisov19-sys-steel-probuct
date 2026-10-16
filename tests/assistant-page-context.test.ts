@@ -22,8 +22,8 @@ test("metal cassette calculator gets its own trusted context", () => {
 test("engineering assistant accurately describes STEP and manual CAD workflows", () => {
   const answer = pageSpecificKnowledgeAnswer("Можно передать STEP?", "/online-order");
   assert.ok(answer);
-  assert.match(answer, /STEP\\/STP/i);
-  assert.match(answer, /DXF\\/DWG/i);
+  assert.match(answer, /STEP\/STP/i);
+  assert.match(answer, /DXF\/DWG/i);
   assert.match(answer, /размеры вручную/i);
   assert.match(answer, /предварительн/i);
   assert.doesNotMatch(answer, /рассчитан на DXF|Яндекс Диск/i);
@@ -32,7 +32,7 @@ test("engineering assistant accurately describes STEP and manual CAD workflows",
 test("CAD calculator help explains current operation and source limitations", () => {
   const answer = pageSpecificKnowledgeAnswer("Как пользоваться и загрузить DXF?", "/online-order");
   assert.ok(answer);
-  assert.match(answer, /DXF, DWG, STEP\\/STP/i);
+  assert.match(answer, /DXF, DWG, STEP\/STP/i);
   assert.match(answer, /плоской заготовки вручную/i);
   assert.match(answer, /материал, толщину, количество/i);
   assert.match(answer, /до пяти позиций/i);
