@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPublicCalculatorAssistantDraft } from "../lib/assistant/calculator-draft";
+import { buildProductCalculatorAssistantDraft, buildPublicCalculatorAssistantDraft } from "../lib/assistant/calculator-draft";
 
 test("assistant opens with a useful draft before any CAD upload", () => {
   const draft = buildPublicCalculatorAssistantDraft({ partCount: 0 });
@@ -57,4 +57,21 @@ test("filenames, private identifiers and prices are never copied from extra obje
   } as Parameters<typeof buildPublicCalculatorAssistantDraft>[0]);
   assert.doesNotMatch(draft, /secret-contract|client-account|992000|private@example/);
   assert.ok(draft.length <= 1400);
+});
+
+test("each other calculator gets a distinct, safe engineering prompt", () => {
+  const checks = [
+    ["metal-cassettes", /открытый или закрытый тип/i],
+    ["air-conditioner-basket", /сервисные зазоры/i],
+    ["bim-cassettes", /IFC/i],
+    ["bim-trims", /A, B, H, T/i],
+  ] as const;
+  const messages = checks.map(([kind, expected]) => {
+    const draft = buildProductCalculatorAssistantDraft(kind);
+    assert.match(draft, expected);
+    assert.match(draft, /не (?:назначайте|подтверждайте|придумывайте)/i);
+    assert.ok(draft.length <= 1400);
+    return draft;
+  });
+  assert.equal(new Set(messages).size, checks.length);
 });
