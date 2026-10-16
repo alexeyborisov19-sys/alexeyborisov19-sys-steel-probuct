@@ -3,6 +3,7 @@ import { AttributionLink } from "@/components/AttributionLink";
 import Image from "next/image";
 import Link from "next/link";
 import { PageLayout } from "@/components/PageLayout";
+import { CalculatorEngineeringHelp } from "@/components/CalculatorEngineeringHelp";
 import { FaqSection } from "@/components/FaqSection";
 import { JsonLd } from "@/components/JsonLd";
 import { commercialProductLandingBySlug } from "@/data/commercial-product-landings";
@@ -88,6 +89,7 @@ export function BasketLandingPage() {
             >
               Передать размеры и проект на расчёт →
             </AttributionLink>
+            <div className="my-5"><CalculatorEngineeringHelp calculator="air-conditioner-basket" /></div>
             <BasketConfigurator />
             <details className="mt-5 border border-white/20 p-5">
               <summary className="cursor-pointer py-1 font-semibold">
