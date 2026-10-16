@@ -19,21 +19,25 @@ test("metal cassette calculator gets its own trusted context", () => {
   assert.ok(context.suggestions.includes("Как пользоваться калькулятором?"));
 });
 
-test("DXF online order does not claim automatic STEP calculation", () => {
+test("engineering assistant accurately describes STEP and manual CAD workflows", () => {
   const answer = pageSpecificKnowledgeAnswer("Можно передать STEP?", "/online-order");
   assert.ok(answer);
-  assert.match(answer, /рассчитан на DXF/i);
-  assert.match(answer, /STEP\/STP можно передать через инженерную заявку/i);
-  assert.match(answer, /не следует считать, что он автоматически рассчитывается/i);
-  assert.doesNotMatch(answer, /STEP\/STP автоматически рассчитывается/i);
+  assert.match(answer, /STEP\\/STP/i);
+  assert.match(answer, /DXF\\/DWG/i);
+  assert.match(answer, /размеры вручную/i);
+  assert.match(answer, /предварительн/i);
+  assert.doesNotMatch(answer, /рассчитан на DXF|Яндекс Диск/i);
 });
 
-test("DXF help explains the real public workflow", () => {
+test("CAD calculator help explains current operation and source limitations", () => {
   const answer = pageSpecificKnowledgeAnswer("Как пользоваться и загрузить DXF?", "/online-order");
   assert.ok(answer);
-  assert.match(answer, /Яндекс Диск/i);
+  assert.match(answer, /DXF, DWG, STEP\\/STP/i);
+  assert.match(answer, /плоской заготовки вручную/i);
   assert.match(answer, /материал, толщину, количество/i);
-  assert.match(answer, /длину реза/i);
+  assert.match(answer, /до пяти позиций/i);
+  assert.match(answer, /подтвержд[её]нных данных/i);
+  assert.doesNotMatch(answer, /Яндекс Диск|закрытую папку/i);
 });
 
 test("calculator result help stays explicitly preliminary", () => {
