@@ -1,3 +1,13 @@
+## 17 October 2026 — CAD calculator engineering AI bridge (isolated draft)
+
+Live checkpoint: new branch `feat/engineering-ai-calculator-bridge-20261017`, forked from current `main` (observed 9538607bced0901731a6d13c18d15d50bb79dc10). Work is isolated; no merge, live deployment, new paid model, or change to private pricing is authorized.
+
+DONE in draft: Add an explicit AI-help button to the public `/online-order` workspace, kept out of internal production screens. The button lazy-loads the previously built engineering assistant, opens it as a dialog without a duplicate fixed launcher, and prepares an editable, bounded technical question based only on selected public inputs. CAD bytes, filenames, project identifiers, contact fields, private rates and calculated prices are not included; the text is **not sent** until the visitor actively submits it. Current DXF/DWG/STEP/STP/manual-input assistant help replaces stale claims that the application only supports DXF or uploads to Yandex Disk. Add isolated tests covering the draft and public route descriptions.
+
+IN PROGRESS: Review exact feature-head CI (tests/lint/type/build/SEO) and manual browser scenarios with/without attached parts, desktop/mobile focus/close, offline knowledge fallback and user-confirmed sending. Existing AI provider selection and all production money gates remain unchanged. This integration is not a new installed local LLM and does not enable paid services.
+
+NEXT ACTION: Publish an isolated PR for review; require exact-head green CI and actual browser acceptance before owner decision. **Do not merge/deploy**, enable checkout, install model on the VPS or alter confidential calculation sources without an explicit follow-up authorization.
+
 ## Basket minimal interaction — 10 October 2026
 
 Live checkpoint: verified draft PR249 b6cfab6e5d7ef31971f319802aabbef3e3abc330, identical local1e65852;1727 tests, all four workflows and independent actual-pixel review passed. Owner now requests fewer visible controls. IN PROGRESS: direct model interaction and compact canonical pattern thumbnails, context-specific mounting preview, removal of repeated controls/copy. Preserve keyboard/single-pointer access, fallback, geometry, dimensions,100-position order and source-gated null pricing. NEXT ACTION: focused regression checks, exact-head CI and fresh mobile/desktop acceptance. No merge/deployment.
