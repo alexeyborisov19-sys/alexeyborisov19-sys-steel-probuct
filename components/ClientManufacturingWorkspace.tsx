@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AttributionLink } from "@/components/AttributionLink";
 import { trackLeadEvent } from "@/lib/analytics";
 import { CalculatorLogo } from "@/components/CalculatorLogo";
+import { CalculatorEngineeringHelp } from "@/components/CalculatorEngineeringHelp";
 import { ClientCad2DPreview } from "@/components/ClientCad2DPreview";
 import { ClientOperationSummary } from "@/components/cad/public/ClientOperationSummary";
 import { ClientOperationControls } from "@/components/instant-quote/ClientOperationControls";
@@ -62,7 +63,16 @@ export function ClientManufacturingWorkspace({ mode = "public" }: { mode?: "publ
 
         <ProjectFileControls project={project} filesByPartId={filesByPartId} sourcesByPartId={sourcesByPartId} revision={projectRevision} disabled={isIngesting || hasInvalidQuantity} hasManualDraft={Boolean(manualEditor)} missingAttachments={missingAttachments} onRename={renameProject} onRestore={async saved => { await restoreProject(saved); setManualEditor(null); }} onReattach={reattachFile} />
 
-        <div className="mb-5 flex flex-wrap items-center gap-3" aria-label="Способ добавления изделия"><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>inputRef.current?.click()} className="min-h-12 rounded-lg border border-white/25 px-4 py-3 text-sm disabled:opacity-40">Загрузить CAD</button><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>setManualEditor('add')} className={actionClass}>Ввести размеры вручную</button><span className="text-sm text-white/75">{project.parts.length} / 5 изделий</span></div>
+        <div className="mb-5 flex flex-wrap items-center gap-3" aria-label="Способ добавления изделия"><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>inputRef.current?.click()} className="min-h-12 rounded-lg border border-white/25 px-4 py-3 text-sm disabled:opacity-40">Загрузить CAD</button><button type="button" disabled={isIngesting||project.parts.length>=5} onClick={()=>setManualEditor('add')} className={actionClass}>Ввести размеры вручную</button>{mode === "public" && <CalculatorEngineeringHelp
+          partCount={project.parts.length}
+          format={activePart?.format ?? null}
+          materialId={activePart?.configuration.materialId ?? null}
+          materialConfirmed={activePart ? Boolean(materialConfirmed[activePart.id]) : false}
+          thicknessMm={activePart?.configuration.thicknessMm ?? null}
+          quantity={activePart?.configuration.quantity ?? null}
+          quantityValid={!quantityError && !hasInvalidQuantity}
+          operations={activePart?.configuration.operations ?? []}
+        />}<span className="text-sm text-white/75">{project.parts.length} / 5 изделий</span></div>
         {manualEditor&&<div className="mb-6 rounded-xl border border-steel-orange/50 bg-[#141b21] p-4 sm:p-6"><div className="mb-3 flex justify-end"><button type="button" onClick={()=>setManualEditor(null)} className="min-h-11 px-3 text-sm underline underline-offset-4">Закрыть ввод размеров</button></div><PublicManualSheetParts key={manualEditor==='edit'?activePart?.id:'add'} count={project.parts.length-(manualEditor==='edit'?1:0)} initial={manualEditor==='edit'&&activePart&&activeManual?{name:activePart.fileName,input:activeManual,configuration:activePart.configuration}:undefined} onAdd={async(files,configurations)=>{await ingestFiles(files,configurations,manualEditor==='edit'?activePart?.id:undefined);setManualEditor(null);}}/></div>}
         {projectCalculationMessage&&!hasParts&&<p role="status" className="mb-4 text-amber-200">{projectCalculationMessage}</p>}
         {hasParts && <nav className="mb-4 flex min-w-0 flex-wrap items-start gap-3" aria-label="Детали проекта">
