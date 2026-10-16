@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   ChangeEvent,
   FormEvent,
+  useCallback,
   KeyboardEvent as ReactKeyboardEvent,
   useEffect,
   useRef,
@@ -108,7 +109,17 @@ function EngineerBrandMark({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: boolean }) {
+export function EngineeringAssistant({
+  initialOpen = false,
+  initialDraft = "",
+  hideLauncher = false,
+  onClose,
+}: {
+  initialOpen?: boolean;
+  initialDraft?: string;
+  hideLauncher?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
   const pageContext = getAssistantPageContext(pathname);
   const [open, setOpen] = useState(initialOpen);
@@ -121,7 +132,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
   // picked the calculator themselves, so nothing here ever has to guess it
   // from wording.
   const [quoteCalculator, setQuoteCalculator] = useState<"metal-parts" | "metal-cassettes" | null>(null);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialDraft.slice(0, 1400));
   const [loading, setLoading] = useState(false);
   const [leadFormOpen, setLeadFormOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -183,17 +194,22 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
     }
   }, [open]);
 
+  const closePanel = useCallback(() => {
+    setOpen(false);
+    onClose?.();
+    if (!hideLauncher) launcherRef.current?.focus();
+  }, [hideLauncher, onClose]);
+
   useEffect(() => {
     if (!open) return;
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      setOpen(false);
-      launcherRef.current?.focus();
+      closePanel();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [open]);
+  }, [open, closePanel]);
 
   function toggleAssistant() {
     setOpen((current) => {
@@ -517,7 +533,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
                 </button>
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={closePanel}
                   className="grid h-9 w-9 place-items-center border border-white/10 text-xl text-white/55 transition hover:border-steel-orange hover:text-white"
                   aria-label="Закрыть помощника"
                 >
@@ -832,7 +848,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
         ) : null}
       </AnimatePresence>
 
-      <motion.button
+      {!hideLauncher && <motion.button
         ref={launcherRef}
         type="button"
         onClick={toggleAssistant}
@@ -847,7 +863,7 @@ export function EngineeringAssistant({ initialOpen = false }: { initialOpen?: bo
           <b className="block text-xs leading-none uppercase tracking-[.1em] text-white">ИИ-инженер</b>
           <span className="mt-1 block text-xs leading-none text-white/45">Задать технический вопрос</span>
         </span>
-      </motion.button>
+      </motion.button>}
     </div>
   );
 }
