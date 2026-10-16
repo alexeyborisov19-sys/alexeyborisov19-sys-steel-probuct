@@ -42,7 +42,7 @@ export function CalculatorEngineeringHelp(props: PublicCalculatorDraftInput) {
         aria-haspopup="dialog"
         aria-expanded={open}
         title="Подготовить вопрос по выбранным параметрам. Ничего не отправляется автоматически."
-        className="inline-flex min-h-12 items-center rounded-lg border border-steel-orange/60 px-4 py-3 text-sm font-semibold text-steel-orange transition hover:bg-steel-orange/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-orange"
+        className="inline-flex min-h-12 items-center rounded-lg border border-steel-orange/60 px-4 py-3 text-sm font-semibold text-orange-300 transition hover:bg-steel-orange/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-orange"
       >
         Помощь ИИ-инженера
       </button>
