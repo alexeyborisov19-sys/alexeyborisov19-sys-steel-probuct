@@ -14,7 +14,7 @@ import {
 test("metal cassette calculator gets its own trusted context", () => {
   const context = getAssistantPageContext("/calculator-metallokassety?utm=test");
   assert.equal(context.id, "metal-cassette-calculator");
-  assert.match(context.knowledge, /стандартный формат кассеты/i);
+  assert.match(context.knowledge, /по площади, стене|спецификацию/i);
   assert.match(context.knowledge, /предварительн/i);
   assert.ok(context.suggestions.includes("Как пользоваться калькулятором?"));
 });
@@ -64,6 +64,21 @@ test("main solution pages get separate trusted engineering contexts", () => {
   assert.equal(getAssistantPageContext("/solutions/industry").id, "industry-solutions");
   assert.equal(getAssistantPageContext("/solutions/engineering").id, "engineering-solutions");
   assert.equal(getAssistantPageContext("/solutions/custom").id, "custom-solutions");
+});
+
+test("public neural calculator help uses the right verified product context", () => {
+  const cases = [
+    ["/products/korziny-dlya-konditsionerov", "air-conditioner-basket", "габариты наружного блока", "Размеры блока"],
+    ["/products/metallokassety/bim", "bim-cassette-workspace", "координационную IFC-модель", "IFC"],
+    ["/products/dobornye-elementy/bim", "bim-trim-workspace", "A, B, H и T", "Г-профиль"],
+  ] as const;
+  for (const [path, id, evidence, question] of cases) {
+    const context = getAssistantPageContext(path);
+    assert.equal(context.id, id);
+    assert.ok(context.knowledge.includes(evidence), id);
+    assert.ok(pageSpecificKnowledgeAnswer(question, path), id);
+    assert.doesNotMatch(context.knowledge, /подтверждена несущая способность|гарантированная цена/i);
+  }
 });
 
 test("solution contexts contain the confirmed source-data requirements", () => {
