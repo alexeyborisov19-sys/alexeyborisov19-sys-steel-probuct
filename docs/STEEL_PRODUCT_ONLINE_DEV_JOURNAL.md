@@ -1,3 +1,15 @@
+## 17 October 2026 — Optional Qwen local neural assistant (draft PR283)
+
+Live checkpoint: branch `feat/engineering-ai-calculator-bridge-20261017` builds on the isolated CAD AI draft, with current upstream main `9538607bced0901731a6d13c18d15d50bb79dc10`. The owner now requests a real neural model instead of a scripted helper and access inside engineering calculators. No credential/model installation or Beget deployment has been performed; no merge or deployment is permitted before exact-head QA and verified VPS resources.
+
+DONE in the branch: Replace the public navigation bot entry with the existing full engineering assistant; expose an explicit on-demand assistant inside public CAD, metal-cassette, air-conditioner-basket, cassette BIM and trim BIM tools without adding controls in internal production. Each product gets source-aligned page context. The CAD draft includes only safe selected parameters; other calculators start from editable product-specific guidance, not guessed dimensions. No CAD bytes, filename, private rates, price or PII automatically leave the browser; the visitor manually submits any question. The assistant shows per-answer provenance: model, verified knowledge or deterministic quote.
+
+Local neural backend: reuse the existing pinned, offline-only Ollama provider with Qwen 3.5 9B once manually provisioned. Fix the 10-second combined timeout by separating 5-second local manifest lookup and server-configured bounded 15–90-second inference timeout, default 45 seconds; keep digest check, loopback, no cloud fallback, fail-closed JSON, concurrency limit and paid-service OFF. Added synthetic, network-free tests and `docs/engineering-neural-assistant.md` with installation prerequisites, resource checks, verification and rollback. The model is **not** installed or active on Beget by this code change.
+
+IN PROGRESS: exact-head PR CI, TS/lint/test/build plus real browser verification at desktop/mobile widths, keyboard/dialog/focus, no request before user submits, local-model enabled/disabled/failed scenarios, no calculator or pricing regression. Hardware load and actual Qwen generation are unverified because no connected Beget terminal is available.
+
+NEXT ACTION: fix any CI failures, inspect Playwright/IFC validations, test neural mode on provisioned isolated Ollama before any production activation, obtain publication approval, then merge/deploy via existing reviewed pipeline. Do not enable private rate sources, payment, hosting outside Russia, remote model calls or automatic downloads.
+
 ## 17 October 2026 — CAD calculator engineering AI bridge (isolated draft)
 
 Live checkpoint: new branch `feat/engineering-ai-calculator-bridge-20261017`, forked from current `main` (observed 9538607bced0901731a6d13c18d15d50bb79dc10). Work is isolated; no merge, live deployment, new paid model, or change to private pricing is authorized.
