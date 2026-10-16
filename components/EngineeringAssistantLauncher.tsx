@@ -3,10 +3,10 @@
 import { usePathname } from "next/navigation";
 import { lazy, Suspense, useState } from "react";
 
-const loadAssistant = () => import("./NavigationAssistant");
+const loadAssistant = () => import("./EngineeringAssistant");
 const LazyEngineeringAssistant = lazy(async () => {
   const assistantModule = await loadAssistant();
-  return { default: assistantModule.NavigationAssistant };
+  return { default: assistantModule.EngineeringAssistant };
 });
 
 function BrandMark() {
