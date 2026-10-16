@@ -506,6 +506,7 @@ export function EngineeringAssistant({
         {open ? (
           <motion.section
             key="assistant-panel"
+            id="engineering-assistant-dialog"
             initial={{ opacity: 0, y: 22, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.97 }}
@@ -537,7 +538,7 @@ export function EngineeringAssistant({
                   type="button"
                   onClick={closePanel}
                   className="grid h-9 w-9 place-items-center border border-white/10 text-xl text-white/55 transition hover:border-steel-orange hover:text-white"
-                  aria-label="Закрыть помощника"
+                  aria-label="Закрыть"
                 >
                   ×
                 </button>
