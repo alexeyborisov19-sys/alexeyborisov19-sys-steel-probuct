@@ -55,6 +55,12 @@ const companyFacts: readonly Topic[] = [
     fact: customerMaterialSummary,
   },
   {
+    id: "installation",
+    source: "data/manufacturing-facts.ts",
+    related: /монтаж|установк.*(?:объект|фасад)|выездн.*бригада/i,
+    fact: installationScopeSummary,
+  },
+  {
     id: "lead-time",
     source: "data/manufacturing-facts.ts",
     related: /срок|когда готов|за сколько дн|срочн.*заказ/i,
@@ -119,8 +125,9 @@ export function selectVerifiedEngineeringKnowledge(
   for (const item of related.slice(0, 2)) {
     lines.push(`[SOURCE: ${item.source}, ${item.id}] ${item.fact}`);
   }
-  if (related.length === 0 && !ctx) {
-    lines.push(`[SOURCE: data/manufacturing-facts.ts, engineeringCenterSummary] ${engineeringCenterSummary}`);
-  }
+  // When there is no topical or route evidence, let the existing product
+  // knowledge fallback answer instead of pretending a generic packet helps.
+  if (related.length === 0 && !ctx) return "";
+
   return lines.join("\n");
 }
