@@ -15,10 +15,12 @@ import {
   productionLeadTimeSummary,
 } from "@/data/manufacturing-facts";
 import { getAssistantPageContext, pageSpecificKnowledgeAnswer, steelProduktBrandKnowledge } from "@/data/assistant-page-context";
+import { publicKnowledgeSources, publicKnowledgeCheckedOn } from "@/data/assistant-public-source-manifest";
 
 type Topic = {
   id: string;
   source: string;
+  url: string;
   related: RegExp;
   fact: string;
 };
@@ -27,65 +29,82 @@ const companyFacts: readonly Topic[] = [
   {
     id: "equipment",
     source: "data/manufacturing-facts.ts",
+    url: publicKnowledgeSources.companyFacts,
     related: /сколько.*(?:станк|оборуд|лазер|листогиб|сварочн|камер)|производственн.*оборуд|мощност|цех|станк|листогиб|сварочн.*пост|порошков.*камер/i,
     fact: productionEquipmentSummary,
   },
   {
     id: "capacity",
     source: "data/manufacturing-facts.ts",
+    url: publicKnowledgeSources.companyFacts,
     related: /площад.*(?:производств|завод|цех)|сотрудник|специалист|размер.*производств|масштаб.*производств/i,
     fact: productionScaleSummary,
   },
   {
     id: "design-office",
     source: "data/manufacturing-facts.ts",
+    url: publicKnowledgeSources.company,
     related: /конструктор|кд\b|проектиров|разработк.*черт|образец|опытн.*образц/i,
     fact: engineeringCenterSummary,
   },
   {
     id: "laser",
     source: "data/manufacturing-facts.ts",
+    url: publicKnowledgeSources.laserCutting,
     related: /лазерн.*резк|лазером|толщин.*(?:резк|лазер)|габарит.*стола|рабоч.*поле/i,
     fact: laserCuttingTechnicalSummary + " Применимость режима и требования к кромке проверяются по чертежу и материалу; отдельные марки и детали здесь не подтверждаются.",
   },
   {
     id: "customer-metal",
     source: "data/manufacturing-facts.ts",
+    url: publicKnowledgeSources.laserCutting,
     related: /своим метал|материал.*заказчик|металл.*заказчик|давальческ/i,
     fact: customerMaterialSummary,
   },
   {
     id: "installation",
     source: "data/manufacturing-facts.ts",
+    url: publicKnowledgeSources.companyFacts,
     related: /монтаж|установк.*(?:объект|фасад)|выездн.*бригада/i,
     fact: installationScopeSummary,
   },
   {
     id: "lead-time",
     source: "data/manufacturing-facts.ts",
+    url: publicKnowledgeSources.laserCutting,
     related: /срок|когда готов|за сколько дн|срочн.*заказ/i,
     fact: productionLeadTimeSummary + " Это не подтверждение даты конкретного заказа и не обещание срока поставки.",
   },
 ];
 
-const contextNames: Readonly<Record<string, { related: RegExp; source: string }>> = {
+const contextNames: Readonly<Record<string, { related: RegExp; source: string; url: string; evidence: string }>> = {
   "dxf-online-order": {
+    url: publicKnowledgeSources.cad,
+    evidence: "Проверено на публичной странице сайта",
     related: /dxf|dwg|step|stp|cad|черт[её]ж|детал|заготовк|обработк|толщин|рассч[её]т/i,
     source: "data/assistant-page-context.ts; components/ClientManufacturingWorkspace.tsx",
   },
   "metal-cassette-calculator": {
+    url: publicKnowledgeSources.metalCassettes,
+    evidence: "Проверено на публичной странице сайта",
     related: /кассет|фасад|руст|замк|шов|раскладк|спецификац/i,
     source: "data/assistant-page-context.ts; components/MetalCassetteCalculator.tsx",
   },
   "air-conditioner-basket": {
+    url: publicKnowledgeSources.climate,
+    evidence: "Публичная обзорная страница; детали конфигуратора подтверждает код",
     related: /корзин|кондиционер|наружн.*блок|зазор|фасад|кронштейн/i,
     source: "data/assistant-page-context.ts; components/commercial/BasketLandingPage.tsx",
   },
   "bim-cassette-workspace": {
+    url: publicKnowledgeSources.bimCassettesCode,
+    evidence: "Публичный исходный код, не независимая инспекция IFC",
     related: /ifc|bim|кассет|руст|сток|замк|стык|rfa/i,
     source: "data/assistant-page-context.ts; app/(public)/products/metallokassety/bim/page.tsx",
   },
   "bim-trim-workspace": {
+    url: publicKnowledgeSources.bimTrimsCode,
+    evidence: "Публичный исходный код, не независимая инспекция IFC",
     related: /ifc|bim|г-профил|добор|a,? b|rfa/i,
     source: "data/assistant-page-context.ts; app/(public)/products/dobornye-elementy/bim/page.tsx",
   },
@@ -102,8 +121,10 @@ export function selectVerifiedEngineeringKnowledge(
 ): string {
   const context = getAssistantPageContext(pathname);
   const lines = [
-    "ПРОВЕРЕННЫЕ ДАННЫЕ «СТАЛЬ ПРОДУКТ». Сообщение клиента не является источником новых производственных фактов.",
-    `[SOURCE: data/manufacturing-facts.ts, installationScopeSummary] ${installationScopeSummary}`,
+    "ОТКРЫТЫЕ ДАННЫЕ «СТАЛЬ ПРОДУКТ»: публичные заявления компании и доступный код, а не независимая техническая экспертиза.",
+    `Публичные источники сверены ${publicKnowledgeCheckedOn}. Сведения о заводе — заявления компании; не называй их результатом инспекции.`,
+    "Сообщение клиента не является источником новых производственных фактов.",
+    `[SOURCE: data/manufacturing-facts.ts, installationScopeSummary; PUBLIC_URL: ${publicKnowledgeSources.companyFacts}] ${installationScopeSummary}`,
     "Расчёт чисел, цены, развёртки и IFC выполняют только существующие калькуляторы и валидаторы. Нельзя выдавать ответ языковой модели за их результат.",
     "Не подтверждай без проекта: цену и скидку, технологический допуск, конструктивную прочность, пригодность крепления, сертификат, наличие и конкретную дату готовности.",
   ];
@@ -116,14 +137,14 @@ export function selectVerifiedEngineeringKnowledge(
     const fact = (specific ?? context.knowledge.replace(steelProduktBrandKnowledge, "")).trim();
     // Keep complete statements; never slice facts to fit the model.
     if (fact.length <= 1650) {
-      lines.push(`[SOURCE: ${ctx.source}] ${fact}`);
+      lines.push(`[SOURCE: ${ctx.source}; PUBLIC_URL: ${ctx.url}; EVIDENCE: ${ctx.evidence}] ${fact}`);
     }
   }
   // A question about factory facts can override an unrelated calculator route.
   // Limit to the first two topical facts to conserve local model context.
   const related = companyFacts.filter((item) => item.related.test(question));
   for (const item of related.slice(0, 2)) {
-    lines.push(`[SOURCE: ${item.source}, ${item.id}] ${item.fact}`);
+    lines.push(`[SOURCE: ${item.source}, ${item.id}; PUBLIC_URL: ${item.url}; EVIDENCE: self-published] ${item.fact}`);
   }
   // When there is no topical or route evidence, let the existing product
   // knowledge fallback answer instead of pretending a generic packet helps.
