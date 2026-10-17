@@ -106,6 +106,7 @@ try{
 
   // Switching workflows must not destroy an unsaved project.
   await selectTab(tabNames[1]);
+  await page.getByText('Раскладка, шов и марка',{exact:true}).click();
   const mark=page.getByLabel('Марка кассеты',{exact:true});
   await mark.fill('QA-UNSAVED-2021');
   await selectTab(tabNames[3]);
@@ -184,6 +185,7 @@ try{
   // Full document navigation tests incoming links, including nested old anchors.
   for(const [hash,name] of [['bim-joints',tabNames[2]],['bim-config-title',tabNames[1]],['bim-passport',tabNames[3]],['bim-download',tabNames[1]],['bim-library',tabNames[0]]]){
     await page.goto(base+'/products/metallokassety/bim#'+hash,{waitUntil:'networkidle'});
+    await page.reload({waitUntil:'networkidle'});
     await expect(page.getByRole('tab',{name,exact:true})).toHaveAttribute('aria-selected','true');
     await expect(page.locator('#'+hash)).toBeVisible();
     await noOverflow('deep-link '+hash);
