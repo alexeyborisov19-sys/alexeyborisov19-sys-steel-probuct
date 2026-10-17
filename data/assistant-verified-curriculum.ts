@@ -91,14 +91,14 @@ const contextNames: Readonly<Record<string, { related: RegExp; source: string; u
     source: "data/assistant-page-context.ts; components/MetalCassetteCalculator.tsx",
   },
   "air-conditioner-basket": {
-    url: publicKnowledgeSources.climate,
-    evidence: "Публичная обзорная страница; детали конфигуратора подтверждает код",
+    url: publicKnowledgeSources.basket,
+    evidence: "Публичная страница корзин; технические параметры подтверждаются инструкцией конкретного кондиционера",
     related: /корзин|кондиционер|наружн.*блок|зазор|фасад|кронштейн/i,
     source: "data/assistant-page-context.ts; components/commercial/BasketLandingPage.tsx",
   },
   "bim-cassette-workspace": {
-    url: publicKnowledgeSources.bimCassettesCode,
-    evidence: "Публичный исходный код, не независимая инспекция IFC",
+    url: publicKnowledgeSources.bimCassettes,
+    evidence: "Публичная действующая страница BIM-библиотеки; не сертификат совместимости IFC",
     related: /ifc|bim|кассет|руст|сток|замк|стык|rfa/i,
     source: "data/assistant-page-context.ts; app/(public)/products/metallokassety/bim/page.tsx",
   },
@@ -109,6 +109,28 @@ const contextNames: Readonly<Record<string, { related: RegExp; source: string; u
     source: "data/assistant-page-context.ts; app/(public)/products/dobornye-elementy/bim/page.tsx",
   },
 };
+
+/**
+ * Public neutral standards. Technical descriptions are from their official
+ * publishers, not unverified marketing materials or generated model answers.
+ * A spec describing a file format does not certify a customer's particular file.
+ */
+const standardReferences: readonly Topic[] = [
+  {
+    id: "autodesk-dxf-header-units",
+    source: "Autodesk AutoCAD DXF Reference, HEADER Section Group Codes, $INSUNITS",
+    url: publicKnowledgeSources.dxfAutodesk,
+    related: /\bdxf\b|insunits|единиц.*(?:черт|файл|масштаб)|масштаб.*(?:черт|dxf)/i,
+    fact: "В официальном справочнике Autodesk DXF заголовок $INSUNITS с кодом 70: значение 0 — без заданных единиц (Unitless), значение 4 — миллиметры. Наличие этого поля не доказывает правильный масштаб деталей: единицы и размеры надо сверять по исходному чертежу.",
+  },
+  {
+    id: "buildingsmart-ifc",
+    source: "buildingSMART International, Industry Foundation Classes (IFC)",
+    url: publicKnowledgeSources.ifcOfficial,
+    related: /\bifc\b|\bbim\b|\brfa\b|openbim|интероперабельн|совместим.*(?:revit|bim)/i,
+    fact: "По официальной документации buildingSMART, IFC — открытый межплатформенный формат и модель данных для обмена BIM-информацией. Последний официальный выпуск IFC — 4.3.2.0 (ISO 16739-1:2024). На сайте «Сталь Продукт» экспорт обозначен IFC4: не называй его автоматически IFC4.3, не обещай совместимость любого ПО или получение нативного RFA.",
+  },
+];
 
 /**
  * A small approved evidence packet. Includes source names so future edits can
@@ -143,12 +165,15 @@ export function selectVerifiedEngineeringKnowledge(
   // A question about factory facts can override an unrelated calculator route.
   // Limit to the first two topical facts to conserve local model context.
   const related = companyFacts.filter((item) => item.related.test(question));
+  const standards = standardReferences.filter((item) => item.related.test(question));
   for (const item of related.slice(0, 2)) {
     lines.push(`[SOURCE: ${item.source}, ${item.id}; PUBLIC_URL: ${item.url}; EVIDENCE: self-published] ${item.fact}`);
   }
-  // When there is no topical or route evidence, let the existing product
-  // knowledge fallback answer instead of pretending a generic packet helps.
-  if (related.length === 0 && !ctx) return "";
+  for (const item of standards.slice(0, 2)) {
+    lines.push(`[SOURCE: ${item.source}, ${item.id}; PUBLIC_URL: ${item.url}; EVIDENCE: official publisher] ${item.fact}`);
+  }
+  // An unrelated question is better handled by the existing safe fallback.
+  if (related.length === 0 && standards.length === 0 && !ctx) return "";
 
   return lines.join("\n");
 }
