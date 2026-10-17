@@ -69,7 +69,7 @@ test("compact model prompt preserves sources, JSON and the latest user question"
   );
   assert.ok(prompt);
   assert.equal(prompt.data.userMessage, question);
-  assert.match(prompt.system, /ПРОВЕРЕННЫЕ ДАННЫЕ/i);
+  assert.match(prompt.system, /ОТКРЫТЫЕ ДАННЫЕ/i);
   assert.match(prompt.system, /SOURCE:/);
   assert.match(prompt.system, /Сначала установи предмет/i);
   assert.ok(prompt.system.length + JSON.stringify(prompt.data).length <= 6000);
@@ -95,4 +95,38 @@ test("every selected public record has a source URL; no private file links", () 
     assert.match(answer, /PUBLIC_URL: https:\/\/(?:www\.steelprodukt\.ru|github\.com)\//);
     assert.doesNotMatch(answer, /\/var\/lib|\/etc\/|api[_-]?key|BEGET_(HOST|USER|SSH_PRIVATE_KEY)/i);
   }
+});
+
+test("official Autodesk header units are available without guessing drawing units", () => {
+  const evidence = selectVerifiedEngineeringKnowledge(
+    "Что значит $INSUNITS в DXF, единицы миллиметры?", "/online-order",
+  );
+  assert.match(evidence, /autodesk-dxf-header-units/);
+  assert.match(evidence, /official publisher/);
+  assert.match(evidence, /значение 0 — без заданных единиц/);
+  assert.match(evidence, /значение 4 — миллиметры/);
+  assert.match(evidence, /масштаб.*сверять/);
+});
+
+test("IFC source distinguishes official IFC4.3 specification from site's IFC4 export", () => {
+  const evidence = selectVerifiedEngineeringKnowledge(
+    "Экспорт IFC из BIM это готовая модель RFA?", "/products/metallokassety/bim",
+  );
+  assert.match(evidence, /buildingsmart-ifc/);
+  assert.match(evidence, /4\.3\.2\.0/);
+  assert.match(evidence, /экспорт обозначен IFC4/);
+  assert.match(evidence, /не обещай совместимость/);
+});
+
+test("public BIM model information excludes stale self-published product claims", () => {
+  const evidence = selectVerifiedEngineeringKnowledge(
+    "Какие открытые и закрытые угловые кассеты есть в IFC?", "/products/metallokassety/bim",
+  );
+  assert.match(evidence, /steelprodukt\.ru\/products\/metallokassety\/bim/);
+  assert.doesNotMatch(evidence, /угловые элементы.*недоступн|открытое и скрытое крепление.*не различаются/i);
+});
+
+test("unknown questions do not gain invented source facts", () => {
+  const evidence = selectVerifiedEngineeringKnowledge("Есть ли пожарный сертификат на корзину X?", "/");
+  assert.doesNotMatch(evidence, /сертифицировано|соответствует ГОСТ|прочность .* гарант/i);
 });
