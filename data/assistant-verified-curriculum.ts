@@ -14,7 +14,7 @@ import {
   productionScaleSummary,
   productionLeadTimeSummary,
 } from "@/data/manufacturing-facts";
-import { getAssistantPageContext } from "@/data/assistant-page-context";
+import { getAssistantPageContext, pageSpecificKnowledgeAnswer, steelProduktBrandKnowledge } from "@/data/assistant-page-context";
 
 type Topic = {
   id: string;
@@ -104,8 +104,11 @@ export function selectVerifiedEngineeringKnowledge(
   const ctx = contextNames[context.id];
   // Route context is useful even when the user asks a short generic question.
   if (ctx && (ctx.related.test(question) || question.length < 100)) {
-    const fact = context.knowledge.trim();
-    // Keep each complete knowledge claim; never slice facts to fit the model.
+    const specific = pageSpecificKnowledgeAnswer(question, pathname);
+    // The brand story is trusted but can swamp the model's small prompt
+    // budget. Use the project-specific facts without repeating the story.
+    const fact = (specific ?? context.knowledge.replace(steelProduktBrandKnowledge, "")).trim();
+    // Keep complete statements; never slice facts to fit the model.
     if (fact.length <= 1650) {
       lines.push(`[SOURCE: ${ctx.source}] ${fact}`);
     }
