@@ -77,7 +77,7 @@ jobs:
             });
             const text = await res.text();
             let parsed;
-            try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text; }
+            try { parsed = text ? JSON.parse(text.replace(/("(?:Id|CampaignId|AdGroupId)"\s*:\s*)(\d{16,})(?=\s*[,}])/g,'$1"$2"')) : {}; } catch { parsed = text; }
             return {status: res.status, ok: res.ok, body: parsed, headers: Object.fromEntries(res.headers.entries())};
           }
 
@@ -127,6 +127,7 @@ jobs:
               const primary = simplified.find(g => g.target === "quote_request_success" || g.name === "Форма заявки — успешно отправлена");
               primaryGoalId = primary?.id || null;
               console.log("GOALS_COUNT:", simplified.length);
+              console.log("ALL_GOALS:", safe(simplified));
               console.log("PRIMARY_GOAL:", safe(primary || null));
               console.log("REQUIRED_TARGETS_PRESENT:", safe([
                 "quote_form_started","quote_file_attached","quote_request_submit","quote_request_success",
@@ -161,15 +162,16 @@ jobs:
               `ym:s:goal${primaryGoalId}visits`,
               `ym:s:goal${primaryGoalId}conversionRate`
             ] : [];
+            await metrikaReport("ALIGNED_10_16_OCT","2026-10-10","2026-10-16",goalMetrics);
             await metrikaReport("LAST_7_DAYS","7daysAgo","today",goalMetrics);
             await metrikaReport("LAST_30_DAYS","30daysAgo","today",goalMetrics);
 
             const src = new URL("https://api-metrika.yandex.net/stat/v1/data");
             src.searchParams.set("ids", canonicalCounter);
-            src.searchParams.set("date1","30daysAgo");
-            src.searchParams.set("date2","today");
+            src.searchParams.set("date1","2026-10-10");
+            src.searchParams.set("date2","2026-10-16");
             src.searchParams.set("dimensions","ym:s:trafficSource");
-            src.searchParams.set("metrics","ym:s:visits,ym:s:users");
+            src.searchParams.set("metrics",["ym:s:visits","ym:s:users",...goalMetrics].join(","));
             src.searchParams.set("accuracy","full");
             src.searchParams.set("lang","ru");
             src.searchParams.set("limit","20");
@@ -179,7 +181,7 @@ jobs:
               console.log("TRAFFIC_SOURCES:", safe((traffic.body?.data || []).map(row => ({
                 source: row.dimensions?.[0]?.name || row.dimensions?.[0]?.id,
                 visits: row.metrics?.[0],
-                users: row.metrics?.[1]
+                users: row.metrics?.[1], goalReaches:row.metrics?.[2], goalVisits:row.metrics?.[3], goalConversionRate:row.metrics?.[4]
               }))));
             } else console.log("TRAFFIC_SOURCES_ERROR:", safe(traffic.body));
           }
@@ -359,7 +361,8 @@ jobs:
             console.log("ADS_HTTP:", ads.status);
             if (ads.ok && ads.body?.result?.Ads) {
               console.log("ADS_DESTINATIONS:", safe(ads.body.result.Ads.map(a => ({
-                id: a.Id,
+                id: String(a.Id),
+                campaignId:String(a.CampaignId), groupId:String(a.AdGroupId), clarification:a.StatusClarification,
                 type: a.Type,
                 status: a.Status,
                 state: a.State,
@@ -368,7 +371,7 @@ jobs:
             } else console.log("ADS_ERROR:", safe(ads.body));
 
             // Recent performance report. This is a read-only POST to Reports.
-            const d2 = new Date();
+            const d2 = new Date("2026-10-16T12:00:00Z");
             const d1 = new Date(d2.getTime() - 6*86400000);
             const fmt = d => d.toISOString().slice(0,10);
             const reportSpec = {
