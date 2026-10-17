@@ -1,0 +1,94 @@
+name: Read-only Beget AI capacity audit
+
+on:
+  push:
+    branches:
+      - feat/engineering-ai-calculator-bridge-20261017
+    paths:
+      - '.github/workflows/ai-host-resource-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  observe:
+    name: Observe machine resources without modification
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify configured access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$BEGET_HOST" && test -n "$BEGET_USER" && test -n "$BEGET_SSH_PORT" && test -n "$BEGET_SSH_PRIVATE_KEY"
+          echo 'Configured SSH credentials are present; values are not printed.'
+      - name: Configure existing Beget SSH access
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+          BEGET_SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$BEGET_SSH_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$BEGET_SSH_PORT" -H "$BEGET_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Read only RAM CPU disk and local inference readiness
+        env:
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+          BEGET_SSH_PORT: ${{ secrets.BEGET_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o ConnectTimeout=12 \
+            -p "$BEGET_SSH_PORT" "$BEGET_USER@$BEGET_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          echo "audit=read-only"
+          echo "cpu_logical=$(getconf _NPROCESSORS_ONLN)"
+          awk '
+            $1=="MemTotal:" {t=$2}
+            $1=="MemAvailable:" {a=$2}
+            $1=="SwapTotal:" {s=$2}
+            $1=="SwapFree:" {f=$2}
+            END {printf "ram_total_mib=%.0f\nram_available_mib=%.0f\nswap_total_mib=%.0f\nswap_free_mib=%.0f\n",t/1024,a/1024,s/1024,f/1024}
+          ' /proc/meminfo
+          echo "load_average=$(awk '{print $1,$2,$3}' /proc/loadavg)"
+          if [ -d /var/www/html ]; then
+            df -Pm /var/www/html | awk 'NR==2 {printf "website_disk_free_mib=%d\n",$4}'
+          else
+            df -Pm / | awk 'NR==2 {printf "root_disk_free_mib=%d\n",$4}'
+          fi
+          if command -v nvidia-smi >/dev/null 2>&1; then
+            nvidia-smi --query-gpu=memory.total,memory.free --format=csv,noheader,nounits 2>/dev/null \
+              | awk -F, '{n++;total+=$1;free+=$2}END{printf "nvidia_gpu_count=%d\nnvidia_vram_total_mib=%.0f\nnvidia_vram_free_mib=%.0f\n",n,total,free}'
+          else
+            echo 'nvidia_gpu_status=not_detected_by_nvidia_smi'
+          fi
+          if command -v ollama >/dev/null 2>&1; then
+            echo 'ollama_binary=available'
+          else
+            echo 'ollama_binary=not_in_path'
+          fi
+          if command -v curl >/dev/null 2>&1 \
+             && curl --fail --silent --max-time 2 -o /dev/null http://127.0.0.1:11434/api/tags; then
+            echo 'ollama_loopback_api=responding'
+          else
+            echo 'ollama_loopback_api=not_responding'
+          fi
+          if command -v ss >/dev/null 2>&1; then
+            if ss -ltn | grep -Eq '[[:space:]](0\.0\.0\.0|\*|\[::\]|:::):11434([[:space:]]|$)'; then
+              echo 'ollama_public_listener=detected'
+            else
+              echo 'ollama_public_listener=not_detected'
+            fi
+          else
+            echo 'ollama_public_listener=unverified'
+          fi
+          echo 'inspection_complete=true'
+          REMOTE
