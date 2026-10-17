@@ -77,9 +77,9 @@ try{
   await expect(cards).toHaveCount(0);
   await page.getByRole('button',{name:'Сбросить поиск',exact:true}).click();
   await expect(cards).toHaveCount(15);
-  await filters.getByLabel('Исполнение',{exact:true}).selectOption('closed');
+  await filters.getByRole('combobox',{name:/^Исполнение/}).selectOption('closed');
   await expect(cards).toHaveCount(3);
-  await filters.getByLabel('Толщина исходника',{exact:true}).selectOption('0.7');
+  await filters.getByRole('combobox',{name:/^Толщина исходника/}).selectOption('0.7');
   await expect(cards).toHaveCount(1);
   await filters.getByRole('button',{name:'Сбросить фильтры',exact:true}).click();
   await expect(cards).toHaveCount(15);

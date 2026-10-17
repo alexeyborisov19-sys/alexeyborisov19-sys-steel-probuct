@@ -250,6 +250,7 @@ try {
 
 
   await open(page,'/products/metallokassety/bim');
+  await page.getByRole('tab',{name:'Раскладка фасада',exact:true}).click();
   await expect(page.getByText('При смене типа или толщины размеры вернутся к исходным.',{exact:true})).toBeVisible();
   const bimWidth=page.getByLabel('Ширина кассеты, мм',{exact:true});
   await bimWidth.fill('');await expect(page.locator('#bim-workspace').getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Скачать IFC',exact:true})).toBeDisabled();
@@ -593,3 +594,4 @@ try {
  await videoContext.close();
 } finally {await writeFile(`${output}/results.json`,JSON.stringify(results,null,2));await browser.close();}
 console.log(`Passed ${results.length} responsive project flows. Lead/analytics writes were intercepted; only local read-only geometry and basket-source readiness were allowed.`);
+
