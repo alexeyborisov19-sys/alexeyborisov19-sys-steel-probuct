@@ -19,8 +19,9 @@ test("all approved model knowledge URLs are publicly accessible source addresses
   for (const url of values) {
     const parsed = new URL(url);
     assert.equal(parsed.protocol, "https:");
-    assert.ok(["www.steelprodukt.ru", "github.com"].includes(parsed.hostname));
-    assert.doesNotMatch(parsed.href, /\?|password|token|secret|\/private\//i);
+    assert.ok(["www.steelprodukt.ru", "github.com", "www.buildingsmart.org", "help.autodesk.com"].includes(parsed.hostname));
+    assert.doesNotMatch(parsed.href, /password|token|secret|\/private\//i);
+    assert.ok(parsed.search === "" || (parsed.hostname === "www.buildingsmart.org" && parsed.search === "?lang=en"));
   }
 });
 
