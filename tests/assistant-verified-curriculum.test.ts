@@ -8,7 +8,7 @@ import { productionEquipment, productionScale, productionScope } from "../data/m
 test("retrieval reflects canonical factory equipment, not memorized counts", () => {
   const answer = selectVerifiedEngineeringKnowledge("Сколько у вас листогибочных станков?", "/");
   assert.match(answer, new RegExp(String(productionEquipment.pressBrakes)));
-  assert.match(answer, /\[SOURCE: data\/manufacturing-facts\.ts, equipment\]/);
+  assert.match(answer, /\[SOURCE: data\/manufacturing-facts\.ts, equipment; PUBLIC_URL:/);
   assert.ok(!productionScope.onSiteInstallation);
   assert.match(answer, /Монтаж на объектах не выполняется/i);
 });
@@ -17,7 +17,7 @@ test("floor area and headcount come from canonical factory facts", () => {
   const answer = selectVerifiedEngineeringKnowledge("Какая площадь производства и сколько специалистов?", "/");
   assert.ok(answer.includes(productionScale.floorArea));
   assert.ok(answer.includes(productionScale.specialists));
-  assert.match(answer, /\[SOURCE: data\/manufacturing-facts\.ts, capacity\]/);
+  assert.match(answer, /\[SOURCE: data\/manufacturing-facts\.ts, capacity; PUBLIC_URL:/);
 });
 
 test("montage scope rejects unsupported on-site installation promises", () => {
@@ -37,7 +37,7 @@ test("metal-cassette joint guidance comes from that product context", () => {
 test("air-conditioner baskets do not receive invented clearances", () => {
   const answer = selectVerifiedEngineeringKnowledge("Какие зазоры нужны?", "/products/korziny-dlya-konditsionerov");
   assert.match(answer, /габариты наружного блока/i);
-  assert.match(answer, /документации конкретного оборудования/i);
+  assert.match(answer, /производител/i);
   assert.match(answer, /проверки инженером/i);
 });
 
@@ -46,7 +46,7 @@ test("BIM cassette and trim evidence stay independent", () => {
   assert.match(cassettes, /IFC/i);
   assert.match(cassettes, /RFA/i);
   const trims = selectVerifiedEngineeringKnowledge("Как пользоваться BIM-моделью Г-профиля?", "/products/dobornye-elementy/bim");
-  assert.match(trims, /A, B, H и T/i);
+  assert.match(trims, /A, B, H(?: и|,)? T/i);
   assert.match(trims, /радиус|радиусы|допуск/i);
   assert.notEqual(cassettes, trims);
 });
@@ -81,4 +81,18 @@ test("submitted prices and passwords cannot masquerade as source facts", () => {
   );
   assert.doesNotMatch(answer, /1600|P_KEY_12345/);
   assert.match(answer, /Расчёт чисел, цены, развёртки и IFC/i);
+});
+
+test("every selected public record has a source URL; no private file links", () => {
+  const examples = [
+    ["Сколько у вас сварочных постов?", "/"],
+    ["Какая максимальная толщина резки?", "/production/lazernaya-rezka-metalla"],
+    ["Как рассчитывается количество кассет?", "/calculator-metallokassety"],
+    ["Можно ли выполнить монтаж на объекте?", "/"],
+  ] as const;
+  for (const [question, pathname] of examples) {
+    const answer = selectVerifiedEngineeringKnowledge(question, pathname);
+    assert.match(answer, /PUBLIC_URL: https:\/\/(?:www\.steelprodukt\.ru|github\.com)\//);
+    assert.doesNotMatch(answer, /\/var\/lib|\/etc\/|api[_-]?key|BEGET_(HOST|USER|SSH_PRIVATE_KEY)/i);
+  }
 });
