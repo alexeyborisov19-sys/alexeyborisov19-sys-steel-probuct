@@ -411,7 +411,8 @@ jobs:
             for(const [label,fields,type] of [["GOAL_BREAKDOWN",["Date","CampaignId","Impressions","Clicks","Cost","Conversions"],"CAMPAIGN_PERFORMANCE_REPORT"],["AD_PERFORMANCE",["AdId","CampaignId","AdGroupId","Impressions","Clicks","Cost","Conversions"],"CUSTOM_REPORT"],["SEARCH_QUERIES",["Query","Impressions","Clicks","Cost","Conversions"],"SEARCH_QUERY_PERFORMANCE_REPORT"]]){
               await new Promise(resolve=>setTimeout(resolve,11000));
               const spec={params:{...reportSpec.params,ReportName:"SteelProdukt readonly "+label,ReportType:type,FieldNames:fields,Goals:["612680821","612680809"],SelectionCriteria:{DateFrom:"2026-10-10",DateTo:"2026-10-16",Filter:[{Field:"CampaignId",Operator:"EQUALS",Values:["714391927"]}]}}};
-              const response=await fetch("https://api.direct.yandex.com/json/v501/reports",{method:"POST",headers,body:JSON.stringify(spec),signal:AbortSignal.timeout(30000)});
+              let response=await fetch("https://api.direct.yandex.com/json/v501/reports",{method:"POST",headers,body:JSON.stringify(spec),signal:AbortSignal.timeout(30000)});
+              for(let attempt=0;attempt<4&&[201,202].includes(response.status);attempt++){await response.text();await new Promise(resolve=>setTimeout(resolve,Math.max(11000,Number(response.headers.get("retryIn")||10)*1000)));response=await fetch("https://api.direct.yandex.com/json/v501/reports",{method:"POST",headers,body:JSON.stringify(spec),signal:AbortSignal.timeout(30000)});}
               console.log(label+"_HTTP:",response.status);console.log(label+"_TSV:\n"+(await response.text()).slice(0,45000));
             }
           }
