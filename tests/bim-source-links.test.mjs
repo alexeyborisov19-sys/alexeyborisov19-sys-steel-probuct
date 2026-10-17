@@ -1,13 +1,14 @@
-'use strict';
 // Behaviour-level controller regression: real selectModel/sourceMesh/fields code,
 // with only browser drawing, DOM plumbing and network responses substituted.
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-const { webcrypto, createHash } = require('node:crypto');
-const { TextEncoder } = require('node:util');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
+import { webcrypto, createHash } from 'node:crypto';
+import { TextEncoder } from 'node:util';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function harness() {
   const elements = new Map();

@@ -1,5 +1,10 @@
-const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{createRequire}=require('node:module');
-const req=createRequire(process.env.STEELPRODUKT_TEST_PACKAGE||require('node:path').resolve('package.json'));
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+const req=createRequire(process.env.STEELPRODUKT_TEST_PACKAGE||path.resolve('package.json'));
 const ts=req('typescript'),React=req('react'),ReactDOM=req('react-dom/server');
 const source=fs.readFileSync('components/CassetteBimCatalog.tsx','utf8');
 const result=ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},reportDiagnostics:true});
