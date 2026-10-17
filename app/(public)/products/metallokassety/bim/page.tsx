@@ -2,50 +2,51 @@ import { AttributionLink } from "@/components/AttributionLink";
 import { PageLayout } from "@/components/PageLayout";
 import { CassetteBimConfigurator } from "@/components/CassetteBimConfigurator";
 import { CassetteBimLibrary } from "@/components/CassetteBimLibrary";
+import { CassetteBimWorkspace } from "@/components/CassetteBimWorkspace";
 import { CassetteJointGuide } from "@/components/CassetteJointGuide";
 import { JsonLd } from "@/components/JsonLd";
 import { faqSchema } from "@/lib/schema";
 import { absoluteUrl } from "@/lib/site";
 import { createPageMetadata } from "@/lib/seo";
+import styles from "@/components/CassetteBimWorkspace.module.css";
 
-export const metadata = createPageMetadata({ title: "BIM-модель металлокассет — скачать IFC и спецификацию", description: "Бесплатная координационная IFC-модель металлокассет: размеры, толщина, швы, марки и спецификация CSV. Настройте фасадный фрагмент для архитектурного проекта.", path: "/products/metallokassety/bim" });
+export const metadata = createPageMetadata({ title: "BIM-библиотека фасадных изделий — IFC-модели металлокассет", description: "15 исходных IFC-моделей кассет и доборов. Выберите изделие, измените габариты или соберите фасадный фрагмент со спецификацией CSV. Бесплатно, без регистрации.", path: "/products/metallokassety/bim" });
 const faq = [
-  {question: "Можно скачать модель бесплатно?", answer: "Да. Генерация IFC и спецификации CSV бесплатна и не требует регистрации. Изготовление кассет рассчитывается отдельно."},
-  {question: "Можно менять параметры после загрузки в Revit?", answer: "Размеры этой IFC-модели задаются в генераторе до скачивания. Она не является редактируемым семейством RFA. Семейства RFA в этом сервисе пока недоступны."},
-  {question: "Подходит ли модель для заказа в производство?", answer: "Нет. Она предназначена для архитектурной компоновки и подсчёта элементов. Открытый и закрытый типы воспроизводят исходные STEP с точностью сетки 0,1 мм; изменённые размеры и узлы стыковки согласуются по рабочей документации."},
+  {question: "Можно скачать модель бесплатно?", answer: "Да. Исходные IFC, настройка габаритов и экспорт фасадного фрагмента с CSV доступны бесплатно, без регистрации. Изготовление изделий рассчитывается отдельно."},
+  {question: "Можно менять параметры после загрузки в Revit?", answer: "Габариты IFC задаются в веб-конфигураторе до скачивания. Изменение свойств IFC в Revit само по себе не перестраивает геометрию. Нативные семейства RFA для Revit 2021 пока не опубликованы; совместимость импорта IFC в Revit 2021 отдельно не подтверждена."},
+  {question: "Подходит ли модель для заказа в производство?", answer: "Модель служит для архитектурной компоновки и ведомости элементов. Она не заменяет производственные развёртки, рабочие чертежи, расчёт нагрузок и согласование узлов. Изменённые габариты и применимость конкретного изделия необходимо согласовать с инженером."},
 ];
+const passport = [
+  ["Модели изделий", "Исходные габариты X/Y/Z — внешние размеры тела. Они не равны размерам лицевой части или монтажному модулю. Толщина берётся из исходной геометрии; диапазон настройки не является производственным допуском."],
+  ["Настройка отдельного изделия", "Перестраиваются прямые участки координационной сетки. Гибы и отверстия защищены от масштабирования; положение отверстий в изменённом изделии требует согласования по чертежу. IFC фиксирует геометрию на момент скачивания."],
+  ["Раскладка фасада", "Width и Height — лицевые размеры, ReturnWidth — второе крыло угловой кассеты. Depth, Thickness и Joint задаются в миллиметрах. Монтажные полки могут выходить за лицевой габарит. Внешний шов по краям блока не добавляется."],
+  ["Площадь и покрытие", "FaceArea в раскладке — площадь лицевой поверхности в м² без швов, не расход металла и не площадь окраски с бортами. Finish задаёт покрытие элемента, DefaultFinish — описание по умолчанию. Цвет на экране приблизительный. В исходной библиотеке материал, RAL и масса автоматически не назначаются."],
+  ["Координаты раскладки", "Ширина по X, высота по Z, глубина по −Y. Начало у нижнего левого края блока. Каждая кассета — отдельный IfcPlate / IfcPlateType с собственным номером."],
+  ["Геометрия и ограничения", "ОТ и ЗТ толщиной 0,7/1 мм в раскладке — по исходным STEP. Угловая 90° в раскладке — упрощённая по чертежу, без отверстий и радиусов. Отдельные исходные угловые модели каталога — самостоятельные образцы. Крепёж и подсистема не входят; собираемость и проектные узлы отдельно не утверждены."],
+];
+
+function BimHelp() {
+  return <section id="bim-passport" aria-labelledby="bim-help-title" className={styles.sectionAnchor}>
+    <p className={styles.eyebrow}>Файлы и совместимость</p>
+    <h2 id="bim-help-title" className={styles.sectionHeading}>Выберите формат под свою задачу</h2>
+    <p className={styles.sectionText}>Готовое изделие, изменённая модель и фасадная раскладка — разные результаты. Проверьте назначение файла перед добавлением в проект.</p>
+    <div className={styles.tableWrap}><table className={styles.table}><caption className="sr-only">Форматы BIM-библиотеки и их назначение</caption><thead><tr><th scope="col">Формат</th><th scope="col">Для чего нужен</th><th scope="col">Как изменить</th></tr></thead><tbody>
+      <tr><th scope="row">IFC4 · изделие</th><td>Одна кассета или добор. Координационная сетка и точная исходная геометрия — альтернативные представления одной детали.</td><td>Выберите «Задать размеры» в каталоге. Повторная настройка — в веб-конфигураторе, не в свойствах скачанного IFC.</td></tr>
+      <tr><th scope="row">IFC4 · раскладка</th><td>Фасадный фрагмент из отдельных кассет с марками, размерами и назначенными RAL.</td><td>Размеры, сетка и цвета задаются во вкладке «Раскладка фасада» до экспорта.</td></tr>
+      <tr><th scope="row">CSV</th><td>Ведомость фасадного фрагмента: строка на кассету, размеры, покрытие и площадь лица.</td><td>Откройте в табличном редакторе. Изменения CSV не перестраивают модель.</td></tr>
+      <tr><th scope="row">JSON</th><td>Настройки для продолжения работы в соответствующем веб-инструменте.</td><td>Загрузите сохранённый JSON в тот инструмент, в котором он создан. Это не BIM-модель.</td></tr>
+    </tbody></table></div>
+    <div className={styles.notice}><h3>Revit 2021: семейства RFA пока не опубликованы</h3><p>Скачиваемый IFC не является редактируемым семейством Revit. Импорт и работу модели в Revit 2021 необходимо проверить в целевой программе. Подготовка исходников сама по себе не подтверждает готовность RFA.</p></div>
+    <details className={styles.details}><summary>Паспорт параметров и геометрия</summary><div className={styles.tableWrap}><table className={styles.table}><caption className="sr-only">Паспорт IFC-модели металлокассет</caption><tbody>{passport.map(([name, value]) => <tr key={name}><th scope="row">{name}</th><td>{value}</td></tr>)}</tbody></table></div></details>
+    <h3 className={styles.faqTitle}>Вопросы о BIM-модели</h3>
+    {faq.map(item => <details key={item.question} className={styles.details}><summary>{item.question}</summary><p>{item.answer}</p></details>)}
+    <div className={styles.contact}><p>Для изготовления согласуйте рабочие чертежи и узлы. Модель не содержит расчёта нагрузок и производственных развёрток. Скачанные файлы нужно приложить к обращению самостоятельно.</p><div className={styles.links}><AttributionLink className="underline underline-offset-4" href="/products/metallokassety#calculator-metallokasset">Рассчитать металлокассеты</AttributionLink><AttributionLink className="underline underline-offset-4" href="/contacts#contact-form">Открыть форму обращения</AttributionLink></div></div>
+  </section>;
+}
+
 export default function CassetteBimPage() {
-  return <PageLayout compactHero breadcrumbs={[{name:"Главная",path:"/"},{name:"Продукция",path:"/products"},{name:"Металлокассеты",path:"/products/metallokassety"},{name:"BIM-модель",path:"/products/metallokassety/bim"}]} path="/products/metallokassety/bim" eyebrow="Инструменты проектировщика" title="Бесплатная BIM-библиотека" description="Выберите кассету или добор, скачайте IFC или настройте размеры. Раскладка фасада и карта примыканий — отдельные инструменты.">
-    <JsonLd data={[faqSchema(faq), {"@context":"https://schema.org","@type":"WebApplication",name:"Генератор IFC-модели металлокассет",url:absoluteUrl("/products/metallokassety/bim"),applicationCategory:"DesignApplication",operatingSystem:"Современный веб-браузер",isAccessibleForFree:true,inLanguage:"ru-RU",featureList:["Настройка размеров и швов","Поэлементная окраска RAL","Экспорт IFC4","Спецификация CSV"]}]} />
-    <section aria-labelledby="bim-config-title" className="bg-[#e9eeec] py-8 text-slate-900 sm:py-10">
-      <div className="container">
-        <nav aria-label="Разделы BIM-библиотеки" className="mb-5 flex flex-wrap gap-3 text-sm font-semibold text-orange-800"><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-library">Модели изделий</a><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-joints">Узлы и примыкания</a><a className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-3" href="#bim-config-title">Раскладка фасада</a></nav>
-        <CassetteBimLibrary />
-        <CassetteJointGuide />
-        <h2 id="bim-config-title" className="mt-10 mb-4 scroll-mt-28 text-2xl font-semibold">Раскладка фасадного фрагмента</h2>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600"><p>IFC4 · поэлементная окраска RAL · спецификация CSV</p><a className="font-semibold text-orange-800 underline underline-offset-4" href="#bim-passport">О модели и ограничениях ↓</a></div>
-        <CassetteBimConfigurator />
-        <div id="bim-passport" className="mt-8 scroll-mt-28 rounded-xl border border-slate-300 bg-white p-5 sm:p-7">
-          <h2 className="text-xl font-semibold">Что вы скачиваете</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Координационную модель фасадного фрагмента: отдельные кассеты с размерами, марками и назначенными цветами. Она подходит для архитектурной компоновки и ведомости элементов.</p>
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            <div className="rounded-lg bg-slate-50 p-4"><h3 className="font-semibold">IFC4 — модель</h3><p className="mt-2 text-sm leading-6 text-slate-600">Геометрия и RAL каждой кассеты. Размеры задаются здесь, перед скачиванием.</p></div>
-            <div className="rounded-lg bg-slate-50 p-4"><h3 className="font-semibold">CSV — спецификация</h3><p className="mt-2 text-sm leading-6 text-slate-600">Отдельная строка на кассету: марка, размеры, покрытие и площадь лица. Открывается в табличном редакторе.</p></div>
-            <div className="rounded-lg bg-amber-50 p-4"><h3 className="font-semibold">RFA пока недоступен</h3><p className="mt-2 text-sm leading-6 text-slate-600">Скачиваемый IFC предназначен для координации проекта. Редактируемое семейство Revit не создаётся.</p></div>
-          </div>
-          <details className="mt-6 border-t border-slate-200 py-4"><summary className="cursor-pointer font-semibold">Паспорт параметров и геометрия</summary><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">Паспорт IFC-модели металлокассет</caption><tbody>{[
-            ["Элементы", "IfcPlate / IfcPlateType. Каждая кассета имеет отдельный номер."],
-            ["Размеры", "Width, Height — лицевые габариты; Depth, Thickness, Joint — миллиметры. Монтажные полки могут выходить за лицевой габарит. ReturnWidth — второе крыло угловой кассеты. Внешний шов по краям не добавляется."],
-            ["Материал и RAL", "Оцинкованная сталь. Finish — покрытие каждого элемента; DefaultFinish — описание по умолчанию. Экранный оттенок приблизительный."],
-            ["Площадь", "FaceArea — лицевая поверхность в м² без швов. Не расход металла и не площадь окраски с бортами."],
-            ["Координаты", "Ширина по X, высота по Z, глубина по −Y. Начало у нижнего левого края блока."],
-            ["Ограничения", "ОТ и ЗТ толщиной 0,7/1 мм — по исходным STEP: борта, полки, отверстия и гибы. Угловая 90° — упрощённая по чертежу, без отверстий и радиусов. Размеры меняются через центральную часть, а не масштабирование металла. Крепёж и подсистема не входят."],
-          ].map(([name,value])=><tr key={name} className="border-b border-slate-200"><th scope="row" className="p-3 align-top font-medium">{name}</th><td className="p-3 text-slate-600">{value}</td></tr>)}</tbody></table></div></details>
-          <h3 className="mt-3 font-semibold">Вопросы о BIM-модели</h3>
-          {faq.map(item=><details key={item.question} className="border-b border-slate-200 py-4"><summary className="cursor-pointer text-sm font-medium">{item.question}</summary><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{item.answer}</p></details>)}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4"><p className="max-w-xl text-sm leading-6 text-slate-600">Для изготовления согласуйте рабочие чертежи и узлы. Модель не содержит расчёта нагрузок и производственных развёрток. Скачанные файлы нужно приложить к обращению самостоятельно.</p><div className="flex flex-wrap gap-5 text-sm font-semibold text-orange-800"><AttributionLink className="underline underline-offset-4" href="/products/metallokassety#calculator-metallokasset">Рассчитать металлокассеты</AttributionLink><AttributionLink className="underline underline-offset-4" href="/contacts#contact-form">Открыть форму обращения</AttributionLink></div></div>
-        </div>
-      </div>
-    </section>
+  return <PageLayout compactHero breadcrumbs={[{name:"Главная",path:"/"},{name:"Продукция",path:"/products"},{name:"Металлокассеты",path:"/products/metallokassety"},{name:"BIM-библиотека",path:"/products/metallokassety/bim"}]} path="/products/metallokassety/bim" eyebrow="Инструменты проектировщика" title="BIM-библиотека фасадных изделий" description="Кассеты и доборные элементы для архитектурной компоновки. Готовые модели, настройка габаритов и раскладка — в одном рабочем пространстве.">
+    <JsonLd data={[faqSchema(faq), {"@context":"https://schema.org","@type":"WebApplication",name:"BIM-библиотека фасадных изделий Сталь Продукт",url:absoluteUrl("/products/metallokassety/bim"),applicationCategory:"DesignApplication",operatingSystem:"Современный веб-браузер",isAccessibleForFree:true,inLanguage:"ru-RU",featureList:["Каталог 15 исходных изделий","Настройка габаритов IFC","Раскладка фасадного фрагмента","Экспорт IFC4 и CSV"]}]} />
+    <CassetteBimWorkspace library={<CassetteBimLibrary />} joints={<CassetteJointGuide />} help={<BimHelp />} layout={<section aria-labelledby="bim-config-title"><p className={styles.eyebrow}>Компоновка и ведомость</p><h2 id="bim-config-title" className={`${styles.sectionHeading} ${styles.sectionAnchor}`}>Раскладка фасадного фрагмента</h2><p className={styles.sectionText}>Задайте лицевые размеры кассет и сетку, назначьте цвета и сохраните IFC-модель со спецификацией. Для одной детали используйте каталог изделий.</p><div className={styles.layoutMeta}><p>IFC4 · поэлементная окраска RAL · спецификация CSV</p><a href="#bim-passport">Форматы и ограничения →</a></div><CassetteBimConfigurator /></section>} />
   </PageLayout>;
 }

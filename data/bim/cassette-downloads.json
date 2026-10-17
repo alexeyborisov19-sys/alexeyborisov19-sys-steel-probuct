@@ -1,0 +1,122 @@
+{
+  "SP-CAS-01": {
+    "sourceBase": "/bim/metallokassety-oriented",
+    "upperLockOriented": true,
+    "fileBytes": {
+      "coordination": 133741,
+      "exact": 218045
+    }
+  },
+  "SP-CAS-02": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 160362,
+      "exact": 229296
+    }
+  },
+  "SP-CAS-03": {
+    "sourceBase": "/bim/metallokassety-oriented",
+    "upperLockOriented": true,
+    "fileBytes": {
+      "coordination": 135778,
+      "exact": 216006
+    }
+  },
+  "SP-CAS-04": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 161029,
+      "exact": 227348
+    }
+  },
+  "SP-CAS-05": {
+    "sourceBase": "/bim/metallokassety-oriented",
+    "upperLockOriented": true,
+    "fileBytes": {
+      "coordination": 247787,
+      "exact": 367593
+    }
+  },
+  "SP-CAS-06": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 226114,
+      "exact": 341310
+    }
+  },
+  "SP-TRIM-07": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 58295,
+      "exact": 49295
+    }
+  },
+  "SP-TRIM-08": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 76500,
+      "exact": 53820
+    }
+  },
+  "SP-CAS-09": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 180443,
+      "exact": 232688
+    }
+  },
+  "SP-CAS-10": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 198748,
+      "exact": 237161
+    }
+  },
+  "SP-CAS-11": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 217032,
+      "exact": 241715
+    }
+  },
+  "SP-TRIM-12": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 55397,
+      "exact": 49511
+    }
+  },
+  "SP-TRIM-13": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 118899,
+      "exact": 77191
+    }
+  },
+  "SP-TRIM-14": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 66156,
+      "exact": 49090
+    }
+  },
+  "SP-TRIM-15": {
+    "sourceBase": "/bim/metallokassety",
+    "upperLockOriented": false,
+    "fileBytes": {
+      "coordination": 68495,
+      "exact": 60421
+    }
+  }
+}

@@ -23,6 +23,7 @@ try{
  let download=await downloadPromise;await download.saveAs(path.join(out,'browser-export.ifc'));
  const exported=await fs.readFile(path.join(out,'browser-export.ifc'),'utf8');
  assert(exported.includes('IFCTRIANGULATEDFACESET'));
+ await page.getByText('Сохранить или открыть настройки',{exact:true}).click();
  downloadPromise=page.waitForEvent('download');await page.locator('#save-project').click();
  download=await downloadPromise;await download.saveAs(path.join(out,'browser-settings.json'));
  const saved=JSON.parse(await fs.readFile(path.join(out,'browser-settings.json'),'utf8'));
@@ -61,3 +62,4 @@ try{
  const report={base,modelCount:ids.length,renderer,allModelsRendered:true,resizedIfcDownloaded:true,settingsRoundTrip:true,invalidInputBlocked:true,mobileNoOverflow:true,canvasFallback:true,pageErrors:errors,formSubmissions:0};
  await fs.writeFile(path.join(out,'browser-report.json'),JSON.stringify(report,null,2));console.log(report);
 }finally{await browser.close();}
+

@@ -4,6 +4,10 @@ on:
     paths:
       - 'public/bim/**'
       - 'components/CassetteBimLibrary.tsx'
+      - 'components/CassetteBim*'
+      - 'data/bim/cassette-downloads.json'
+      - 'tests/bim-source-links.test.mjs'
+      - 'tests/catalog-revit-regression.test.mjs'
       - 'app/(public)/products/metallokassety/bim/**'
       - 'scripts/*cassette*'
       - '.github/workflows/cassette-ifc-quality.yml'
@@ -39,6 +43,8 @@ jobs:
         run: node scripts/test-cassette-parametric.mjs
       - name: Install locked browser dependencies
         run: npm ci --no-audit --no-fund
+      - name: Catalog downloads and asynchronous model selection regressions
+        run: node --test tests/bim-source-links.test.mjs tests/catalog-revit-regression.test.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser navigation, sizes, downloads, mobile and fallback
@@ -70,3 +76,4 @@ jobs:
             artifacts/cassette-upright
           if-no-files-found: error
           retention-days: 7
+
