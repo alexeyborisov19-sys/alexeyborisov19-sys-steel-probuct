@@ -1,4 +1,5 @@
 import { buildCompactConversation } from "@/lib/server/quote-engine/compact-conversation";
+import { selectVerifiedEngineeringKnowledge } from "@/data/assistant-verified-curriculum";
 import { localAiSelected } from "@/lib/server/quote-engine/service-policy";
 import { completeWithConfiguredModel } from "@/lib/server/quote-engine/model-completion";
 import { NextResponse } from "next/server";
@@ -92,6 +93,7 @@ async function answerWithYandex(
   let text: string | null;
   if (localAiSelected()) {
     const compact = buildCompactConversation(question, session.state, [
+      selectVerifiedEngineeringKnowledge(question, pathname),
       pageSpecificKnowledgeAnswer(question, pathname) ?? buildKnowledgeFallback(question),
       pageContext.knowledge,
       steelProduktBrandKnowledge,
