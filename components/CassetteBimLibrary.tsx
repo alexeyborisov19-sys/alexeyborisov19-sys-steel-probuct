@@ -1,10 +1,11 @@
 import models from "@/data/bim/cassette-library.json";
+import downloads from "@/data/bim/cassette-downloads.json";
 import { libraryWireframe } from "@/lib/bim/library-wireframe";
 import { CassetteBimCatalog } from "./CassetteBimCatalog";
 
 const base = "/bim/metallokassety";
 export function CassetteBimLibrary() {
-  const entries = models.map(model => ({ ...model, wireframe: libraryWireframe(model.id) }));
+  const entries = models.map(model => ({ ...model, ...downloads[model.id as keyof typeof downloads], wireframe: libraryWireframe(model.id) }));
   return <section id="bim-library" aria-labelledby="bim-library-title" className="scroll-mt-28 rounded-xl border border-slate-300 bg-white p-5 sm:p-7">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-orange-800">Бесплатно · без регистрации</p><h2 id="bim-library-title" className="mt-2 text-2xl font-semibold">Выберите модель изделия</h2></div><a href={`${base}/SteelProdukt_BIM_IFC_Public.zip`} download className="min-h-11 rounded-lg border border-slate-400 px-4 py-3 text-sm font-semibold text-slate-900">Архив исходных IFC — ZIP</a></div>
     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">15 исходных образцов: 9 металлокассет и 6 доборных элементов. Скачайте исходный IFC или откройте отдельную модель для изменения габаритов. Раскладка фасада не требуется для скачивания одной детали.</p>

@@ -32,12 +32,15 @@ function fields(){
   $('source-mesh').href='../'+base+'/IFC4_coordination/'+selected.id+'.ifc';$('source-exact').href='../'+base+'/IFC4_exact_geometry/'+selected.id+'.ifc';
   $('source-mesh').textContent=selected.orientedCoordSha256?'Координационный IFC · замок сверху':'Исходный координационный IFC';
   $('source-exact').textContent=selected.orientedCoordSha256?'Точный IFC · замок сверху':'Исходный точный IFC';
+  for(const id of ['source-mesh','source-exact'])$(id).removeAttribute('aria-disabled');
 }
+function clearSourceLinks(){for(const id of ['source-mesh','source-exact']){$(id).removeAttribute('href');$(id).setAttribute('aria-disabled','true');}}
 async function selectModel(id,settings=null){
   const request=++epoch,model=models.find(m=>m.id===id);if(!model)return;
+  clearSourceLinks();
   busy(true);dirty=true;document.body.dataset.ready='false';$('status').textContent='Проверка исходника и подготовка геометрии…';$('preview-state').textContent='Загрузка новой модели…';error();
   try{const next=await sourceMesh(model);if(request!==epoch)return;selected=model;mesh=next;$('model').value=id;fields();$('mark').value=settings?.mark||'';if(settings)settings.dimensions.forEach((n,i)=>{$('dim-'+i).value=String(n);});geometry=resize(mesh,currentDimensions());viewer.zoom=1;updatePreview();}
-  catch(e){if(request!==epoch)return;mesh=null;geometry=null;error(e.message);$('status').textContent='Модель не готова. Выберите другой образец или повторите загрузку.';$('preview-state').textContent='Модель не готова';busy(true);}
+  catch(e){if(request!==epoch)return;clearSourceLinks();mesh=null;geometry=null;error(e.message);$('status').textContent='Модель не готова. Выберите другой образец или повторите загрузку.';$('preview-state').textContent='Модель не готова';busy(true);}
 }
 function save(content,filename,type){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 $('apply').addEventListener('click',apply);$('mark').addEventListener('input',invalidate);$('reset').addEventListener('click',()=>{if(!mesh)return;mesh.axes.forEach((a,i)=>{$('dim-'+i).value=String(Math.round(a.original*1000)/1000);});apply();});
