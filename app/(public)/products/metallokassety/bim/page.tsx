@@ -39,7 +39,7 @@ export default function CassetteBimPage() {
             ["Материал и RAL", "Оцинкованная сталь. Finish — покрытие каждого элемента; DefaultFinish — описание по умолчанию. Экранный оттенок приблизительный."],
             ["Площадь", "FaceArea — лицевая поверхность в м² без швов. Не расход металла и не площадь окраски с бортами."],
             ["Координаты", "Ширина по X, высота по Z, глубина по −Y. Начало у нижнего левого края блока."],
-            ["Ограничения", "ОТ и ЗТ толщиной 0,7/1 мм — по исходным STEP: борта, полки, отверстия и гибы. Угловая 90° — упрощённая по чертежу, без отверстий и радиусов. Размеры меняются через центральную часть, а не масштабирование металла. Крепёж и подсистема не входят."],
+            ["Ограничения", "ОТ и ЗТ толщиной 0,7/1 мм — по исходным STEP: борта, полки, отверстия и гибы. Угловая закрытая — исходная IFC-сетка SP-CAS-05 с замком, гибами и отверстиями, пока без изменения размеров. Размеры меняются через центральную часть, а не масштабирование металла. Крепёж и подсистема не входят."],
           ].map(([name,value])=><tr key={name} className="border-b border-slate-200"><th scope="row" className="p-3 align-top font-medium">{name}</th><td className="p-3 text-slate-600">{value}</td></tr>)}</tbody></table></div></details>
           <h3 className="mt-3 font-semibold">Вопросы о BIM-модели</h3>
           {faq.map(item=><details key={item.question} className="border-b border-slate-200 py-4"><summary className="cursor-pointer text-sm font-medium">{item.question}</summary><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{item.answer}</p></details>)}

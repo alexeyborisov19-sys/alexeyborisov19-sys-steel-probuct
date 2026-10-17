@@ -2,6 +2,7 @@ import closed07 from './source-meshes/closed-07.json';
 import closed10 from './source-meshes/closed-10.json';
 import open07 from './source-meshes/open-07.json';
 import open10 from './source-meshes/open-10.json';
+import closedCorner10 from './source-meshes/corner-closed-10.json';
 import type { CassetteBimInput } from './cassette';
 export type CassetteProfile = 'open' | 'closed' | 'corner';
 export type Vec3 = [number, number, number];
@@ -10,7 +11,7 @@ export type CassetteSolid = { vertices: Vec3[]; faces: number[][] };
 export const cassetteProfiles = {
   open: { label: 'Открытый тип · ОТ', widthMm:545, heightMm:545, depthMm:20, thicknessMm:.7, jointMm:45, returnWidthMm:330 },
   closed: { label: 'Закрытое крепление · верхний зацеп', widthMm:565, heightMm:530, depthMm:19.7, thicknessMm:.7, jointMm:35, returnWidthMm:330 },
-  corner: { label: 'Угловая кассета · 90°', widthMm:290, heightMm:380, depthMm:20, thicknessMm:1, jointMm:45, returnWidthMm:330 },
+  corner: { label: 'Угловая закрытая · по исходному IFC', widthMm:500, heightMm:431.433143262, depthMm:20, thicknessMm:1, jointMm:45, returnWidthMm:300 },
 } as const;
 export function cassetteSource(p:CassetteBimInput) {
  const closed=p.profile==='closed';
@@ -37,14 +38,11 @@ export function cassetteGeometry(p:CassetteBimInput):CassetteSolid[] {
   return [{vertices:source.mesh.vertices.map(([x,y,z])=>[stretch(x,source.width,w),stretch(y,source.height,h),z]),faces:source.mesh.faces}];
  }
  if(p.profile==='corner') {
-  const b=p.returnWidthMm ??330;
-  // Two perpendicular outer faces; returns are partitioned at the corner.
-  return [box(0,0,0,w-t,h,t),box(w-t,0,0,t,h,b),
-   box(0,0,t,t,h,d-t),box(w-d,0,b-t,d-t,h,t),
-   box(t,0,t,w-2*t,t,d-t),box(w-d,0,d,d-t,t,b-d-t),
-   box(t,h-t,t,w-2*t,t,d-t),box(w-d,h-t,d,d-t,t,b-d-t),
-   box(t,-20,d-t,w-2*t,20,t),box(w-d,-20,d,d-t,20,b-d-t),
-   box(t,h,d-t,w-2*t,20,t),box(w-d,h,d,d-t,20,b-d-t)];
+  // Exact tessellated SP-CAS-05 source: NOT the former 12 overlapping boxes.
+  // Source coordinate frame was rigidly changed from IFC XYZ to local X(height-return)
+  // axes: [X, Z, -Y]. This preserves all bending, hooks and bore geometry.
+  // Native parametric reshaping of this closed corner is not yet certified.
+  return [{vertices:closedCorner10.vertices.map(([x,y,z]):Vec3=>[x,y,z]),faces:closedCorner10.faces}];
  }
  const solids=[box(0,0,0,w,h,t),box(0,0,t,t,h,d-t),box(w-t,0,t,t,h,d-t),box(t,0,t,w-2*t,t,d-t),box(t,h-t,t,w-2*t,t,d-t)];
  return solids;

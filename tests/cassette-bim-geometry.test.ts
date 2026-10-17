@@ -12,9 +12,10 @@ test('drawing profiles have different bends and conservative assembly clearance'
  assert.ok(validateCassetteBim({...p,jointMm:20}).some(x=>x.includes('Шов')));
 });
 test('corner has two perpendicular faces and cannot duplicate into a flat grid',()=>{
- const input={...p,profile:'corner' as const,widthMm:290,returnWidthMm:330,heightMm:380,columns:1};
- const solids=cassetteGeometry(input);assert.ok(solids.some(s=>s.vertices.some(v=>v[2]>=330)));
+ const input={...p,profile:'corner' as const,widthMm:500,returnWidthMm:300,heightMm:431.433143262,columns:1};
+ const solids=cassetteGeometry(input);assert.equal(solids.length,1);assert.equal(solids[0].vertices.length,3364);assert.equal(solids[0].faces.length,6740);assert.ok(solids[0].vertices.some(v=>v[2]>=300));
  assert.ok(validateCassetteBim({...input,columns:2}).length);
+ assert.ok(validateCassetteBim({...input,widthMm:290}).some(s=>s.includes('исходном типоразмере')));
  const ifc=createCassetteIfc(input);assert.match(ifc,/IFCTRIANGULATEDFACESET/);
 });
 test('every geometric solid is a closed mesh with each edge shared twice',()=>{

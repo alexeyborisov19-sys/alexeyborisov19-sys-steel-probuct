@@ -112,11 +112,11 @@ export function CassetteBimConfigurator() {
       <summary><span>Кассета и размеры</span><small>{valid ? `${p.columns} × ${p.rows} кассет · ${format(p.widthMm)} × ${format(p.heightMm)} мм` : "Проверьте параметры"}</small></summary>
       <div className={styles.fields}>
         <label className={styles.profileField}>Исполнение<select value={p.profile} onChange={e=>chooseProfile(e.target.value as CassetteProfile,p.thicknessMm)}>{Object.entries(cassetteProfiles).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
-        {p.profile==='corner' && <label>Ширина второго крыла, мм<input type="number" value={p.returnWidthMm} onChange={e=>setP({...p,returnWidthMm:Number(e.target.value)})}/></label>}
-        {fields.filter(([key]) => key === "widthMm" || key === "heightMm").map(([key, label]) => <label key={key}>{key === "widthMm" && p.profile === "corner" ? "Ширина первого крыла, мм" : label}<input aria-describedby="bim-visible-dimensions-help" type="number" step="any" value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
+        {p.profile==='corner' && <label>Ширина второго крыла, мм (фиксированный габарит исходника)<input type="number" readOnly value={p.returnWidthMm}/></label>}
+        {fields.filter(([key]) => key === "widthMm" || key === "heightMm").map(([key, label]) => <label key={key}>{key === "widthMm" && p.profile === "corner" ? "Ширина первого крыла, мм (фиксированный габарит исходника)" : key === "heightMm" && p.profile === "corner" ? "Полная высота исходной угловой модели, мм" : label}<input aria-describedby="bim-visible-dimensions-help" type="number" step="any" readOnly={p.profile === "corner"} value={Number.isNaN(p[key]) ? "" : p[key]} onChange={e => setP({ ...p, [key]: e.target.value === "" ? NaN : Number(e.target.value) })} /></label>)}
         <label>Толщина, мм<select value={p.thicknessMm} onChange={e => chooseProfile(p.profile!,Number(e.target.value))}>{(p.profile === "corner" ? [1] : [0.7, 1]).map(t => <option key={t} value={t}>{t}</option>)}</select></label>
       </div>
-      <p id="bim-visible-dimensions-help" className={styles.hint}>Размеры видимой части кассеты, без загнутых краёв. У угловой кассеты ширина задаётся отдельно для каждого крыла.</p>
+      <p id="bim-visible-dimensions-help" className={styles.hint}>{p.profile === "corner" ? "Угловая закрытая кассета — проверенная исходная модель SP-CAS-05 с верхним замком. Габариты её двух крыльев и высоты фиксированы до подтверждения параметрической перестройки. Это размеры исходной геометрии, не лицевые размеры." : "Размеры видимой части кассеты, без загнутых краёв."}</p>
       <p className={styles.hint}>При смене типа или толщины размеры вернутся к исходным.</p>
       <details className={styles.extra}><summary>Раскладка, шов и марка</summary>
         <div className={styles.fields}>
@@ -126,7 +126,7 @@ export function CassetteBimConfigurator() {
         <p className={styles.hint}>Шов задаётся между лицевыми габаритами. Для полных бортов без наложения в этой компоновке требуется не меньше {format(cassetteMinimumJoint(p))} мм. Меньший шов возможен только с отдельно проверенным узлом стыковки.</p>
       </details>
       <details className={styles.extra}><summary>Исходная геометрия и покрытие</summary>
-        <p className={styles.hint}>Открытый и закрытый типы — по исходным STEP-моделям 0,7 и 1 мм. Угловая — по рабочему чертежу, без отверстий и радиусов. Изменение ширины и высоты адаптирует центральную часть; глубина и гибы сохраняются.</p>
+        <p className={styles.hint}>Открытый и закрытый прямые типы — по исходным STEP-моделям 0,7 и 1 мм; их ширина и высота адаптируются в центральной части. Угловая закрытого типа — исходная координационная сетка SP-CAS-05 с реальными гибами, замком и отверстиями; изменение её габаритов в этом генераторе временно отключено.</p>
         <label>Покрытие по проекту<input maxLength={120} value={p.finish} onChange={e => setP({ ...p, finish: e.target.value })} /></label>
       </details>
     </details>
